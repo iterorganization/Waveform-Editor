@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waveform-editor"
+description = "Python tool to create and edit 1D waveforms (time-varying signals)"
+readme = "README.rst"
+authors = [
+    {name = "Waveform Editor Developers"}
+]
+classifiers = [
+]
+license = {file = "LICENSE.txt"}
+dependencies = [
+    "numpy",
+    "click",
+    # "imas-python",
+    "panel",
+    "pygments",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+all = ["waveform-editor[dev,doc]"]
+dev = [
+    # pytest
+    "pytest",
+    "coverage",
+    # linting
+    "ruff",
+    # useful to run panel in --dev mode
+    "watchfiles",
+]
+doc = [
+    "sphinx>=6",
+    "sphinx-immaterial",
+]
+
+[project.urls]
+homepage = "https://github.com/iterorganization/Waveform-Editor"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["waveform_editor*"]
+
+[tool.setuptools_scm]
+# version_file = "waveform_editor/_version.py"
+
+[tool.isort]
+line_length = 88
+profile = "black"
+
+[tool.ruff]
+exclude = [
+    "docs",
+    ".git",
+]
+# Same as Black
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
