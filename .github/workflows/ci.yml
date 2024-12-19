@@ -66,7 +66,7 @@ jobs:
         make -C docs html
 
     - name: Upload docs artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: html-docs
         path: docs/_build/html/
