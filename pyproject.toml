@@ -22,19 +22,24 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["waveform-editor[dev,doc]"]
+all = ["waveform-editor[dev,linting,test,docs]"]
 dev = [
-    # pytest
-    "pytest",
-    "coverage",
-    # linting
-    "ruff",
     # useful to run panel in --dev mode
     "watchfiles",
 ]
-doc = [
-    "sphinx>=6",
-    "sphinx-immaterial",
+linting = [
+    "ruff",
+]
+test = [
+    "pytest>=5.4.1",
+    "pytest-cov>=0.6",
+    "pytest-xdist",
+    "pytest-randomly",
+]
+docs = [
+    "sphinx>=6.0.0,<7.0.0",
+    "sphinx-autosummary-accessors>=0.1.2",
+    "sphinx-immaterial>=0.11.0,<0.12",
 ]
 
 [project.urls]
