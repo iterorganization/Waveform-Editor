@@ -9,11 +9,7 @@ class BaseTendency(ABC):
     """
 
     def __init__(self, duration, prev_tendency, tendency_type):
-        if prev_tendency is None:
-            start = 0
-        else:
-            print(prev_tendency)
-            start = prev_tendency.end
+        start = 0 if prev_tendency is None else prev_tendency.end
 
         self.start = start
         self.duration = duration
