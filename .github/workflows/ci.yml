@@ -21,7 +21,11 @@ jobs:
 
     - name: Run Ruff linter
       run: |
-        ruff check --output-format=github waveform_editor
+        ruff check --output-format=github waveform_editor tests
+
+    - name: Run Ruff formatter
+      run: |
+        ruff format --diff waveform_editor tests
 
   pytest:
     runs-on: ubuntu-latest
