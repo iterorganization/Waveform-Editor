@@ -24,6 +24,7 @@ dynamic = ["version"]
 [project.optional-dependencies]
 all = ["waveform-editor[dev,linting,test,docs]"]
 dev = [
+    "waveform-editor[test,linting]",
     # useful to run panel in --dev mode
     "watchfiles",
 ]
