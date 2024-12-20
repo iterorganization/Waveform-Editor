@@ -49,12 +49,12 @@ jobs:
 
     - name: Run tests
       run: |
-        python -m pytest -n=auto --cov=waveform_editor --cov-report=term-missing --cov-report=html --junit-xml=junit.xml
+        python -m pytest -n=auto --cov=waveform_editor --cov-report=term-missing --cov-report=html --junit-xml=junit-${{ matrix.python-version }}.xml
 
     - name: Upload coverage report
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
+        name: coverage-report-${{ matrix.python-version }}
         path: htmlcov
 
   docs:
