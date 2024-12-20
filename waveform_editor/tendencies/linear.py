@@ -8,7 +8,7 @@ class LinearTendency(BaseTendency):
     Linear tendency class for a signal with a linear increase or decrease.
     """
 
-    def __init__(self, prev_tendency, from_value, to_value, duration):
+    def __init__(self, prev_tendency, from_value=None, to_value=None, duration=None):
         super().__init__(duration, prev_tendency, "linear")
         self.from_value = from_value
         self.to_value = to_value

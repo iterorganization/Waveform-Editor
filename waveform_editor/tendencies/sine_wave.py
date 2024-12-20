@@ -6,7 +6,9 @@ from waveform_editor.tendencies.base_tendency import BaseTendency
 class SineWaveTendency(BaseTendency):
     """ """
 
-    def __init__(self, prev_tendency, base, amplitude, frequency, duration):
+    def __init__(
+        self, prev_tendency, base=None, amplitude=None, frequency=None, duration=None
+    ):
         super().__init__(duration, prev_tendency, "sine")
         self.base = base
         self.amplitude = amplitude

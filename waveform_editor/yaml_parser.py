@@ -13,23 +13,23 @@ def handle_tendency(entry, prev_tendency):
         case "linear":
             tendency = LinearTendency(
                 prev_tendency,
-                entry.get("from"),
-                entry.get("to"),
-                entry.get("duration"),
+                from_value=entry.get("from"),
+                to_value=entry.get("to"),
+                duration=entry.get("duration"),
             )
         case "sine-wave":
             tendency = SineWaveTendency(
                 prev_tendency,
-                entry.get("base"),
-                entry.get("amplitude"),
-                entry.get("frequency"),
-                entry.get("duration"),
+                base=entry.get("base"),
+                amplitude=entry.get("amplitude"),
+                frequency=entry.get("frequency"),
+                duration=entry.get("duration"),
             )
         case "constant":
             tendency = ConstantTendency(
                 prev_tendency,
-                entry.get("value"),
-                entry.get("duration"),
+                value=entry.get("value"),
+                duration=entry.get("duration"),
             )
         case "smooth":
             tendency = SmoothTendency(
@@ -47,7 +47,6 @@ def handle_tendency(entry, prev_tendency):
 def parse_waveforms(waveform_data):
     tendencies = []
 
-    # Initially start at 0
     prev_tendency = None
     for entry in waveform_data.get("waveform", []):
         tendency = handle_tendency(entry, prev_tendency)

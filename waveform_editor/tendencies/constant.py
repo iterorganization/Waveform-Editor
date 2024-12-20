@@ -8,7 +8,7 @@ class ConstantTendency(BaseTendency):
     Constant tendency class for a constant signal.
     """
 
-    def __init__(self, prev_tendency, value, duration):
+    def __init__(self, prev_tendency, value=None, duration=None):
         self.value = value
         super().__init__(duration, prev_tendency, "constant")
 

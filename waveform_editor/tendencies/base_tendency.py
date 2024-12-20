@@ -20,10 +20,10 @@ class BaseTendency(ABC):
         self._validate()
 
     def _validate(self):
-        assert self.start is not None
-        assert self.duration is not None
-        assert self.end is not None
-        assert self.start <= self.end
+        assert self.start is not None, "Start value could not be determined."
+        assert self.duration is not None, "duration could not be determined."
+        assert self.end is not None, "End value could not be determined."
+        assert self.start <= self.end, "The end value should be later than the start"
 
     @abstractmethod
     def generate(self, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
