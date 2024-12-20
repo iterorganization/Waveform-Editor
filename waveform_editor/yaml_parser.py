@@ -3,6 +3,7 @@ import yaml
 
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
+from waveform_editor.tendencies.sine_wave import SineWaveTendency
 
 
 def handle_tendency(entry, prev_end):
@@ -16,7 +17,13 @@ def handle_tendency(entry, prev_end):
                 prev_end,
             )
         case "sine-wave":
-            tendency = None
+            tendency = SineWaveTendency(
+                entry.get("base"),
+                entry.get("amplitude"),
+                entry.get("frequency"),
+                entry.get("duration"),
+                prev_end,
+            )
         case "constant":
             tendency = ConstantTendency(
                 entry.get("value"),
@@ -33,6 +40,8 @@ def handle_tendency(entry, prev_end):
 
 def parse_waveforms(waveform_data):
     tendencies = []
+
+    # Initially start at 0
     prev_end = 0
     for entry in waveform_data.get("waveform", []):
         tendency = handle_tendency(entry, prev_end)
@@ -42,7 +51,7 @@ def parse_waveforms(waveform_data):
 
 
 if __name__ == "__main__":
-    file_path = "test.yaml"
+    file_path = "test_all.yaml"
     with open(file_path) as file:
         waveform_data = yaml.load(file, yaml.SafeLoader)
 
