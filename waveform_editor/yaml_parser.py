@@ -23,37 +23,36 @@ class YamlParser:
 
     def _handle_tendency(self, entry, prev_tendency):
         tendency_type = entry.get("type")
-        match tendency_type:
-            case "linear":
-                tendency = LinearTendency(
-                    prev_tendency,
-                    from_value=entry.get("from"),
-                    to_value=entry.get("to"),
-                    duration=entry.get("duration"),
-                )
-            case "sine-wave":
-                tendency = SineWaveTendency(
-                    prev_tendency,
-                    base=entry.get("base"),
-                    amplitude=entry.get("amplitude"),
-                    frequency=entry.get("frequency"),
-                    duration=entry.get("duration"),
-                )
-            case "constant":
-                tendency = ConstantTendency(
-                    prev_tendency,
-                    value=entry.get("value"),
-                    duration=entry.get("duration"),
-                )
-            case "smooth":
-                tendency = SmoothTendency(
-                    prev_tendency,
-                    from_value=entry.get("from"),
-                    to_value=entry.get("to"),
-                    duration=entry.get("duration"),
-                )
-            case _:
-                raise NotImplementedError(f"Unsupported tendency type: {type}")
+        if tendency_type == "linear":
+            tendency = LinearTendency(
+                prev_tendency,
+                from_value=entry.get("from"),
+                to_value=entry.get("to"),
+                duration=entry.get("duration"),
+            )
+        elif tendency_type == "sine-wave":
+            tendency = SineWaveTendency(
+                prev_tendency,
+                base=entry.get("base"),
+                amplitude=entry.get("amplitude"),
+                frequency=entry.get("frequency"),
+                duration=entry.get("duration"),
+            )
+        elif tendency_type == "constant":
+            tendency = ConstantTendency(
+                prev_tendency,
+                value=entry.get("value"),
+                duration=entry.get("duration"),
+            )
+        elif tendency_type == "smooth":
+            tendency = SmoothTendency(
+                prev_tendency,
+                from_value=entry.get("from"),
+                to_value=entry.get("to"),
+                duration=entry.get("duration"),
+            )
+        else:
+            raise NotImplementedError(f"Unsupported tendency type: {type}")
 
         return tendency
 
