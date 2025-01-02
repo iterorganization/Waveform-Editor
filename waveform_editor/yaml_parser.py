@@ -59,9 +59,9 @@ class YamlParser:
 
     def plot_tendencies(self, sampling_rate=100):
         for tendency in self.tendencies:
-            time, values = tendency.generate(sampling_rate)
+            time, values = tendency.generate(sampling_rate=sampling_rate)
 
-            plt.plot(time, values, label=tendency.tendency_type)
+            plt.plot(time, values, "o-", label=tendency.tendency_type)
 
         plt.xlabel("Time (s)")
         plt.ylabel("Value")

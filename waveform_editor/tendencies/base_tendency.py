@@ -35,5 +35,5 @@ class BaseTendency(ABC):
         assert self.start <= self.end, "The end value should be later than the start"
 
     @abstractmethod
-    def generate(self, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
+    def generate(self, time, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
         pass

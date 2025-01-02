@@ -12,9 +12,10 @@ class SmoothTendency(BaseTendency):
         self.from_value = from_value
         self.to_value = to_value
 
-    def generate(self, sampling_rate):
-        num_steps = int(self.duration * sampling_rate) + 1
-        time = np.linspace(self.start, self.end, num_steps)
+    def generate(self, time=None, sampling_rate=100):
+        if time is None:
+            num_steps = int(self.duration * sampling_rate) + 1
+            time = np.linspace(float(self.start), float(self.end), num_steps)
 
         # Sigmoid function
         center = (self.start + self.end) / 2
