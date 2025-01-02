@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import CubicSpline
 
 from waveform_editor.tendencies.base_tendency import BaseTendency
 
@@ -17,10 +18,10 @@ class SmoothTendency(BaseTendency):
             num_steps = int(self.duration * sampling_rate) + 1
             time = np.linspace(float(self.start), float(self.end), num_steps)
 
-        # Sigmoid function
-        center = (self.start + self.end) / 2
-        alpha = 3.0
-        values = self.from_value + (self.to_value - self.from_value) / 2 * (
-            1 + np.tanh(alpha * (time - center))
+        spline = CubicSpline(
+            [self.start, self.end],
+            [self.from_value, self.to_value],
+            bc_type=((1, 0), (1, 0)),
         )
+        values = spline(time)
         return time, values
