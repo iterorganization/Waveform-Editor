@@ -14,7 +14,7 @@ class LinearTendency(BaseTendency):
         self.to_value = to_value
 
     def generate(self, sampling_rate):
-        num_steps = int(self.duration * sampling_rate)
+        num_steps = int(self.duration * sampling_rate) + 1
         time = np.linspace(self.start, self.end, num_steps)
         values = np.linspace(self.from_value, self.to_value, num_steps)
         return time, values

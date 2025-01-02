@@ -15,7 +15,7 @@ class SineWaveTendency(BaseTendency):
         self.frequency = frequency
 
     def generate(self, sampling_rate):
-        num_steps = int(self.duration * sampling_rate)
+        num_steps = int(self.duration * sampling_rate) + 1
         time = np.linspace(self.start, self.end, num_steps)
         values = self.base + self.amplitude * np.sin(2 * np.pi * self.frequency * time)
         return time, values
