@@ -9,15 +9,24 @@ class BaseTendency(ABC):
     """
 
     def __init__(self, duration, prev_tendency, tendency_type):
-        start = 0 if prev_tendency is None else prev_tendency.end
+        self.prev_tendency = None
+        self.next_tendency = None
+        self._set_previous(prev_tendency)
+
+        start = 0 if self.prev_tendency is None else prev_tendency.end
 
         self.start = start
         self.duration = duration
         self.end = start + duration
-        self.prev_tendency = prev_tendency
         self.tendency_type = tendency_type
 
         self._validate()
+
+    def _set_previous(self, prev_tendency):
+        self.prev_tendency = prev_tendency
+
+        if self.prev_tendency is not None:
+            self.prev_tendency.next_tendency = self
 
     def _validate(self):
         assert self.start is not None, "Start value could not be determined."
