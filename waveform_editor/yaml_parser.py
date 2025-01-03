@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import plotly.graph_objs as go
 import yaml
 
 from waveform_editor.tendencies.base_tendency import TimeInterval
@@ -12,14 +12,14 @@ class YamlParser:
     def __init__(self):
         self.tendencies = []
 
-    def parse_waveforms(self, file_path):
+    def parse_waveforms(self, yaml_str):
         """Loads a yaml file and stores its tendencies into a list.
 
         Args:
             file_path: File path of the yaml file.
         """
-        with open(file_path) as file:
-            waveform_yaml = yaml.load(file, yaml.SafeLoader)
+        # with open(file_path) as file:
+        waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
 
         prev_tendency = None
         for entry in waveform_yaml.get("waveform", []):
@@ -103,18 +103,27 @@ class YamlParser:
         return time_interval
 
     def plot_tendencies(self, sampling_rate=100):
-        """Plot the tendencies in a matplotlib figure.
+        """Plot the tendencies in a Plotly figure.
 
         Args:
             sampling_rate: Sampling rate of the time array.
+        Returns:
+            A Plotly figure object.
         """
+
+        fig = go.Figure()
+
         for tendency in self.tendencies:
             time, values = tendency.generate(sampling_rate=sampling_rate)
+            fig.add_trace(
+                go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
+            )
 
-            plt.plot(time, values, "o-", label=type(tendency))
+        fig.update_layout(
+            title="Waveform",
+            xaxis_title="Time (s)",
+            yaxis_title="Value",
+            legend_title="Tendencies",
+        )
 
-        plt.xlabel("Time (s)")
-        plt.ylabel("Value")
-        plt.title("Waveform")
-        plt.legend()
-        plt.show()
+        return fig
