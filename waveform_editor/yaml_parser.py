@@ -12,6 +12,11 @@ class YamlParser:
         self.tendencies = []
 
     def parse_waveforms(self, file_path):
+        """Loads a yaml file and stores its tendencies into a list.
+
+        Args:
+            file_path: File path of the yaml file.
+        """
         with open(file_path) as file:
             waveform_yaml = yaml.load(file, yaml.SafeLoader)
 
@@ -22,6 +27,13 @@ class YamlParser:
             prev_tendency = tendency
 
     def _handle_tendency(self, entry, prev_tendency):
+        """Creates a tendency instance based on the entry in the yaml file.
+
+        Args:
+            entry: Entry in the yaml file.
+            prev_tendency: Tendency which occurred previously, or None if it is the
+                first tendency.
+        """
         tendency_type = entry.get("type")
         if tendency_type == "linear":
             tendency = LinearTendency(
@@ -57,6 +69,11 @@ class YamlParser:
         return tendency
 
     def plot_tendencies(self, sampling_rate=100):
+        """Plot the tendencies in a matplotlib figure.
+
+        Args:
+            sampling_rate: Sampling rate of the time array.
+        """
         for tendency in self.tendencies:
             time, values = tendency.generate(sampling_rate=sampling_rate)
 
