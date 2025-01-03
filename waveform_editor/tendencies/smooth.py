@@ -8,7 +8,7 @@ class SmoothTendency(BaseTendency):
     """ """
 
     def __init__(self, prev_tendency, from_value=None, to_value=None, duration=None):
-        super().__init__(duration, prev_tendency, "smooth")
+        super().__init__(duration, prev_tendency)
 
         self.from_value = from_value
         self.to_value = to_value

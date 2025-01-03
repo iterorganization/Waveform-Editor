@@ -10,7 +10,7 @@ class ConstantTendency(BaseTendency):
 
     def __init__(self, prev_tendency, value=None, duration=None):
         self.value = value
-        super().__init__(duration, prev_tendency, "constant")
+        super().__init__(duration, prev_tendency)
 
     def generate(self, time=None, sampling_rate=100):
         if time is None:

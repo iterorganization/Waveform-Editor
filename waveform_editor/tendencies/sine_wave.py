@@ -9,7 +9,7 @@ class SineWaveTendency(BaseTendency):
     def __init__(
         self, prev_tendency, base=None, amplitude=None, frequency=None, duration=None
     ):
-        super().__init__(duration, prev_tendency, "sine")
+        super().__init__(duration, prev_tendency)
         self.base = base
         self.amplitude = amplitude
         self.frequency = frequency
