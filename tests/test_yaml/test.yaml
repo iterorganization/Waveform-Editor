@@ -1,7 +1,6 @@
 waveform:
-- {type: linear, from: 0, to: 5, duration: 1}
+- {type: linear, from: 0, to: 8, duration: 5}
+- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
 - {type: constant, value: 8, duration: 3}
-- {type: linear, from: 1, to: 2, duration: 2}
-- {type: constant, value: 2, duration: 5}
-- {type: linear, from: 3, to: 8, duration: 3}
-- {type: constant, value: 4, duration: 4}
+- {type: smooth, from: 8, to: 0, duration: 2}
+
