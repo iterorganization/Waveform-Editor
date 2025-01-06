@@ -29,16 +29,16 @@ class SineWaveTendency(BaseTendency):
 
     def generate(self, time=None, sampling_rate=100):
         """Generate time and values based on the tendency. If no time array is provided,
-        A linearly spaced time array will be generate from the start to the end of
+        a linearly spaced time array will be generated from the start to the end of the
         tendency, with the given sampling rate.
 
         Args:
             time: The time array on which to generate points.
-            sampling_rate: The sampling rate of the generate time array, if no custom
+            sampling_rate: The sampling rate of the generated time array, if no custom
             time array is given.
 
         Returns:
-            Tuple containing the time and and its the tendency values.
+            Tuple containing the time and its tendency values.
         """
         if time is None:
             num_steps = int(self.duration * sampling_rate) + 1

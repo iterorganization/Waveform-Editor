@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import param
@@ -7,9 +8,9 @@ import param
 
 @dataclass
 class TimeInterval:
-    start: float = None
-    duration: float = None
-    end: float = None
+    start: Optional[float] = None
+    duration: Optional[float] = None
+    end: Optional[float] = None
 
 
 class BaseTendency(param.Parameterized):
@@ -120,15 +121,15 @@ class BaseTendency(param.Parameterized):
     @abstractmethod
     def generate(self, time, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
-        A linearly spaced time array will be generate from the start to the end of
+        a linearly spaced time array will be generated from the start to the end of the
         tendency, with the given sampling rate.
 
         Args:
             time: The time array on which to generate points.
-            sampling_rate: The sampling rate of the generate time array, if no custom
+            sampling_rate: The sampling rate of the generated time array, if no custom
             time array is given.
 
         Returns:
-            Tuple containing the time and and its the tendency values.
+            Tuple containing the time and its tendency values.
         """
         pass
