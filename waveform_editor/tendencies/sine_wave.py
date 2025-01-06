@@ -15,13 +15,13 @@ class SineWaveTendency(BaseTendency):
 
     def __init__(
         self,
-        prev_tendency=None,
+        prev_tendency,
+        time_interval,
         base=0.0,
         amplitude=1.0,
         frequency=1.0,
-        duration=1.0,
     ):
-        super().__init__(duration=duration, prev_tendency=prev_tendency)
+        super().__init__(prev_tendency, time_interval)
 
         self.base = base
         self.amplitude = amplitude

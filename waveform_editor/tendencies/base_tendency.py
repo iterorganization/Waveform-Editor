@@ -1,7 +1,15 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 
 import numpy as np
 import param
+
+
+@dataclass
+class TimeInterval:
+    start: float = None
+    duration: float = None
+    end: float = None
 
 
 class BaseTendency(param.Parameterized):
@@ -22,21 +30,80 @@ class BaseTendency(param.Parameterized):
         doc="The tendency that follows the current tendency.",
     )
 
-    start = param.Number(default=0, bounds=(0, None), doc="Start time of the tendency.")
+    start = param.Number(default=0, doc="Start time of the tendency.")
     duration = param.Number(
         default=1, bounds=(0, None), doc="Duration of the tendency."
     )
-    end = param.Number(default=1, bounds=(0, None), doc="End time of the tendency")
+    end = param.Number(default=1, doc="End time of the tendency")
 
-    def __init__(self, duration, prev_tendency=None):
+    def __init__(self, prev_tendency, time_interval):
         super().__init__()
 
-        self.duration = duration
-        self.prev_tendency = prev_tendency
         self._set_previous(prev_tendency)
+        self._validate_user_input(time_interval)
 
-        self.start = 0 if self.prev_tendency is None else self.prev_tendency.end
-        self.end = self.start + self.duration
+    def _validate_user_input(self, time_interval):
+        """Validates the start, duration, and end values provided by the user, and
+        calculates the actual values if not all values are provided.
+
+        Args:
+            time_interval: Dataclass containing the start, duration, and end value
+            provided by the user.
+        """
+        user_start = time_interval.start
+        user_duration = time_interval.duration
+        user_end = time_interval.end
+
+        if (
+            user_start is not None
+            and user_duration is not None
+            and user_end is not None
+        ):
+            if user_start + user_duration != user_end:
+                raise ValueError(
+                    "Inputs are inconsistent: start + duration does not equal end."
+                )
+            self.start = user_start
+            self.duration = user_duration
+            self.end = user_end
+        elif user_start is not None and user_duration is not None:
+            self.start = user_start
+            self.duration = user_duration
+            self.end = user_start + user_duration
+        elif user_start is not None and user_end is not None:
+            self.start = user_start
+            self.end = user_end
+            self.duration = user_end - user_start
+        elif user_duration is not None and user_end is not None:
+            self.duration = user_duration
+            self.end = user_end
+            self.start = user_end - user_duration
+            if self.prev_tendency is not None and not np.isclose(
+                self.start, self.prev_tendency.end
+            ):
+                raise ValueError(
+                    "Ambiguous input: no start is provided and the calculated start"
+                    "does not equal the end of the previous tendency."
+                )
+        elif user_duration is not None:
+            if self.prev_tendency is None:
+                self.start = 0
+            else:
+                self.start = self.prev_tendency.end
+            self.duration = user_duration
+            self.end = self.start + self.duration
+        elif user_end is not None:
+            if self.prev_tendency is None:
+                self.start = 0
+            else:
+                self.start = self.prev_tendency.end
+            self.duration = user_end - self.start
+            self.end = user_end
+        else:
+            raise ValueError(
+                "Insufficient inputs: Unable to calculate the start, "
+                "duration, and end."
+            )
 
     def _set_previous(self, prev_tendency):
         """Set the previous tendency and set its next tendency to this instance.
@@ -49,12 +116,6 @@ class BaseTendency(param.Parameterized):
 
         if self.prev_tendency is not None:
             self.prev_tendency.next_tendency = self
-
-    @param.depends("duration", "prev_tendency.end", watch=True)
-    def _update_end(self):
-        """Automatically update the end when duration or previous tendency changes."""
-        self.start = 0 if self.prev_tendency is None else self.prev_tendency.end
-        self.end = self.start + self.duration
 
     @abstractmethod
     def generate(self, time, sampling_rate) -> tuple[np.ndarray, np.ndarray]:

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import yaml
 
+from waveform_editor.tendencies.base_tendency import TimeInterval
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.sine_wave import SineWaveTendency
@@ -34,39 +35,53 @@ class YamlParser:
             prev_tendency: Tendency which occurred previously, or None if it is the
                 first tendency.
         """
+        time_interval = self._create_time_interval(entry)
         tendency_type = entry.get("type")
         if tendency_type == "linear":
             tendency = LinearTendency(
                 prev_tendency,
+                time_interval,
                 from_value=entry.get("from"),
                 to_value=entry.get("to"),
-                duration=entry.get("duration"),
             )
         elif tendency_type == "sine-wave":
             tendency = SineWaveTendency(
                 prev_tendency,
+                time_interval,
                 base=entry.get("base"),
                 amplitude=entry.get("amplitude"),
                 frequency=entry.get("frequency"),
-                duration=entry.get("duration"),
             )
         elif tendency_type == "constant":
             tendency = ConstantTendency(
                 prev_tendency,
+                time_interval,
                 value=entry.get("value"),
-                duration=entry.get("duration"),
             )
         elif tendency_type == "smooth":
             tendency = SmoothTendency(
                 prev_tendency,
+                time_interval,
                 from_value=entry.get("from"),
                 to_value=entry.get("to"),
-                duration=entry.get("duration"),
             )
         else:
             raise NotImplementedError(f"Unsupported tendency type: {type}")
 
         return tendency
+
+    def _create_time_interval(self, entry):
+        """Creates an instance of the TimeInterval dataclass, which stores the start,
+        duration, and end values that the user provided.
+
+        Args:
+            entry: Entry in the yaml file.
+        """
+        start = entry.get("start")
+        duration = entry.get("duration")
+        end = entry.get("end")
+        time_interval = TimeInterval(start=start, duration=duration, end=end)
+        return time_interval
 
     def plot_tendencies(self, sampling_rate=100):
         """Plot the tendencies in a matplotlib figure.
