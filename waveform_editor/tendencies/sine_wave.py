@@ -17,13 +17,19 @@ class SineWaveTendency(BaseTendency):
         self,
         prev_tendency,
         time_interval,
-        base=0.0,
+        base=None,
         amplitude=1.0,
         frequency=1.0,
     ):
         super().__init__(prev_tendency, time_interval)
 
-        self.base = base
+        if base is None:
+            if self.prev_tendency is None:
+                self.base = 0.0
+            else:
+                self.base = self.prev_tendency.get_end_value()
+        else:
+            self.base = base
         self.amplitude = amplitude
         self.frequency = frequency
 
@@ -47,3 +53,28 @@ class SineWaveTendency(BaseTendency):
             2 * np.pi * self.frequency * (time - time[0])
         )
         return time, values
+
+    def get_start_value(self) -> float:
+        """Returns the value of the tendency at the start."""
+        return self.base
+
+    def get_end_value(self) -> float:
+        """Returns the value of the tendency at the end."""
+        return self.base + self.amplitude * np.sin(
+            2 * np.pi * self.frequency * (self.end - self.start)
+        )
+
+    def get_derivative_start(self) -> float:
+        """Returns the derivative of the tendency at the start."""
+
+        return self.amplitude * 2 * np.pi * self.frequency
+
+    def get_derivative_end(self) -> float:
+        """Returns the derivative of the tendency at the end."""
+        return (
+            self.amplitude
+            * 2
+            * np.pi
+            * self.frequency
+            * np.cos(2 * np.pi * self.frequency * (self.end - self.start))
+        )

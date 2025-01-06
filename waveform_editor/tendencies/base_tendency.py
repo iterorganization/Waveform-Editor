@@ -119,6 +119,26 @@ class BaseTendency(param.Parameterized):
             self.prev_tendency.next_tendency = self
 
     @abstractmethod
+    def get_start_value(self) -> float:
+        """Returns the value of the tendency at the start."""
+        pass
+
+    @abstractmethod
+    def get_end_value(self) -> float:
+        """Returns the value of the tendency at the end."""
+        pass
+
+    @abstractmethod
+    def get_derivative_start(self) -> float:
+        """Returns the derivative of the tendency at the start."""
+        pass
+
+    @abstractmethod
+    def get_derivative_end(self) -> float:
+        """Returns the derivative of the tendency at the end."""
+        pass
+
+    @abstractmethod
     def generate(self, time, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the

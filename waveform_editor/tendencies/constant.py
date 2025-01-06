@@ -35,3 +35,19 @@ class ConstantTendency(BaseTendency):
             time = np.linspace(self.start, self.end, num_steps)
         values = self.value * np.ones(len(time))
         return time, values
+
+    def get_start_value(self) -> float:
+        """Returns the value of the tendency at the start."""
+        return self.value
+
+    def get_end_value(self) -> float:
+        """Returns the value of the tendency at the end."""
+        return self.value
+
+    def get_derivative_start(self) -> float:
+        """Returns the derivative of the tendency at the start."""
+        return 0
+
+    def get_derivative_end(self) -> float:
+        """Returns the derivative of the tendency at the end."""
+        return 0

@@ -18,11 +18,26 @@ class LinearTendency(BaseTendency):
         doc="The ending value of the linear tendency.",
     )
 
-    def __init__(self, prev_tendency, time_interval, from_value=0.0, to_value=1.0):
+    def __init__(self, prev_tendency, time_interval, from_value=None, to_value=None):
         super().__init__(prev_tendency, time_interval)
 
-        self.from_value = from_value
-        self.to_value = to_value
+        if from_value is None:
+            if self.prev_tendency is None:
+                self.from_value = 0
+            else:
+                self.from_value = self.prev_tendency.get_end_value()
+        else:
+            self.from_value = from_value
+
+        if to_value is None:
+            if self.next_tendency is None:
+                self.to_value = 1
+            else:
+                self.to_value = self.next_tendency.get_start_value()
+        else:
+            self.to_value = to_value
+
+        self.rate = (self.to_value - self.from_value) / (self.end - self.start)
 
     def generate(self, time=None, sampling_rate=100):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -42,3 +57,19 @@ class LinearTendency(BaseTendency):
             time = np.linspace(self.start, self.end, num_steps)
         values = np.linspace(self.from_value, self.to_value, len(time))
         return time, values
+
+    def get_start_value(self) -> float:
+        """Returns the value of the tendency at the start."""
+        return self.from_value
+
+    def get_end_value(self) -> float:
+        """Returns the value of the tendency at the end."""
+        return self.to_value
+
+    def get_derivative_start(self) -> float:
+        """Returns the derivative of the tendency at the start."""
+        return self.rate
+
+    def get_derivative_end(self) -> float:
+        """Returns the derivative of the tendency at the end."""
+        return self.rate
