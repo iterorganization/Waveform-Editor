@@ -41,34 +41,53 @@ class YamlParser:
             tendency = LinearTendency(
                 prev_tendency,
                 time_interval,
-                from_value=entry.get("from"),
-                to_value=entry.get("to"),
+                **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )
         elif tendency_type == "sine-wave":
             tendency = SineWaveTendency(
                 prev_tendency,
                 time_interval,
-                base=entry.get("base"),
-                amplitude=entry.get("amplitude"),
-                frequency=entry.get("frequency"),
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
             )
         elif tendency_type == "constant":
             tendency = ConstantTendency(
                 prev_tendency,
                 time_interval,
-                value=entry.get("value"),
+                **self._filter_kwargs(entry, {"value": "value"}),
             )
         elif tendency_type == "smooth":
             tendency = SmoothTendency(
                 prev_tendency,
                 time_interval,
-                from_value=entry.get("from"),
-                to_value=entry.get("to"),
+                **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )
         else:
             raise NotImplementedError(f"Unsupported tendency type: {type}")
 
         return tendency
+
+    def _filter_kwargs(self, entry, key_map):
+        """Helper to filter kwargs from the yaml dictionary, excluding None values. For
+        example, setting `key_map={"to_value": "to"}` will look for the value of "to" in
+        the entry and return it under the key "to_value" in the result.
+
+        Args:
+            entry: Entry in the yaml file.
+            key_map: A mapping of argument names to entry keys.
+        """
+
+        return {
+            arg: entry.get(entry_key)
+            for arg, entry_key in key_map.items()
+            if entry.get(entry_key) is not None
+        }
 
     def _create_time_interval(self, entry):
         """Creates an instance of the TimeInterval dataclass, which stores the start,
