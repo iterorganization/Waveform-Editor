@@ -1,7 +1,7 @@
 import numpy as np
 import param
 
-from waveform_editor.tendencies.base_tendency import BaseTendency, TimeInterval
+from waveform_editor.tendencies.base_tendency import BaseTendency
 
 
 class LinearTendency(BaseTendency):
