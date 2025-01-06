@@ -43,5 +43,7 @@ class SineWaveTendency(BaseTendency):
         if time is None:
             num_steps = int(self.duration * sampling_rate) + 1
             time = np.linspace(float(self.start), float(self.end), num_steps)
-        values = self.base + self.amplitude * np.sin(2 * np.pi * self.frequency * time)
+        values = self.base + self.amplitude * np.sin(
+            2 * np.pi * self.frequency * (time - time[0])
+        )
         return time, values
