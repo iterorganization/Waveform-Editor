@@ -118,6 +118,15 @@ class BaseTendency(param.Parameterized):
         if self.prev_tendency is not None:
             self.prev_tendency.next_tendency = self
 
+            self.param.trigger("prev_tendency")
+
+    def _set_next(self, next_tendency):
+        """Set the next tendency and update dependencies."""
+        self.next_tendency = next_tendency
+
+        # Trigger update for dependent attributes
+        self.param.trigger("next_tendency")
+
     @abstractmethod
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""

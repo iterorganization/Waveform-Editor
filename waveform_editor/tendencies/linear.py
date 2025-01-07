@@ -1,5 +1,6 @@
 import numpy as np
 import param
+from param import depends
 
 from waveform_editor.tendencies.base_tendency import BaseTendency
 
@@ -11,33 +12,32 @@ class LinearTendency(BaseTendency):
 
     from_value = param.Number(
         default=0.0,
-        doc="The starting value of the linear tendency.",
+        doc="The calculated starting value of the linear tendency.",
     )
+    user_from_value = param.Number(
+        default=0.0,
+        doc="The starting value of the linear tendency provided by the user.",
+        allow_None=True,
+    )
+
     to_value = param.Number(
         default=1.0,
-        doc="The ending value of the linear tendency.",
+        doc="The calculated ending value of the linear tendency.",
+    )
+    user_to_value = param.Number(
+        default=1.0,
+        doc="The ending value of the linear tendency provided by the user.",
+        allow_None=True,
     )
 
     def __init__(self, prev_tendency, time_interval, from_value=None, to_value=None):
         super().__init__(prev_tendency, time_interval)
+        self.user_from_value = from_value
+        self.user_to_value = to_value
 
-        if from_value is None:
-            if self.prev_tendency is None:
-                self.from_value = 0
-            else:
-                self.from_value = self.prev_tendency.get_end_value()
-        else:
-            self.from_value = from_value
-
-        if to_value is None:
-            if self.next_tendency is None:
-                self.to_value = 1
-            else:
-                self.to_value = self.next_tendency.get_start_value()
-        else:
-            self.to_value = to_value
-
-        self.rate = (self.to_value - self.from_value) / (self.end - self.start)
+        self._update_from_value()
+        self._update_to_value()
+        self._update_rate()
 
     def generate(self, time=None, sampling_rate=100):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -73,3 +73,30 @@ class LinearTendency(BaseTendency):
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
         return self.rate
+
+    @depends("prev_tendency", watch=True)
+    def _update_from_value(self):
+        """Update from_value. If the `from` keyword is given explicitly by the user,
+        this value will be used. Otherwise, the last value of the previous tendency
+        is chosen. If there is no previous tendency, it is set to the default value."""
+        if self.user_from_value is None:
+            if self.prev_tendency is not None:
+                self.from_value = self.prev_tendency.get_end_value()
+        else:
+            self.from_value = self.user_from_value
+
+    @depends("next_tendency", watch=True)
+    def _update_to_value(self):
+        """Update to_value. If the `to` keyword is given explicitly by the user,
+        this value will be used. Otherwise, the first value of the next tendency
+        is chosen. If there is no next tendency, it is set to the default value."""
+        if self.user_to_value is None:
+            if self.next_tendency is not None:
+                self.to_value = self.next_tendency.get_start_value()
+        else:
+            self.to_value = self.user_to_value
+
+    @depends("from_value", "to_value", "start", "end", watch=True)
+    def _update_rate(self):
+        """Calculate the rate of change."""
+        self.rate = (self.to_value - self.from_value) / (self.end - self.start)

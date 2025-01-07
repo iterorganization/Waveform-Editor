@@ -5,8 +5,8 @@ from waveform_editor.yaml_parser import YamlParser
 code_editor = pn.widgets.CodeEditor(
     value="""\
 waveform:
-- {type: linear, from: 0, to: 8, duration: 5}
-- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
+- {type: constant, value: 5, duration: 3}
+- {type: linear, duration: 5}
 - {type: constant, value: 8, duration: 3}
 - {type: smooth, from: 8, to: 0, duration: 2}
 """,
@@ -32,8 +32,14 @@ def update_plot(event):
     yaml_parser.tendencies = []
     yaml_content = code_editor.value
     yaml_parser.parse_waveforms(yaml_content)
+
+    for tendency in yaml_parser.tendencies:
+        tendency.param.trigger("prev_tendency")
+        tendency.param.trigger("next_tendency")
+
     fig = yaml_parser.plot_tendencies()
     plotly_pane.object = fig
+    print("updated")
 
 
 code_editor.param.watch(update_plot, "value")

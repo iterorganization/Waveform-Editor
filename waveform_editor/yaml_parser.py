@@ -27,6 +27,9 @@ class YamlParser:
             self.tendencies.append(tendency)
             prev_tendency = tendency
 
+        for i in range(len(self.tendencies) - 1):
+            self.tendencies[i]._set_next(self.tendencies[i + 1])
+
     def _handle_tendency(self, entry, prev_tendency):
         """Creates a tendency instance based on the entry in the yaml file.
 
