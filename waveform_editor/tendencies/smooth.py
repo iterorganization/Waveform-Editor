@@ -104,7 +104,6 @@ class SmoothTendency(BaseTendency):
                 self.from_value = self.prev_tendency.get_end_value()
         else:
             self.from_value = self.user_from_value
-        print(self.from_value)
 
     @depends("next_tendency", watch=True)
     def _update_to_value(self):

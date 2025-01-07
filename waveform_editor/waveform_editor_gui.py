@@ -23,16 +23,16 @@ waveform:
 # TODO: Rewrite this UI implementation in a proper class-based form
 yaml_parser = YamlParser()
 
-initial_yaml = code_editor.value
-yaml_parser.parse_waveforms(initial_yaml)
+initial_yaml_str = code_editor.value
+yaml_parser.parse_waveforms_from_string(initial_yaml_str)
 initial_fig = yaml_parser.plot_tendencies()
 plotly_pane = pn.pane.Plotly(initial_fig)
 
 
 def update_plot(event):
     yaml_parser.tendencies = []
-    yaml_content = code_editor.value
-    yaml_parser.parse_waveforms(yaml_content)
+    yaml_str = code_editor.value
+    yaml_parser.parse_waveforms_from_string(yaml_str)
 
     for tendency in yaml_parser.tendencies:
         tendency.param.trigger("prev_tendency")

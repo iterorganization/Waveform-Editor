@@ -7,7 +7,7 @@ from waveform_editor.yaml_parser import YamlParser
 
 def test_yaml_parser():
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms("tests/test_yaml/test.yaml")
+    yaml_parser.parse_waveforms_from_file("tests/test_yaml/test.yaml")
     tendencies = yaml_parser.tendencies
 
     assert isinstance(tendencies[0], LinearTendency)

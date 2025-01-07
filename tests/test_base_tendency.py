@@ -29,13 +29,12 @@ def test_first_base_tendency(
     has_error,
 ):
     """Test validity of the created base tendency when it is the first tendency."""
-    prev_tendency = None
     time_interval = TimeInterval(start=start, duration=duration, end=end)
     if has_error:
         with pytest.raises(ValueError):
-            BaseTendency(prev_tendency, time_interval)
+            BaseTendency(time_interval)
     else:
-        base_tendency = BaseTendency(prev_tendency, time_interval)
+        base_tendency = BaseTendency(time_interval)
         assert np.isclose(
             base_tendency.start, expected_start
         ), f"Expected start {expected_start}, got {base_tendency.start}"
@@ -73,14 +72,16 @@ def test_second_base_tendency(
 ):
     """Test validity of the created base tendency when it is the second tendency."""
     prev_time_interval = TimeInterval(start=0, duration=10, end=10)
-    prev_tendency = BaseTendency(None, prev_time_interval)
+    prev_tendency = BaseTendency(prev_time_interval)
 
     time_interval = TimeInterval(start=start, duration=duration, end=end)
     if has_error:
         with pytest.raises(ValueError):
-            BaseTendency(prev_tendency, time_interval)
+            BaseTendency(time_interval)
     else:
-        base_tendency = BaseTendency(prev_tendency, time_interval)
+        base_tendency = BaseTendency(time_interval)
+        base_tendency.set_previous_tendency(prev_tendency)
+        prev_tendency.set_previous_tendency(base_tendency)
         assert np.isclose(
             base_tendency.start, expected_start
         ), f"Expected start {expected_start}, got {base_tendency.start}"

@@ -12,20 +12,37 @@ class YamlParser:
     def __init__(self):
         self.tendencies = []
 
-    def parse_waveforms(self, yaml_str):
-        """Loads a yaml file and stores its tendencies into a list.
+    def parse_waveforms_from_file(self, file_path):
+        """Loads a YAML file from a file path and stores its tendencies into a list.
 
         Args:
-            file_path: File path of the yaml file.
+            file_path: File path of the YAML file.
         """
-        # with open(file_path) as file:
-        waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
+        self.tendencies = []
+        with open(file_path) as file:
+            waveform_yaml = yaml.load(file, yaml.SafeLoader)
+        self._process_waveform_yaml(waveform_yaml)
 
+    def parse_waveforms_from_string(self, yaml_str):
+        """Loads a YAML structure from a string and stores its tendencies into a list.
+
+        Args:
+            yaml_str: YAML content as a string.
+        """
+        self.tendencies = []
+        waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
+        self._process_waveform_yaml(waveform_yaml)
+
+    def _process_waveform_yaml(self, waveform_yaml):
+        """Processes the waveform YAML and populates the tendencies list.
+
+        Args:
+            waveform_yaml: Parsed YAML data.
+        """
         for entry in waveform_yaml.get("waveform", []):
             tendency = self._handle_tendency(entry)
             self.tendencies.append(tendency)
 
-        # Set previous and next tendencies
         for i in range(len(self.tendencies)):
             if i < len(self.tendencies) - 1:
                 self.tendencies[i].set_next_tendency(self.tendencies[i + 1])
