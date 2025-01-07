@@ -103,4 +103,3 @@ class LinearTendency(BaseTendency):
             self.rate = None
         else:
             self.rate = (self.to_value - self.from_value) / (self.end - self.start)
-        print(self.rate)

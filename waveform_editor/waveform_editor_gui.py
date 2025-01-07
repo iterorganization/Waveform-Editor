@@ -20,6 +20,7 @@ waveform:
     ],
 )
 
+# TODO: Rewrite this UI implementation in a proper class-based form
 yaml_parser = YamlParser()
 
 initial_yaml = code_editor.value
