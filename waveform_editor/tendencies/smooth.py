@@ -1,5 +1,6 @@
 import numpy as np
 import param
+from param import depends
 from scipy.interpolate import CubicSpline
 
 from waveform_editor.tendencies.base_tendency import BaseTendency
@@ -11,31 +12,37 @@ class SmoothTendency(BaseTendency):
     """
 
     from_value = param.Number(
-        default=0.0,
-        doc="The starting value of the smooth tendency.",
+        default=0.0, doc="The starting value of the smooth tendency."
     )
-    to_value = param.Number(
-        default=1.0, bounds=(None, None), doc="The ending value of the smooth tendency."
+    user_from_value = param.Number(
+        default=0.0,
+        doc="The starting value of the smooth tendency provided by the user.",
+        allow_None=True,
+    )
+
+    to_value = param.Number(default=1.0, doc="The ending value of the smooth tendency.")
+    user_to_value = param.Number(
+        default=0.0,
+        doc="The ending value of the smooth tendency provided by the user.",
+        allow_None=True,
+    )
+
+    derivative_start = param.Number(
+        default=0.0,
+        doc="The derivative at the start.",
+    )
+    derivative_end = param.Number(
+        default=0.0,
+        doc="The derivative at the end.",
     )
 
     def __init__(self, time_interval, from_value=None, to_value=None):
         super().__init__(time_interval)
+        self.user_from_value = from_value
+        self.user_to_value = to_value
 
-        if from_value is None:
-            if self.prev_tendency is None:
-                self.from_value = 0
-            else:
-                self.from_value = self.prev_tendency.get_end_value()
-        else:
-            self.from_value = from_value
-
-        if to_value is None:
-            if self.next_tendency is None:
-                self.to_value = 1
-            else:
-                self.to_value = self.next_tendency.get_start_value()
-        else:
-            self.to_value = to_value
+        self._update_from_value()
+        self._update_to_value()
         self._calc_derivatives()
 
     def generate(self, time=None, sampling_rate=100):
@@ -63,15 +70,12 @@ class SmoothTendency(BaseTendency):
         values = spline(time)
         return time, values
 
+    @depends("prev_tendency", "next_tendency", watch=True)
     def _calc_derivatives(self):
-        if self.prev_tendency is None:
-            self.derivative_start = 0
-        else:
+        if self.prev_tendency is not None:
             self.derivative_start = self.prev_tendency.get_derivative_end()
 
-        if self.next_tendency is None:
-            self.derivative_end = 0
-        else:
+        if self.next_tendency is not None:
             self.derivative_end = self.next_tendency.get_derivative_start()
 
     def get_start_value(self) -> float:
@@ -89,3 +93,26 @@ class SmoothTendency(BaseTendency):
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
         return self.derivative_end
+
+    @depends("prev_tendency", watch=True)
+    def _update_from_value(self):
+        """Update from_value. If the `from` keyword is given explicitly by the user,
+        this value will be used. Otherwise, the last value of the previous tendency
+        is chosen. If there is no previous tendency, it is set to the default value."""
+        if self.user_from_value is None:
+            if self.prev_tendency is not None:
+                self.from_value = self.prev_tendency.get_end_value()
+        else:
+            self.from_value = self.user_from_value
+        print(self.from_value)
+
+    @depends("next_tendency", watch=True)
+    def _update_to_value(self):
+        """Update to_value. If the `to` keyword is given explicitly by the user,
+        this value will be used. Otherwise, the first value of the next tendency
+        is chosen. If there is no next tendency, it is set to the default value."""
+        if self.user_to_value is None:
+            if self.next_tendency is not None:
+                self.to_value = self.next_tendency.get_start_value()
+        else:
+            self.to_value = self.user_to_value
