@@ -13,15 +13,8 @@ class SineWaveTendency(BaseTendency):
         default=1.0, bounds=(0, None), doc="The frequency of the sine wave."
     )
 
-    def __init__(
-        self,
-        prev_tendency,
-        time_interval,
-        base=None,
-        amplitude=1.0,
-        frequency=1.0,
-    ):
-        super().__init__(prev_tendency, time_interval)
+    def __init__(self, time_interval, base=None, amplitude=1.0, frequency=1.0):
+        super().__init__(time_interval)
 
         if base is None:
             if self.prev_tendency is None:

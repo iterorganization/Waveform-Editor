@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 import param
+from param import depends
 
 
 @dataclass
@@ -31,19 +32,38 @@ class BaseTendency(param.Parameterized):
         doc="The tendency that follows the current tendency.",
     )
 
-    start = param.Number(default=0, doc="Start time of the tendency.")
-    duration = param.Number(
-        default=1, bounds=(0, None), doc="Duration of the tendency."
+    start = param.Number(default=0.0, doc="Start time of the tendency.")
+    user_start = param.Number(
+        default=0.0,
+        doc="Start time of the tendency provided by the user.",
+        allow_None=True,
     )
-    end = param.Number(default=1, doc="End time of the tendency")
 
-    def __init__(self, prev_tendency, time_interval):
+    duration = param.Number(
+        default=1.0, bounds=(0.0, None), doc="Duration of the tendency."
+    )
+    user_duration = param.Number(
+        default=1.0,
+        bounds=(0.0, None),
+        doc="Duration of the tendency provided by the user.",
+        allow_None=True,
+    )
+
+    end = param.Number(default=1, doc="End time of the tendency")
+    user_end = param.Number(
+        default=1, doc="End time of the tendency provided by the user", allow_None=True
+    )
+
+    def __init__(self, time_interval):
         super().__init__()
 
-        self._set_previous(prev_tendency)
-        self._validate_user_input(time_interval)
+        self.user_start = time_interval.start
+        self.user_duration = time_interval.duration
+        self.user_end = time_interval.end
+        self._validate_user_input()
 
-    def _validate_user_input(self, time_interval):
+    @depends("prev_tendency", "next_tendency", watch=True)
+    def _validate_user_input(self):
         """Validates the start, duration, and end values provided by the user, and
         calculates the actual values if not all values are provided.
 
@@ -51,34 +71,31 @@ class BaseTendency(param.Parameterized):
             time_interval: Dataclass containing the start, duration, and end value
             provided by the user.
         """
-        user_start = time_interval.start
-        user_duration = time_interval.duration
-        user_end = time_interval.end
 
         if (
-            user_start is not None
-            and user_duration is not None
-            and user_end is not None
+            self.user_start is not None
+            and self.user_duration is not None
+            and self.user_end is not None
         ):
-            if user_start + user_duration != user_end:
+            if self.user_start + self.user_duration != self.user_end:
                 raise ValueError(
                     "Inputs are inconsistent: start + duration does not equal end."
                 )
-            self.start = user_start
-            self.duration = user_duration
-            self.end = user_end
-        elif user_start is not None and user_duration is not None:
-            self.start = user_start
-            self.duration = user_duration
-            self.end = user_start + user_duration
-        elif user_start is not None and user_end is not None:
-            self.start = user_start
-            self.end = user_end
-            self.duration = user_end - user_start
-        elif user_duration is not None and user_end is not None:
-            self.duration = user_duration
-            self.end = user_end
-            self.start = user_end - user_duration
+            self.start = self.user_start
+            self.duration = self.user_duration
+            self.end = self.user_end
+        elif self.user_start is not None and self.user_duration is not None:
+            self.start = self.user_start
+            self.duration = self.user_duration
+            self.end = self.user_start + self.user_duration
+        elif self.user_start is not None and self.user_end is not None:
+            self.start = self.user_start
+            self.end = self.user_end
+            self.duration = self.user_end - self.user_start
+        elif self.user_duration is not None and self.user_end is not None:
+            self.duration = self.user_duration
+            self.end = self.user_end
+            self.start = self.user_end - self.user_duration
             if self.prev_tendency is not None and not np.isclose(
                 self.start, self.prev_tendency.end
             ):
@@ -86,45 +103,39 @@ class BaseTendency(param.Parameterized):
                     "Ambiguous input: no start is provided and the calculated start"
                     "does not equal the end of the previous tendency."
                 )
-        elif user_duration is not None:
+        elif self.user_duration is not None:
             if self.prev_tendency is None:
                 self.start = 0
             else:
                 self.start = self.prev_tendency.end
-            self.duration = user_duration
+            self.duration = self.user_duration
             self.end = self.start + self.duration
-        elif user_end is not None:
+        elif self.user_end is not None:
             if self.prev_tendency is None:
                 self.start = 0
             else:
                 self.start = self.prev_tendency.end
-            self.duration = user_end - self.start
-            self.end = user_end
+            self.duration = self.user_end - self.start
+            self.end = self.user_end
         else:
             raise ValueError(
                 "Insufficient inputs: Unable to calculate the start, "
                 "duration, and end."
             )
 
-    def _set_previous(self, prev_tendency):
+    def set_previous_tendency(self, prev_tendency):
         """Set the previous tendency and set its next tendency to this instance.
 
         Args:
-            prev_tendency: The tendency that comes before the current tendency. This is
-                None if this is the first tendency.
+            prev_tendency: The tendency that comes before the current tendency.
         """
+
         self.prev_tendency = prev_tendency
+        self.param.trigger("prev_tendency")
 
-        if self.prev_tendency is not None:
-            self.prev_tendency.next_tendency = self
-
-            self.param.trigger("prev_tendency")
-
-    def _set_next(self, next_tendency):
+    def set_next_tendency(self, next_tendency):
         """Set the next tendency and update dependencies."""
         self.next_tendency = next_tendency
-
-        # Trigger update for dependent attributes
         self.param.trigger("next_tendency")
 
     @abstractmethod

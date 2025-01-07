@@ -18,8 +18,8 @@ class SmoothTendency(BaseTendency):
         default=1.0, bounds=(None, None), doc="The ending value of the smooth tendency."
     )
 
-    def __init__(self, prev_tendency, time_interval, from_value=None, to_value=None):
-        super().__init__(prev_tendency, time_interval)
+    def __init__(self, time_interval, from_value=None, to_value=None):
+        super().__init__(time_interval)
 
         if from_value is None:
             if self.prev_tendency is None:

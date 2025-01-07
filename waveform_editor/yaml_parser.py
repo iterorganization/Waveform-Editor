@@ -21,16 +21,18 @@ class YamlParser:
         # with open(file_path) as file:
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
 
-        prev_tendency = None
         for entry in waveform_yaml.get("waveform", []):
-            tendency = self._handle_tendency(entry, prev_tendency)
+            tendency = self._handle_tendency(entry)
             self.tendencies.append(tendency)
-            prev_tendency = tendency
 
-        for i in range(len(self.tendencies) - 1):
-            self.tendencies[i]._set_next(self.tendencies[i + 1])
+        # Set previous and next tendencies
+        for i in range(len(self.tendencies)):
+            if i < len(self.tendencies) - 1:
+                self.tendencies[i].set_next_tendency(self.tendencies[i + 1])
+            if i > 0:
+                self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
-    def _handle_tendency(self, entry, prev_tendency):
+    def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the yaml file.
 
         Args:
@@ -42,13 +44,11 @@ class YamlParser:
         tendency_type = entry.get("type")
         if tendency_type == "linear":
             tendency = LinearTendency(
-                prev_tendency,
                 time_interval,
                 **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )
         elif tendency_type == "sine-wave":
             tendency = SineWaveTendency(
-                prev_tendency,
                 time_interval,
                 **self._filter_kwargs(
                     entry,
@@ -61,13 +61,11 @@ class YamlParser:
             )
         elif tendency_type == "constant":
             tendency = ConstantTendency(
-                prev_tendency,
                 time_interval,
                 **self._filter_kwargs(entry, {"value": "value"}),
             )
         elif tendency_type == "smooth":
             tendency = SmoothTendency(
-                prev_tendency,
                 time_interval,
                 **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )

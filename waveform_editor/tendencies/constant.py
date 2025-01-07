@@ -13,8 +13,8 @@ class ConstantTendency(BaseTendency):
         default=0.0, bounds=(None, None), doc="The constant value of the signal."
     )
 
-    def __init__(self, prev_tendency, time_interval, value=None):
-        super().__init__(prev_tendency, time_interval)
+    def __init__(self, time_interval, value=None):
+        super().__init__(time_interval)
         if value is None:
             if self.prev_tendency is not None:
                 self.value = self.prev_tendency.get_end_value()

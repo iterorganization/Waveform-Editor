@@ -30,8 +30,8 @@ class LinearTendency(BaseTendency):
         allow_None=True,
     )
 
-    def __init__(self, prev_tendency, time_interval, from_value=None, to_value=None):
-        super().__init__(prev_tendency, time_interval)
+    def __init__(self, time_interval, from_value=None, to_value=None):
+        super().__init__(time_interval)
         self.user_from_value = from_value
         self.user_to_value = to_value
 
@@ -99,4 +99,8 @@ class LinearTendency(BaseTendency):
     @depends("from_value", "to_value", "start", "end", watch=True)
     def _update_rate(self):
         """Calculate the rate of change."""
-        self.rate = (self.to_value - self.from_value) / (self.end - self.start)
+        if self.start == self.end:
+            self.rate = None
+        else:
+            self.rate = (self.to_value - self.from_value) / (self.end - self.start)
+        print(self.rate)

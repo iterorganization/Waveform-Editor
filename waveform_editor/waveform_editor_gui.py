@@ -39,7 +39,6 @@ def update_plot(event):
 
     fig = yaml_parser.plot_tendencies()
     plotly_pane.object = fig
-    print("updated")
 
 
 code_editor.param.watch(update_plot, "value")
