@@ -5,8 +5,8 @@ from waveform_editor.yaml_parser import YamlParser
 code_editor = pn.widgets.CodeEditor(
     value="""\
 waveform:
-- {type: constant, value: 5, duration: 3}
-- {type: linear, duration: 5}
+- {type: linear, from: 0, to: 8, duration: 5}
+- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
 - {type: constant, value: 8, duration: 3}
 - {type: smooth, from: 8, to: 0, duration: 2}
 """,
