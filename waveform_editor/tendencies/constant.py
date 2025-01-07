@@ -13,9 +13,17 @@ class ConstantTendency(BaseTendency):
         default=0.0, bounds=(None, None), doc="The constant value of the signal."
     )
 
-    def __init__(self, prev_tendency, time_interval, value=0.0):
+    def __init__(self, prev_tendency, time_interval, value=None):
         super().__init__(prev_tendency, time_interval)
-        self.value = value
+        if value is None:
+            if self.prev_tendency is not None:
+                self.value = self.prev_tendency.get_end_value()
+            elif self.next_tendency is not None:
+                self.value = self.next_tendency.get_start_value()
+            else:
+                self.value = 0.0
+        else:
+            self.value = value
 
     def generate(self, time=None, sampling_rate=100):
         """Generate time and values based on the tendency. If no time array is provided,
