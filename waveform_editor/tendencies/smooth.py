@@ -12,28 +12,30 @@ class SmoothTendency(BaseTendency):
     """
 
     from_value = param.Number(
-        default=0.0, doc="The starting value of the smooth tendency."
+        default=0.0, doc="The value at the start of the smooth tendency."
     )
     user_from_value = param.Number(
         default=0.0,
-        doc="The starting value of the smooth tendency provided by the user.",
+        doc="The value at the start of the smooth tendency, as provided by the user.",
         allow_None=True,
     )
 
-    to_value = param.Number(default=1.0, doc="The ending value of the smooth tendency.")
+    to_value = param.Number(
+        default=1.0, doc="The value at the end of the smooth tendency."
+    )
     user_to_value = param.Number(
         default=0.0,
-        doc="The ending value of the smooth tendency provided by the user.",
+        doc="The value at the end of the smooth tendency, as provided by the user.",
         allow_None=True,
     )
 
     derivative_start = param.Number(
         default=0.0,
-        doc="The derivative at the start.",
+        doc="The derivative at the start of the smooth tendency.",
     )
     derivative_end = param.Number(
         default=0.0,
-        doc="The derivative at the end.",
+        doc="The derivative at the end of the smooth tendency.",
     )
 
     def __init__(self, time_interval, from_value=None, to_value=None):
@@ -43,7 +45,7 @@ class SmoothTendency(BaseTendency):
 
         self._update_from_value()
         self._update_to_value()
-        self._calc_derivatives()
+        self._get_derivatives()
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -69,14 +71,6 @@ class SmoothTendency(BaseTendency):
         values = spline(time)
         return time, values
 
-    @depends("prev_tendency", "next_tendency", watch=True)
-    def _calc_derivatives(self):
-        if self.prev_tendency is not None:
-            self.derivative_start = self.prev_tendency.get_derivative_end()
-
-        if self.next_tendency is not None:
-            self.derivative_end = self.next_tendency.get_derivative_start()
-
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
         return self.from_value
@@ -93,9 +87,21 @@ class SmoothTendency(BaseTendency):
         """Returns the derivative of the tendency at the end."""
         return self.derivative_end
 
+    @depends("prev_tendency", "next_tendency", watch=True)
+    def _get_derivatives(self):
+        """Looks for the previous and next tendencies, and gets their derivatives at
+        the end and start, respectively. If a neighbouring tendency does not exist,
+        the default value will be used instead.
+        """
+        if self.prev_tendency is not None:
+            self.derivative_start = self.prev_tendency.get_derivative_end()
+
+        if self.next_tendency is not None:
+            self.derivative_end = self.next_tendency.get_derivative_start()
+
     @depends("prev_tendency", watch=True)
     def _update_from_value(self):
-        """Update from_value. If the `from` keyword is given explicitly by the user,
+        """Updates from_value. If the `from` keyword is given explicitly by the user,
         this value will be used. Otherwise, the last value of the previous tendency
         is chosen. If there is no previous tendency, it is set to the default value."""
         if self.user_from_value is None:
@@ -106,7 +112,7 @@ class SmoothTendency(BaseTendency):
 
     @depends("next_tendency", watch=True)
     def _update_to_value(self):
-        """Update to_value. If the `to` keyword is given explicitly by the user,
+        """Updates to_value. If the `to` keyword is given explicitly by the user,
         this value will be used. Otherwise, the first value of the next tendency
         is chosen. If there is no next tendency, it is set to the default value."""
         if self.user_to_value is None:

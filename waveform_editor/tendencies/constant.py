@@ -21,7 +21,7 @@ class ConstantTendency(BaseTendency):
         super().__init__(time_interval)
         self.user_value = value
 
-    def generate(self, time=None, sampling_rate=100):
+    def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the
         tendency.
@@ -56,9 +56,9 @@ class ConstantTendency(BaseTendency):
     @depends("next_tendency", "prev_tendency", watch=True)
     def _update_value(self):
         """Update the constant value. If the `value` keyword is given explicitly by the
-        user, this value will be used. Otherwise, if there exists a previous or next
-        tendency, its last value will be chosen. If neither exist, it is set to the
-        default value."""
+        user, this will be used. Otherwise, if there exists a previous or next tendency,
+        its last value will be chosen. If neither one exists, it is set to the default
+        value."""
         if self.user_value is None:
             if self.prev_tendency is not None:
                 self.value = self.prev_tendency.get_end_value()

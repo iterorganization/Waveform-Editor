@@ -33,6 +33,30 @@ class YamlParser:
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
         self._process_waveform_yaml(waveform_yaml)
 
+    def plot_tendencies(self):
+        """Plot the tendencies in a Plotly figure and return this figure.
+
+        Returns:
+            A Plotly figure object.
+        """
+
+        fig = go.Figure()
+
+        for tendency in self.tendencies:
+            time, values = tendency.generate()
+            fig.add_trace(
+                go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
+            )
+
+        fig.update_layout(
+            title="Waveform",
+            xaxis_title="Time (s)",
+            yaxis_title="Value",
+            legend_title="Tendencies",
+        )
+
+        return fig
+
     def _process_waveform_yaml(self, waveform_yaml):
         """Processes the waveform YAML and populates the tendencies list.
 
@@ -50,12 +74,10 @@ class YamlParser:
                 self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
     def _handle_tendency(self, entry):
-        """Creates a tendency instance based on the entry in the yaml file.
+        """Creates a tendency instance based on the entry in the YAML file.
 
         Args:
-            entry: Entry in the yaml file.
-            prev_tendency: Tendency which occurred previously, or None if it is the
-                first tendency.
+            entry: Entry in the YAML file.
         """
         time_interval = self._create_time_interval(entry)
         tendency_type = entry.get("type")
@@ -92,12 +114,12 @@ class YamlParser:
         return tendency
 
     def _filter_kwargs(self, entry, key_map):
-        """Helper to filter kwargs from the yaml dictionary, excluding None values. For
+        """Helper to filter kwargs from the YAML dictionary, excluding None values. For
         example, setting `key_map={"to_value": "to"}` will look for the value of "to" in
         the entry and return it under the key "to_value" in the result.
 
         Args:
-            entry: Entry in the yaml file.
+            entry: Entry in the YAML file.
             key_map: A mapping of argument names to entry keys.
         """
 
@@ -112,34 +134,10 @@ class YamlParser:
         duration, and end values that the user provided.
 
         Args:
-            entry: Entry in the yaml file.
+            entry: Entry in the YAML file.
         """
         start = entry.get("start")
         duration = entry.get("duration")
         end = entry.get("end")
         time_interval = TimeInterval(start=start, duration=duration, end=end)
         return time_interval
-
-    def plot_tendencies(self):
-        """Plot the tendencies in a Plotly figure.
-
-        Returns:
-            A Plotly figure object.
-        """
-
-        fig = go.Figure()
-
-        for tendency in self.tendencies:
-            time, values = tendency.generate()
-            fig.add_trace(
-                go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
-            )
-
-        fig.update_layout(
-            title="Waveform",
-            xaxis_title="Time (s)",
-            yaxis_title="Value",
-            legend_title="Tendencies",
-        )
-
-        return fig

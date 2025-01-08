@@ -81,7 +81,6 @@ def test_second_base_tendency(
     else:
         base_tendency = BaseTendency(time_interval)
         base_tendency.set_previous_tendency(prev_tendency)
-        prev_tendency.set_previous_tendency(base_tendency)
         assert np.isclose(
             base_tendency.start, expected_start
         ), f"Expected start {expected_start}, got {base_tendency.start}"

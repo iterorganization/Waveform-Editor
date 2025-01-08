@@ -2,6 +2,11 @@ import panel as pn
 
 from waveform_editor.yaml_parser import YamlParser
 
+# TODO: Current UI implementation is only for testing purposes. In this future this is
+# to be rewritten in a proper class-based form.
+# The gui can be launched using:
+# panel serve waveform_editor/waveform_editor_gui.py --dev --show
+
 code_editor = pn.widgets.CodeEditor(
     value="""\
 waveform:
@@ -20,7 +25,6 @@ waveform:
     ],
 )
 
-# TODO: Rewrite this UI implementation in a proper class-based form
 yaml_parser = YamlParser()
 
 initial_yaml_str = code_editor.value

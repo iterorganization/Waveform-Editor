@@ -12,21 +12,21 @@ class LinearTendency(BaseTendency):
 
     from_value = param.Number(
         default=0.0,
-        doc="The calculated starting value of the linear tendency.",
+        doc="The calculated value at the start of the linear tendency.",
     )
     user_from_value = param.Number(
         default=0.0,
-        doc="The starting value of the linear tendency provided by the user.",
+        doc="The value at the start of the linear tendency, as provided by the user.",
         allow_None=True,
     )
 
     to_value = param.Number(
         default=1.0,
-        doc="The calculated ending value of the linear tendency.",
+        doc="The calculated value at the end of the linear tendency.",
     )
     user_to_value = param.Number(
         default=1.0,
-        doc="The ending value of the linear tendency provided by the user.",
+        doc="The value at the end of the linear tendency, as provided by the user.",
         allow_None=True,
     )
 
@@ -73,7 +73,7 @@ class LinearTendency(BaseTendency):
 
     @depends("prev_tendency", watch=True)
     def _update_from_value(self):
-        """Update from_value. If the `from` keyword is given explicitly by the user,
+        """Updates from_value. If the `from` keyword is given explicitly by the user,
         this value will be used. Otherwise, the last value of the previous tendency
         is chosen. If there is no previous tendency, it is set to the default value."""
         if self.user_from_value is None:
@@ -84,7 +84,7 @@ class LinearTendency(BaseTendency):
 
     @depends("next_tendency", watch=True)
     def _update_to_value(self):
-        """Update to_value. If the `to` keyword is given explicitly by the user,
+        """Updates to_value. If the `to` keyword is given explicitly by the user,
         this value will be used. Otherwise, the first value of the next tendency
         is chosen. If there is no next tendency, it is set to the default value."""
         if self.user_to_value is None:

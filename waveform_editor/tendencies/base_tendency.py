@@ -9,6 +9,10 @@ from param import depends
 
 @dataclass
 class TimeInterval:
+    """
+    Dataclass which stores the time interval (start, duration, and end) of a tendency.
+    """
+
     start: Optional[float] = None
     duration: Optional[float] = None
     end: Optional[float] = None
@@ -32,26 +36,28 @@ class BaseTendency(param.Parameterized):
         doc="The tendency that follows the current tendency.",
     )
 
-    start = param.Number(default=0.0, doc="Start time of the tendency.")
+    start = param.Number(default=0.0, doc="The calculated start time of the tendency.")
     user_start = param.Number(
         default=0.0,
-        doc="Start time of the tendency provided by the user.",
+        doc="The start time of the tendency, as provided by the user.",
         allow_None=True,
     )
 
     duration = param.Number(
-        default=1.0, bounds=(0.0, None), doc="Duration of the tendency."
+        default=1.0, bounds=(0.0, None), doc="The calculated duration of the tendency."
     )
     user_duration = param.Number(
         default=1.0,
         bounds=(0.0, None),
-        doc="Duration of the tendency provided by the user.",
+        doc="The duration of the tendency, as provided by the user.",
         allow_None=True,
     )
 
-    end = param.Number(default=1, doc="End time of the tendency")
+    end = param.Number(default=1.0, doc="The calculated end time of the tendency.")
     user_end = param.Number(
-        default=1, doc="End time of the tendency provided by the user", allow_None=True
+        default=1.0,
+        doc="The end time of the tendency, as provided by the user.",
+        allow_None=True,
     )
 
     def __init__(self, time_interval):
@@ -62,14 +68,62 @@ class BaseTendency(param.Parameterized):
         self.user_end = time_interval.end
         self._validate_user_input()
 
-    @depends("prev_tendency", "next_tendency", watch=True)
-    def _validate_user_input(self):
-        """Validates the start, duration, and end values provided by the user, and
-        calculates the actual values if not all values are provided.
+    def set_previous_tendency(self, prev_tendency):
+        """Sets the previous tendency as a param.
 
         Args:
-            time_interval: Dataclass containing the start, duration, and end value
-            provided by the user.
+            prev_tendency: The tendency precedes the current tendency.
+        """
+        self.prev_tendency = prev_tendency
+
+    def set_next_tendency(self, next_tendency):
+        """Sets the next tendency as a param.
+
+        Args:
+            next_tendency: The tendency follows the current tendency.
+        """
+        self.next_tendency = next_tendency
+
+    @abstractmethod
+    def get_start_value(self) -> float:
+        """Returns the value of the tendency at the start."""
+        pass
+
+    @abstractmethod
+    def get_end_value(self) -> float:
+        """Returns the value of the tendency at the end."""
+        pass
+
+    @abstractmethod
+    def get_derivative_start(self) -> float:
+        """Returns the derivative of the tendency at the start."""
+        pass
+
+    @abstractmethod
+    def get_derivative_end(self) -> float:
+        """Returns the derivative of the tendency at the end."""
+        pass
+
+    @abstractmethod
+    def generate(self, time) -> tuple[np.ndarray, np.ndarray]:
+        """Generate time and values based on the tendency. If no time array is provided,
+        a linearly spaced time array will be generated from the start to the end of the
+        tendency.
+
+        Args:
+            time: The time array on which to generate points.
+
+        Returns:
+            Tuple containing the time and its tendency values.
+        """
+        pass
+
+    @depends("prev_tendency", "next_tendency", watch=True)
+    def _validate_user_input(self):
+        """Validates the user-defined start, duration, and end values. If one or more
+        are missing, they are calculated based on the given values, or by neighbouring
+        tendencies. The calculated start, duration, and end values are stored in their
+        respective params.
         """
 
         if (
@@ -122,51 +176,3 @@ class BaseTendency(param.Parameterized):
                 "Insufficient inputs: Unable to calculate the start, "
                 "duration, and end."
             )
-
-    def set_previous_tendency(self, prev_tendency):
-        """Set the previous tendency and set its next tendency to this instance.
-
-        Args:
-            prev_tendency: The tendency that comes before the current tendency.
-        """
-        self.prev_tendency = prev_tendency
-        self.param.trigger("prev_tendency")
-
-    def set_next_tendency(self, next_tendency):
-        """Set the next tendency and update dependencies."""
-        self.next_tendency = next_tendency
-        self.param.trigger("next_tendency")
-
-    @abstractmethod
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        pass
-
-    @abstractmethod
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        pass
-
-    @abstractmethod
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        pass
-
-    @abstractmethod
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        pass
-
-    @abstractmethod
-    def generate(self, time) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
-
-        Args:
-            time: The time array on which to generate points.
-
-        Returns:
-            Tuple containing the time and its tendency values.
-        """
-        pass
