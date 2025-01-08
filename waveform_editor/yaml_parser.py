@@ -34,7 +34,7 @@ class YamlParser:
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
         self._process_waveform_yaml(waveform_yaml)
 
-    def plot_tendencies(self):
+    def plot_tendencies(self, plot_time_points=False):
         """Plot the tendencies in a Plotly figure and return this figure.
 
         Returns:
@@ -47,6 +47,15 @@ class YamlParser:
             time, values = tendency.generate()
             fig.add_trace(
                 go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=time,
+                    y=values,
+                    mode="markers",
+                    marker=dict(size=3, symbol="circle", color="red"),
+                    name=f"{type(tendency).__name__} - Points",
+                )
             )
         fig.update_layout(
             title="Waveform",

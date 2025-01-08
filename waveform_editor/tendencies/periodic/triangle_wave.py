@@ -13,8 +13,8 @@ class TriangleWaveTendency(PeriodicBaseTendency):
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
+        a time array will be created from the start to the end of the tendency, where
+        time points are defined for every peak and trough in the tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -23,9 +23,21 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            sampling_rate = 100
-            num_steps = int(self.duration * sampling_rate) + 1
-            time = np.linspace(float(self.start), float(self.end), num_steps)
+            time = []
+            time.append(self.start)
+            if self.frequency != 0:
+                # Only generate points for the peaks and troughs of the triangle wave
+                current_time = self.start + 0.25 / self.frequency
+                while current_time < self.end:
+                    time.append(current_time)
+                    if self.frequency == 0:
+                        break
+                    current_time += 0.5 / self.frequency
+                    if current_time > self.end:
+                        break
+
+            time.append(self.end)
+            time = np.array(time)
 
         values = self._calc_triangle_wave(time)
         return time, values

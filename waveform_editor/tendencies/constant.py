@@ -24,8 +24,7 @@ class ConstantTendency(BaseTendency):
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
+        a constant line containing the start and end points will be generated.
 
         Args:
             time: The time array on which to generate points.
