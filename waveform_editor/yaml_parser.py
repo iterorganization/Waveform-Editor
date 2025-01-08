@@ -4,6 +4,7 @@ import yaml
 from waveform_editor.tendencies.base import TimeInterval
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
+from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
@@ -48,15 +49,16 @@ class YamlParser:
             fig.add_trace(
                 go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
             )
-            fig.add_trace(
-                go.Scatter(
-                    x=time,
-                    y=values,
-                    mode="markers",
-                    marker=dict(size=3, symbol="circle", color="red"),
-                    name=f"{type(tendency).__name__} - Points",
+            if plot_time_points:
+                fig.add_trace(
+                    go.Scatter(
+                        x=time,
+                        y=values,
+                        mode="markers",
+                        marker=dict(size=3, symbol="circle", color="red"),
+                        name=f"{type(tendency).__name__} - Points",
+                    )
                 )
-            )
         fig.update_layout(
             title="Waveform",
             xaxis_title="Time (s)",
@@ -109,6 +111,18 @@ class YamlParser:
             )
         elif tendency_type == "triangle-wave":
             tendency = TriangleWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type == "sawtooth-wave":
+            tendency = SawtoothWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
                     entry,

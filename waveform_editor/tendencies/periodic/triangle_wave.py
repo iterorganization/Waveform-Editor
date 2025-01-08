@@ -75,7 +75,7 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             time: Single time value or numpy array containing time values.
 
         Returns:
-            The value of the triangle.
+            The value of the triangle wave.
         """
         phase = self._calc_phase(time)
         triangle_wave = 2 * np.abs(phase % 2 - 1) - 1
