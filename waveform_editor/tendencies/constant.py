@@ -20,6 +20,7 @@ class ConstantTendency(BaseTendency):
     def __init__(self, time_interval, value=None):
         super().__init__(time_interval)
         self.user_value = value
+        self._update_value()
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
