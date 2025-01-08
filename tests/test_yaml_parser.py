@@ -1,6 +1,6 @@
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
-from waveform_editor.tendencies.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.yaml_parser import YamlParser
 

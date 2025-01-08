@@ -1,10 +1,10 @@
 import plotly.graph_objs as go
 import yaml
 
-from waveform_editor.tendencies.base_tendency import TimeInterval
+from waveform_editor.tendencies.base import TimeInterval
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
-from waveform_editor.tendencies.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
 

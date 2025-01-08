@@ -3,7 +3,7 @@ import param
 from param import depends
 from scipy.interpolate import CubicSpline
 
-from waveform_editor.tendencies.base_tendency import BaseTendency
+from waveform_editor.tendencies.base import BaseTendency
 
 
 class SmoothTendency(BaseTendency):

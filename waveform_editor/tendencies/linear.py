@@ -2,7 +2,7 @@ import numpy as np
 import param
 from param import depends
 
-from waveform_editor.tendencies.base_tendency import BaseTendency
+from waveform_editor.tendencies.base import BaseTendency
 
 
 class LinearTendency(BaseTendency):
