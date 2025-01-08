@@ -129,7 +129,6 @@ class BaseTendency(param.Parameterized):
         Args:
             prev_tendency: The tendency that comes before the current tendency.
         """
-
         self.prev_tendency = prev_tendency
         self.param.trigger("prev_tendency")
 
@@ -159,15 +158,13 @@ class BaseTendency(param.Parameterized):
         pass
 
     @abstractmethod
-    def generate(self, time, sampling_rate) -> tuple[np.ndarray, np.ndarray]:
+    def generate(self, time) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the
-        tendency, with the given sampling rate.
+        tendency.
 
         Args:
             time: The time array on which to generate points.
-            sampling_rate: The sampling rate of the generated time array, if no custom
-            time array is given.
 
         Returns:
             Tuple containing the time and its tendency values.

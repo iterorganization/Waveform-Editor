@@ -28,20 +28,19 @@ class SineWaveTendency(BaseTendency):
         self.frequency = frequency
         self._update_base()
 
-    def generate(self, time=None, sampling_rate=100):
+    def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the
-        tendency, with the given sampling rate.
+        tendency.
 
         Args:
             time: The time array on which to generate points.
-            sampling_rate: The sampling rate of the generated time array, if no custom
-            time array is given.
 
         Returns:
             Tuple containing the time and its tendency values.
         """
         if time is None:
+            sampling_rate = 100
             num_steps = int(self.duration * sampling_rate) + 1
             time = np.linspace(float(self.start), float(self.end), num_steps)
         values = self.base + self.amplitude * np.sin(

@@ -34,10 +34,6 @@ def update_plot(event):
     yaml_str = code_editor.value
     yaml_parser.parse_waveforms_from_string(yaml_str)
 
-    for tendency in yaml_parser.tendencies:
-        tendency.param.trigger("prev_tendency")
-        tendency.param.trigger("next_tendency")
-
     fig = yaml_parser.plot_tendencies()
     plotly_pane.object = fig
 

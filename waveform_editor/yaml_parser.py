@@ -120,11 +120,9 @@ class YamlParser:
         time_interval = TimeInterval(start=start, duration=duration, end=end)
         return time_interval
 
-    def plot_tendencies(self, sampling_rate=100):
+    def plot_tendencies(self):
         """Plot the tendencies in a Plotly figure.
 
-        Args:
-            sampling_rate: Sampling rate of the time array.
         Returns:
             A Plotly figure object.
         """
@@ -132,7 +130,7 @@ class YamlParser:
         fig = go.Figure()
 
         for tendency in self.tendencies:
-            time, values = tendency.generate(sampling_rate=sampling_rate)
+            time, values = tendency.generate()
             fig.add_trace(
                 go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
             )
