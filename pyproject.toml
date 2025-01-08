@@ -15,9 +15,12 @@ license = {file = "LICENSE.txt"}
 dependencies = [
     "numpy",
     "click",
+    "matplotlib",
+    "scipy",
     # "imas-python",
     "panel",
     "pygments",
+    "plotly",
 ]
 dynamic = ["version"]
 
