@@ -27,12 +27,11 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             time.append(self.start)
             if self.frequency != 0:
                 # Only generate points for the peaks and troughs of the triangle wave
-                current_time = self.start + 0.25 / self.frequency
+                period = 1 / self.frequency
+                current_time = self.start + 0.25 * period
                 while current_time < self.end:
                     time.append(current_time)
-                    if self.frequency == 0:
-                        break
-                    current_time += 0.5 / self.frequency
+                    current_time += 0.5 * period
                     if current_time > self.end:
                         break
 

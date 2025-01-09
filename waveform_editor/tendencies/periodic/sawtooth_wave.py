@@ -22,12 +22,29 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         Returns:
             Tuple containing the time and its tendency values.
         """
-        if time is None:
-            sampling_rate = 100
-            num_steps = int(self.duration * sampling_rate) + 1
-            time = np.linspace(float(self.start), float(self.end), num_steps)
 
-        values = self._calc_sawtooth_wave(time)
+        if time is None:
+            time = []
+            values = []
+            period = 1 / self.frequency
+            eps = 1e-8
+
+            time.extend(np.arange(self.start, self.end, period))
+            time.extend(np.arange(self.start + period - eps, self.end, period))
+            time.sort()
+
+            for i in range(len(time)):
+                if i % 2 == 0:
+                    values.append(self.base - self.amplitude)
+                else:
+                    values.append(self.base + self.amplitude)
+            if time[-1] != self.end:
+                time.append(self.end)
+                values.append(self._calc_sawtooth_wave(self.end))
+            time = np.array(time)
+
+        else:
+            values = self._calc_sawtooth_wave(time)
         return time, values
 
     def get_start_value(self) -> float:
@@ -56,21 +73,9 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         Returns:
             The value of the sawtooth wave.
         """
-        phase = self._calc_phase(time)
-        sawtooth_wave = np.where(phase % 1 == 0, -1, 2 * (1 - (phase % 1)) - 1)
+        t = (time - self.start) % (1 / self.frequency)
+        sawtooth_wave = (t * self.frequency) * 2 - 1
         return self.base + self.amplitude * sawtooth_wave
-
-    def _calc_phase(self, time):
-        """Calculates the phase of the sawtooth wave at a given time point or
-        an array of time points.
-
-        Args:
-            time: Single time value or numpy array containing time values.
-
-        Returns:
-            The phase of the sawtooth wave.
-        """
-        return self.frequency * (self.start - time)
 
     @depends("amplitude", "frequency", watch=True)
     def _update_rate(self):
