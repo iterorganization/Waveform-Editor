@@ -1,15 +1,13 @@
 import numpy as np
-from param import depends
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
 
 
-class SawtoothWaveTendency(PeriodicBaseTendency):
-    """A tendency representing a sawtooth wave."""
+class SquareWaveTendency(PeriodicBaseTendency):
+    """A tendency representing a square wave."""
 
     def __init__(self, time_interval, base=None, amplitude=1.0, frequency=1.0):
         super().__init__(time_interval, base, amplitude, frequency)
-        self._update_rate()
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -27,70 +25,68 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
             if self.frequency == 0:
                 time = np.array([self.start, self.end])
                 values = np.array(
-                    [self.base - self.amplitude, self.base - self.amplitude]
+                    [self.base + self.amplitude, self.base + self.amplitude]
                 )
             else:
                 time = []
-                values = []
                 period = 1 / self.frequency
                 eps = 1e-8
 
-                time.extend(np.arange(self.start, self.end, period))
-                time.extend(np.arange(self.start + period - eps, self.end, period))
+                time.extend(np.arange(self.start, self.end, period / 2))
+                time.extend(
+                    np.arange(self.start + period / 2 - eps, self.end, period / 2)
+                )
                 time.sort()
 
-                for i in range(len(time)):
-                    if i % 2 == 0:
-                        values.append(self.base - self.amplitude)
-                    else:
-                        values.append(self.base + self.amplitude)
+                values = [0] * len(time)
+
+                for i in range(len(values)):
+                    if i % 4 in {0, 1}:
+                        values[i] = self.base + self.amplitude
+                    elif i % 4 in {2, 3}:
+                        values[i] = self.base - self.amplitude
+
                 if time[-1] != self.end:
                     time.append(self.end)
-                    values.append(self._calc_sawtooth_wave(self.end))
+                    values.append(self._calc_square_wave(self.end))
                 time = np.array(time)
-
+                values = np.array(values)
         else:
-            values = self._calc_sawtooth_wave(time)
+            values = self._calc_square_wave(time)
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.base - self.amplitude
+        return self.base + self.amplitude
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        return self._calc_sawtooth_wave(self.end)
+        return self._calc_square_wave(self.end)
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
-        return self.rate
+        return 0
 
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
-        return self.rate
+        return 0
 
-    def _calc_sawtooth_wave(self, time):
-        """Calculates the point of the sawtooth wave at a given time point or
+    def _calc_square_wave(self, time):
+        """Calculates the point of the square wave at a given time point or
         an array of time points.
 
         Args:
             time: Single time value or numpy array containing time values.
 
         Returns:
-            The value of the sawtooth wave.
+            The value of the square wave.
         """
-
         if self.frequency == 0:
             if np.isscalar(time):
-                return self.base - self.amplitude
+                return self.base + self.amplitude
             else:
-                return (self.base - self.amplitude) * np.ones(len(time))
+                return (self.base + self.amplitude) * np.ones(len(time))
         else:
             t = (time - self.start) % (1 / self.frequency)
-            sawtooth_wave = (t * self.frequency) * 2 - 1
-            return self.base + self.amplitude * sawtooth_wave
-
-    @depends("amplitude", "frequency", watch=True)
-    def _update_rate(self):
-        """Calculates the rate of change."""
-        self.rate = 2 * self.frequency * self.amplitude
+            square_wave = np.where(t < (1 / (2 * self.frequency)), 1, -1)
+            return self.base + self.amplitude * square_wave

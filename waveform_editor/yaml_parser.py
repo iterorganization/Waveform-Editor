@@ -6,6 +6,7 @@ from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
@@ -123,6 +124,18 @@ class YamlParser:
             )
         elif tendency_type == "sawtooth-wave":
             tendency = SawtoothWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type == "square-wave":
+            tendency = SquareWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
                     entry,
