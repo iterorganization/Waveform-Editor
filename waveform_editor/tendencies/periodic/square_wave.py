@@ -30,7 +30,7 @@ class SquareWaveTendency(PeriodicBaseTendency):
             else:
                 time = []
                 period = 1 / self.frequency
-                eps = 1e-8
+                eps = 1e-8 * self.duration / self.frequency
 
                 time.extend(np.arange(self.start, self.end, period / 2))
                 time.extend(

@@ -31,7 +31,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
                 time = []
                 values = []
                 period = 1 / self.frequency
-                eps = 1e-8
+                eps = 1e-8 * self.duration / self.frequency
 
                 time.append(self.start)
                 values.append(self.base)
