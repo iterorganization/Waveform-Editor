@@ -26,20 +26,21 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         if time is None:
             if self.frequency == 0:
                 time = np.array([self.start, self.end])
-                values = np.array(
-                    [self.base - self.amplitude, self.base - self.amplitude]
-                )
+                values = np.array([self.base, self.base])
             else:
                 time = []
                 values = []
                 period = 1 / self.frequency
                 eps = 1e-8
 
-                time.extend(np.arange(self.start, self.end, period))
-                time.extend(np.arange(self.start + period - eps, self.end, period))
+                time.append(self.start)
+                values.append(self.base)
+
+                time.extend(np.arange(self.start + period / 2, self.end, period))
+                time.extend(np.arange(self.start + period / 2 - eps, self.end, period))
                 time.sort()
 
-                for i in range(len(time)):
+                for i in range(1, len(time)):
                     if i % 2 == 0:
                         values.append(self.base - self.amplitude)
                     else:
@@ -55,7 +56,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.base - self.amplitude
+        return self.base
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
@@ -82,11 +83,11 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
 
         if self.frequency == 0:
             if np.isscalar(time):
-                return self.base - self.amplitude
+                return self.base
             else:
-                return (self.base - self.amplitude) * np.ones(len(time))
+                return (self.base) * np.ones(len(time))
         else:
-            t = (time - self.start) % (1 / self.frequency)
+            t = (time - self.start + 0.5 / self.frequency) % (1 / self.frequency)
             sawtooth_wave = (t * self.frequency) * 2 - 1
             return self.base + self.amplitude * sawtooth_wave
 
