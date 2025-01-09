@@ -35,15 +35,15 @@ def test_first_base_tendency(
             BaseTendency(time_interval)
     else:
         base_tendency = BaseTendency(time_interval)
-        assert np.isclose(
-            base_tendency.start, expected_start
-        ), f"Expected start {expected_start}, got {base_tendency.start}"
-        assert np.isclose(
-            base_tendency.duration, expected_duration
-        ), f"Expected duration {expected_duration}, got {base_tendency.duration}"
-        assert np.isclose(
-            base_tendency.end, expected_end
-        ), f"Expected end {expected_end}, got {base_tendency.end}"
+        assert np.isclose(base_tendency.start, expected_start), (
+            f"Expected start {expected_start}, got {base_tendency.start}"
+        )
+        assert np.isclose(base_tendency.duration, expected_duration), (
+            f"Expected duration {expected_duration}, got {base_tendency.duration}"
+        )
+        assert np.isclose(base_tendency.end, expected_end), (
+            f"Expected end {expected_end}, got {base_tendency.end}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -81,12 +81,12 @@ def test_second_base_tendency(
     else:
         base_tendency = BaseTendency(time_interval)
         base_tendency.set_previous_tendency(prev_tendency)
-        assert np.isclose(
-            base_tendency.start, expected_start
-        ), f"Expected start {expected_start}, got {base_tendency.start}"
-        assert np.isclose(
-            base_tendency.duration, expected_duration
-        ), f"Expected duration {expected_duration}, got {base_tendency.duration}"
-        assert np.isclose(
-            base_tendency.end, expected_end
-        ), f"Expected end {expected_end}, got {base_tendency.end}"
+        assert np.isclose(base_tendency.start, expected_start), (
+            f"Expected start {expected_start}, got {base_tendency.start}"
+        )
+        assert np.isclose(base_tendency.duration, expected_duration), (
+            f"Expected duration {expected_duration}, got {base_tendency.duration}"
+        )
+        assert np.isclose(base_tendency.end, expected_end), (
+            f"Expected end {expected_end}, got {base_tendency.end}"
+        )

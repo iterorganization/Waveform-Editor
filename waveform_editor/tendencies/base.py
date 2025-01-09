@@ -173,6 +173,5 @@ class BaseTendency(param.Parameterized):
             self.end = self.user_end
         else:
             raise ValueError(
-                "Insufficient inputs: Unable to calculate the start, "
-                "duration, and end."
+                "Insufficient inputs: Unable to calculate the start, duration, and end."
             )
