@@ -106,9 +106,9 @@ class YamlParser:
         """
         tendency_type = entry.pop("type")
 
-        # Rewrite key `from` to `from_value`, as `from` is an illegal variable name
+        # Rewrite key `from` to `from_`, as `from` is an illegal variable name
         if "from" in entry:
-            entry["from_value"] = entry.pop("from")
+            entry["from_"] = entry.pop("from")
 
         if tendency_type in tendency_map:
             tendency_class = tendency_map[tendency_type]

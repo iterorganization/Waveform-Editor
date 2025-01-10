@@ -10,11 +10,11 @@ class LinearTendency(BaseTendency):
     Linear tendency class for a signal with a linear increase or decrease.
     """
 
-    from_value = param.Number(
+    from_ = param.Number(
         default=0.0,
         doc="The calculated value at the start of the linear tendency.",
     )
-    user_from_value = param.Number(
+    user_from = param.Number(
         default=0.0,
         doc="The value at the start of the linear tendency, as provided by the user.",
         allow_None=True,
@@ -30,14 +30,12 @@ class LinearTendency(BaseTendency):
         allow_None=True,
     )
 
-    def __init__(
-        self, *, start=None, duration=None, end=None, from_value=None, to=None
-    ):
+    def __init__(self, *, start=None, duration=None, end=None, from_=None, to=None):
         super().__init__(start, duration, end)
-        self.user_from_value = from_value
+        self.user_from = from_
         self.user_to = to
 
-        self._update_from_value()
+        self._update_from()
         self._update_to()
         self._update_rate()
 
@@ -53,12 +51,12 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        values = np.linspace(self.from_value, self.to, len(time))
+        values = np.linspace(self.from_, self.to, len(time))
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.from_value
+        return self.from_
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
@@ -73,15 +71,15 @@ class LinearTendency(BaseTendency):
         return self.rate
 
     @depends("prev_tendency", watch=True)
-    def _update_from_value(self):
-        """Updates from_value. If the `from` keyword is given explicitly by the user,
+    def _update_from(self):
+        """Updates from value. If the `from` keyword is given explicitly by the user,
         this value will be used. Otherwise, the last value of the previous tendency
         is chosen. If there is no previous tendency, it is set to the default value."""
-        if self.user_from_value is None:
+        if self.user_from is None:
             if self.prev_tendency is not None:
-                self.from_value = self.prev_tendency.get_end_value()
+                self.from_ = self.prev_tendency.get_end_value()
         else:
-            self.from_value = self.user_from_value
+            self.from_ = self.user_from
 
     @depends("next_tendency", watch=True)
     def _update_to(self):
@@ -94,10 +92,10 @@ class LinearTendency(BaseTendency):
         else:
             self.to = self.user_to
 
-    @depends("from_value", "to", "start", "end", watch=True)
+    @depends("from_", "to", "start", "end", watch=True)
     def _update_rate(self):
         """Calculate the rate of change."""
         if self.start == self.end:
             self.rate = None
         else:
-            self.rate = (self.to - self.from_value) / (self.end - self.start)
+            self.rate = (self.to - self.from_) / (self.end - self.start)
