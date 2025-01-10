@@ -1,8 +1,21 @@
 from abc import abstractmethod
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import param
 from param import depends
+
+
+@dataclass
+class TimeInterval:
+    """
+    Dataclass which stores the time interval (start, duration, and end) of a tendency.
+    """
+
+    start: Optional[float] = None
+    duration: Optional[float] = None
+    end: Optional[float] = None
 
 
 class BaseTendency(param.Parameterized):
@@ -47,12 +60,12 @@ class BaseTendency(param.Parameterized):
         allow_None=True,
     )
 
-    def __init__(self, start, duration, end):
+    def __init__(self, time_interval):
         super().__init__()
 
-        self.user_start = start
-        self.user_duration = duration
-        self.user_end = end
+        self.user_start = time_interval.start
+        self.user_duration = time_interval.duration
+        self.user_end = time_interval.end
         self._validate_user_input()
 
     def set_previous_tendency(self, prev_tendency):

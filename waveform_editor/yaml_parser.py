@@ -1,6 +1,7 @@
 import plotly.graph_objs as go
 import yaml
 
+from waveform_editor.tendencies.base import TimeInterval
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -8,20 +9,6 @@ from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-
-tendency_map = {
-    "linear": LinearTendency,
-    "sine-wave": SineWaveTendency,
-    "sine": SineWaveTendency,
-    "triangle-wave": TriangleWaveTendency,
-    "triangle": TriangleWaveTendency,
-    "sawtooth-wave": SawtoothWaveTendency,
-    "sawtooth": SawtoothWaveTendency,
-    "square-wave": SquareWaveTendency,
-    "square": SquareWaveTendency,
-    "constant": ConstantTendency,
-    "smooth": SmoothTendency,
-}
 
 
 class YamlParser:
@@ -104,15 +91,101 @@ class YamlParser:
         Args:
             entry: Entry in the YAML file.
         """
-        tendency_type = entry.pop("type")
-
-        # Rewrite key `from` to `from_value`, as `from` is an illegal variable name
-        if "from" in entry:
-            entry["from_value"] = entry.pop("from")
-
-        if tendency_type in tendency_map:
-            tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**entry)
-            return tendency
+        time_interval = self._create_time_interval(entry)
+        tendency_type = entry.get("type")
+        if tendency_type == "linear":
+            tendency = LinearTendency(
+                time_interval,
+                **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
+            )
+        elif tendency_type in ["sine-wave", "sine"]:
+            tendency = SineWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["triangle-wave", "triangle"]:
+            tendency = TriangleWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["sawtooth-wave", "sawtooth"]:
+            tendency = SawtoothWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["square-wave", "square"]:
+            tendency = SquareWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type == "constant":
+            tendency = ConstantTendency(
+                time_interval,
+                **self._filter_kwargs(entry, {"value": "value"}),
+            )
+        elif tendency_type == "smooth":
+            tendency = SmoothTendency(
+                time_interval,
+                **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
+            )
         else:
             raise NotImplementedError(f"Unsupported tendency type: {type}")
+
+        return tendency
+
+    def _filter_kwargs(self, entry, key_map):
+        """Helper to filter kwargs from the YAML dictionary, excluding None values. For
+        example, setting `key_map={"to_value": "to"}` will look for the value of "to" in
+        the entry and return it under the key "to_value" in the result.
+
+        Args:
+            entry: Entry in the YAML file.
+            key_map: A mapping of argument names to entry keys.
+        """
+
+        return {
+            arg: entry.get(entry_key)
+            for arg, entry_key in key_map.items()
+            if entry.get(entry_key) is not None
+        }
+
+    def _create_time_interval(self, entry):
+        """Creates an instance of the TimeInterval dataclass, which stores the start,
+        duration, and end values that the user provided.
+
+        Args:
+            entry: Entry in the YAML file.
+        """
+        start = entry.get("start")
+        duration = entry.get("duration")
+        end = entry.get("end")
+        time_interval = TimeInterval(start=start, duration=duration, end=end)
+        return time_interval

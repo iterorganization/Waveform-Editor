@@ -1,7 +1,7 @@
 import pytest
 from pytest import approx
 
-from waveform_editor.tendencies.base import BaseTendency
+from waveform_editor.tendencies.base import BaseTendency, TimeInterval
 
 
 @pytest.mark.parametrize(
@@ -29,11 +29,12 @@ def test_first_base_tendency(
     has_error,
 ):
     """Test validity of the created base tendency when it is the first tendency."""
+    time_interval = TimeInterval(start=start, duration=duration, end=end)
     if has_error:
         with pytest.raises(ValueError):
-            BaseTendency(start, duration, end)
+            BaseTendency(time_interval)
     else:
-        base_tendency = BaseTendency(start, duration, end)
+        base_tendency = BaseTendency(time_interval)
         assert base_tendency.start == approx(expected_start)
         assert base_tendency.duration == approx(expected_duration)
         assert base_tendency.end == approx(expected_end)
@@ -64,13 +65,15 @@ def test_second_base_tendency(
     has_error,
 ):
     """Test validity of the created base tendency when it is the second tendency."""
-    prev_tendency = BaseTendency(0, 10, 10)
+    prev_time_interval = TimeInterval(start=0, duration=10, end=10)
+    prev_tendency = BaseTendency(prev_time_interval)
 
+    time_interval = TimeInterval(start=start, duration=duration, end=end)
     if has_error:
         with pytest.raises(ValueError):
-            BaseTendency(start, duration, end)
+            BaseTendency(time_interval)
     else:
-        base_tendency = BaseTendency(start, duration, end)
+        base_tendency = BaseTendency(time_interval)
         base_tendency.set_previous_tendency(prev_tendency)
         assert base_tendency.start == approx(expected_start)
         assert base_tendency.duration == approx(expected_duration)

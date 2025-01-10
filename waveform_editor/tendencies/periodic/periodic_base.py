@@ -22,8 +22,8 @@ class PeriodicBaseTendency(BaseTendency):
         doc="The frequency of the periodic tendency.",
     )
 
-    def __init__(self, start, duration, end, base, amplitude, frequency):
-        super().__init__(start, duration, end)
+    def __init__(self, time_interval, base, amplitude, frequency):
+        super().__init__(time_interval)
         self.user_base = base
 
         self.amplitude = amplitude

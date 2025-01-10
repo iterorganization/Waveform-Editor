@@ -7,17 +7,8 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class SawtoothWaveTendency(PeriodicBaseTendency):
     """A tendency representing a sawtooth wave."""
 
-    def __init__(
-        self,
-        *,
-        start=None,
-        duration=None,
-        end=None,
-        base=None,
-        amplitude=None,
-        frequency=None,
-    ):
-        super().__init__(start, duration, end, base, amplitude, frequency)
+    def __init__(self, time_interval, base=None, amplitude=1.0, frequency=1.0):
+        super().__init__(time_interval, base, amplitude, frequency)
         self._update_rate()
 
     def generate(self, time=None):
