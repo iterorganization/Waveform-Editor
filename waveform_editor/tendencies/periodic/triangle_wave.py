@@ -25,15 +25,14 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         if time is None:
             time = []
             time.append(self.start)
-            if self.frequency != 0:
-                # Only generate points for the peaks and troughs of the triangle wave
-                period = 1 / self.frequency
-                current_time = self.start + 0.25 * period
-                while current_time < self.end:
-                    time.append(current_time)
-                    current_time += 0.5 * period
-                    if current_time > self.end:
-                        break
+            # Only generate points for the peaks and troughs of the triangle wave
+            period = 1 / self.frequency
+            current_time = self.start + 0.25 * period
+            while current_time < self.end:
+                time.append(current_time)
+                current_time += 0.5 * period
+                if current_time > self.end:
+                    break
 
             time.append(self.end)
             time = np.array(time)

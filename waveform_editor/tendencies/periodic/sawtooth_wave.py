@@ -24,35 +24,31 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         """
 
         if time is None:
-            if self.frequency == 0:
-                time = np.array([self.start, self.end])
-                values = np.array([self.base, self.base])
-            else:
-                time = []
-                values = []
-                period = 1 / self.frequency
-                eps = 1e-8 * self.duration / self.frequency
+            time = []
+            values = []
+            period = 1 / self.frequency
+            eps = 1e-8 * self.duration / self.frequency
 
-                time.append(self.start)
-                values.append(self.base)
+            time.append(self.start)
+            values.append(self.base)
 
-                time.extend(np.arange(self.start + period / 2, self.end, period))
-                time.extend(np.arange(self.start + period / 2 - eps, self.end, period))
-                time.sort()
+            time.extend(np.arange(self.start + period / 2, self.end, period))
+            time.extend(np.arange(self.start + period / 2 - eps, self.end, period))
+            time.sort()
 
-                for i in range(1, len(time)):
-                    if i % 2 == 0:
-                        values.append(self.base - self.amplitude)
-                    else:
-                        values.append(self.base + self.amplitude)
-                if time[-1] != self.end:
-                    time.append(self.end)
-                    values.append(self._calc_sawtooth_wave(self.end))
-                time = np.array(time)
-                values = np.array(values)
-
+            for i in range(1, len(time)):
+                if i % 2 == 0:
+                    values.append(self.base - self.amplitude)
+                else:
+                    values.append(self.base + self.amplitude)
+            if time[-1] != self.end:
+                time.append(self.end)
+                values.append(self._calc_sawtooth_wave(self.end))
+            time = np.array(time)
+            values = np.array(values)
         else:
             values = self._calc_sawtooth_wave(time)
+
         return time, values
 
     def get_start_value(self) -> float:
@@ -82,15 +78,9 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
             The value of the sawtooth wave.
         """
 
-        if self.frequency == 0:
-            if np.isscalar(time):
-                return self.base
-            else:
-                return (self.base) * np.ones(len(time))
-        else:
-            t = (time - self.start + 0.5 / self.frequency) % (1 / self.frequency)
-            sawtooth_wave = (t * self.frequency) * 2 - 1
-            return self.base + self.amplitude * sawtooth_wave
+        t = (time - self.start + 0.5 / self.frequency) % (1 / self.frequency)
+        sawtooth_wave = (t * self.frequency) * 2 - 1
+        return self.base + self.amplitude * sawtooth_wave
 
     @depends("amplitude", "frequency", watch=True)
     def _update_rate(self):

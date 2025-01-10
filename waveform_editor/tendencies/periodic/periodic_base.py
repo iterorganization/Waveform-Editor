@@ -16,7 +16,10 @@ class PeriodicBaseTendency(BaseTendency):
 
     amplitude = param.Number(default=1.0, doc="The amplitude of the periodic tendency.")
     frequency = param.Number(
-        default=1.0, bounds=(0, None), doc="The frequency of the periodic tendency."
+        default=1.0,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        doc="The frequency of the periodic tendency.",
     )
 
     def __init__(self, time_interval, base, amplitude, frequency):

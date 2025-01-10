@@ -22,35 +22,27 @@ class SquareWaveTendency(PeriodicBaseTendency):
         """
 
         if time is None:
-            if self.frequency == 0:
-                time = np.array([self.start, self.end])
-                values = np.array(
-                    [self.base + self.amplitude, self.base + self.amplitude]
-                )
-            else:
-                time = []
-                period = 1 / self.frequency
-                eps = 1e-8 * self.duration / self.frequency
+            time = []
+            period = 1 / self.frequency
+            eps = 1e-8 * self.duration / self.frequency
 
-                time.extend(np.arange(self.start, self.end, period / 2))
-                time.extend(
-                    np.arange(self.start + period / 2 - eps, self.end, period / 2)
-                )
-                time.sort()
+            time.extend(np.arange(self.start, self.end, period / 2))
+            time.extend(np.arange(self.start + period / 2 - eps, self.end, period / 2))
+            time.sort()
 
-                values = [0] * len(time)
+            values = [0] * len(time)
 
-                for i in range(len(values)):
-                    if i % 4 in {0, 1}:
-                        values[i] = self.base + self.amplitude
-                    elif i % 4 in {2, 3}:
-                        values[i] = self.base - self.amplitude
+            for i in range(len(values)):
+                if i % 4 in {0, 1}:
+                    values[i] = self.base + self.amplitude
+                elif i % 4 in {2, 3}:
+                    values[i] = self.base - self.amplitude
 
-                if time[-1] != self.end:
-                    time.append(self.end)
-                    values.append(self._calc_square_wave(self.end))
-                time = np.array(time)
-                values = np.array(values)
+            if time[-1] != self.end:
+                time.append(self.end)
+                values.append(self._calc_square_wave(self.end))
+            time = np.array(time)
+            values = np.array(values)
         else:
             values = self._calc_square_wave(time)
         return time, values
@@ -81,12 +73,6 @@ class SquareWaveTendency(PeriodicBaseTendency):
         Returns:
             The value of the square wave.
         """
-        if self.frequency == 0:
-            if np.isscalar(time):
-                return self.base + self.amplitude
-            else:
-                return (self.base + self.amplitude) * np.ones(len(time))
-        else:
-            t = (time - self.start) % (1 / self.frequency)
-            square_wave = np.where(t < (1 / (2 * self.frequency)), 1, -1)
-            return self.base + self.amplitude * square_wave
+        t = (time - self.start) % (1 / self.frequency)
+        square_wave = np.where(t < (1 / (2 * self.frequency)), 1, -1)
+        return self.base + self.amplitude * square_wave
