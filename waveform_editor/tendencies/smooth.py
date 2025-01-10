@@ -20,10 +20,8 @@ class SmoothTendency(BaseTendency):
         allow_None=True,
     )
 
-    to_value = param.Number(
-        default=1.0, doc="The value at the end of the smooth tendency."
-    )
-    user_to_value = param.Number(
+    to = param.Number(default=1.0, doc="The value at the end of the smooth tendency.")
+    user_to = param.Number(
         default=0.0,
         doc="The value at the end of the smooth tendency, as provided by the user.",
         allow_None=True,
@@ -38,13 +36,15 @@ class SmoothTendency(BaseTendency):
         doc="The derivative at the end of the smooth tendency.",
     )
 
-    def __init__(self, time_interval, from_value=None, to_value=None):
-        super().__init__(time_interval)
+    def __init__(
+        self, *, start=None, duration=None, end=None, from_value=None, to=None
+    ):
+        super().__init__(start, duration, end)
         self.user_from_value = from_value
-        self.user_to_value = to_value
+        self.user_to = to
 
         self._update_from_value()
-        self._update_to_value()
+        self._update_to()
         self._get_derivatives()
 
     def generate(self, time=None):
@@ -65,7 +65,7 @@ class SmoothTendency(BaseTendency):
 
         spline = CubicSpline(
             [self.start, self.end],
-            [self.from_value, self.to_value],
+            [self.from_value, self.to],
             bc_type=((1, self.derivative_start), (1, self.derivative_end)),
         )
         values = spline(time)
@@ -77,7 +77,7 @@ class SmoothTendency(BaseTendency):
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        return self.to_value
+        return self.to
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
@@ -111,12 +111,12 @@ class SmoothTendency(BaseTendency):
             self.from_value = self.user_from_value
 
     @depends("next_tendency", watch=True)
-    def _update_to_value(self):
-        """Updates to_value. If the `to` keyword is given explicitly by the user,
+    def _update_to(self):
+        """Updates to value. If the `to` keyword is given explicitly by the user,
         this value will be used. Otherwise, the first value of the next tendency
         is chosen. If there is no next tendency, it is set to the default value."""
-        if self.user_to_value is None:
+        if self.user_to is None:
             if self.next_tendency is not None:
-                self.to_value = self.next_tendency.get_start_value()
+                self.to = self.next_tendency.get_start_value()
         else:
-            self.to_value = self.user_to_value
+            self.to = self.user_to
