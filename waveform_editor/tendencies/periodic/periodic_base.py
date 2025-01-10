@@ -22,13 +22,23 @@ class PeriodicBaseTendency(BaseTendency):
         doc="The frequency of the periodic tendency.",
     )
 
-    def __init__(self, time_interval, base, amplitude, frequency):
-        super().__init__(time_interval)
+    def __init__(
+        self,
+        *,
+        start=None,
+        duration=None,
+        end=None,
+        base=None,
+        amplitude=None,
+        frequency=None,
+    ):
+        super().__init__(start, duration, end)
         self.user_base = base
 
         self.amplitude = amplitude
         self.frequency = frequency
         self._update_base()
+        self._update_rate()
 
     @depends("next_tendency", "prev_tendency", watch=True)
     def _update_base(self):
@@ -43,3 +53,8 @@ class PeriodicBaseTendency(BaseTendency):
                 self.base = self.next_tendency.get_start_value()
         else:
             self.base = self.user_base
+
+    def _update_rate(self):
+        """Updates the rate of change for the periodic tendency. This method can be
+        overridden by child classes to provide a custom implementation."""
+        pass

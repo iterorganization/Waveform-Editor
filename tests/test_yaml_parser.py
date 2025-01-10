@@ -17,8 +17,8 @@ def test_yaml_parser():
     assert tendencies[0].start == 0
     assert tendencies[0].end == 5
     assert tendencies[0].duration == 5
-    assert tendencies[0].from_value == 0
-    assert tendencies[0].to_value == 8
+    assert tendencies[0].from_ == 0
+    assert tendencies[0].to == 8
 
     assert isinstance(tendencies[1], SineWaveTendency)
     assert tendencies[1].start == 5
@@ -62,5 +62,5 @@ def test_yaml_parser():
     assert tendencies[6].start == 24
     assert tendencies[6].end == 26
     assert tendencies[6].duration == 2
-    assert tendencies[6].from_value == 8
-    assert tendencies[6].to_value == 0
+    assert tendencies[6].from_ == 8
+    assert tendencies[6].to == 0

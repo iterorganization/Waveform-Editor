@@ -7,10 +7,6 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class TriangleWaveTendency(PeriodicBaseTendency):
     """A tendency representing a triangle wave."""
 
-    def __init__(self, time_interval, base=None, amplitude=1.0, frequency=1.0):
-        super().__init__(time_interval, base, amplitude, frequency)
-        self._update_rate()
-
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
         a time array will be created from the start to the end of the tendency, where

@@ -10,33 +10,33 @@ class LinearTendency(BaseTendency):
     Linear tendency class for a signal with a linear increase or decrease.
     """
 
-    from_value = param.Number(
+    from_ = param.Number(
         default=0.0,
         doc="The calculated value at the start of the linear tendency.",
     )
-    user_from_value = param.Number(
+    user_from = param.Number(
         default=0.0,
         doc="The value at the start of the linear tendency, as provided by the user.",
         allow_None=True,
     )
 
-    to_value = param.Number(
+    to = param.Number(
         default=1.0,
         doc="The calculated value at the end of the linear tendency.",
     )
-    user_to_value = param.Number(
+    user_to = param.Number(
         default=1.0,
         doc="The value at the end of the linear tendency, as provided by the user.",
         allow_None=True,
     )
 
-    def __init__(self, time_interval, from_value=None, to_value=None):
-        super().__init__(time_interval)
-        self.user_from_value = from_value
-        self.user_to_value = to_value
+    def __init__(self, *, start=None, duration=None, end=None, from_=None, to=None):
+        super().__init__(start, duration, end)
+        self.user_from = from_
+        self.user_to = to
 
-        self._update_from_value()
-        self._update_to_value()
+        self._update_from()
+        self._update_to()
         self._update_rate()
 
     def generate(self, time=None):
@@ -51,16 +51,16 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        values = np.linspace(self.from_value, self.to_value, len(time))
+        values = np.linspace(self.from_, self.to, len(time))
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.from_value
+        return self.from_
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        return self.to_value
+        return self.to
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
@@ -71,31 +71,31 @@ class LinearTendency(BaseTendency):
         return self.rate
 
     @depends("prev_tendency", watch=True)
-    def _update_from_value(self):
-        """Updates from_value. If the `from` keyword is given explicitly by the user,
+    def _update_from(self):
+        """Updates from value. If the `from` keyword is given explicitly by the user,
         this value will be used. Otherwise, the last value of the previous tendency
         is chosen. If there is no previous tendency, it is set to the default value."""
-        if self.user_from_value is None:
+        if self.user_from is None:
             if self.prev_tendency is not None:
-                self.from_value = self.prev_tendency.get_end_value()
+                self.from_ = self.prev_tendency.get_end_value()
         else:
-            self.from_value = self.user_from_value
+            self.from_ = self.user_from
 
     @depends("next_tendency", watch=True)
-    def _update_to_value(self):
-        """Updates to_value. If the `to` keyword is given explicitly by the user,
+    def _update_to(self):
+        """Updates to value. If the `to` keyword is given explicitly by the user,
         this value will be used. Otherwise, the first value of the next tendency
         is chosen. If there is no next tendency, it is set to the default value."""
-        if self.user_to_value is None:
+        if self.user_to is None:
             if self.next_tendency is not None:
-                self.to_value = self.next_tendency.get_start_value()
+                self.to = self.next_tendency.get_start_value()
         else:
-            self.to_value = self.user_to_value
+            self.to = self.user_to
 
-    @depends("from_value", "to_value", "start", "end", watch=True)
+    @depends("from_", "to", "start", "end", watch=True)
     def _update_rate(self):
         """Calculate the rate of change."""
         if self.start == self.end:
             self.rate = None
         else:
-            self.rate = (self.to_value - self.from_value) / (self.end - self.start)
+            self.rate = (self.to - self.from_) / (self.end - self.start)
