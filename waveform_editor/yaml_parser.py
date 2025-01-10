@@ -98,7 +98,7 @@ class YamlParser:
                 time_interval,
                 **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )
-        elif tendency_type == "sine-wave":
+        elif tendency_type in ["sine-wave", "sine"]:
             tendency = SineWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
@@ -110,7 +110,7 @@ class YamlParser:
                     },
                 ),
             )
-        elif tendency_type == "triangle-wave":
+        elif tendency_type in ["triangle-wave", "triangle"]:
             tendency = TriangleWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
@@ -122,7 +122,7 @@ class YamlParser:
                     },
                 ),
             )
-        elif tendency_type == "sawtooth-wave":
+        elif tendency_type in ["sawtooth-wave", "sawtooth"]:
             tendency = SawtoothWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
@@ -134,7 +134,7 @@ class YamlParser:
                     },
                 ),
             )
-        elif tendency_type == "square-wave":
+        elif tendency_type in ["square-wave", "square"]:
             tendency = SquareWaveTendency(
                 time_interval,
                 **self._filter_kwargs(

@@ -49,6 +49,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
                     time.append(self.end)
                     values.append(self._calc_sawtooth_wave(self.end))
                 time = np.array(time)
+                values = np.array(values)
 
         else:
             values = self._calc_sawtooth_wave(time)
