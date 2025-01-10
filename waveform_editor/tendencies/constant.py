@@ -2,7 +2,7 @@ import numpy as np
 import param
 from param import depends
 
-from waveform_editor.tendencies.base_tendency import BaseTendency
+from waveform_editor.tendencies.base import BaseTendency
 
 
 class ConstantTendency(BaseTendency):
@@ -24,8 +24,7 @@ class ConstantTendency(BaseTendency):
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
+        a constant line containing the start and end points will be generated.
 
         Args:
             time: The time array on which to generate points.

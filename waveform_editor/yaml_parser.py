@@ -1,10 +1,13 @@
 import plotly.graph_objs as go
 import yaml
 
-from waveform_editor.tendencies.base_tendency import TimeInterval
+from waveform_editor.tendencies.base import TimeInterval
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
-from waveform_editor.tendencies.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
+from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
+from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
 
@@ -33,7 +36,7 @@ class YamlParser:
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
         self._process_waveform_yaml(waveform_yaml)
 
-    def plot_tendencies(self):
+    def plot_tendencies(self, plot_time_points=False):
         """Plot the tendencies in a Plotly figure and return this figure.
 
         Returns:
@@ -47,7 +50,16 @@ class YamlParser:
             fig.add_trace(
                 go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
             )
-
+            if plot_time_points:
+                fig.add_trace(
+                    go.Scatter(
+                        x=time,
+                        y=values,
+                        mode="markers",
+                        marker=dict(size=3, symbol="circle", color="red"),
+                        name=f"{type(tendency).__name__} - Points",
+                    )
+                )
         fig.update_layout(
             title="Waveform",
             xaxis_title="Time (s)",
@@ -86,8 +98,44 @@ class YamlParser:
                 time_interval,
                 **self._filter_kwargs(entry, {"from_value": "from", "to_value": "to"}),
             )
-        elif tendency_type == "sine-wave":
+        elif tendency_type in ["sine-wave", "sine"]:
             tendency = SineWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["triangle-wave", "triangle"]:
+            tendency = TriangleWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["sawtooth-wave", "sawtooth"]:
+            tendency = SawtoothWaveTendency(
+                time_interval,
+                **self._filter_kwargs(
+                    entry,
+                    {
+                        "base": "base",
+                        "amplitude": "amplitude",
+                        "frequency": "frequency",
+                    },
+                ),
+            )
+        elif tendency_type in ["square-wave", "square"]:
+            tendency = SquareWaveTendency(
                 time_interval,
                 **self._filter_kwargs(
                     entry,
