@@ -17,8 +17,8 @@ class ConstantTendency(BaseTendency):
         allow_None=True,
     )
 
-    def __init__(self, time_interval, value=None):
-        super().__init__(time_interval)
+    def __init__(self, *, start=None, duration=None, end=None, value=None):
+        super().__init__(start, duration, end)
         self.user_value = value
         self._update_value()
 
