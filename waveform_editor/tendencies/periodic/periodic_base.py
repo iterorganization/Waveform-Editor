@@ -17,7 +17,16 @@ class PeriodicBaseTendency(BaseTendency):
 
     amplitude = param.Number(default=1.0, doc="The amplitude of the periodic tendency.")
     user_amplitude = param.Number(
-        default=1.0, doc="The amplitude of the periodic tendency.", allow_None=True
+        default=1.0,
+        doc="The amplitude of the periodic tendency, as provided by the user.",
+        allow_None=True,
+    )
+
+    phase = param.Number(default=0.0, doc="The phase of the periodic tendency.")
+    user_phase = param.Number(
+        default=0.0,
+        doc="The phase of the periodic tendency, as provided by the user",
+        allow_None=True,
     )
 
     frequency = param.Number(
@@ -76,6 +85,7 @@ class PeriodicBaseTendency(BaseTendency):
         end=None,
         base=None,
         amplitude=None,
+        phase=None,
         frequency=None,
         period=None,
         min=None,
@@ -84,14 +94,21 @@ class PeriodicBaseTendency(BaseTendency):
         super().__init__(start, duration, end)
         self.user_base = base
         self.user_amplitude = amplitude
+        self.user_phase = phase
         self.user_frequency = frequency
         self.user_period = period
         self.user_min = min
         self.user_max = max
 
+        self._update_phase()
         self._update_bounds()
         self._update_frequency()
         self._update_rate()
+
+    def _update_phase(self):
+        """Updates the phase for the periodic tendency."""
+        if self.user_phase is not None:
+            self.phase = self.user_phase
 
     @depends("next_tendency", "prev_tendency", watch=True)
     def _update_bounds(self):
