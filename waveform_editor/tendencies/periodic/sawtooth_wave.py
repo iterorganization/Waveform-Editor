@@ -20,14 +20,45 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         """
 
         if time is None:
-            # TODO: This can be rewritten to only define times at the peaks and troughs
-            time = np.linspace(self.start, self.end, 100)
-        values = self._calc_sawtooth_wave(time)
+            time = []
+            values = []
+            eps = 1e-8 * self.duration / self.frequency
+
+            wrapped_phase = self.phase % (2 * np.pi)
+            time.append(self.start)
+            values.append(self._calc_sawtooth_wave(self.start))
+
+            current_time = (
+                self.start
+                + self.period / 2
+                - (wrapped_phase / (2 * np.pi)) * self.period
+            )
+            if current_time < self.start:
+                current_time += self.period
+
+            time.extend(np.arange(current_time, self.end, self.period))
+            time.extend(np.arange(current_time - eps, self.end, self.period))
+            time.sort()
+
+            for i in range(1, len(time)):
+                if i % 2 == 0:
+                    values.append(self.base - self.amplitude)
+                else:
+                    values.append(self.base + self.amplitude)
+
+            if time[-1] != self.end:
+                time.append(self.end)
+                values.append(self._calc_sawtooth_wave(self.end))
+
+            time = np.array(time)
+            values = np.array(values)
+        else:
+            values = self._calc_sawtooth_wave(time)
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self._calc_sawtooth_wave(self.base)
+        return self._calc_sawtooth_wave(self.start)
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
