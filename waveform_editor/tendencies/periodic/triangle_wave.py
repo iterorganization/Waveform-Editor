@@ -19,26 +19,15 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = []
-            time.append(self.start)
-            # Only generate points for the peaks and troughs of the triangle wave
-            period = 1 / self.frequency
-            current_time = self.start + 0.25 * period
-            while current_time < self.end:
-                time.append(current_time)
-                current_time += 0.5 * period
-                if current_time > self.end:
-                    break
-
-            time.append(self.end)
-            time = np.array(time)
+            # TODO: This can be rewritten to only define times at the peaks and troughs
+            time = np.linspace(self.start, self.end, 100)
 
         values = self._calc_triangle_wave(time)
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.base
+        return self._calc_triangle_wave(self.start)
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
@@ -46,20 +35,11 @@ class TriangleWaveTendency(PeriodicBaseTendency):
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
-        return self.rate
+        return self._calc_triangle_derivative(self.start)
 
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
-        phase = self._calc_phase(self.end)
-
-        # At the transition points (top and bottom), take derivative that follows
-        # the direction of the previous segment (rising keeps rising, falling keeps
-        # falling).
-        is_transition = phase % 1 == 0
-        is_rising = (int(phase) % 2) != 0
-        if is_transition:
-            return -self.rate if is_rising else self.rate
-        return self.rate if is_rising else -self.rate
+        return self._calc_triangle_derivative(self.end)
 
     def _calc_triangle_wave(self, time):
         """Calculates the point of the triangle wave at a given time point or
@@ -71,9 +51,28 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         Returns:
             The value of the triangle wave.
         """
-        phase = self._calc_phase(time)
-        triangle_wave = 2 * np.abs(phase % 2 - 1) - 1
+        wrapped_phase = self._calc_phase(time) % (2 * np.pi)
+        triangle_wave = 2 * np.abs((wrapped_phase / np.pi) % 2 - 1) - 1
         return self.base + self.amplitude * triangle_wave
+
+    def _calc_triangle_derivative(self, time):
+        """Calculates the derivative of the triangle wave at a given time point or
+        an array of time points.
+
+        Args:
+            time: Single time value or numpy array containing time values.
+
+        Returns:
+            The derivative of the triangle wave.
+        """
+        wrapped_phase = self._calc_phase(time) % (2 * np.pi)
+        is_transition = np.isclose(wrapped_phase % np.pi, 0, atol=1e-9)
+        is_rising = wrapped_phase > np.pi
+
+        if is_transition:
+            return -self.rate if is_rising else self.rate
+        else:
+            return self.rate if is_rising else -self.rate
 
     def _calc_phase(self, time):
         """Calculates the phase of the triangle wave at a given time point or
@@ -85,7 +84,7 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         Returns:
             The phase of the triangle wave.
         """
-        return 2 * self.frequency * (self.start - time) + 0.5
+        return 2 * np.pi * self.frequency * (time - self.start) + self.phase - np.pi / 2
 
     @depends("amplitude", "frequency", watch=True)
     def _update_rate(self):
