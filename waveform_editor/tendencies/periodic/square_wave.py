@@ -19,34 +19,14 @@ class SquareWaveTendency(PeriodicBaseTendency):
         """
 
         if time is None:
-            time = []
-            period = 1 / self.frequency
-            eps = 1e-8 * self.duration / self.frequency
-
-            time.extend(np.arange(self.start, self.end, period / 2))
-            time.extend(np.arange(self.start + period / 2 - eps, self.end, period / 2))
-            time.sort()
-
-            values = [0] * len(time)
-
-            for i in range(len(values)):
-                if i % 4 in {0, 1}:
-                    values[i] = self.base + self.amplitude
-                elif i % 4 in {2, 3}:
-                    values[i] = self.base - self.amplitude
-
-            if time[-1] != self.end:
-                time.append(self.end)
-                values.append(self._calc_square_wave(self.end))
-            time = np.array(time)
-            values = np.array(values)
-        else:
-            values = self._calc_square_wave(time)
+            # TODO: This can be rewritten to only define times at the peaks and troughs
+            time = np.linspace(self.start, self.end, 100)
+        values = self._calc_square_wave(time)
         return time, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.base + self.amplitude
+        return self._calc_square_wave(self.start)
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
@@ -70,6 +50,6 @@ class SquareWaveTendency(PeriodicBaseTendency):
         Returns:
             The value of the square wave.
         """
-        t = (time - self.start) % (1 / self.frequency)
+        t = (time - self.start + self.phase / (2 * np.pi) * self.period) % self.period
         square_wave = np.where(t < (1 / (2 * self.frequency)), 1, -1)
         return self.base + self.amplitude * square_wave
