@@ -20,38 +20,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         """
 
         if time is None:
-            time = []
-            values = []
-            eps = 1e-8 * self.duration / self.frequency
-
-            wrapped_phase = self.phase % (2 * np.pi)
-            time.append(self.start)
-            values.append(self._calc_sawtooth_wave(self.start))
-
-            current_time = (
-                self.start
-                + self.period / 2
-                - (wrapped_phase / (2 * np.pi)) * self.period
-            )
-            if current_time < self.start:
-                current_time += self.period
-
-            time.extend(np.arange(current_time, self.end, self.period))
-            time.extend(np.arange(current_time - eps, self.end, self.period))
-            time.sort()
-
-            for i in range(1, len(time)):
-                if i % 2 == 0:
-                    values.append(self.base - self.amplitude)
-                else:
-                    values.append(self.base + self.amplitude)
-
-            if time[-1] != self.end:
-                time.append(self.end)
-                values.append(self._calc_sawtooth_wave(self.end))
-
-            time = np.array(time)
-            values = np.array(values)
+            time, values = self._calc_minimal_sawtooth_wave()
         else:
             values = self._calc_sawtooth_wave(time)
         return time, values
@@ -96,3 +65,42 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
     def _update_rate(self):
         """Calculates the rate of change."""
         self.rate = 2 * self.frequency * self.amplitude
+
+    def _calc_minimal_sawtooth_wave(self):
+        """Calculates the time points and values which are minimally required to
+        represent the sawtooth wave fully.
+
+        Returns:
+            Tuple containing the time and the sawtooth wave values
+        """
+        time = []
+        values = []
+        eps = 1e-8 * self.duration / self.frequency
+
+        wrapped_phase = self.phase % (2 * np.pi)
+        time.append(self.start)
+        values.append(self._calc_sawtooth_wave(self.start))
+
+        current_time = (
+            self.start + self.period / 2 - (wrapped_phase / (2 * np.pi)) * self.period
+        )
+        if current_time < self.start:
+            current_time += self.period
+
+        time.extend(np.arange(current_time, self.end, self.period))
+        time.extend(np.arange(current_time - eps, self.end, self.period))
+        time.sort()
+
+        for i in range(1, len(time)):
+            if i % 2 == 0:
+                values.append(self.base - self.amplitude)
+            else:
+                values.append(self.base + self.amplitude)
+
+        if time[-1] != self.end:
+            time.append(self.end)
+            values.append(self._calc_sawtooth_wave(self.end))
+
+        time = np.array(time)
+        values = np.array(values)
+        return time, values

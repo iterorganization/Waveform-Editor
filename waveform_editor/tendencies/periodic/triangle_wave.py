@@ -19,19 +19,7 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = []
-            time.append(self.start)
-            wrapped_phase = self.phase % (2 * np.pi)
-            # Only generate points for the peaks and troughs of the triangle wave
-            current_time = self.start + 0.25 * self.period - wrapped_phase / (2 * np.pi)
-            while current_time < self.end:
-                if current_time > self.start:
-                    time.append(current_time)
-                current_time += 0.5 * self.period
-            if time[-1] != self.end:
-                time.append(self.end)
-            time = np.array(time)
-
+            time = self._calc_minimal_triangle_wave()
         values = self._calc_triangle_wave(time)
         return time, values
 
@@ -76,13 +64,9 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             The derivative of the triangle wave.
         """
         wrapped_phase = self._calc_phase(time) % (2 * np.pi)
-        is_transition = np.isclose(wrapped_phase % np.pi, 0, atol=1e-9)
         is_rising = wrapped_phase > np.pi
 
-        if is_transition:
-            return -self.rate if is_rising else self.rate
-        else:
-            return self.rate if is_rising else -self.rate
+        return self.rate if is_rising else -self.rate
 
     def _calc_phase(self, time):
         """Calculates the phase of the triangle wave at a given time point or
@@ -100,3 +84,26 @@ class TriangleWaveTendency(PeriodicBaseTendency):
     def _update_rate(self):
         """Calculates the rate of change."""
         self.rate = 4 * self.frequency * self.amplitude
+
+    def _calc_minimal_triangle_wave(self):
+        """Calculates the time points at which the peaks and troughs of the triangle
+        wave occur, which are minimally required to represent the triangle wave fully.
+
+        Returns:
+            Time array for the triangle wave
+        """
+        time = []
+        time.append(self.start)
+        wrapped_phase = self.phase % (2 * np.pi)
+        # Only generate points for the peaks and troughs of the triangle wave
+        current_time = (
+            self.start + 0.25 * self.period - wrapped_phase * self.period / (2 * np.pi)
+        )
+        while current_time < self.end:
+            if current_time > self.start:
+                time.append(current_time)
+            current_time += 0.5 * self.period
+        if time[-1] != self.end:
+            time.append(self.end)
+        time = np.array(time)
+        return time
