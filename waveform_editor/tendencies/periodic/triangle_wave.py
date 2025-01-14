@@ -19,8 +19,18 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            # TODO: This can be rewritten to only define times at the peaks and troughs
-            time = np.linspace(self.start, self.end, 100)
+            time = []
+            time.append(self.start)
+            wrapped_phase = self.phase % (2 * np.pi)
+            # Only generate points for the peaks and troughs of the triangle wave
+            current_time = self.start + 0.25 * self.period - wrapped_phase / (2 * np.pi)
+            while current_time < self.end:
+                if current_time > self.start:
+                    time.append(current_time)
+                current_time += 0.5 * self.period
+            if time[-1] != self.end:
+                time.append(self.end)
+            time = np.array(time)
 
         values = self._calc_triangle_wave(time)
         return time, values
