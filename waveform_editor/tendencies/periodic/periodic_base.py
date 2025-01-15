@@ -141,6 +141,16 @@ class PeriodicBaseTendency(BaseTendency):
                     self.base, self.amplitude, self.min, self.max = (
                         self._find_missing_values()
                     )
+                else:
+                    if self.user_amplitude is not None:
+                        self.user_base = 0
+                    elif self.user_min is not None:
+                        self.user_base = self.user_min + 1
+                    elif self.user_max is not None:
+                        self.user_base = self.user_max - 1
+                    self.base, self.amplitude, self.min, self.max = (
+                        self._find_missing_values()
+                    )
                 self.user_base = None
             else:
                 self.base = self.user_base
