@@ -31,11 +31,15 @@ class BaseTendency(param.Parameterized):
     )
 
     duration = param.Number(
-        default=1.0, bounds=(0.0, None), doc="The calculated duration of the tendency."
+        default=1.0,
+        bounds=(0.0, None),
+        inclusive_bounds=(False, True),
+        doc="The calculated duration of the tendency.",
     )
     user_duration = param.Number(
         default=1.0,
         bounds=(0.0, None),
+        inclusive_bounds=(False, True),
         doc="The duration of the tendency, as provided by the user.",
         allow_None=True,
     )
@@ -145,20 +149,21 @@ class BaseTendency(param.Parameterized):
                     "does not equal the end of the previous tendency."
                 )
         elif self.user_duration is not None:
-            if self.prev_tendency is None:
-                self.start = 0
-            else:
+            if self.prev_tendency is not None:
                 self.start = self.prev_tendency.end
             self.duration = self.user_duration
             self.end = self.start + self.duration
         elif self.user_end is not None:
-            if self.prev_tendency is None:
-                self.start = 0
-            else:
+            if self.prev_tendency is not None:
                 self.start = self.prev_tendency.end
             self.duration = self.user_end - self.start
             self.end = self.user_end
         else:
             raise ValueError(
                 "Insufficient inputs: Unable to calculate the start, duration, and end."
+            )
+
+        if not np.isclose(self.start + self.duration, self.end):
+            raise ValueError(
+                "Inputs are inconsistent: start + duration does not equal end."
             )
