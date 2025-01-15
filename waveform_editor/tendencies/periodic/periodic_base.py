@@ -22,10 +22,10 @@ class PeriodicBaseTendency(BaseTendency):
         allow_None=True,
     )
 
-    phase = param.Number(default=0.0, doc="The phase of the periodic tendency.")
+    phase = param.Number(default=0.0, doc="The phase shift of the periodic tendency.")
     user_phase = param.Number(
         default=0.0,
-        doc="The phase of the periodic tendency, as provided by the user",
+        doc="The phase shift of the periodic tendency, as provided by the user",
         allow_None=True,
     )
 
@@ -108,7 +108,7 @@ class PeriodicBaseTendency(BaseTendency):
     def _update_phase(self):
         """Updates the phase for the periodic tendency."""
         if self.user_phase is not None:
-            self.phase = self.user_phase
+            self.phase = self.user_phase % (2 * np.pi)
 
     @depends("next_tendency", "prev_tendency", watch=True)
     def _update_bounds(self):

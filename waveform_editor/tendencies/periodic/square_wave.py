@@ -64,11 +64,10 @@ class SquareWaveTendency(PeriodicBaseTendency):
         time = []
         eps = 1e-8 * self.duration / self.frequency
 
-        wrapped_phase = self.phase % (2 * np.pi)
         time.append(self.start)
 
         current_time = (
-            self.start + self.period / 2 - (wrapped_phase / (2 * np.pi)) * self.period
+            self.start + self.period / 2 - self.phase / (2 * np.pi) * self.period
         )
         while current_time < self.start:
             current_time += self.period / 2
@@ -79,7 +78,7 @@ class SquareWaveTendency(PeriodicBaseTendency):
 
         values = [0] * len(time)
         for i in range(len(time)):
-            if wrapped_phase < np.pi:
+            if self.phase < np.pi:
                 if i % 4 in {0, 1}:
                     values[i] = self.base + self.amplitude
                 elif i % 4 in {2, 3}:

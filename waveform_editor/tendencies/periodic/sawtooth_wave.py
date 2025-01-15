@@ -77,12 +77,11 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         values = []
         eps = 1e-8 * self.duration / self.frequency
 
-        wrapped_phase = self.phase % (2 * np.pi)
         time.append(self.start)
         values.append(self._calc_sawtooth_wave(self.start))
 
         current_time = (
-            self.start + self.period / 2 - (wrapped_phase / (2 * np.pi)) * self.period
+            self.start + self.period / 2 - self.phase / (2 * np.pi) * self.period
         )
         if current_time < self.start:
             current_time += self.period
