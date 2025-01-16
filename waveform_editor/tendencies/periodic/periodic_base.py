@@ -22,6 +22,26 @@ class PeriodicBaseTendency(BaseTendency):
         allow_None=True,
     )
 
+    min = param.Number(
+        default=-1.0,
+        doc="The minimum value of the periodic tendency.",
+    )
+    user_min = param.Number(
+        default=-1.0,
+        doc="The minimum value of the periodic tendency, as provided by the user.",
+        allow_None=True,
+    )
+
+    max = param.Number(
+        default=1.0,
+        doc="The maximum value of the periodic tendency.",
+    )
+    user_max = param.Number(
+        default=1.0,
+        doc="The maximum value of the periodic tendency, as provided by the user.",
+        allow_None=True,
+    )
+
     phase = param.Number(default=0.0, doc="The phase shift of the periodic tendency.")
     user_phase = param.Number(
         default=0.0,
@@ -54,26 +74,6 @@ class PeriodicBaseTendency(BaseTendency):
         bounds=(0, None),
         inclusive_bounds=(False, True),
         doc="The period of the periodic tendency, as provided by the user.",
-        allow_None=True,
-    )
-
-    min = param.Number(
-        default=-1.0,
-        doc="The minimum value of the periodic tendency.",
-    )
-    user_min = param.Number(
-        default=-1.0,
-        doc="The minimum value of the periodic tendency, as provided by the user.",
-        allow_None=True,
-    )
-
-    max = param.Number(
-        default=1.0,
-        doc="The maximum value of the periodic tendency.",
-    )
-    user_max = param.Number(
-        default=1.0,
-        doc="The maximum value of the periodic tendency, as provided by the user.",
         allow_None=True,
     )
 

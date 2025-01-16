@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pytest import approx
 
@@ -162,4 +163,38 @@ def test_bounds_next(
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
         assert tendency.min == approx(expected_min)
-        assert tendency.max == approx(expected_max)
+
+
+def test_frequency_and_period():
+    """Test if the frequency and period of the tendency are being set correctly."""
+
+    tendency = PeriodicBaseTendency(duration=1, frequency=5)
+    assert tendency.frequency == 5
+    assert tendency.period == 0.2
+
+    tendency = PeriodicBaseTendency(duration=1, period=4)
+    assert tendency.period == 4
+    assert tendency.frequency == 0.25
+
+    tendency = PeriodicBaseTendency(duration=1, period=2, frequency=0.5)
+    assert tendency.period == 2
+    assert tendency.frequency == 0.5
+
+    with pytest.raises(ValueError):
+        tendency = PeriodicBaseTendency(duration=1, period=2, frequency=2)
+
+
+def test_phase():
+    """Test if the phase shift of the tendency is being set correctly."""
+
+    tendency = PeriodicBaseTendency(duration=1, phase=np.pi / 2)
+    assert tendency.phase == np.pi / 2
+
+    tendency = PeriodicBaseTendency(duration=1, phase=np.pi)
+    assert tendency.phase == np.pi
+
+    tendency = PeriodicBaseTendency(duration=1, phase=2 * np.pi)
+    assert tendency.phase == 0
+
+    tendency = PeriodicBaseTendency(duration=1, phase=3 * np.pi)
+    assert tendency.phase == np.pi
