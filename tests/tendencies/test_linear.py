@@ -120,3 +120,14 @@ def test_linear_tendency_with_next(
         assert tendency.from_ == approx(expected_from)
         assert tendency.to == approx(expected_to)
         assert tendency.rate == approx(expected_rate)
+
+
+def test_start_and_end():
+    """
+    Test the start and end values and their derivatives
+    """
+    tendency = LinearTendency(duration=1, from_=1, rate=5)
+    assert tendency.get_start_value() == 1
+    assert tendency.get_end_value() == 6
+    assert tendency.get_derivative_start() == 5
+    assert tendency.get_derivative_end() == 5

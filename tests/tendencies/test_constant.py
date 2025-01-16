@@ -37,3 +37,14 @@ def test_next_value():
     assert tendency.value == 12.34
     assert tendency.prev_tendency is None
     assert tendency.next_tendency == next_tendency
+
+
+def test_start_and_end():
+    """
+    Test the start and end values and their derivatives
+    """
+    tendency = ConstantTendency(duration=1, value=5)
+    assert tendency.get_start_value() == 5
+    assert tendency.get_end_value() == 5
+    assert tendency.get_derivative_start() == 0
+    assert tendency.get_derivative_end() == 0
