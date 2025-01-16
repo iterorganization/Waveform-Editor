@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pytest import approx
 
@@ -131,3 +132,13 @@ def test_start_and_end():
     assert tendency.get_end_value() == 6
     assert tendency.get_derivative_start() == 5
     assert tendency.get_derivative_end() == 5
+
+
+def test_generate():
+    """
+    Check the generated values.
+    """
+    tendency = LinearTendency(start=0, duration=1, from_=1, to=10)
+    time, values = tendency.generate()
+    assert np.all(time == np.array([0, 1]))
+    assert np.all(values == np.array([1, 10]))

@@ -1,3 +1,5 @@
+import numpy as np
+
 from waveform_editor.tendencies.constant import ConstantTendency
 
 
@@ -48,3 +50,14 @@ def test_start_and_end():
     assert tendency.get_end_value() == 5
     assert tendency.get_derivative_start() == 0
     assert tendency.get_derivative_end() == 0
+
+
+def test_generate():
+    """
+    Check the generated values.
+    """
+    tendency = ConstantTendency(start=0, duration=1, value=5)
+    time, values = tendency.generate()
+
+    assert np.all(time == np.array([0, 1]))
+    assert np.all(values == np.array([5, 5]))

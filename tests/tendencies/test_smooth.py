@@ -59,3 +59,14 @@ def test_prev_and_next_value():
     assert tendency.derivative_end == 5
     assert tendency.prev_tendency == prev_tendency
     assert tendency.next_tendency == next_tendency
+
+
+def test_generate():
+    """
+    Check the generated values.
+    """
+    tendency = SmoothTendency(start=0, duration=1, from_=3, to=6)
+    _, values = tendency.generate()
+
+    assert values[0] == 3
+    assert values[-1] == 6
