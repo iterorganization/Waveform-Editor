@@ -37,3 +37,15 @@ def test_start_and_end():
     assert tendency.get_end_value() == approx(0)
     assert tendency.get_derivative_start() == approx(-4)
     assert tendency.get_derivative_end() == approx(4)
+
+
+def test_generate():
+    """
+    Check the generated values.
+    """
+    tendency = TriangleWaveTendency(
+        start=0, duration=1.5, base=6, min=3, phase=0, frequency=1
+    )
+    time, values = tendency.generate()
+    assert np.allclose(time, [0, 0.25, 0.75, 1.25, 1.5])
+    assert np.allclose(values, [6, 9, 3, 9, 6])

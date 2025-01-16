@@ -29,3 +29,13 @@ def test_start_and_end():
     assert tendency.get_end_value() == approx(0)
     assert tendency.get_derivative_start() == approx(-2 * np.pi)
     assert tendency.get_derivative_end() == approx(-2 * np.pi)
+
+
+def test_generate():
+    """
+    Check the generated values.
+    """
+    tendency = SineWaveTendency(start=0, duration=1, base=2, amplitude=3, phase=1)
+    time, values = tendency.generate()
+    assert np.all(time == np.linspace(0, 1, 101))
+    assert np.allclose(values, 2 + 3 * np.sin(2 * np.pi * time + 1))
