@@ -22,6 +22,26 @@ class PeriodicBaseTendency(BaseTendency):
         allow_None=True,
     )
 
+    min = param.Number(
+        default=-1.0,
+        doc="The minimum value of the periodic tendency.",
+    )
+    user_min = param.Number(
+        default=-1.0,
+        doc="The minimum value of the periodic tendency, as provided by the user.",
+        allow_None=True,
+    )
+
+    max = param.Number(
+        default=1.0,
+        doc="The maximum value of the periodic tendency.",
+    )
+    user_max = param.Number(
+        default=1.0,
+        doc="The maximum value of the periodic tendency, as provided by the user.",
+        allow_None=True,
+    )
+
     phase = param.Number(default=0.0, doc="The phase shift of the periodic tendency.")
     user_phase = param.Number(
         default=0.0,
@@ -54,26 +74,6 @@ class PeriodicBaseTendency(BaseTendency):
         bounds=(0, None),
         inclusive_bounds=(False, True),
         doc="The period of the periodic tendency, as provided by the user.",
-        allow_None=True,
-    )
-
-    min = param.Number(
-        default=-1.0,
-        doc="The minimum value of the periodic tendency.",
-    )
-    user_min = param.Number(
-        default=-1.0,
-        doc="The minimum value of the periodic tendency, as provided by the user.",
-        allow_None=True,
-    )
-
-    max = param.Number(
-        default=1.0,
-        doc="The maximum value of the periodic tendency.",
-    )
-    user_max = param.Number(
-        default=1.0,
-        doc="The maximum value of the periodic tendency, as provided by the user.",
         allow_None=True,
     )
 
@@ -138,6 +138,16 @@ class PeriodicBaseTendency(BaseTendency):
                     )
                 elif self.next_tendency is not None:
                     self.user_base = self.next_tendency.get_start_value()
+                    self.base, self.amplitude, self.min, self.max = (
+                        self._find_missing_values()
+                    )
+                else:
+                    if self.user_amplitude is not None:
+                        self.user_base = 0
+                    elif self.user_min is not None:
+                        self.user_base = self.user_min + 1
+                    elif self.user_max is not None:
+                        self.user_base = self.user_max - 1
                     self.base, self.amplitude, self.min, self.max = (
                         self._find_missing_values()
                     )

@@ -8,11 +8,23 @@ from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.yaml_parser import YamlParser
 
 
-def test_yaml_parser():
-    yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms_from_file("tests/test_yaml/test.yaml")
-    tendencies = yaml_parser.tendencies
+def test_yaml_parser_from_string():
+    """Test loading a yaml file as a string."""
+    with open("tests/tendencies/test_yaml/test.yaml") as file:
+        yaml_parser = YamlParser()
+        yaml_parser.parse_waveforms_from_string(file.read())
+        assert_tendencies_correct(yaml_parser.tendencies)
 
+
+def test_yaml_parser_from_file():
+    """Test loading a yaml file as a file."""
+    yaml_parser = YamlParser()
+    yaml_parser.parse_waveforms_from_file("tests/tendencies/test_yaml/test.yaml")
+    assert_tendencies_correct(yaml_parser.tendencies)
+
+
+def assert_tendencies_correct(tendencies):
+    """Assert that the tendencies contain the correct parameters."""
     assert isinstance(tendencies[0], LinearTendency)
     assert tendencies[0].start == 0
     assert tendencies[0].end == 5

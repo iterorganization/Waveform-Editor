@@ -128,7 +128,13 @@ class LinearTendency(BaseTendency):
             self.rate = self.user_rate
             if self.prev_tendency is not None:
                 self.from_ = self.prev_tendency.get_end_value()
-            self.to = self.rate * self.duration + self.from_
+                self.to = self.rate * self.duration + self.from_
+            elif self.next_tendency is not None:
+                self.to = self.next_tendency.get_start_value()
+                self.from_ = self.to - self.rate * self.duration
+            else:
+                self.to = self.rate * self.duration + self.from_
+                self.from_ = self.to - self.rate * self.duration
         elif self.user_to is not None:
             self.to = self.user_to
             if self.prev_tendency is not None:
