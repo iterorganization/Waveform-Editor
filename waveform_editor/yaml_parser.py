@@ -7,6 +7,7 @@ from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTenden
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
+from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
 tendency_map = {
@@ -21,6 +22,7 @@ tendency_map = {
     "square": SquareWaveTendency,
     "constant": ConstantTendency,
     "smooth": SmoothTendency,
+    "piecewise": PiecewiseLinearTendency,
 }
 
 
