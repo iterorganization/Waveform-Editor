@@ -23,18 +23,26 @@ class PiecewiseLinearTendency(BaseTendency):
         self.value = np.array(value)
 
     def generate(self, time=None):
-        """Generate time and values based on the tendency.
+        """Generate time and values based on the tendency. If a time array is provided,
+        the values will be linearly interpolated between the piecewise linear points.
 
         Args:
-            time: Time array to match base class signature, this will be ignored is not
-            None.
+            time: The time array on which to generate points.
 
         Returns:
             Tuple containing the time and its tendency values.
         """
-        if time is not None:
-            print("The provided time array is ignored for piecewise linear tendencies")
-        return self.time, self.value
+        if time is None:
+            return self.time, self.value
+
+        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
+            raise ValueError(
+                f"The provided time array contains values outside the valid range "
+                f"({self.time[0]}, {self.time[-1]})."
+            )
+
+        interpolated_values = np.interp(time, self.time, self.value)
+        return time, interpolated_values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""

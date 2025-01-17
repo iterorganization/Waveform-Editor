@@ -67,3 +67,21 @@ def test_generate():
     time, values = tendency.generate()
     assert np.all(time == [1, 2, 3])
     assert np.all(values == [2, 4, 6])
+
+
+def test_generate_interpolate():
+    """
+    Check the generated interpolated values.
+    """
+    tendency = PiecewiseLinearTendency(
+        time=np.array([1, 2, 3]), value=np.array([2, 4, 8])
+    )
+    time, values = tendency.generate(time=[1.0, 1.5, 2.0, 2.5, 3.0])
+    assert np.all(time == [1.0, 1.5, 2.0, 2.5, 3.0])
+    assert np.all(np.isclose(values, [2.0, 3.0, 4.0, 6.0, 8.0]))
+
+    with pytest.raises(ValueError):
+        time, values = tendency.generate(time=[0.5, 1.5, 2.0, 2.5, 3.0])
+
+    with pytest.raises(ValueError):
+        time, values = tendency.generate(time=[1.0, 1.5, 2.0, 2.5, 3.5])
