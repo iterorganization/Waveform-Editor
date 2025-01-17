@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pytest import approx
 
@@ -10,40 +11,46 @@ def test_empty():
         PiecewiseLinearTendency()
 
     with pytest.raises(ValueError):
-        PiecewiseLinearTendency(time=[1, 2, 3])
+        PiecewiseLinearTendency(time=np.array([1, 2, 3]))
 
     with pytest.raises(ValueError):
-        PiecewiseLinearTendency(value=[1, 2, 3])
+        PiecewiseLinearTendency(value=np.array([1, 2, 3]))
 
 
 def test_filled():
     """Test value of filled tendency."""
-    tendency = PiecewiseLinearTendency(time=[1, 2, 3], value=[2, 4, 6])
-    assert tendency.time == [1, 2, 3]
-    assert tendency.value == [2, 4, 6]
+    tendency = PiecewiseLinearTendency(
+        time=np.array([1, 2, 3]), value=np.array([2, 4, 6])
+    )
+    assert np.all(tendency.time == np.array([1, 2, 3]))
+    assert np.all(tendency.value == np.array([2, 4, 6]))
 
-    tendency = PiecewiseLinearTendency(time=[1.1, 2.2, 3.3], value=[9.9, 5.5, 2.2])
-    assert tendency.time == [1.1, 2.2, 3.3]
-    assert tendency.value == [9.9, 5.5, 2.2]
+    tendency = PiecewiseLinearTendency(
+        time=np.array([1.1, 2.2, 3.3]), value=np.array([9.9, 5.5, 2.2])
+    )
+    assert np.all(tendency.time == np.array([1.1, 2.2, 3.3]))
+    assert np.all(tendency.value == np.array([9.9, 5.5, 2.2]))
 
 
 def test_filled_valid():
     """Test value of filled tendency with invalid parameters."""
     with pytest.raises(ValueError):
-        PiecewiseLinearTendency(time=[3, 2, 1], value=[1, 2, 3])
+        PiecewiseLinearTendency(time=np.array([3, 2, 1]), value=np.array([1, 2, 3]))
 
     with pytest.raises(ValueError):
-        PiecewiseLinearTendency(time=[1, 2], value=[1, 2, 3])
+        PiecewiseLinearTendency(time=np.array([1, 2]), value=np.array([1, 2, 3]))
 
     with pytest.raises(ValueError):
-        PiecewiseLinearTendency(time=[1], value=[1])
+        PiecewiseLinearTendency(time=np.array([1]), value=np.array([1]))
 
 
 def test_start_and_end():
     """
     Test the start and end values and their derivatives
     """
-    tendency = PiecewiseLinearTendency(time=[1, 2, 3], value=[2, 4, 0])
+    tendency = PiecewiseLinearTendency(
+        time=np.array([1, 2, 3]), value=np.array([2, 4, 0])
+    )
     assert tendency.get_start_value() == 2
     assert tendency.get_end_value() == 0
     assert tendency.get_derivative_start() == approx(2)
@@ -54,7 +61,9 @@ def test_generate():
     """
     Check the generated values.
     """
-    tendency = PiecewiseLinearTendency(time=[1, 2, 3], value=[2, 4, 6])
+    tendency = PiecewiseLinearTendency(
+        time=np.array([1, 2, 3]), value=np.array([2, 4, 6])
+    )
     time, values = tendency.generate()
-    assert time == [1, 2, 3]
-    assert values == [2, 4, 6]
+    assert np.all(time == [1, 2, 3])
+    assert np.all(values == [2, 4, 6])

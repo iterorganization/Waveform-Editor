@@ -9,14 +9,18 @@ class PiecewiseLinearTendency(BaseTendency):
     A tendency representing a piecewise linear function.
     """
 
-    time = param.List(default=[0, 1], doc="The times of the piecewise tendency.")
-    value = param.List(default=[0, 1], doc="The values of the piecewise tendency.")
+    time = param.Array(
+        default=np.array([0, 1]), doc="The times of the piecewise tendency."
+    )
+    value = param.Array(
+        default=np.array([0, 1]), doc="The values of the piecewise tendency."
+    )
 
     def __init__(self, *, time=None, value=None):
         self._validate_time_value(time, value)
         super().__init__(time[0], None, time[-1])
-        self.time = time
-        self.value = value
+        self.time = np.array(time)
+        self.value = np.array(value)
 
     def generate(self, time=None):
         """Generate time and values based on the tendency.
