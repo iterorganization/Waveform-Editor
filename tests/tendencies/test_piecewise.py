@@ -19,6 +19,10 @@ def test_empty():
 
 def test_filled():
     """Test value of filled tendency."""
+    tendency = PiecewiseLinearTendency(time=[1, 2, 3], value=[2, 4, 6])
+    assert np.all(tendency.time == np.array([1, 2, 3]))
+    assert np.all(tendency.value == np.array([2, 4, 6]))
+
     tendency = PiecewiseLinearTendency(
         time=np.array([1, 2, 3]), value=np.array([2, 4, 6])
     )
@@ -78,7 +82,7 @@ def test_generate_interpolate():
     )
     time, values = tendency.generate(time=[1.0, 1.5, 2.0, 2.5, 3.0])
     assert np.all(time == [1.0, 1.5, 2.0, 2.5, 3.0])
-    assert np.all(np.isclose(values, [2.0, 3.0, 4.0, 6.0, 8.0]))
+    assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
 
     with pytest.raises(ValueError):
         time, values = tendency.generate(time=[0.5, 1.5, 2.0, 2.5, 3.0])
