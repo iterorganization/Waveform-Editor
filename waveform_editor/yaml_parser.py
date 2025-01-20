@@ -1,4 +1,4 @@
-import plotly.graph_objs as go
+import holoviews as hv
 import yaml
 
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -52,37 +52,33 @@ class YamlParser:
         self._process_waveform_yaml(waveform_yaml)
 
     def plot_tendencies(self, plot_time_points=False):
-        """Plot the tendencies in a Plotly figure and return this figure.
+        """
+        Plot the tendencies in a Holoviews Overlay and return this Overlay.
+
+        Args:
+            plot_time_points (bool): Whether to include markers for the data points.
 
         Returns:
-            A Plotly figure object.
+            A Holoviews Overlay object.
         """
-
-        fig = go.Figure()
+        overlay = hv.Overlay()
 
         for tendency in self.tendencies:
             time, values = tendency.generate()
-            fig.add_trace(
-                go.Scatter(x=time, y=values, mode="lines", name=type(tendency).__name__)
+            line = hv.Curve((time, values), "Time (s)", "Value").opts(
+                line_width=2, color="blue"
             )
-            if plot_time_points:
-                fig.add_trace(
-                    go.Scatter(
-                        x=time,
-                        y=values,
-                        mode="markers",
-                        marker=dict(size=3, symbol="circle", color="red"),
-                        name=f"{type(tendency).__name__} - Points",
-                    )
-                )
-        fig.update_layout(
-            title="Waveform",
-            xaxis_title="Time (s)",
-            yaxis_title="Value",
-            legend_title="Tendencies",
-        )
+            overlay *= line
 
-        return fig
+            if plot_time_points:
+                points = hv.Scatter((time, values), "Time (s)", "Value").opts(
+                    size=5,
+                    color="red",
+                    marker="circle",
+                )
+                overlay *= points
+
+        return overlay.opts(title="Waveform", width=800, height=400)
 
     def _process_waveform_yaml(self, waveform_yaml):
         """Processes the waveform YAML and populates the tendencies list.

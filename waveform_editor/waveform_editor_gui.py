@@ -1,6 +1,9 @@
+import holoviews as hv
 import panel as pn
 
 from waveform_editor.yaml_parser import YamlParser
+
+hv.extension("plotly")
 
 # TODO: Current UI implementation is only for testing purposes. In this future this is
 # to be rewritten in a proper class-based form.
@@ -29,8 +32,8 @@ yaml_parser = YamlParser()
 
 initial_yaml_str = code_editor.value
 yaml_parser.parse_waveforms_from_string(initial_yaml_str)
-initial_fig = yaml_parser.plot_tendencies()
-plotly_pane = pn.pane.Plotly(initial_fig)
+initial_plot = yaml_parser.plot_tendencies()
+hvplot_pane = pn.pane.HoloViews(initial_plot)
 
 
 def update_plot(event):
@@ -38,12 +41,12 @@ def update_plot(event):
     yaml_str = code_editor.value
     yaml_parser.parse_waveforms_from_string(yaml_str)
 
-    fig = yaml_parser.plot_tendencies()
-    plotly_pane.object = fig
+    updated_plot = yaml_parser.plot_tendencies()
+    hvplot_pane.object = updated_plot
 
 
 code_editor.param.watch(update_plot, "value")
 
-layout = pn.Row(code_editor, plotly_pane)
+layout = pn.Row(code_editor, hvplot_pane)
 
 layout.servable()

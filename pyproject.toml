@@ -21,6 +21,7 @@ dependencies = [
     "panel",
     "pygments",
     "plotly",
+    "holoviews",
 ]
 dynamic = ["version"]
 
