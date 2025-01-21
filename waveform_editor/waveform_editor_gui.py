@@ -30,23 +30,20 @@ waveform:
 
 yaml_parser = YamlParser()
 
+
 initial_yaml_str = code_editor.value
 yaml_parser.parse_waveforms_from_string(initial_yaml_str)
-initial_plot = yaml_parser.plot_tendencies()
-hvplot_pane = pn.pane.HoloViews(initial_plot)
 
 
-def update_plot(event):
+def update_plot(value):
     yaml_parser.tendencies = []
-    yaml_str = code_editor.value
-    yaml_parser.parse_waveforms_from_string(yaml_str)
+    yaml_parser.parse_waveforms_from_string(value)
 
-    updated_plot = yaml_parser.plot_tendencies()
-    hvplot_pane.object = updated_plot
+    return yaml_parser.plot_tendencies()
 
 
-code_editor.param.watch(update_plot, "value")
+hv_dynamic_map = hv.DynamicMap(pn.bind(update_plot, value=code_editor.param.value))
 
-layout = pn.Row(code_editor, hvplot_pane)
+layout = pn.Row(code_editor, hv_dynamic_map)
 
 layout.servable()
