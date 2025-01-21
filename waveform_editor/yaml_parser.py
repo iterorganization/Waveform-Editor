@@ -71,6 +71,9 @@ class YamlParser:
 
         overlay = hv.Overlay()
 
+        # By merging all the tendencies into a single holoviews curve, we circumvent
+        # an issue that occurs when returning an overlay of multiple curves, where
+        # tendencies of previous inputs are sometimes not cleared correctly.
         line = hv.Curve((times, values), "Time (s)", "Value").opts(
             line_width=2, color="blue"
         )
