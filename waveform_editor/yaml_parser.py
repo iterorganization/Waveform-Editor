@@ -61,22 +61,27 @@ class YamlParser:
         Returns:
             A Holoviews Overlay object.
         """
-        overlay = hv.Overlay()
+        times = []
+        values = []
 
         for tendency in self.tendencies:
-            time, values = tendency.generate()
-            line = hv.Curve((time, values), "Time (s)", "Value").opts(
-                line_width=2, color="blue"
-            )
-            overlay *= line
+            time, value = tendency.generate()
+            times.extend(time)
+            values.extend(value)
 
-            if plot_time_points:
-                points = hv.Scatter((time, values), "Time (s)", "Value").opts(
-                    size=5,
-                    color="red",
-                    marker="circle",
-                )
-                overlay *= points
+        overlay = hv.Overlay()
+
+        line = hv.Curve((times, values), "Time (s)", "Value").opts(
+            line_width=2, color="blue"
+        )
+        overlay *= line
+        if plot_time_points:
+            points = hv.Scatter((times, values), "Time (s)", "Value").opts(
+                size=5,
+                color="red",
+                marker="circle",
+            )
+            overlay *= points
 
         return overlay.opts(title="Waveform", width=800, height=400)
 
