@@ -61,7 +61,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         sawtooth_wave = (t * self.frequency) * 2 - 1
         return self.base + self.amplitude * sawtooth_wave
 
-    @depends("amplitude", "frequency", watch=True)
+    @depends("values_changed", watch=True)
     def _update_rate(self):
         """Calculates the rate of change."""
         self.rate = 2 * self.frequency * self.amplitude

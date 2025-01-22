@@ -78,7 +78,7 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         """
         return 2 * np.pi * self.frequency * (time - self.start) + self.phase - np.pi / 2
 
-    @depends("amplitude", "frequency", watch=True)
+    @depends("values_changed", watch=True)
     def _update_rate(self):
         """Calculates the rate of change."""
         self.rate = 4 * self.frequency * self.amplitude

@@ -4,6 +4,11 @@ import numpy as np
 import param
 from param import depends
 
+from waveform_editor.tendencies.util import (
+    InconsistentInputsError,
+    solve_with_constraints,
+)
+
 
 class BaseTendency(param.Parameterized):
     """
@@ -23,41 +28,39 @@ class BaseTendency(param.Parameterized):
         doc="The tendency that follows the current tendency.",
     )
 
-    start = param.Number(default=0.0, doc="The calculated start time of the tendency.")
-    user_start = param.Number(
-        default=0.0,
-        doc="The start time of the tendency, as provided by the user.",
-        allow_None=True,
-    )
+    times_changed = param.Event(doc="Event triggered when start/end times have changed")
+    values_changed = param.Event(doc="Event triggered when values have changed")
 
-    duration = param.Number(
-        default=1.0,
-        bounds=(0.0, None),
-        inclusive_bounds=(False, True),
-        doc="The calculated duration of the tendency.",
+    user_start = param.Number(
+        default=None, doc="The start time of the tendency, as provided by the user."
     )
     user_duration = param.Number(
-        default=1.0,
+        default=None,
         bounds=(0.0, None),
         inclusive_bounds=(False, True),
         doc="The duration of the tendency, as provided by the user.",
-        allow_None=True,
     )
-
-    end = param.Number(default=1.0, doc="The calculated end time of the tendency.")
     user_end = param.Number(
-        default=1.0,
-        doc="The end time of the tendency, as provided by the user.",
-        allow_None=True,
+        default=None, doc="The end time of the tendency, as provided by the user."
     )
 
-    def __init__(self, start, duration, end):
-        super().__init__()
+    time_error = param.ClassSelector(
+        class_=Exception,
+        default=None,
+        doc="Error that occurred when processing user inputs.",
+    )
+    value_error = param.ClassSelector(
+        class_=Exception,
+        default=None,
+        doc="Error that occurred when processing user inputs.",
+    )
 
-        self.user_start = start
-        self.user_duration = duration
-        self.user_end = end
-        self._validate_user_input()
+    def __init__(self, **kwargs):
+        self.start = 0.0
+        self.end = 0.0
+        self.duration = 0.0
+        self.error = None
+        super().__init__(**kwargs)
 
     def set_previous_tendency(self, prev_tendency):
         """Sets the previous tendency as a param.
@@ -109,61 +112,53 @@ class BaseTendency(param.Parameterized):
         """
         pass
 
-    @depends("prev_tendency", "next_tendency", watch=True)
-    def _validate_user_input(self):
+    @depends(
+        "prev_tendency.times_changed",
+        "user_start",
+        "user_duration",
+        "user_end",
+        watch=True,
+        on_init=True,
+    )
+    def _calc_times(self):
         """Validates the user-defined start, duration, and end values. If one or more
         are missing, they are calculated based on the given values, or by neighbouring
         tendencies. The calculated start, duration, and end values are stored in their
         respective params.
         """
 
-        if (
-            self.user_start is not None
-            and self.user_duration is not None
-            and self.user_end is not None
-        ):
-            if self.user_start + self.user_duration != self.user_end:
-                raise ValueError(
-                    "Inputs are inconsistent: start + duration does not equal end."
-                )
-            self.start = self.user_start
-            self.duration = self.user_duration
-            self.end = self.user_end
-        elif self.user_start is not None and self.user_duration is not None:
-            self.start = self.user_start
-            self.duration = self.user_duration
-            self.end = self.user_start + self.user_duration
-        elif self.user_start is not None and self.user_end is not None:
-            self.start = self.user_start
-            self.end = self.user_end
-            self.duration = self.user_end - self.user_start
-        elif self.user_duration is not None and self.user_end is not None:
-            self.duration = self.user_duration
-            self.end = self.user_end
-            self.start = self.user_end - self.user_duration
-            if self.prev_tendency is not None and not np.isclose(
-                self.start, self.prev_tendency.end
-            ):
-                raise ValueError(
-                    "Ambiguous input: no start is provided and the calculated start"
-                    "does not equal the end of the previous tendency."
-                )
-        elif self.user_duration is not None:
-            if self.prev_tendency is not None:
-                self.start = self.prev_tendency.end
-            self.duration = self.user_duration
-            self.end = self.start + self.duration
-        elif self.user_end is not None:
-            if self.prev_tendency is not None:
-                self.start = self.prev_tendency.end
-            self.duration = self.user_end - self.start
-            self.end = self.user_end
-        else:
-            raise ValueError(
-                "Insufficient inputs: Unable to calculate the start, duration, and end."
+        inputs = [self.user_start, self.user_duration, self.user_end]
+        constraint_matrix = [[1, 1, -1]]  # start + duration - end = 0
+        num_inputs = sum(1 for var in inputs if var is not None)
+
+        # Set defaults if problem is under-determined
+        if num_inputs < 2 and inputs[0] is None:
+            # Start is not provided, set to 0 or previous end time
+            if self.prev_tendency is None:
+                inputs[0] = 0
+            else:
+                inputs[0] = self.prev_tendency.end
+            num_inputs += 1
+
+        if num_inputs < 2 and inputs[1] is None:
+            inputs[1] = 1.0  # default 1 second duration
+            num_inputs += 1
+
+        try:
+            values = solve_with_constraints(inputs, constraint_matrix)
+            self.time_error = None
+        except InconsistentInputsError:
+            self.time_error = ValueError(
+                "Inputs are inconsistent: start + duration != end"
+            )
+            values = (
+                0 if self.prev_tendency is None else self.prev_tendency.end,
+                1,
+                self.start + self.duration,
             )
 
-        if not np.isclose(self.start + self.duration, self.end):
-            raise ValueError(
-                "Inputs are inconsistent: start + duration does not equal end."
-            )
+        # Check if any value has changed
+        if (self.start, self.duration, self.end) != values:
+            self.start, self.duration, self.end = values
+            # Trigger timing event
+            self.times_changed = True
