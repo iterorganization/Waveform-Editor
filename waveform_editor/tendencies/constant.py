@@ -51,27 +51,28 @@ class ConstantTendency(BaseTendency):
         return 0
 
     @depends(
-        "next_tendency.values_changed",
-        "prev_tendency.values_changed",
+        "prev_tendency.end_value",
         "user_value",
         watch=True,
         on_init=True,
     )
     def _calc_values(self):
-        """Update the constant value. If the `value` keyword is given explicitly by the
-        user, this will be used. Otherwise, if there exists a previous or next tendency,
-        its last value will be chosen. If neither one exists, it is set to the default
-        value."""
+        """Update the actual value. If the `value` keyword is given explicitly by the
+        user, this will be used. Otherwise, if there exists a previous its last value
+        will be chosen. If neither one exists, it is set to the default value."""
         value = 0.0  # default
         if self.user_value is None:
             if self.prev_tendency is not None:
-                value = self.prev_tendency.get_end_value()
-            elif self.next_tendency is not None:
-                value = self.next_tendency.get_start_value()
+                value = self.prev_tendency.end_value
         else:
             value = self.user_value
 
-        if self.value != value:
+        # Update state
+        values_changed = self.value != value
+        if values_changed:
             self.value = value
-            # Trigger values event
-            self.values_changed = True
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=self.user_value is not None,
+        )

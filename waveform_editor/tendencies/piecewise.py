@@ -21,6 +21,7 @@ class PiecewiseLinearTendency(BaseTendency):
         super().__init__(user_start=user_time[0], user_end=user_time[-1])
         self.time = np.array(user_time)
         self.value = np.array(user_value)
+        self.start_value_set = True
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If a time array is provided,

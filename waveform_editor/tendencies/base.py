@@ -44,6 +44,17 @@ class BaseTendency(param.Parameterized):
         default=None, doc="The end time of the tendency, as provided by the user."
     )
 
+    start_value_set = param.Boolean(
+        default=False,
+        doc="""Marks if the value at self.start is determined by user inputs.
+
+        When this is the case, some tendencies (e.g. linear, smooth) can take their end
+        values from the start value of this tendency.
+        """,
+    )
+    start_value = param.Number(doc="Value at self.start")
+    end_value = param.Number(doc="Value at self.end")
+
     time_error = param.ClassSelector(
         class_=Exception,
         default=None,
@@ -62,6 +73,18 @@ class BaseTendency(param.Parameterized):
         self.error = None
         super().__init__(**kwargs)
 
+    def __repr__(self):
+        # Override __repr__ from parametrized to avoid showing way too many details
+        try:
+            settings = ", ".join(
+                f"{name}={value!r}"
+                for name, value in self.param.values().items()
+                if name.startswith("user") or name == "name"
+            )
+        except RuntimeError:
+            settings = "..."
+        return f"{self.__class__.__name__}({settings})"
+
     def set_previous_tendency(self, prev_tendency):
         """Sets the previous tendency as a param.
 
@@ -78,25 +101,30 @@ class BaseTendency(param.Parameterized):
         """
         self.next_tendency = next_tendency
 
+    @depends("values_changed", watch=True)
+    def _calc_start_end_values(self):
+        self.start_value = self.get_start_value()
+        self.end_value = self.get_end_value()
+
     @abstractmethod
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        pass
+        return 0.0
 
     @abstractmethod
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        pass
+        return 0.0
 
     @abstractmethod
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
-        pass
+        return 0.0
 
     @abstractmethod
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
-        pass
+        return 0.0
 
     @abstractmethod
     def generate(self, time) -> tuple[np.ndarray, np.ndarray]:

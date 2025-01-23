@@ -89,6 +89,7 @@ class PeriodicBaseTendency(BaseTendency):
             [0, 1, 0.5, -0.5],  # amplitude - (max - min)/2 = 0
         ]
         num_inputs = sum(1 for var in inputs if var is not None)
+        start_value_set = num_inputs >= 2
 
         # Set defaults if problem is under-determined
         if num_inputs < 2 and inputs[0] is None:
@@ -112,14 +113,19 @@ class PeriodicBaseTendency(BaseTendency):
         else:
             values = solve_with_constraints(inputs, constraint_matrix)
 
-        if (
+        # Update state
+        values_changed = (
             self.frequency != frequency
             or self.phase != phase
             or (self.base, self.amplitude) != values[:2]
-        ):
+        )
+        if values_changed:
             self.frequency = frequency
             self.period = 1.0 / frequency
             self.phase = phase
             self.base, self.amplitude = values[:2]
-            # Trigger values event
-            self.values_changed = True
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=start_value_set,
+        )

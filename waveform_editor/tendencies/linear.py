@@ -64,9 +64,19 @@ class LinearTendency(BaseTendency):
         """Returns the derivative of the tendency at the end."""
         return self.rate
 
+    # Workaround: param doesn't like a @depends on both prev and next tendency
+    _trigger = param.Event()
+
+    @depends("prev_tendency.end_value", watch=True)
+    def _trigger1(self):
+        self._trigger = True
+
+    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    def _trigger2(self):
+        self._trigger = True
+
     @depends(
-        "prev_tendency.values_changed",
-        "next_tendency.values_changed",
+        "_trigger",
         "times_changed",
         "user_from",
         "user_to",
@@ -79,7 +89,6 @@ class LinearTendency(BaseTendency):
         If values are missing, it will infer the values based on previous or next
         tendencies. If there are none, it will use the default values for that
         param."""
-
         inputs = [self.user_from, self.user_rate, self.user_to]
         constraint_matrix = [[1, self.duration, -1]]  # from + duration * rate - end = 0
         num_inputs = sum(1 for var in inputs if var is not None)
@@ -92,13 +101,16 @@ class LinearTendency(BaseTendency):
             else:
                 inputs[0] = self.prev_tendency.get_end_value()
             num_inputs += 1
+            start_value_set = False
+        else:
+            start_value_set = True
 
         if num_inputs < 2 and inputs[2] is None:
-            # To value is not provided, set to start or next start value
-            if self.next_tendency is None:
-                inputs[2] = inputs[0]
-            else:
+            # To value is not provided, set to from_ or next start value
+            if self.next_tendency is not None and self.next_tendency.start_value_set:
                 inputs[2] = self.next_tendency.get_start_value()
+            else:
+                inputs[2] = inputs[0]
             num_inputs += 1
 
         try:
@@ -110,7 +122,12 @@ class LinearTendency(BaseTendency):
             )
             values = (0.0, 0.0, 0.0)
 
-        if (self.from_, self.rate, self.to) != values:
+        # Update state
+        values_changed = (self.from_, self.rate, self.to) != values
+        if values_changed:
             self.from_, self.rate, self.to = values
-            # Trigger values event
-            self.values_changed = True
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=start_value_set,
+        )

@@ -89,9 +89,19 @@ class SmoothTendency(BaseTendency):
             # Trigger values event
             self.values_changed = True
 
+    # Workaround: param doesn't like a @depends on both prev and next tendency
+    _trigger = param.Event()
+
+    @depends("prev_tendency.end_value", watch=True)
+    def _trigger1(self):
+        self._trigger = True
+
+    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    def _trigger2(self):
+        self._trigger = True
+
     @depends(
-        "prev_tendency.values_changed",
-        "next_tendency.values_changed",
+        "_trigger",
         "user_from",
         "user_to",
         watch=True,
@@ -106,12 +116,16 @@ class SmoothTendency(BaseTendency):
         else:
             from_ = self.user_from
         if self.user_to is None:
-            if self.next_tendency is not None:
+            if self.next_tendency is not None and self.next_tendency.start_value_set:
                 to = self.next_tendency.get_start_value()
         else:
             to = self.user_to
 
-        if (self.from_, self.to) != (from_, to):
+        values_changed = (self.from_, self.to) != (from_, to)
+        if values_changed:
             self.from_, self.to = from_, to
-            # Trigger values event
-            self.values_changed = True
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=self.user_from is not None,
+        )
