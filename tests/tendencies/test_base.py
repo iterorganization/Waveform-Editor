@@ -76,3 +76,18 @@ def test_second_base_tendency(
         assert base_tendency.start == approx(expected_start)
         assert base_tendency.duration == approx(expected_duration)
         assert base_tendency.end == approx(expected_end)
+
+
+def test_declarative_assignments():
+    t1 = BaseTendency(user_duration=10)
+    t2 = BaseTendency(user_duration=5)
+    t2.set_previous_tendency(t1)
+
+    assert t1.end == approx(10)
+    assert t2.end == approx(15)
+
+    t1.user_start = 5
+    assert t1.start == approx(5)
+    assert t1.end == approx(15)
+    assert t2.start == approx(15)
+    assert t2.end == approx(20)

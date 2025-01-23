@@ -51,3 +51,14 @@ def test_generate():
     time, values = tendency.generate()
     assert np.all(time == np.linspace(0, 1, 101))
     assert np.allclose(values, 2 + 3 * np.sin(2 * np.pi * time + 1))
+
+
+def test_declarative_assignment():
+    tendency = SineWaveTendency(user_duration=1, user_amplitude=10, user_frequency=1)
+    assert tendency.start_value == approx(0)
+
+    tendency.user_base = 12
+    assert tendency.start_value == approx(12)
+
+    tendency.user_phase = -np.pi / 2
+    assert tendency.start_value == approx(2)

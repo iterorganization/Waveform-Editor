@@ -36,7 +36,7 @@ def test_next_value():
     assert tendency.start == 0
     assert tendency.duration == 1
     assert tendency.end == 1
-    assert tendency.value == 12.34
+    assert tendency.value == 0
     assert tendency.prev_tendency is None
     assert tendency.next_tendency is next_tendency
 
@@ -61,3 +61,20 @@ def test_generate():
 
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([5, 5]))
+
+
+def test_declarative_assignments():
+    t1 = ConstantTendency(user_duration=1)
+    t2 = ConstantTendency(user_duration=1)
+    t2.set_previous_tendency(t1)
+
+    assert t1.value == 0
+    assert t2.value == 0
+
+    t1.user_value = 5
+    assert t1.value == 5
+    assert t2.value == 5
+
+    t2.user_value = 6
+    assert t1.value == 5
+    assert t2.value == 6

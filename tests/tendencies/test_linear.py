@@ -147,3 +147,24 @@ def test_generate():
     time, values = tendency.generate()
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([1, 10]))
+
+
+def test_declarative_assignments():
+    t1 = LinearTendency(user_duration=1)
+    t2 = LinearTendency(user_duration=1)
+    t3 = LinearTendency(user_duration=1)
+    t1.set_next_tendency(t2)
+    t2.set_next_tendency(t3)
+    t3.set_previous_tendency(t2)
+    t2.set_previous_tendency(t1)
+
+    assert t1.from_ == t1.to == t2.from_ == t2.to == t3.from_ == t3.to == 0
+
+    t1.user_to = 1
+    assert t1.from_ == 0
+    assert t1.to == t2.from_ == t2.to == t3.from_ == t3.to == 1
+
+    t3.user_from = 2
+    assert t1.from_ == 0
+    assert t1.to == t2.from_ == 1
+    assert t2.to == t3.from_ == t3.to == 2
