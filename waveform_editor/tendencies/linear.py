@@ -90,7 +90,8 @@ class LinearTendency(BaseTendency):
         tendencies. If there are none, it will use the default values for that
         param."""
         inputs = [self.user_from, self.user_rate, self.user_to]
-        constraint_matrix = [[1, self.duration, -1]]  # from + duration * rate - end = 0
+        duration = self.duration or 1e-300  # Prevent division by zero
+        constraint_matrix = [[1, duration, -1]]  # from + duration * rate - end = 0
         num_inputs = sum(1 for var in inputs if var is not None)
 
         # Set defaults if problem is under-determined

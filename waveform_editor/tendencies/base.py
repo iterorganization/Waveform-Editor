@@ -190,3 +190,8 @@ class BaseTendency(param.Parameterized):
             self.start, self.duration, self.end = values
             # Trigger timing event
             self.times_changed = True
+
+        if self.duration <= 0:
+            self.time_error = ValueError(
+                "Tendency end time must be greater than its start time."
+            )
