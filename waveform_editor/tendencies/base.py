@@ -176,14 +176,14 @@ class BaseTendency(param.Parameterized):
             values = solve_with_constraints(inputs, constraint_matrix)
             self.time_error = None
         except InconsistentInputsError:
+            # Set error and make duration = 1:
             self.time_error = ValueError(
                 "Inputs are inconsistent: start + duration != end"
             )
-            values = (
-                0 if self.prev_tendency is None else self.prev_tendency.end,
-                1,
-                self.start + self.duration,
-            )
+            if self.prev_tendency is None:
+                values = (0, 1, 1)
+            else:
+                values = (self.prev_tendency.end, 1, self.prev_tendency.end + 1)
 
         # Check if any value has changed
         if (self.start, self.duration, self.end) != values:
