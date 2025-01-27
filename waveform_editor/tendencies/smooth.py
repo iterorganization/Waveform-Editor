@@ -11,39 +11,21 @@ class SmoothTendency(BaseTendency):
     Smooth tendency class for a signal with a cubic spline interpolation.
     """
 
-    from_ = param.Number(
-        default=0.0, doc="The value at the start of the smooth tendency."
-    )
     user_from = param.Number(
-        default=0.0,
+        default=None,
         doc="The value at the start of the smooth tendency, as provided by the user.",
-        allow_None=True,
     )
-
-    to = param.Number(default=1.0, doc="The value at the end of the smooth tendency.")
     user_to = param.Number(
-        default=0.0,
+        default=None,
         doc="The value at the end of the smooth tendency, as provided by the user.",
-        allow_None=True,
     )
 
-    derivative_start = param.Number(
-        default=0.0,
-        doc="The derivative at the start of the smooth tendency.",
-    )
-    derivative_end = param.Number(
-        default=0.0,
-        doc="The derivative at the end of the smooth tendency.",
-    )
-
-    def __init__(self, *, start=None, duration=None, end=None, from_=None, to=None):
-        super().__init__(start, duration, end)
-        self.user_from = from_
-        self.user_to = to
-
-        self._update_from()
-        self._update_to()
-        self._get_derivatives()
+    def __init__(self, **kwargs):
+        self.from_ = 0.0
+        self.to = 0.0
+        self.derivative_start = 0.0
+        self.derivative_end = 0.0
+        super().__init__(**kwargs)
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -85,36 +67,65 @@ class SmoothTendency(BaseTendency):
         """Returns the derivative of the tendency at the end."""
         return self.derivative_end
 
-    @depends("prev_tendency", "next_tendency", watch=True)
-    def _get_derivatives(self):
+    @depends(
+        "prev_tendency.values_changed",
+        "next_tendency.values_changed",
+        watch=True,
+        on_init=True,
+    )
+    def _calc_derivatives(self):
         """Looks for the previous and next tendencies, and gets their derivatives at
         the end and start, respectively. If a neighbouring tendency does not exist,
         the default value will be used instead.
         """
+        d_start = d_end = 0.0
         if self.prev_tendency is not None:
-            self.derivative_start = self.prev_tendency.get_derivative_end()
-
+            d_start = self.prev_tendency.get_derivative_end()
         if self.next_tendency is not None:
-            self.derivative_end = self.next_tendency.get_derivative_start()
+            d_end = self.next_tendency.get_derivative_start()
 
-    @depends("prev_tendency", watch=True)
-    def _update_from(self):
-        """Updates from value. If the `from` keyword is given explicitly by the user,
-        this value will be used. Otherwise, the last value of the previous tendency
-        is chosen. If there is no previous tendency, it is set to the default value."""
+        if (self.derivative_start, self.derivative_end) != (d_start, d_end):
+            self.derivative_start, self.derivative_end = d_start, d_end
+            # Trigger values event
+            self.values_changed = True
+
+    # Workaround: param doesn't like a @depends on both prev and next tendency
+    _trigger = param.Event()
+
+    @depends("prev_tendency.end_value", watch=True)
+    def _trigger1(self):
+        self._trigger = True
+
+    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    def _trigger2(self):
+        self._trigger = True
+
+    @depends(
+        "_trigger",
+        "user_from",
+        "user_to",
+        watch=True,
+        on_init=True,
+    )
+    def _update_from_to(self):
+        """Updates from/to values."""
+        from_ = to = 0.0
         if self.user_from is None:
             if self.prev_tendency is not None:
-                self.from_ = self.prev_tendency.get_end_value()
+                from_ = self.prev_tendency.get_end_value()
         else:
-            self.from_ = self.user_from
-
-    @depends("next_tendency", watch=True)
-    def _update_to(self):
-        """Updates to value. If the `to` keyword is given explicitly by the user,
-        this value will be used. Otherwise, the first value of the next tendency
-        is chosen. If there is no next tendency, it is set to the default value."""
+            from_ = self.user_from
         if self.user_to is None:
-            if self.next_tendency is not None:
-                self.to = self.next_tendency.get_start_value()
+            if self.next_tendency is not None and self.next_tendency.start_value_set:
+                to = self.next_tendency.get_start_value()
         else:
-            self.to = self.user_to
+            to = self.user_to
+
+        values_changed = (self.from_, self.to) != (from_, to)
+        if values_changed:
+            self.from_, self.to = from_, to
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=self.user_from is not None,
+        )

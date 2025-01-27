@@ -7,10 +7,10 @@ from waveform_editor.tendencies.linear import LinearTendency
 
 def test_empty():
     """Test values of empty tendency."""
-    tendency = LinearTendency(start=0, duration=1)
+    tendency = LinearTendency(user_start=0, user_duration=1)
     assert tendency.from_ == 0.0
-    assert tendency.to == 1.0
-    assert tendency.rate == 1.0
+    assert tendency.to == 0.0
+    assert tendency.rate == 0.0
 
 
 @pytest.mark.parametrize(
@@ -27,9 +27,9 @@ def test_empty():
         # Missing 2 values
         (10, None, None, 10, 0, 100, 10, False),
         (10, None, 100, None, 0, 100, 10, False),
-        (10, 0, None, None, 0, 1, 0.1, False),
+        (10, 0, None, None, 0, 0, 0, False),
         # Missing 3 values
-        (10, None, None, None, 0, 1, 0.1, False),
+        (10, None, None, None, 0, 0, 0, False),
         # Invalid combinations
         (10, 0, 100, -5, None, None, None, True),
         (10, 100, 0, 5, None, None, None, True),
@@ -40,11 +40,12 @@ def test_linear_tendency(
     duration, from_, to, rate, expected_from, expected_to, expected_rate, has_error
 ):
     """Test values of filled tendency."""
+    tendency = LinearTendency(
+        user_duration=duration, user_from=from_, user_to=to, user_rate=rate
+    )
     if has_error:
-        with pytest.raises(ValueError):
-            LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
+        assert tendency.value_error is not None
     else:
-        tendency = LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
         assert tendency.duration == duration
         assert tendency.from_ == approx(expected_from)
         assert tendency.to == approx(expected_to)
@@ -65,21 +66,22 @@ def test_linear_tendency(
         # Missing 2 values
         (10, None, None, 10, 5, 105, 10, False),
         (10, None, 100, None, 5, 100, 9.5, False),
-        (10, 0, None, None, 0, 1, 0.1, False),
+        (10, 0, None, None, 0, 0, 0, False),
         # Missing 3 values
-        (10, None, None, None, 5, 1, -0.4, False),
+        (10, None, None, None, 5, 5, 0, False),
     ],
 )
 def test_linear_tendency_with_prev(
     duration, from_, to, rate, expected_from, expected_to, expected_rate, has_error
 ):
     """Test values of tendency that has a previous tendency."""
-    prev_tendency = LinearTendency(duration=10, from_=1, to=5)
+    prev_tendency = LinearTendency(user_duration=10, user_from=1, user_to=5)
+    tendency = LinearTendency(
+        user_duration=duration, user_from=from_, user_to=to, user_rate=rate
+    )
     if has_error:
-        with pytest.raises(ValueError):
-            LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
+        assert tendency.value_error is not None
     else:
-        tendency = LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
         tendency.set_previous_tendency(prev_tendency)
         assert tendency.duration == duration
         assert tendency.from_ == approx(expected_from)
@@ -99,7 +101,7 @@ def test_linear_tendency_with_prev(
         (10, 0, None, 10, 0, 100, 10, False),
         (10, None, 100, 10, 0, 100, 10, False),
         # Missing 2 values
-        (10, None, None, 10, -95, 5, 10, False),
+        (10, None, None, 10, 0, 100, 10, False),
         (10, None, 10, None, 0, 10, 1, False),
         (10, -5, None, None, -5, 5, 1, False),
         # Missing 3 values
@@ -110,12 +112,15 @@ def test_linear_tendency_with_next(
     duration, from_, to, rate, expected_from, expected_to, expected_rate, has_error
 ):
     """Test values of tendency that has a next tendency."""
-    next_tendency = LinearTendency(start=10, duration=10, from_=5, to=10)
+    next_tendency = LinearTendency(
+        user_start=10, user_duration=10, user_from=5, user_to=10
+    )
+    tendency = LinearTendency(
+        user_duration=duration, user_from=from_, user_to=to, user_rate=rate
+    )
     if has_error:
-        with pytest.raises(ValueError):
-            LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
+        assert tendency.value_error is not None
     else:
-        tendency = LinearTendency(duration=duration, from_=from_, to=to, rate=rate)
         tendency.set_next_tendency(next_tendency)
         assert tendency.duration == duration
         assert tendency.from_ == approx(expected_from)
@@ -127,7 +132,7 @@ def test_start_and_end():
     """
     Test the start and end values and their derivatives
     """
-    tendency = LinearTendency(duration=1, from_=1, rate=5)
+    tendency = LinearTendency(user_duration=1, user_from=1, user_rate=5)
     assert tendency.get_start_value() == 1
     assert tendency.get_end_value() == 6
     assert tendency.get_derivative_start() == 5
@@ -138,7 +143,28 @@ def test_generate():
     """
     Check the generated values.
     """
-    tendency = LinearTendency(start=0, duration=1, from_=1, to=10)
+    tendency = LinearTendency(user_start=0, user_duration=1, user_from=1, user_to=10)
     time, values = tendency.generate()
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([1, 10]))
+
+
+def test_declarative_assignments():
+    t1 = LinearTendency(user_duration=1)
+    t2 = LinearTendency(user_duration=1)
+    t3 = LinearTendency(user_duration=1)
+    t1.set_next_tendency(t2)
+    t2.set_next_tendency(t3)
+    t3.set_previous_tendency(t2)
+    t2.set_previous_tendency(t1)
+
+    assert t1.from_ == t1.to == t2.from_ == t2.to == t3.from_ == t3.to == 0
+
+    t1.user_to = 1
+    assert t1.from_ == 0
+    assert t1.to == t2.from_ == t2.to == t3.from_ == t3.to == 1
+
+    t3.user_from = 2
+    assert t1.from_ == 0
+    assert t1.to == t2.from_ == 1
+    assert t2.to == t3.from_ == t3.to == 2

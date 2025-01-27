@@ -112,13 +112,12 @@ class YamlParser:
         """
         tendency_type = entry.pop("type")
 
-        # Rewrite key `from` to `from_`, as `from` is an illegal variable name
-        if "from" in entry:
-            entry["from_"] = entry.pop("from")
+        # Rewrite keys
+        params = {f"user_{key}": value for key, value in entry.items()}
 
         if tendency_type in tendency_map:
             tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**entry)
+            tendency = tendency_class(**params)
             return tendency
         else:
-            raise NotImplementedError(f"Unsupported tendency type: {type}")
+            raise NotImplementedError(f"Unsupported tendency type: {tendency_type}")
