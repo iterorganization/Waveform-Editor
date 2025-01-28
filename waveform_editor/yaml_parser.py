@@ -1,45 +1,19 @@
 import holoviews as hv
 import yaml
 
-from waveform_editor.tendencies.constant import ConstantTendency
-from waveform_editor.tendencies.linear import LinearTendency
-from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
-from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
-from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
-from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
-from waveform_editor.tendencies.smooth import SmoothTendency
-
-tendency_map = {
-    "linear": LinearTendency,
-    "sine-wave": SineWaveTendency,
-    "sine": SineWaveTendency,
-    "triangle-wave": TriangleWaveTendency,
-    "triangle": TriangleWaveTendency,
-    "sawtooth-wave": SawtoothWaveTendency,
-    "sawtooth": SawtoothWaveTendency,
-    "square-wave": SquareWaveTendency,
-    "square": SquareWaveTendency,
-    "constant": ConstantTendency,
-    "smooth": SmoothTendency,
-    "piecewise": PiecewiseLinearTendency,
-}
+from waveform_editor.waveform import Waveform
 
 
 class YamlParser:
-    def __init__(self):
-        self.tendencies = []
-
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
 
         Args:
             file_path: File path of the YAML file.
         """
-        self.tendencies = []
         with open(file_path) as file:
             waveform_yaml = yaml.load(file, yaml.SafeLoader)
-        self._process_waveform_yaml(waveform_yaml)
+        self.waveform = Waveform(waveform_yaml)
 
     def parse_waveforms_from_string(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
@@ -47,9 +21,8 @@ class YamlParser:
         Args:
             yaml_str: YAML content as a string.
         """
-        self.tendencies = []
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
-        self._process_waveform_yaml(waveform_yaml)
+        self.waveform = Waveform(waveform_yaml)
 
     def plot_tendencies(self, plot_time_points=False):
         """
@@ -61,13 +34,7 @@ class YamlParser:
         Returns:
             A Holoviews Overlay object.
         """
-        times = []
-        values = []
-
-        for tendency in self.tendencies:
-            time, value = tendency.generate()
-            times.extend(time)
-            values.extend(value)
+        times, values = self.waveform.generate()
 
         overlay = hv.Overlay()
 
@@ -87,37 +54,3 @@ class YamlParser:
             overlay *= points
 
         return overlay.opts(title="Waveform", width=800, height=400)
-
-    def _process_waveform_yaml(self, waveform_yaml):
-        """Processes the waveform YAML and populates the tendencies list.
-
-        Args:
-            waveform_yaml: Parsed YAML data.
-        """
-        for entry in waveform_yaml.get("waveform", []):
-            tendency = self._handle_tendency(entry)
-            self.tendencies.append(tendency)
-
-        for i in range(len(self.tendencies)):
-            if i < len(self.tendencies) - 1:
-                self.tendencies[i].set_next_tendency(self.tendencies[i + 1])
-            if i > 0:
-                self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
-
-    def _handle_tendency(self, entry):
-        """Creates a tendency instance based on the entry in the YAML file.
-
-        Args:
-            entry: Entry in the YAML file.
-        """
-        tendency_type = entry.pop("type")
-
-        # Rewrite keys
-        params = {f"user_{key}": value for key, value in entry.items()}
-
-        if tendency_type in tendency_map:
-            tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**params)
-            return tendency
-        else:
-            raise NotImplementedError(f"Unsupported tendency type: {tendency_type}")
