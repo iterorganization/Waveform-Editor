@@ -6,6 +6,7 @@ from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
 tendency_map = {
@@ -21,13 +22,16 @@ tendency_map = {
     "constant": ConstantTendency,
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
+    "repeat": RepeatTendency,
 }
 
 
 class Waveform(BaseTendency):
-    def __init__(self, waveform_yaml):
+    def __init__(self, waveform_yaml, **kwargs):
         self.tendencies = []
         self._process_waveform_yaml(waveform_yaml)
+        self.calc_length()
+        super().__init__(**kwargs)
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -41,20 +45,28 @@ class Waveform(BaseTendency):
         """
         times = []
         values = []
+        if time is None:
+            for tendency in self.tendencies:
+                time, value = tendency.generate()
+                times.extend(time)
+                values.extend(value)
+        else:
+            for tendency in self.tendencies:
+                relevant_times = [t for t in time if tendency.start <= t < tendency.end]
+                if relevant_times:
+                    time_segment, value_segment = tendency.generate(relevant_times)
+                    times.extend(time_segment)
+                    values.extend(value_segment)
 
-        for tendency in self.tendencies:
-            time, value = tendency.generate()
-            times.extend(time)
-            values.extend(value)
         return times, values
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.tendencies[0].generate(self.start)
+        return self.generate(self.start)
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        return self.tendencies[-1].generate(self.end)
+        return self.generate(self.end)
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
@@ -65,6 +77,12 @@ class Waveform(BaseTendency):
         """Returns the derivative of the tendency at the end."""
         # TODO:
         return 0
+
+    def calc_length(self):
+        self.tendency_length = 0
+        for tendency in self.tendencies:
+            self.tendency_length += tendency.duration
+        return self.tendency_length
 
     def _process_waveform_yaml(self, waveform_yaml):
         """Processes the waveform YAML and populates the tendencies list.

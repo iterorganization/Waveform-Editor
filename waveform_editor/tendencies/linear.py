@@ -45,7 +45,11 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        values = np.linspace(self.from_, self.to, len(time))
+        time = np.array(time)
+
+        normalized_time = (time - self.start) / (self.end - self.start)
+
+        values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
 
     def get_start_value(self) -> float:
