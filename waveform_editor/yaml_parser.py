@@ -22,7 +22,8 @@ class YamlParser:
             yaml_str: YAML content as a string.
         """
         waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
-        self.waveform = Waveform(waveform_yaml)
+        waveform = waveform_yaml.get("waveform", [])
+        self.waveform = Waveform(waveform)
 
     def plot_tendencies(self, plot_time_points=False):
         """

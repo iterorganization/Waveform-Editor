@@ -27,9 +27,9 @@ tendency_map = {
 
 
 class Waveform(BaseTendency):
-    def __init__(self, waveform_yaml, **kwargs):
+    def __init__(self, waveform, **kwargs):
         self.tendencies = []
-        self._process_waveform_yaml(waveform_yaml)
+        self._process_waveform(waveform)
         self.calc_length()
         super().__init__(**kwargs)
 
@@ -84,13 +84,13 @@ class Waveform(BaseTendency):
             self.tendency_length += tendency.duration
         return self.tendency_length
 
-    def _process_waveform_yaml(self, waveform_yaml):
+    def _process_waveform(self, waveform):
         """Processes the waveform YAML and populates the tendencies list.
 
         Args:
             waveform_yaml: Parsed YAML data.
         """
-        for entry in waveform_yaml.get("waveform", []):
+        for entry in waveform:
             tendency = self._handle_tendency(entry)
             self.tendencies.append(tendency)
 

@@ -10,10 +10,9 @@ class RepeatTendency(BaseTendency):
 
     def __init__(self, **kwargs):
         waveform_dict = kwargs.pop("user_waveform")
+
         from waveform_editor.waveform import Waveform
 
-        # Waveform class expects waveform key
-        waveform_dict = {"waveform": waveform_dict}
         self.waveform = Waveform(waveform_dict)
         super().__init__(**kwargs)
 
