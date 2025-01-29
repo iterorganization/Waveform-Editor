@@ -52,8 +52,9 @@ class Waveform(BaseTendency):
                 values.extend(value)
         else:
             for tendency in self.tendencies:
-                relevant_times = [t for t in time if tendency.start <= t < tendency.end]
-                if relevant_times:
+                relevant_times = time[(tendency.start <= time) & (time < tendency.end)]
+
+                if relevant_times.size > 0:
                     time_segment, value_segment = tendency.generate(relevant_times)
                     times.extend(time_segment)
                     values.extend(value_segment)

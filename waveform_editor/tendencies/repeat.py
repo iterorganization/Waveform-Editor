@@ -18,7 +18,8 @@ class RepeatTendency(BaseTendency):
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
-        a constant line containing the start and end points will be generated.
+        a linearly spaced time array will be generated from the start to the end of the
+        tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -40,7 +41,7 @@ class RepeatTendency(BaseTendency):
         for t in times:
             relative_time = (t - self.start) % length
 
-            _, value = self.waveform.generate([relative_time])
+            _, value = self.waveform.generate(np.array([relative_time]))
 
             values.append(value[0])
 
@@ -50,16 +51,18 @@ class RepeatTendency(BaseTendency):
 
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
-        return self.waveform.get_start_value()
+        return self.generate(self.start)
 
     def get_end_value(self) -> float:
         """Returns the value of the tendency at the end."""
-        return self.waveform.get_end_value()
+        return self.generate(self.end)
 
     def get_derivative_start(self) -> float:
         """Returns the derivative of the tendency at the start."""
-        return self.waveform.get_derivative_start()
+        # TODO:
+        return 0
 
     def get_derivative_end(self) -> float:
         """Returns the derivative of the tendency at the end."""
-        return self.waveform.get_derivative_end()
+        # TODO:
+        return 0
