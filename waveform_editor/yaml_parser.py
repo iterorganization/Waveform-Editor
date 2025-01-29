@@ -13,7 +13,8 @@ class YamlParser:
         """
         with open(file_path) as file:
             waveform_yaml = yaml.load(file, yaml.SafeLoader)
-        self.waveform = Waveform(waveform_yaml)
+        waveform = waveform_yaml.get("waveform", [])
+        self.waveform = Waveform(waveform)
 
     def parse_waveforms_from_string(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
