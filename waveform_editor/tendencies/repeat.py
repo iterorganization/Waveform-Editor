@@ -11,6 +11,13 @@ class RepeatTendency(BaseTendency):
     def __init__(self, **kwargs):
         waveform_dict = kwargs.pop("user_waveform")
 
+        for item in waveform_dict:
+            if item.get("type") == "piecewise":
+                self.value_error = ValueError(
+                    "Piecewise tendencies are currently not supported inside of a "
+                    "repeated tendency."
+                )
+
         from waveform_editor.waveform import Waveform
 
         self.waveform = Waveform(waveform_dict)
