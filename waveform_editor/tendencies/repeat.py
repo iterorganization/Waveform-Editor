@@ -49,6 +49,17 @@ class RepeatTendency(BaseTendency):
         values = np.array(values)
         return times, values
 
+    # FIXME: Implicitly linking start and end values does not work yet. For example:
+    # waveform:
+    # - {type: linear, from: 2, duration: 2}
+    # - type: repeat
+    #   duration: 8
+    #   waveform:
+    #   - {type: linear, from: 1, to: 2, duration: 1}
+    #   - {type: constant, value: 1, duration: 0.5}
+    #   - {type: sine-wave, base: 1, amplitude: -1, frequency: 0.25, duration: 1}
+    # - {type: linear, to: 2, duration: 2}
+
     def get_start_value(self) -> float:
         """Returns the value of the tendency at the start."""
         return self.generate(self.start)
