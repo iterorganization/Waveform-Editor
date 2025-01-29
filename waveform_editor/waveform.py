@@ -1,3 +1,5 @@
+import numpy as np
+
 from waveform_editor.tendencies.base import BaseTendency
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
@@ -59,6 +61,8 @@ class Waveform(BaseTendency):
                     times.extend(time_segment)
                     values.extend(value_segment)
 
+        times = np.array(times)
+        values = np.array(values)
         return times, values
 
     def get_start_value(self) -> float:

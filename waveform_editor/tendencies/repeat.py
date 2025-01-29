@@ -42,6 +42,8 @@ class RepeatTendency(BaseTendency):
             sampling_rate = 100
             num_steps = int(self.duration * sampling_rate) + 1
             times = np.linspace(float(self.start), float(self.end), num_steps)
+        else:
+            times.extend(time)
 
         length = self.waveform.calc_length()
 
