@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 from param import depends
@@ -19,8 +21,10 @@ class ConstantTendency(BaseTendency):
         self.value = 0.0
         super().__init__(**kwargs)
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the values onf the provided time array. If no time array is provided,
         a constant line containing the start and end points will be generated.
 
         Args:
@@ -34,21 +38,22 @@ class ConstantTendency(BaseTendency):
         values = self.value * np.ones(len(time))
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.value
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the derivative values on the provided time array. If no time array is
+        provided, a constant line containing the start and end points will be returned.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.value
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return 0
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return 0
+        Returns:
+            Tuple containing the time and its tendency values.
+        """
+        if time is None:
+            time = np.array([self.start, self.end])
+        derivatives = np.zeros(len(time))
+        return time, derivatives
 
     @depends(
         "prev_tendency.end_value",

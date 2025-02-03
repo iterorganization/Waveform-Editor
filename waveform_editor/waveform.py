@@ -33,7 +33,7 @@ class Waveform:
         self._process_waveform(waveform)
         self.calc_length()
 
-    def generate(self, time=None):
+    def get_value(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
         a constant line containing the start and end points will be generated.
 
@@ -47,7 +47,7 @@ class Waveform:
             times = []
             values = []
             for tendency in self.tendencies:
-                time, value = tendency.generate()
+                time, value = tendency.get_value()
                 times.extend(time)
                 values.extend(value)
             times = np.array(times)
@@ -60,29 +60,11 @@ class Waveform:
 
                 if np.any(mask):
                     relevant_times = times[mask]
-                    _, generated_values = tendency.generate(relevant_times)
+                    _, generated_values = tendency.get_value(relevant_times)
 
                     values[mask] = generated_values
 
         return times, values
-
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.generate(self.start)
-
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.generate(self.end)
-
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        # TODO:
-        return 0
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        # TODO:
-        return 0
 
     def calc_length(self):
         """Returns the length of the waveform."""

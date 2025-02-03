@@ -36,7 +36,7 @@ class YamlParser:
         Returns:
             A Holoviews Overlay object.
         """
-        times, values = self.waveform.generate()
+        times, values = self.waveform.get_value()
 
         overlay = hv.Overlay()
 

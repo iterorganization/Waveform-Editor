@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 from param import depends
@@ -33,8 +35,10 @@ class LinearTendency(BaseTendency):
         self.rate = 0.0
         super().__init__(**kwargs)
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the values onf the provided time array. If no time array is provided,
         a line containing the start and end points will be generated.
 
         Args:
@@ -45,28 +49,26 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        time = np.array(time)
-
         normalized_time = (time - self.start) / (self.end - self.start)
-
         values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.from_
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the derivative values on the provided time array. If no time array is
+        a constant line containing the start and end points will be generated.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.to
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return self.rate
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self.rate
+        Returns:
+            Tuple containing the time and its tendency values.
+        """
+        if time is None:
+            time = np.array([self.start, self.end])
+        derivatives = self.rate * np.ones(len(time))
+        return time, derivatives
 
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()
@@ -104,7 +106,7 @@ class LinearTendency(BaseTendency):
             if self.prev_tendency is None:
                 inputs[0] = 0
             else:
-                inputs[0] = self.prev_tendency.get_end_value()
+                inputs[0] = self.prev_tendency.get_value(self.start)
             num_inputs += 1
             start_value_set = False
         else:
@@ -113,7 +115,7 @@ class LinearTendency(BaseTendency):
         if num_inputs < 2 and inputs[2] is None:
             # To value is not provided, set to from_ or next start value
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                inputs[2] = self.next_tendency.get_start_value()
+                inputs[2] = self.next_tendency.get_value(self.end)
             else:
                 inputs[2] = inputs[0]
             num_inputs += 1

@@ -14,9 +14,7 @@ code_editor = pn.widgets.CodeEditor(
     value="""\
 waveform:
 - {type: linear, from: 0, to: 8, duration: 5}
-- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
 - {type: constant, value: 8, duration: 3}
-- {type: smooth, from: 8, to: 0, duration: 2}
 """,
     width=600,
     height=1200,
@@ -38,7 +36,7 @@ def update_plot(value):
     yaml_parser.tendencies = []
     yaml_parser.parse_waveforms_from_string(value)
 
-    return yaml_parser.plot_tendencies()
+    return yaml_parser.plot_tendencies(True)
 
 
 hv_dynamic_map = hv.DynamicMap(pn.bind(update_plot, value=code_editor.param.value))

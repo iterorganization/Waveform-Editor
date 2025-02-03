@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Optional
 
 import numpy as np
 import param
@@ -55,6 +56,9 @@ class BaseTendency(param.Parameterized):
     start_value = param.Number(doc="Value at self.start")
     end_value = param.Number(doc="Value at self.end")
 
+    start_derivative = param.Number(doc="Derivative at self.start")
+    end_derivative = param.Number(doc="Derivative at self.end")
+
     time_error = param.ClassSelector(
         class_=Exception,
         default=None,
@@ -103,41 +107,24 @@ class BaseTendency(param.Parameterized):
 
     @depends("values_changed", watch=True)
     def _calc_start_end_values(self):
-        self.start_value = self.get_start_value()
-        self.end_value = self.get_end_value()
+        _, self.start_value = self.get_value(np.array([self.start]))
+        _, self.start_derivative = self.get_derivative(np.array([self.start]))
+
+        _, self.end_value = self.get_value(np.array([self.end]))
+        _, self.end_derivative = self.get_derivative(np.array([self.end]))
 
     @abstractmethod
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return 0.0
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the values on the provided time array."""
+        pass
 
     @abstractmethod
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return 0.0
-
-    @abstractmethod
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return 0.0
-
-    @abstractmethod
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return 0.0
-
-    @abstractmethod
-    def generate(self, time) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
-
-        Args:
-            time: The time array on which to generate points.
-
-        Returns:
-            Tuple containing the time and its tendency values.
-        """
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the derivative values on the provided time array."""
         pass
 
     @depends(
