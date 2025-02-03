@@ -22,10 +22,8 @@ class RepeatTendency(BaseTendency):
         self.waveform = waveform.Waveform(waveform_dict)
         super().__init__(**kwargs)
         if self.waveform.tendencies[0].start != 0:
-            print(
-                "Warning: The starting point of the repeated tendency is not set to 0. "
-                "As a result, part of the repeated tendency will be missing "
-                "and set to zero."
+            self.value_error = ValueError(
+                "The starting point of the first repeated tendency is not set to 0."
             )
 
     def generate(self, time=None):
@@ -40,30 +38,36 @@ class RepeatTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
 
-        times = []
-        values = []
-
-        if time is None:
-            sampling_rate = 100
-            num_steps = int(self.duration * sampling_rate) + 1
-            times = np.linspace(float(self.start), float(self.end), num_steps)
-        else:
-            times.extend(time)
-
         length = self.waveform.calc_length()
+        if time is None:
+            times, values = self.waveform.generate()
+            repeat = int(np.ceil(self.duration / length))
+            repetition_array = np.arange(repeat) * length
+            times = (times + repetition_array[:, np.newaxis]).flatten() + self.start
+            values = np.tile(values, repeat)
 
-        for t in times:
-            relative_time = (t - self.start) % length
+            # cut off everything after self.end
+            assert times[-1] >= self.end
+            cut_index = np.argmax(times >= self.end)
+            times = times[: cut_index + 1]
 
-            _, value = self.waveform.generate(np.array([relative_time]))
+            values = values[: cut_index + 1]
+            if times[-1] != self.end:
+                times[-1] = self.end
+                _, end_value = self.waveform.generate((self.end - self.start) % length)
 
-            if value.size == 0:
-                values.append(0)
-            else:
-                values.append(value[0])
+                # If there are gaps in the repeated waveform, it might try to generate
+                # a value at a time where there is no tendency. In this case, the value
+                # is set to 0.
+                if end_value.size == 0:
+                    values[-1] = 0
+                else:
+                    values[-1] = end_value
+        else:
+            times = np.atleast_1d(time)
+            relative_times = (times - self.start) % length
+            _, values = self.waveform.generate(relative_times)
 
-        times = np.array(times)
-        values = np.array(values)
         return times, values
 
     # FIXME: Implicitly linking start and end values does not work yet. For example:

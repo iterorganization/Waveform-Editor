@@ -43,25 +43,27 @@ class Waveform:
         Returns:
             Tuple containing the time and its tendency values.
         """
-        times = []
-        values = []
         if time is None:
+            times = []
+            values = []
             for tendency in self.tendencies:
                 time, value = tendency.generate()
                 times.extend(time)
                 values.extend(value)
+            times = np.array(times)
+            values = np.array(values)
         else:
+            times = np.atleast_1d(time)
+            values = np.zeros_like(times, dtype=float)
             for tendency in self.tendencies:
-                time = np.atleast_1d(time)
-                relevant_times = time[(tendency.start <= time) & (time < tendency.end)]
+                mask = (times >= tendency.start) & (times <= tendency.end)
 
-                if relevant_times.size > 0:
-                    time_segment, value_segment = tendency.generate(relevant_times)
-                    times.extend(time_segment)
-                    values.extend(value_segment)
+                if np.any(mask):
+                    relevant_times = times[mask]
+                    _, generated_values = tendency.generate(relevant_times)
 
-        times = np.array(times)
-        values = np.array(values)
+                    values[mask] = generated_values
+
         return times, values
 
     def get_start_value(self) -> float:
