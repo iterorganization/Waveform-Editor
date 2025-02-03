@@ -28,12 +28,11 @@ tendency_map = {
 }
 
 
-class Waveform(BaseTendency):
-    def __init__(self, waveform, **kwargs):
+class Waveform:
+    def __init__(self, waveform):
         self.tendencies = []
         self._process_waveform(waveform)
         self.calc_length()
-        super().__init__(**kwargs)
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -54,6 +53,7 @@ class Waveform(BaseTendency):
                 values.extend(value)
         else:
             for tendency in self.tendencies:
+                time = np.atleast_1d(time)
                 relevant_times = time[(tendency.start <= time) & (time < tendency.end)]
 
                 if relevant_times.size > 0:
