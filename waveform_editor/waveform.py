@@ -1,6 +1,5 @@
 import numpy as np
 
-from waveform_editor.tendencies.base import BaseTendency
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency

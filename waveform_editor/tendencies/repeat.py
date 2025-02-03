@@ -1,5 +1,6 @@
 import numpy as np
 
+from waveform_editor import waveform
 from waveform_editor.tendencies.base import BaseTendency
 
 
@@ -18,9 +19,7 @@ class RepeatTendency(BaseTendency):
                     "repeated tendency."
                 )
 
-        from waveform_editor.waveform import Waveform
-
-        self.waveform = Waveform(waveform_dict)
+        self.waveform = waveform.Waveform(waveform_dict)
         super().__init__(**kwargs)
         if self.waveform.tendencies[0].start != 0:
             print(
