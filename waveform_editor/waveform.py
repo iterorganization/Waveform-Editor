@@ -99,11 +99,9 @@ class Waveform:
             tendency = self._handle_tendency(entry)
             self.tendencies.append(tendency)
 
-        for i in range(len(self.tendencies)):
-            if i < len(self.tendencies) - 1:
-                self.tendencies[i].set_next_tendency(self.tendencies[i + 1])
-            if i > 0:
-                self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
+        for i in range(1, len(self.tendencies)):
+            self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
+            self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.
