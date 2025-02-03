@@ -22,6 +22,12 @@ class RepeatTendency(BaseTendency):
 
         self.waveform = Waveform(waveform_dict)
         super().__init__(**kwargs)
+        if self.waveform.tendencies[0].start != 0:
+            print(
+                "Warning: The starting point of the repeated tendency is not set to 0. "
+                "As a result, part of the repeated tendency will be missing "
+                "and set to zero."
+            )
 
     def generate(self, time=None):
         """Generate time and values based on the tendency. If no time array is provided,
@@ -52,7 +58,10 @@ class RepeatTendency(BaseTendency):
 
             _, value = self.waveform.generate(np.array([relative_time]))
 
-            values.append(value[0])
+            if value.size == 0:
+                values.append(0)
+            else:
+                values.append(value[0])
 
         times = np.array(times)
         values = np.array(values)

@@ -84,10 +84,8 @@ class Waveform:
         return 0
 
     def calc_length(self):
-        self.tendency_length = 0
-        for tendency in self.tendencies:
-            self.tendency_length += tendency.duration
-        return self.tendency_length
+        """Returns the length of the waveform."""
+        return self.tendencies[-1].end - self.tendencies[0].start
 
     def _process_waveform(self, waveform):
         """Processes the waveform YAML and populates the tendencies list.
