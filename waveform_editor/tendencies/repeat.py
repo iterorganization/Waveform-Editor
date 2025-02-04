@@ -1,6 +1,5 @@
 import numpy as np
 
-from waveform_editor import waveform
 from waveform_editor.tendencies.base import BaseTendency
 
 
@@ -10,6 +9,9 @@ class RepeatTendency(BaseTendency):
     """
 
     def __init__(self, **kwargs):
+        if "user_waveform" not in kwargs:
+            self.value_error = ValueError("A repeated tendency must contain a waveform")
+            return
         waveform_dict = kwargs.pop("user_waveform")
 
         for item in waveform_dict:
@@ -19,7 +21,9 @@ class RepeatTendency(BaseTendency):
                     "repeated tendency."
                 )
 
-        self.waveform = waveform.Waveform(waveform_dict)
+        from waveform_editor.waveform import Waveform
+
+        self.waveform = Waveform(waveform_dict)
         super().__init__(**kwargs)
         if self.waveform.tendencies[0].start != 0:
             self.value_error = ValueError(
