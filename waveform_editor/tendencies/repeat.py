@@ -54,15 +54,7 @@ class RepeatTendency(BaseTendency):
             values = values[: cut_index + 1]
             if times[-1] != self.end:
                 times[-1] = self.end
-                _, end_value = self.waveform.generate((self.end - self.start) % length)
-
-                # If there are gaps in the repeated waveform, it might try to generate
-                # a value at a time where there is no tendency. In this case, the value
-                # is set to 0.
-                if end_value.size == 0:
-                    values[-1] = 0
-                else:
-                    values[-1] = end_value
+                _, values[-1] = self.waveform.generate((self.end - self.start) % length)
         else:
             times = np.atleast_1d(time)
             relative_times = (times - self.start) % length
