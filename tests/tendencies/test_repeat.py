@@ -1,0 +1,94 @@
+import numpy as np
+import pytest
+from pytest import approx
+
+from waveform_editor.tendencies.constant import ConstantTendency
+from waveform_editor.tendencies.linear import LinearTendency
+from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.repeat import RepeatTendency
+
+
+@pytest.fixture
+def repeat_waveform():
+    return {
+        "user_duration": 8,
+        "user_waveform": [
+            {"type": "linear", "from": 1, "to": 2, "duration": 1},
+            {"type": "constant", "value": 2, "duration": 0.5},
+            {
+                "type": "sine-wave",
+                "base": 2,
+                "amplitude": -1,
+                "frequency": 0.25,
+                "duration": 1,
+            },
+        ],
+    }
+
+
+def test_zero_start(repeat_waveform):
+    """Test if zero start does not raise an error."""
+    repeat_waveform["user_waveform"][0]["start"] = 0
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    assert repeat_tendency.value_error is None
+
+
+def test_one_start(repeat_waveform):
+    """Test if non-zero start raises an error."""
+    repeat_waveform["user_waveform"][0]["start"] = 1
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    assert isinstance(repeat_tendency.value_error, ValueError)
+
+
+def test_empty():
+    """Test if ill-defined tendency raises an error."""
+    repeat_tendency = RepeatTendency()
+    assert isinstance(repeat_tendency.value_error, ValueError)
+
+    repeat_tendency = RepeatTendency(user_duration=8)
+    assert isinstance(repeat_tendency.value_error, ValueError)
+
+
+def check_values_at_times(target_times, times, values, expected_value):
+    """Helper function to check values at specific times."""
+    for target_time in target_times:
+        closest_index = min(
+            range(len(times)), key=lambda i: abs(times[i] - target_time)
+        )
+        closest_value = values[closest_index]
+        assert closest_value == approx(expected_value)
+
+
+def test_repeated_values(repeat_waveform):
+    """Test if generated values are correct."""
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    times = np.linspace(0, 8, 17)
+    _, values = repeat_tendency.generate(times)
+    check_values_at_times([0, 2.5, 5, 7.5], times, values, 1)
+    check_values_at_times([0.5, 3, 5.5, 8], times, values, 1.5)
+    check_values_at_times([1, 3.5, 6], times, values, 2)
+    check_values_at_times([1.5, 4, 6.5], times, values, 2)
+    check_values_at_times([2.0, 4.5, 7], times, values, 2 - np.sin(np.pi / 4))
+
+
+def test_filled(repeat_waveform):
+    """Test if tendencies in repeated waveform are filled correctly."""
+
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    assert repeat_tendency.value_error is None
+    tendencies = repeat_tendency.waveform.tendencies
+    assert isinstance(tendencies[0], LinearTendency)
+    assert tendencies[0].start == 0
+    assert tendencies[0].end == 1
+    assert tendencies[0].from_ == 1
+    assert tendencies[0].to == 2
+    assert isinstance(tendencies[1], ConstantTendency)
+    assert tendencies[1].start == 1
+    assert tendencies[1].end == 1.5
+    assert tendencies[1].value == 2
+    assert isinstance(tendencies[2], SineWaveTendency)
+    assert tendencies[2].start == 1.5
+    assert tendencies[2].end == 2.5
+    assert tendencies[2].base == 2
+    assert tendencies[2].amplitude == -1
+    assert tendencies[2].frequency == 0.25

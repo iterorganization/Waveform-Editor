@@ -1,3 +1,5 @@
+from pytest import approx
+
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -13,66 +15,66 @@ def test_yaml_parser_from_string():
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_parser = YamlParser()
         yaml_parser.parse_waveforms_from_string(file.read())
-        assert_tendencies_correct(yaml_parser.tendencies)
+        assert_tendencies_correct(yaml_parser.waveform.tendencies)
 
 
 def test_yaml_parser_from_file():
     """Test loading a yaml file as a file."""
     yaml_parser = YamlParser()
     yaml_parser.parse_waveforms_from_file("tests/tendencies/test_yaml/test.yaml")
-    assert_tendencies_correct(yaml_parser.tendencies)
+    assert_tendencies_correct(yaml_parser.waveform.tendencies)
 
 
 def assert_tendencies_correct(tendencies):
     """Assert that the tendencies contain the correct parameters."""
     assert isinstance(tendencies[0], LinearTendency)
-    assert tendencies[0].start == 0
-    assert tendencies[0].end == 5
-    assert tendencies[0].duration == 5
-    assert tendencies[0].from_ == 0
-    assert tendencies[0].to == 8
+    assert tendencies[0].start == approx(0)
+    assert tendencies[0].end == approx(5)
+    assert tendencies[0].duration == approx(5)
+    assert tendencies[0].from_ == approx(0)
+    assert tendencies[0].to == approx(8)
 
     assert isinstance(tendencies[1], SineWaveTendency)
-    assert tendencies[1].start == 5
-    assert tendencies[1].end == 9
-    assert tendencies[1].duration == 4
-    assert tendencies[1].amplitude == 2
-    assert tendencies[1].frequency == 1
-    assert tendencies[1].base == 8
+    assert tendencies[1].start == approx(5)
+    assert tendencies[1].end == approx(9)
+    assert tendencies[1].duration == approx(4)
+    assert tendencies[1].amplitude == approx(2)
+    assert tendencies[1].frequency == approx(1)
+    assert tendencies[1].base == approx(8)
 
     assert isinstance(tendencies[2], SawtoothWaveTendency)
-    assert tendencies[2].start == 9
-    assert tendencies[2].end == 13
-    assert tendencies[2].duration == 4
-    assert tendencies[2].amplitude == 2
-    assert tendencies[2].frequency == 1
-    assert tendencies[2].base == 8
+    assert tendencies[2].start == approx(9)
+    assert tendencies[2].end == approx(13)
+    assert tendencies[2].duration == approx(4)
+    assert tendencies[2].amplitude == approx(2)
+    assert tendencies[2].frequency == approx(1)
+    assert tendencies[2].base == approx(8)
 
     assert isinstance(tendencies[3], SquareWaveTendency)
-    assert tendencies[3].start == 13
-    assert tendencies[3].end == 17
-    assert tendencies[3].duration == 4
-    assert tendencies[3].amplitude == 2
-    assert tendencies[3].frequency == 1
-    assert tendencies[3].base == 8
+    assert tendencies[3].start == approx(13)
+    assert tendencies[3].end == approx(17)
+    assert tendencies[3].duration == approx(4)
+    assert tendencies[3].amplitude == approx(2)
+    assert tendencies[3].frequency == approx(1)
+    assert tendencies[3].base == approx(8)
 
     assert isinstance(tendencies[4], TriangleWaveTendency)
-    assert tendencies[4].start == 17
-    assert tendencies[4].end == 21
-    assert tendencies[4].duration == 4
-    assert tendencies[4].amplitude == 2
-    assert tendencies[4].frequency == 1
-    assert tendencies[4].base == 8
+    assert tendencies[4].start == approx(17)
+    assert tendencies[4].end == approx(21)
+    assert tendencies[4].duration == approx(4)
+    assert tendencies[4].amplitude == approx(2)
+    assert tendencies[4].frequency == approx(1)
+    assert tendencies[4].base == approx(8)
 
     assert isinstance(tendencies[5], ConstantTendency)
-    assert tendencies[5].start == 21
-    assert tendencies[5].end == 24
-    assert tendencies[5].duration == 3
-    assert tendencies[5].value == 8
+    assert tendencies[5].start == approx(21)
+    assert tendencies[5].end == approx(24)
+    assert tendencies[5].duration == approx(3)
+    assert tendencies[5].value == approx(8)
 
     assert isinstance(tendencies[6], SmoothTendency)
-    assert tendencies[6].start == 24
-    assert tendencies[6].end == 26
-    assert tendencies[6].duration == 2
-    assert tendencies[6].from_ == 8
-    assert tendencies[6].to == 0
+    assert tendencies[6].start == approx(24)
+    assert tendencies[6].end == approx(26)
+    assert tendencies[6].duration == approx(2)
+    assert tendencies[6].from_ == approx(8)
+    assert tendencies[6].to == approx(0)
