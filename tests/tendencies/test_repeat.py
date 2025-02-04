@@ -49,7 +49,7 @@ def test_empty():
     assert isinstance(repeat_tendency.value_error, ValueError)
 
 
-def check_values_at_times(target_times, times, values, expected_value, tolerance=0):
+def check_values_at_times(target_times, times, values, expected_value):
     """Helper function to check values at specific times."""
     for target_time in target_times:
         closest_index = min(
