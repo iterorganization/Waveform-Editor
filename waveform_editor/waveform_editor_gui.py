@@ -14,7 +14,9 @@ code_editor = pn.widgets.CodeEditor(
     value="""\
 waveform:
 - {type: linear, from: 0, to: 8, duration: 5}
+- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
 - {type: constant, value: 8, duration: 3}
+- {type: smooth, to: 0, duration: 2}
 """,
     width=600,
     height=1200,
