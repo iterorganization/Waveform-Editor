@@ -24,6 +24,7 @@ class PiecewiseLinearTendency(BaseTendency):
         self.time = np.array(user_time)
         self.value = np.array(user_value)
         self.start_value_set = True
+        self.param.update(values_changed=True)
 
     def get_value(
         self, time: Optional[np.ndarray] = None
