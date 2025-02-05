@@ -32,6 +32,18 @@ class RepeatTendency(BaseTendency):
                 "The starting point of the first repeated tendency is not set to 0."
             )
 
+        # TODO: The start of the first tendency does not link to the end of the last
+        # tendency. This might be nice to implement so you could do for example:
+        # waveform:
+        # - type: repeat
+        #   duration: 10
+        #   waveform:
+        #   - {type: linear, from: 1, to: 2, duration: 1}
+        #   - {type: linear, from: 2, to: 0, duration: 1}
+        #   - {type: smooth, duration: 3}
+        #
+        # Here, the smooth tendency would smoothly interpolate from 0 to 2
+
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -45,32 +57,7 @@ class RepeatTendency(BaseTendency):
         Returns:
             Tuple containing the time and its tendency values.
         """
-
-        length = self.waveform.calc_length()
-        if time is None:
-            times, values = self.waveform.get_value()
-            repeat = int(np.ceil(self.duration / length))
-            repetition_array = np.arange(repeat) * length
-            times = (times + repetition_array[:, np.newaxis]).flatten() + self.start
-            values = np.tile(values, repeat)
-
-            # cut off everything after self.end
-            assert times[-1] >= self.end
-            cut_index = np.argmax(times >= self.end)
-            times = times[: cut_index + 1]
-
-            values = values[: cut_index + 1]
-            if times[-1] != self.end:
-                times[-1] = self.end
-                _, values[-1] = self.waveform.get_value(
-                    (self.end - self.start) % length
-                )
-        else:
-            times = np.atleast_1d(time)
-            relative_times = (times - self.start) % length
-            _, values = self.waveform.get_value(relative_times)
-
-        return times, values
+        return self._get_times_and_values(time, self.waveform.get_value)
 
     def get_derivative(
         self, time: Optional[np.ndarray] = None
@@ -85,10 +72,24 @@ class RepeatTendency(BaseTendency):
         Returns:
             Tuple containing the time and its tendency derivatives.
         """
+        return self._get_times_and_values(time, self.waveform.get_derivative)
 
+    def _get_times_and_values(
+        self, time: Optional[np.ndarray], waveform_method: callable
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Generalized function to generate time and values/derivatives.
+
+        Args:
+            time: The time array on which to generate points.
+            waveform_method: The waveform method to call (either get_value or
+                get_derivative).
+
+        Returns:
+            Tuple containing the time and computed values.
+        """
         length = self.waveform.calc_length()
         if time is None:
-            times, values = self.waveform.get_derivative()
+            times, values = waveform_method()
             repeat = int(np.ceil(self.duration / length))
             repetition_array = np.arange(repeat) * length
             times = (times + repetition_array[:, np.newaxis]).flatten() + self.start
@@ -102,8 +103,8 @@ class RepeatTendency(BaseTendency):
             values = values[: cut_index + 1]
             if times[-1] != self.end:
                 times[-1] = self.end
-                _, values[-1] = self.waveform.get_derivative(
-                    (self.end - self.start) % length
+                _, values[-1] = waveform_method(
+                    np.array([(self.end - self.start) % length])
                 )
         else:
             times = np.atleast_1d(time)

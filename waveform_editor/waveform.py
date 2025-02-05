@@ -33,7 +33,6 @@ class Waveform:
     def __init__(self, waveform):
         self.tendencies = []
         self._process_waveform(waveform)
-        self.calc_length()
 
     def get_value(
         self, time: Optional[np.ndarray] = None
