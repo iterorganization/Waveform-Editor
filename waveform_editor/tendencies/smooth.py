@@ -89,17 +89,6 @@ class SmoothTendency(BaseTendency):
         the end and start, respectively. If a neighbouring tendency does not exist,
         the default value will be used instead.
         """
-        d_start = d_end = 0.0
-        if self.prev_tendency is not None:
-            _, d_start = self.prev_tendency.get_derivative([self.start])
-            d_start = d_start[0]
-        if self.next_tendency is not None:
-            _, d_end = self.next_tendency.get_derivative([self.end])
-            d_end = d_end[0]
-
-            self.start_derivative, self.end_derivative = d_start, d_end
-            # Trigger values event
-            self.values_changed = True
 
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()
@@ -124,7 +113,7 @@ class SmoothTendency(BaseTendency):
         watch=True,
         on_init=True,
     )
-    def _update_from_to(self):
+    def _update_values(self):
         """Updates from/to values."""
         from_ = to = 0.0
         if self.user_from is None:
@@ -140,11 +129,28 @@ class SmoothTendency(BaseTendency):
         else:
             to = self.user_to
 
-        values_changed = (self.from_, self.to) != (from_, to)
+        # Derivatives
+        d_start = d_end = 0.0
+        if self.prev_tendency is not None:
+            _, d_start = self.prev_tendency.get_derivative([self.start])
+            d_start = d_start[0]
+        if self.next_tendency is not None:
+            _, d_end = self.next_tendency.get_derivative([self.end])
+            d_end = d_end[0]
+
+        values_changed = (
+            self.from_,
+            self.to,
+            self.start_derivative,
+            self.end_derivative,
+        ) != (from_, to, d_start, d_end)
+
         if values_changed:
             self.from_, self.to = from_, to
-        # Ensure watchers are called after both values are updated
-        self.param.update(
-            values_changed=values_changed,
-            start_value_set=self.user_from is not None,
-        )
+            self.start_derivative, self.end_derivative = d_start, d_end
+
+            # Ensure watchers are called after both values are updated
+            self.param.update(
+                values_changed=values_changed,
+                start_value_set=self.user_from is not None,
+            )

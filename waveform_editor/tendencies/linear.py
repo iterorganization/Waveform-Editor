@@ -144,8 +144,8 @@ class LinearTendency(BaseTendency):
         values_changed = bool((self.from_, self.rate, self.to) != values)
         if values_changed:
             self.from_, self.rate, self.to = values
-        # Ensure watchers are called after both values are updated
-        self.param.update(
-            values_changed=values_changed,
-            start_value_set=start_value_set,
-        )
+            # Ensure watchers are called after both values are updated
+            self.param.update(
+                values_changed=values_changed,
+                start_value_set=start_value_set,
+            )

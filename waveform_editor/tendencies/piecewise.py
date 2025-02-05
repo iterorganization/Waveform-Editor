@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 
@@ -23,7 +25,9 @@ class PiecewiseLinearTendency(BaseTendency):
         self.value = np.array(user_value)
         self.start_value_set = True
 
-    def generate(self, time=None):
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If a time array is provided,
         the values will be linearly interpolated between the piecewise linear points.
 
@@ -34,7 +38,7 @@ class PiecewiseLinearTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            return self.time, self.value
+            time = self.generate_time()
 
         if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
             raise ValueError(
@@ -45,21 +49,38 @@ class PiecewiseLinearTendency(BaseTendency):
         interpolated_values = np.interp(time, self.time, self.value)
         return time, interpolated_values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.value[0]
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if time is None:
+            time = self.generate_time()
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.value[-1]
+        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
+            raise ValueError(
+                f"The provided time array contains values outside the valid range "
+                f"({self.time[0]}, {self.time[-1]})."
+            )
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return (self.value[1] - self.value[0]) / (self.time[1] - self.time[0])
+        derivatives = np.zeros_like(time)
 
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return (self.value[-2] - self.value[-1]) / (self.time[-2] - self.time[-1])
+        for i, t in enumerate(time):
+            # Find the segment for this particular time
+            if t == self.time[-1]:
+                derivatives[i] = (self.value[-1] - self.value[-2]) / (
+                    self.time[-1] - self.time[-2]
+                )
+            else:
+                # Find the two indices surrounding the time point (t)
+                index = np.searchsorted(self.time, t)
+                dv = self.value[index + 1] - self.value[index]
+                dt = self.time[index + 1] - self.time[index]
+                derivatives[i] = dv / dt
+
+        return time, derivatives
+
+    def generate_time(self) -> np.ndarray:
+        """Generates time array containing start and end of the tendency."""
+        return self.time
 
     def _validate_time_value(self, time, value):
         """Validates the provided time and value lists.
