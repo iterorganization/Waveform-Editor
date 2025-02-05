@@ -1,7 +1,6 @@
 from typing import Optional
 
 import numpy as np
-from param import depends
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
 

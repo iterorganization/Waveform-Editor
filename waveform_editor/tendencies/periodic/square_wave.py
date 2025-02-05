@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
@@ -6,7 +8,9 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class SquareWaveTendency(PeriodicBaseTendency):
     """A tendency representing a square wave."""
 
-    def generate(self, time=None):
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
         a time array will be created from the start to the end of the tendency, where
         time points are defined for every peak and trough in the tendency.
@@ -24,21 +28,17 @@ class SquareWaveTendency(PeriodicBaseTendency):
             values = self._calc_square_wave(time)
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self._calc_square_wave(self.start)
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self._calc_square_wave(self.end)
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return 0
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return 0
+        Returns:
+            numpy array containing the derivatives
+        """
+        derivatives = np.zeros(len(time))
+        return derivatives
 
     def _calc_square_wave(self, time):
         """Calculates the point of the square wave at a given time point or

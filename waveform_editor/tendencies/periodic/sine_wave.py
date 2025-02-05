@@ -37,8 +37,8 @@ class SineWaveTendency(PeriodicBaseTendency):
         Returns:
             numpy array containing the derivatives
         """
-        values = self._calc_derivative(time)
-        return values
+        derivatives = self._calc_derivative(time)
+        return derivatives
 
     def _calc_sine(self, time):
         """Returns the value of the sine wave."""
