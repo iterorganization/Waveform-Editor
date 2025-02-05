@@ -62,11 +62,11 @@ class BaseTendency(param.Parameterized):
         values from the start value of this tendency.
         """,
     )
-    start_value = param.Number(doc="Value at self.start")
-    end_value = param.Number(doc="Value at self.end")
+    start_value = param.Number(default=0.0, doc="Value at self.start")
+    end_value = param.Number(default=0.0, doc="Value at self.end")
 
-    start_derivative = param.Number(doc="Derivative at self.start")
-    end_derivative = param.Number(doc="Derivative at self.end")
+    start_derivative = param.Number(default=0.0, doc="Derivative at self.start")
+    end_derivative = param.Number(default=0.0, doc="Derivative at self.end")
 
     time_error = param.ClassSelector(
         class_=Exception,
@@ -128,12 +128,12 @@ class BaseTendency(param.Parameterized):
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the values on the provided time array."""
-        pass
+        return np.array([0]), np.array([0])
 
     @abstractmethod
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
         """Get the derivative values on the provided time array."""
-        pass
+        return np.array([0])
 
     @depends(
         "prev_tendency.times_changed",
