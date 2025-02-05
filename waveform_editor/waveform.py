@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -33,9 +35,12 @@ class Waveform:
         self._process_waveform(waveform)
         self.calc_length()
 
-    def get_value(self, time=None):
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
-        a constant line containing the start and end points will be generated.
+        the individual tendencies are responsible for creating a time array, and these
+        are appended.
 
         Args:
             time: The time array on which to generate points.
@@ -61,6 +66,42 @@ class Waveform:
                 if np.any(mask):
                     relevant_times = times[mask]
                     _, generated_values = tendency.get_value(relevant_times)
+
+                    values[mask] = generated_values
+
+        return times, values
+
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Generate time and derivatives based on the tendency. If no time array is
+        provided, the individual tendencies are responsible for creating a time array,
+        and these are appended.
+
+        Args:
+            time: The time array on which to generate points.
+
+        Returns:
+            Tuple containing the time and its tendency derivatives.
+        """
+        if time is None:
+            times = []
+            values = []
+            for tendency in self.tendencies:
+                time, value = tendency.get_derivative()
+                times.extend(time)
+                values.extend(value)
+            times = np.array(times)
+            values = np.array(values)
+        else:
+            times = np.atleast_1d(time)
+            values = np.zeros_like(times, dtype=float)
+            for tendency in self.tendencies:
+                mask = (times >= tendency.start) & (times <= tendency.end)
+
+                if np.any(mask):
+                    relevant_times = times[mask]
+                    _, generated_values = tendency.get_derivative(relevant_times)
 
                     values[mask] = generated_values
 
