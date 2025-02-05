@@ -40,6 +40,7 @@ def test_next_value():
     next_tendency = LinearTendency(user_duration=1, user_from=11, user_rate=5)
     tendency = SmoothTendency(user_start=0, user_duration=1, user_from=10)
     tendency.set_next_tendency(next_tendency)
+    next_tendency.set_previous_tendency(tendency)
     assert tendency.from_ == 10
     assert tendency.to == 11
     assert tendency.start_derivative == 0.0
@@ -56,11 +57,13 @@ def test_prev_and_next_value():
     next_tendency = LinearTendency(user_duration=1, user_from=11, user_rate=5)
     tendency = SmoothTendency(user_duration=1)
     tendency.set_next_tendency(next_tendency)
+    prev_tendency.set_next_tendency(tendency)
     tendency.set_previous_tendency(prev_tendency)
+    next_tendency.set_previous_tendency(tendency)
     assert tendency.from_ == 13
     assert tendency.to == 11
-    assert tendency.derivative_start == 3
-    assert tendency.derivative_end == 5
+    assert tendency.start_derivative == 3
+    assert tendency.end_derivative == 5
     assert tendency.prev_tendency == prev_tendency
     assert tendency.next_tendency == next_tendency
 
