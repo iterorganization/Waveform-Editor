@@ -48,7 +48,7 @@ class LinearTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = np.array([self.start, self.end])
+            time = self.generate_time()
         normalized_time = (time - self.start) / (self.end - self.start)
         values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
@@ -66,9 +66,13 @@ class LinearTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = np.array([self.start, self.end])
+            time = self.generate_time()
         derivatives = self.rate * np.ones(len(time))
         return time, derivatives
+
+    def generate_time(self) -> np.ndarray:
+        """Generates time array containing start and end of the tendency."""
+        return np.array([self.start, self.end])
 
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()
@@ -77,7 +81,12 @@ class LinearTendency(BaseTendency):
     def _trigger1(self):
         self._trigger = True
 
-    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    @depends(
+        "next_tendency.start",
+        "next_tendency.start_value",
+        "next_tendency.start_value_set",
+        watch=True,
+    )
     def _trigger2(self):
         self._trigger = True
 
@@ -106,7 +115,8 @@ class LinearTendency(BaseTendency):
             if self.prev_tendency is None:
                 inputs[0] = 0
             else:
-                inputs[0] = self.prev_tendency.get_value(self.start)
+                _, end_values_array = self.prev_tendency.get_value([self.start])
+                inputs[0] = end_values_array[0]
             num_inputs += 1
             start_value_set = False
         else:
@@ -115,7 +125,8 @@ class LinearTendency(BaseTendency):
         if num_inputs < 2 and inputs[2] is None:
             # To value is not provided, set to from_ or next start value
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                inputs[2] = self.next_tendency.get_value(self.end)
+                _, start_values_array = self.next_tendency.get_value([self.end])
+                inputs[2] = start_values_array[0]
             else:
                 inputs[2] = inputs[0]
             num_inputs += 1
@@ -129,8 +140,8 @@ class LinearTendency(BaseTendency):
             )
             values = (0.0, 0.0, 0.0)
 
-        # Update state
-        values_changed = (self.from_, self.rate, self.to) != values
+        # Update state and cast to bool, as param does not like numpy booleans
+        values_changed = bool((self.from_, self.rate, self.to) != values)
         if values_changed:
             self.from_, self.rate, self.to = values
         # Ensure watchers are called after both values are updated

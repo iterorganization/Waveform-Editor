@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 from param import depends
@@ -23,11 +25,13 @@ class SmoothTendency(BaseTendency):
     def __init__(self, **kwargs):
         self.from_ = 0.0
         self.to = 0.0
-        self.derivative_start = 0.0
-        self.derivative_end = 0.0
+        self.start_derivative = 0.0
+        self.end_derivative = 0.0
         super().__init__(**kwargs)
 
-    def generate(self, time=None):
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the
         tendency.
@@ -39,33 +43,40 @@ class SmoothTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            sampling_rate = 100
-            num_steps = int(self.duration * sampling_rate) + 1
-            time = np.linspace(float(self.start), float(self.end), num_steps)
+            time = self.generate_time()
 
-        spline = CubicSpline(
+        self.spline = CubicSpline(
             [self.start, self.end],
             [self.from_, self.to],
-            bc_type=((1, self.derivative_start), (1, self.derivative_end)),
+            bc_type=((1, self.start_derivative), (1, self.end_derivative)),
         )
-        values = spline(time)
+        values = self.spline(time)
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.from_
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the derivative values on the provided time array. If no time array is
+        provided, a linearly spaced time array will be generated from the start to the
+        end of the tendency.
+        Args:
+            time: The time array on which to generate points.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.to
+        Returns:
+            Tuple containing the time and its tendency values.
+        """
+        if time is None:
+            time = self.generate_time()
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return self.derivative_start
+        derivative_spline = self.spline.derivative()
+        derivatives = derivative_spline(time)
+        return time, derivatives
 
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self.derivative_end
+    def generate_time(self) -> np.ndarray:
+        """Generates time array containing start and end of the tendency."""
+        sampling_rate = 100
+        num_steps = int(self.duration * sampling_rate) + 1
+        return np.linspace(float(self.start), float(self.end), num_steps)
 
     @depends(
         "prev_tendency.values_changed",
@@ -80,12 +91,13 @@ class SmoothTendency(BaseTendency):
         """
         d_start = d_end = 0.0
         if self.prev_tendency is not None:
-            d_start = self.prev_tendency.get_derivative_end()
+            _, d_start = self.prev_tendency.get_derivative([self.start])
+            d_start = d_start[0]
         if self.next_tendency is not None:
-            d_end = self.next_tendency.get_derivative_start()
+            _, d_end = self.next_tendency.get_derivative([self.end])
+            d_end = d_end[0]
 
-        if (self.derivative_start, self.derivative_end) != (d_start, d_end):
-            self.derivative_start, self.derivative_end = d_start, d_end
+            self.start_derivative, self.end_derivative = d_start, d_end
             # Trigger values event
             self.values_changed = True
 
@@ -96,7 +108,12 @@ class SmoothTendency(BaseTendency):
     def _trigger1(self):
         self._trigger = True
 
-    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    @depends(
+        "next_tendency.start",
+        "next_tendency.start_value",
+        "next_tendency.start_value_set",
+        watch=True,
+    )
     def _trigger2(self):
         self._trigger = True
 
@@ -112,12 +129,14 @@ class SmoothTendency(BaseTendency):
         from_ = to = 0.0
         if self.user_from is None:
             if self.prev_tendency is not None:
-                from_ = self.prev_tendency.get_end_value()
+                _, from_ = self.prev_tendency.get_value([self.start])
+                from_ = from_[0]
         else:
             from_ = self.user_from
         if self.user_to is None:
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                to = self.next_tendency.get_start_value()
+                _, to = self.next_tendency.get_value([self.end])
+                to = to[0]
         else:
             to = self.user_to
 

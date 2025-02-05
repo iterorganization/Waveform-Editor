@@ -24,7 +24,7 @@ class ConstantTendency(BaseTendency):
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the values onf the provided time array. If no time array is provided,
+        """Get the values of the provided time array. If no time array is provided,
         a constant line containing the start and end points will be generated.
 
         Args:
@@ -34,7 +34,7 @@ class ConstantTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = np.array([self.start, self.end])
+            time = self.generate_time()
         values = self.value * np.ones(len(time))
         return time, values
 
@@ -51,9 +51,13 @@ class ConstantTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = np.array([self.start, self.end])
+            time = self.generate_time()
         derivatives = np.zeros(len(time))
         return time, derivatives
+
+    def generate_time(self) -> np.ndarray:
+        """Generates time array containing start and end of the tendency."""
+        return np.array([self.start, self.end])
 
     @depends(
         "prev_tendency.end_value",
@@ -72,8 +76,8 @@ class ConstantTendency(BaseTendency):
         else:
             value = self.user_value
 
-        # Update state
-        values_changed = self.value != value
+        # Update state and cast to bool, as param does not like numpy booleans
+        values_changed = bool(self.value != value)
         if values_changed:
             self.value = value
         # Ensure watchers are called after both values are updated

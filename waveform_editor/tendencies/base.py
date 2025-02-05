@@ -45,6 +45,15 @@ class BaseTendency(param.Parameterized):
         default=None, doc="The end time of the tendency, as provided by the user."
     )
 
+    start = param.Number(default=0.0, doc="The start time of the tendency.")
+    duration = param.Number(
+        default=1.0,
+        bounds=(0.0, None),
+        inclusive_bounds=(False, True),
+        doc="The duration of the tendency.",
+    )
+    end = param.Number(default=1.0, doc="The end time of the tendency.")
+
     start_value_set = param.Boolean(
         default=False,
         doc="""Marks if the value at self.start is determined by user inputs.
@@ -71,9 +80,6 @@ class BaseTendency(param.Parameterized):
     )
 
     def __init__(self, **kwargs):
-        self.start = 0.0
-        self.end = 0.0
-        self.duration = 0.0
         self.error = None
         super().__init__(**kwargs)
 
@@ -107,11 +113,15 @@ class BaseTendency(param.Parameterized):
 
     @depends("values_changed", watch=True)
     def _calc_start_end_values(self):
-        _, self.start_value = self.get_value(np.array([self.start]))
-        _, self.start_derivative = self.get_derivative(np.array([self.start]))
+        _, start_value_array = self.get_value(np.array([self.start]))
+        self.start_value = start_value_array[0]
+        _, start_derivative_array = self.get_derivative(np.array([self.start]))
+        self.start_derivative = start_derivative_array[0]
 
-        _, self.end_value = self.get_value(np.array([self.end]))
-        _, self.end_derivative = self.get_derivative(np.array([self.end]))
+        _, end_value_array = self.get_value(np.array([self.end]))
+        self.end_value = end_value_array[0]
+        _, end_derivative_array = self.get_derivative(np.array([self.end]))
+        self.end_derivative = end_derivative_array[0]
 
     @abstractmethod
     def get_value(
@@ -125,6 +135,13 @@ class BaseTendency(param.Parameterized):
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the derivative values on the provided time array."""
+        pass
+
+    @abstractmethod
+    def generate_time(self) -> np.ndarray:
+        """Generates minimal number of points as a time array to describe the
+        tendency. For example, a linear tendency only needs two points to be fully
+        represented."""
         pass
 
     @depends(
