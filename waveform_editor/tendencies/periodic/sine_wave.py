@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
@@ -6,7 +8,9 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class SineWaveTendency(PeriodicBaseTendency):
     """A tendency representing a sine wave."""
 
-    def generate(self, time=None):
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Generate time and values based on the tendency. If no time array is provided,
         a linearly spaced time array will be generated from the start to the end of the
         tendency.
@@ -18,28 +22,33 @@ class SineWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            sampling_rate = 100
-            num_steps = int(self.duration * sampling_rate) + 1
-            time = np.linspace(float(self.start), float(self.end), num_steps)
+            time = self.generate_time()
         values = self._calc_sine(time)
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self._calc_sine(self.start)
+    def get_derivative(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Generate time and derivatives based on the tendency. If no time array is
+        provided, a linearly spaced time array will be generated from the start to the
+        end of the tendency.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self._calc_sine(self.end)
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
+        Returns:
+            Tuple containing the time and its tendency values.
+        """
+        if time is None:
+            time = self.generate_time()
+        values = self._calc_derivative(time)
+        return time, values
 
-        return self._calc_derivative(self.start)
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self._calc_derivative(self.end)
+    def generate_time(self) -> np.ndarray:
+        """Generates time array containing start and end of the tendency."""
+        sampling_rate = 100
+        num_steps = int(self.duration * sampling_rate) + 1
+        return np.linspace(float(self.start), float(self.end), num_steps)
 
     def _calc_sine(self, time):
         """Returns the value of the sine wave."""
