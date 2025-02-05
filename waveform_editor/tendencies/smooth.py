@@ -43,7 +43,9 @@ class SmoothTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = self.generate_time()
+            sampling_rate = 100
+            num_steps = int(self.duration * sampling_rate) + 1
+            time = np.linspace(float(self.start), float(self.end), num_steps)
 
         self.spline = CubicSpline(
             [self.start, self.end],
@@ -53,30 +55,22 @@ class SmoothTendency(BaseTendency):
         values = self.spline(time)
         return time, values
 
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the derivative values on the provided time array. If no time array is
-        provided, a linearly spaced time array will be generated from the start to the
-        end of the tendency.
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
+
         Args:
             time: The time array on which to generate points.
 
         Returns:
-            Tuple containing the time and its tendency values.
+            numpy array containing the derivatives
         """
-        if time is None:
-            time = self.generate_time()
 
         derivative_spline = self.spline.derivative()
         derivatives = derivative_spline(time)
-        return time, derivatives
+        return derivatives
 
     def generate_time(self) -> np.ndarray:
         """Generates time array containing start and end of the tendency."""
-        sampling_rate = 100
-        num_steps = int(self.duration * sampling_rate) + 1
-        return np.linspace(float(self.start), float(self.end), num_steps)
 
     @depends(
         "prev_tendency.values_changed",
@@ -132,10 +126,10 @@ class SmoothTendency(BaseTendency):
         # Derivatives
         d_start = d_end = 0.0
         if self.prev_tendency is not None:
-            _, d_start = self.prev_tendency.get_derivative(np.array([self.start]))
+            d_start = self.prev_tendency.get_derivative(np.array([self.start]))
             d_start = d_start[0]
         if self.next_tendency is not None:
-            _, d_end = self.next_tendency.get_derivative(np.array([self.end]))
+            d_end = self.next_tendency.get_derivative(np.array([self.end]))
             d_end = d_end[0]
 
         values_changed = (

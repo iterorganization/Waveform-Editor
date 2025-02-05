@@ -70,41 +70,26 @@ class Waveform:
 
         return times, values
 
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and derivatives based on the tendency. If no time array is
-        provided, the individual tendencies are responsible for creating a time array,
-        and these are appended.
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
 
         Args:
             time: The time array on which to generate points.
 
         Returns:
-            Tuple containing the time and its tendency derivatives.
+            numpy array containing the derivatives
         """
-        if time is None:
-            times = []
-            values = []
-            for tendency in self.tendencies:
-                time, value = tendency.get_derivative()
-                times.extend(time)
-                values.extend(value)
-            times = np.array(times)
-            values = np.array(values)
-        else:
-            times = np.atleast_1d(time)
-            values = np.zeros_like(times, dtype=float)
-            for tendency in self.tendencies:
-                mask = (times >= tendency.start) & (times <= tendency.end)
+        values = np.zeros_like(time, dtype=float)
+        for tendency in self.tendencies:
+            mask = (time >= tendency.start) & (time <= tendency.end)
 
-                if np.any(mask):
-                    relevant_times = times[mask]
-                    _, generated_values = tendency.get_derivative(relevant_times)
+            if np.any(mask):
+                relevant_times = time[mask]
+                generated_values = tendency.get_derivative(relevant_times)
 
-                    values[mask] = generated_values
+                values[mask] = generated_values
 
-        return times, values
+        return values
 
     def calc_length(self):
         """Returns the length of the waveform."""

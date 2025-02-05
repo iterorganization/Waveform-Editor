@@ -38,28 +38,22 @@ class PiecewiseLinearTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = self.generate_time()
+            time = self.time
 
-        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
-            raise ValueError(
-                f"The provided time array contains values outside the valid range "
-                f"({self.time[0]}, {self.time[-1]})."
-            )
-
+        self._validate_requested_time(time)
         interpolated_values = np.interp(time, self.time, self.value)
         return time, interpolated_values
 
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        if time is None:
-            time = self.generate_time()
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
 
-        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
-            raise ValueError(
-                f"The provided time array contains values outside the valid range "
-                f"({self.time[0]}, {self.time[-1]})."
-            )
+        Args:
+            time: The time array on which to generate points.
+
+        Returns:
+            numpy array containing the derivatives
+        """
+        self._validate_requested_time(time)
 
         derivatives = np.zeros_like(time)
 
@@ -76,11 +70,14 @@ class PiecewiseLinearTendency(BaseTendency):
                 dt = self.time[index + 1] - self.time[index]
                 derivatives[i] = dv / dt
 
-        return time, derivatives
+        return derivatives
 
-    def generate_time(self) -> np.ndarray:
-        """Generates time array containing start and end of the tendency."""
-        return self.time
+    def _validate_requested_time(self, time):
+        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
+            raise ValueError(
+                f"The provided time array contains values outside the valid range "
+                f"({self.time[0]}, {self.time[-1]})."
+            )
 
     def _validate_time_value(self, time, value):
         """Validates the provided time and value lists.

@@ -48,31 +48,22 @@ class LinearTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = self.generate_time()
+            time = np.array([self.start, self.end])
         normalized_time = (time - self.start) / (self.end - self.start)
         values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
 
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the derivative values on the provided time array. If no time array is
-        a constant line containing the start and end points will be generated.
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
 
         Args:
             time: The time array on which to generate points.
 
         Returns:
-            Tuple containing the time and its tendency values.
+            numpy array containing the derivatives
         """
-        if time is None:
-            time = self.generate_time()
         derivatives = self.rate * np.ones(len(time))
-        return time, derivatives
-
-    def generate_time(self) -> np.ndarray:
-        """Generates time array containing start and end of the tendency."""
-        return np.array([self.start, self.end])
+        return derivatives
 
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()

@@ -34,30 +34,21 @@ class ConstantTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            time = self.generate_time()
+            time = np.array([self.start, self.end])
         values = self.value * np.ones(len(time))
         return time, values
 
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the derivative values on the provided time array. If no time array is
-        provided, a constant line containing the start and end points will be returned.
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
 
         Args:
             time: The time array on which to generate points.
 
         Returns:
-            Tuple containing the time and its tendency values.
+            numpy array containing the derivatives
         """
-        if time is None:
-            time = self.generate_time()
         derivatives = np.zeros(len(time))
-        return time, derivatives
-
-    def generate_time(self) -> np.ndarray:
-        """Generates time array containing start and end of the tendency."""
-        return np.array([self.start, self.end])
+        return derivatives
 
     @depends(
         "prev_tendency.end_value",

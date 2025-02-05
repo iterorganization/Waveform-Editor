@@ -115,12 +115,12 @@ class BaseTendency(param.Parameterized):
     def _calc_start_end_values(self):
         _, start_value_array = self.get_value(np.array([self.start]))
         self.start_value = start_value_array[0]
-        _, start_derivative_array = self.get_derivative(np.array([self.start]))
+        start_derivative_array = self.get_derivative(np.array([self.start]))
         self.start_derivative = start_derivative_array[0]
 
         _, end_value_array = self.get_value(np.array([self.end]))
         self.end_value = end_value_array[0]
-        _, end_derivative_array = self.get_derivative(np.array([self.end]))
+        end_derivative_array = self.get_derivative(np.array([self.end]))
         self.end_derivative = end_derivative_array[0]
 
     @abstractmethod
@@ -131,17 +131,8 @@ class BaseTendency(param.Parameterized):
         pass
 
     @abstractmethod
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
         """Get the derivative values on the provided time array."""
-        pass
-
-    @abstractmethod
-    def generate_time(self) -> np.ndarray:
-        """Generates minimal number of points as a time array to describe the
-        tendency. For example, a linear tendency only needs two points to be fully
-        represented."""
         pass
 
     @depends(

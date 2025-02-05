@@ -57,39 +57,9 @@ class RepeatTendency(BaseTendency):
         Returns:
             Tuple containing the time and its tendency values.
         """
-        return self._get_times_and_values(time, self.waveform.get_value)
-
-    def get_derivative(
-        self, time: Optional[np.ndarray] = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and derivatives based on the tendency. If no time array is
-        provided, the individual tendencies are responsible for creating a time array,
-        and these are appended.
-
-        Args:
-            time: The time array on which to generate points.
-
-        Returns:
-            Tuple containing the time and its tendency derivatives.
-        """
-        return self._get_times_and_values(time, self.waveform.get_derivative)
-
-    def _get_times_and_values(
-        self, time: Optional[np.ndarray], waveform_method: callable
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Generalized function to generate time and values/derivatives.
-
-        Args:
-            time: The time array on which to generate points.
-            waveform_method: The waveform method to call (either get_value or
-                get_derivative).
-
-        Returns:
-            Tuple containing the time and computed values.
-        """
         length = self.waveform.calc_length()
         if time is None:
-            times, values = waveform_method()
+            times, values = self.waveform.get_value()
             repeat = int(np.ceil(self.duration / length))
             repetition_array = np.arange(repeat) * length
             times = (times + repetition_array[:, np.newaxis]).flatten() + self.start
@@ -103,12 +73,26 @@ class RepeatTendency(BaseTendency):
             values = values[: cut_index + 1]
             if times[-1] != self.end:
                 times[-1] = self.end
-                _, values[-1] = waveform_method(
+                _, values[-1] = self.waveform.get_value(
                     np.array([(self.end - self.start) % length])
                 )
         else:
             times = np.atleast_1d(time)
             relative_times = (times - self.start) % length
-            _, values = self.waveform.get_derivative(relative_times)
-
+            _, values = self.waveform.get_value(relative_times)
         return times, values
+
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the derivative values on the provided time array.
+
+        Args:
+            time: The time array on which to generate points.
+
+        Returns:
+            numpy array containing the derivatives
+        """
+        length = self.waveform.calc_length()
+        times = np.atleast_1d(time)
+        relative_times = (times - self.start) % length
+        derivatives = self.waveform.get_derivative(relative_times)
+        return derivatives
