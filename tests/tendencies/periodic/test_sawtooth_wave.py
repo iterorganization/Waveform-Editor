@@ -11,10 +11,10 @@ def test_start_and_end():
     tendency = SawtoothWaveTendency(
         user_duration=1, user_base=0, user_amplitude=1, user_frequency=1
     )
-    assert tendency.get_start_value() == approx(0)
-    assert tendency.get_end_value() == approx(0)
-    assert tendency.get_derivative_start() == approx(2)
-    assert tendency.get_derivative_end() == approx(2)
+    assert tendency.start_value == approx(0)
+    assert tendency.end_value == approx(0)
+    assert tendency.start_derivative == approx(2)
+    assert tendency.end_derivative == approx(2)
 
     tendency = SawtoothWaveTendency(
         user_duration=1,
@@ -23,10 +23,10 @@ def test_start_and_end():
         user_frequency=1,
         user_phase=np.pi / 2,
     )
-    assert tendency.get_start_value() == approx(0.5)
-    assert tendency.get_end_value() == approx(0.5)
-    assert tendency.get_derivative_start() == approx(2)
-    assert tendency.get_derivative_end() == approx(2)
+    assert tendency.start_value == approx(0.5)
+    assert tendency.end_value == approx(0.5)
+    assert tendency.start_derivative == approx(2)
+    assert tendency.end_derivative == approx(2)
 
     tendency = SawtoothWaveTendency(
         user_duration=1,
@@ -35,10 +35,10 @@ def test_start_and_end():
         user_frequency=1,
         user_phase=np.pi / 4,
     )
-    assert tendency.get_start_value() == approx(0.25)
-    assert tendency.get_end_value() == approx(0.25)
-    assert tendency.get_derivative_start() == approx(2)
-    assert tendency.get_derivative_end() == approx(2)
+    assert tendency.start_value == approx(0.25)
+    assert tendency.end_value == approx(0.25)
+    assert tendency.start_derivative == approx(2)
+    assert tendency.end_derivative == approx(2)
 
 
 def test_generate():
@@ -53,6 +53,6 @@ def test_generate():
         user_phase=np.pi / 2,
         user_frequency=1,
     )
-    time, values = tendency.generate()
+    time, values = tendency.get_value()
     assert np.allclose(time, [0, 0.25, 0.25, 1])
     assert np.allclose(values, [4.5, 6, 0, 4.5])

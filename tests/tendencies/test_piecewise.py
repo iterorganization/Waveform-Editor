@@ -59,10 +59,10 @@ def test_start_and_end():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 0])
     )
-    assert tendency.get_start_value() == 2
-    assert tendency.get_end_value() == 0
-    assert tendency.get_derivative_start() == approx(2)
-    assert tendency.get_derivative_end() == approx(-4)
+    assert tendency.start_value == 2
+    assert tendency.end_value == 0
+    assert tendency.start_derivative == approx(2)
+    assert tendency.end_derivative == approx(-4)
 
 
 def test_generate():
@@ -72,7 +72,7 @@ def test_generate():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 6])
     )
-    time, values = tendency.generate()
+    time, values = tendency.get_value()
     assert np.all(time == [1, 2, 3])
     assert np.all(values == [2, 4, 6])
 
@@ -84,12 +84,12 @@ def test_generate_interpolate():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 8])
     )
-    time, values = tendency.generate(time=[1.0, 1.5, 2.0, 2.5, 3.0])
+    time, values = tendency.get_value(time=[1.0, 1.5, 2.0, 2.5, 3.0])
     assert np.all(time == [1.0, 1.5, 2.0, 2.5, 3.0])
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
 
     with pytest.raises(ValueError):
-        time, values = tendency.generate(time=[0.5, 1.5, 2.0, 2.5, 3.0])
+        time, values = tendency.get_value(time=[0.5, 1.5, 2.0, 2.5, 3.0])
 
     with pytest.raises(ValueError):
-        time, values = tendency.generate(time=[1.0, 1.5, 2.0, 2.5, 3.5])
+        time, values = tendency.get_value(time=[1.0, 1.5, 2.0, 2.5, 3.5])

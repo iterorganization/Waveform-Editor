@@ -46,10 +46,10 @@ def test_start_and_end():
     Test the start and end values and their derivatives
     """
     tendency = ConstantTendency(user_duration=1, user_value=5)
-    assert tendency.get_start_value() == 5
-    assert tendency.get_end_value() == 5
-    assert tendency.get_derivative_start() == 0
-    assert tendency.get_derivative_end() == 0
+    assert tendency.start_value == 5
+    assert tendency.end_value == 5
+    assert tendency.start_derivative == 0
+    assert tendency.end_derivative == 0
 
 
 def test_generate():
@@ -57,7 +57,7 @@ def test_generate():
     Check the generated values.
     """
     tendency = ConstantTendency(user_start=0, user_duration=1, user_value=5)
-    time, values = tendency.generate()
+    time, values = tendency.get_value()
 
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([5, 5]))
