@@ -49,7 +49,7 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        normalized_time = (time - self.start) / (self.end - self.start)
+        normalized_time = (time - self.start) / self.duration
         values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
 
