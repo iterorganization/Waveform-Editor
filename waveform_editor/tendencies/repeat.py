@@ -42,14 +42,14 @@ class RepeatTendency(BaseTendency):
         #   - {type: linear, from: 2, to: 0, duration: 1}
         #   - {type: smooth, duration: 3}
         #
-        # Here, the smooth tendency would smoothly interpolate from 0 to 2
+        # where, the smooth tendency would smoothly interpolate from 0 to 2
 
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and values based on the tendency. If no time array is provided,
-        the individual tendencies are responsible for creating a time array, and these
-        are appended.
+        """Get the tendency values at the provided time array. If no time array is
+        provided, the individual tendencies are responsible for creating a time array,
+        and these are appended.
 
         Args:
             time: The time array on which to generate points.
@@ -73,9 +73,10 @@ class RepeatTendency(BaseTendency):
             values = values[: cut_index + 1]
             if times[-1] != self.end:
                 times[-1] = self.end
-                _, values[-1] = self.waveform.get_value(
+                _, end_array = self.waveform.get_value(
                     np.array([(self.end - self.start) % length])
                 )
+                values[-1] = end_array[0]
         else:
             times = np.atleast_1d(time)
             relative_times = (times - self.start) % length
@@ -83,7 +84,7 @@ class RepeatTendency(BaseTendency):
         return times, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the derivative values on the provided time array.
+        """Get the values of the derivatives at the provided time array.
 
         Args:
             time: The time array on which to generate points.
@@ -92,7 +93,6 @@ class RepeatTendency(BaseTendency):
             numpy array containing the derivatives
         """
         length = self.waveform.calc_length()
-        times = np.atleast_1d(time)
-        relative_times = (times - self.start) % length
+        relative_times = (time - self.start) % length
         derivatives = self.waveform.get_derivative(relative_times)
         return derivatives

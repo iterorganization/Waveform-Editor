@@ -11,9 +11,9 @@ class SineWaveTendency(PeriodicBaseTendency):
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a linearly spaced time array will be generated from the start to the
+        end of the tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -29,7 +29,7 @@ class SineWaveTendency(PeriodicBaseTendency):
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the derivative values on the provided time array.
+        """Get the values of the derivatives at the provided time array.
 
         Args:
             time: The time array on which to generate points.

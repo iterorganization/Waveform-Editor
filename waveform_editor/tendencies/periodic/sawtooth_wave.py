@@ -11,9 +11,10 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Generate time and values based on the tendency. If no time array is provided,
-        a time array will be created from the start to the end of the tendency, where
-        time points are defined for every peak and trough in the tendency.
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a time array will be created from the start to the end of the
+        tendency, where time points are defined for every peak and trough in the
+        tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -29,7 +30,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the derivative values on the provided time array.
+        """Get the values of the derivatives at the provided time array.
 
         Args:
             time: The time array on which to generate points.

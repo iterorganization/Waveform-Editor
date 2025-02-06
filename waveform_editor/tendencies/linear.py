@@ -38,8 +38,8 @@ class LinearTendency(BaseTendency):
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the values onf the provided time array. If no time array is provided,
-        a line containing the start and end points will be generated.
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a line containing the start and end points will be generated.
 
         Args:
             time: The time array on which to generate points.
@@ -54,7 +54,7 @@ class LinearTendency(BaseTendency):
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the derivative values on the provided time array.
+        """Get the values of the derivatives at the provided time array.
 
         Args:
             time: The time array on which to generate points.

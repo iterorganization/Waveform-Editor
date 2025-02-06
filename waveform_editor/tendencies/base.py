@@ -113,26 +113,30 @@ class BaseTendency(param.Parameterized):
 
     @depends("values_changed", watch=True)
     def _calc_start_end_values(self):
-        _, start_value_array = self.get_value(np.array([self.start]))
-        self.start_value = start_value_array[0]
-        start_derivative_array = self.get_derivative(np.array([self.start]))
-        self.start_derivative = start_derivative_array[0]
+        """Calculate the values, as well as the derivatives, at the start and end
+        of the tendency.
+        """
+        self.start_value, self.start_derivative = self._get_value_and_derivative(
+            self.start
+        )
+        self.end_value, self.end_derivative = self._get_value_and_derivative(self.end)
 
-        _, end_value_array = self.get_value(np.array([self.end]))
-        self.end_value = end_value_array[0]
-        end_derivative_array = self.get_derivative(np.array([self.end]))
-        self.end_derivative = end_derivative_array[0]
+    def _get_value_and_derivative(self, time):
+        """Get the value and derivative of the tendency at a given time."""
+        _, value_array = self.get_value(np.array([time]))
+        derivative_array = self.get_derivative(np.array([time]))
+        return value_array[0], derivative_array[0]
 
     @abstractmethod
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the values on the provided time array."""
+        """Get the tendency values at the provided time array."""
         return np.array([0]), np.array([0])
 
     @abstractmethod
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the derivative values on the provided time array."""
+        """Get the values of the derivatives at the provided time array."""
         return np.array([0])
 
     @depends(
