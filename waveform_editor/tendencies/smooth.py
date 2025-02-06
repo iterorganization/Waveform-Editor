@@ -67,21 +67,6 @@ class SmoothTendency(BaseTendency):
         derivatives = derivative_spline(time)
         return derivatives
 
-    def generate_time(self) -> np.ndarray:
-        """Generates time array containing start and end of the tendency."""
-
-    @depends(
-        "prev_tendency.values_changed",
-        "next_tendency.values_changed",
-        watch=True,
-        on_init=True,
-    )
-    def _calc_derivatives(self):
-        """Looks for the previous and next tendencies, and gets their derivatives at
-        the end and start, respectively. If a neighbouring tendency does not exist,
-        the default value will be used instead.
-        """
-
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()
 
@@ -135,10 +120,11 @@ class SmoothTendency(BaseTendency):
 
         if values_changed:
             self.from_, self.to = from_, to
-            self.start_derivative, self.end_derivative = d_start, d_end
 
             # Ensure watchers are called after both values are updated
             self.param.update(
+                start_derivative=d_start,
+                end_derivative=d_end,
                 values_changed=values_changed,
                 start_value_set=self.user_from is not None,
             )
