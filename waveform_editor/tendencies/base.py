@@ -116,10 +116,16 @@ class BaseTendency(param.Parameterized):
         """Calculate the values, as well as the derivatives, at the start and end
         of the tendency.
         """
-        self.start_value, self.start_derivative = self._get_value_and_derivative(
+        new_start_value, new_start_derivative = self._get_value_and_derivative(
             self.start
         )
-        self.end_value, self.end_derivative = self._get_value_and_derivative(self.end)
+        new_end_value, new_end_derivative = self._get_value_and_derivative(self.end)
+
+        with param.parameterized.batch_call_watchers(self):
+            self.start_value = new_start_value
+            self.start_derivative = new_start_derivative
+            self.end_value = new_end_value
+            self.end_derivative = new_end_derivative
 
     def _get_value_and_derivative(self, time):
         """Get the value and derivative of the tendency at a given time."""
