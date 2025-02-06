@@ -25,8 +25,6 @@ class SmoothTendency(BaseTendency):
     def __init__(self, **kwargs):
         self.from_ = 0.0
         self.to = 0.0
-        self.start_derivative = 0.0
-        self.end_derivative = 0.0
         super().__init__(**kwargs)
 
     def get_value(
