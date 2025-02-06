@@ -112,25 +112,21 @@ class SmoothTendency(BaseTendency):
         from_ = to = 0.0
         if self.user_from is None:
             if self.prev_tendency is not None:
-                _, from_ = self.prev_tendency.get_value(np.array([self.start]))
-                from_ = from_[0]
+                from_ = self.prev_tendency.end_value
         else:
             from_ = self.user_from
         if self.user_to is None:
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                _, to = self.next_tendency.get_value(np.array([self.end]))
-                to = to[0]
+                to = self.next_tendency.start_value
         else:
             to = self.user_to
 
         # Derivatives
         d_start = d_end = 0.0
         if self.prev_tendency is not None:
-            d_start = self.prev_tendency.get_derivative(np.array([self.start]))
-            d_start = d_start[0]
+            d_start = self.prev_tendency.end_derivative
         if self.next_tendency is not None:
-            d_end = self.next_tendency.get_derivative(np.array([self.end]))
-            d_end = d_end[0]
+            d_end = self.next_tendency.start_derivative
 
         values_changed = (
             self.from_,

@@ -106,10 +106,7 @@ class LinearTendency(BaseTendency):
             if self.prev_tendency is None:
                 inputs[0] = 0
             else:
-                _, end_values_array = self.prev_tendency.get_value(
-                    np.array([self.start])
-                )
-                inputs[0] = end_values_array[0]
+                inputs[0] = self.prev_tendency.end_value
             num_inputs += 1
             start_value_set = False
         else:
@@ -118,10 +115,7 @@ class LinearTendency(BaseTendency):
         if num_inputs < 2 and inputs[2] is None:
             # To value is not provided, set to from_ or next start value
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                _, start_values_array = self.next_tendency.get_value(
-                    np.array([self.end])
-                )
-                inputs[2] = start_values_array[0]
+                inputs[2] = self.next_tendency.start_value
             else:
                 inputs[2] = inputs[0]
             num_inputs += 1
