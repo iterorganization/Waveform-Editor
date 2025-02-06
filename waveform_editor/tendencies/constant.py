@@ -71,8 +71,8 @@ class ConstantTendency(BaseTendency):
         values_changed = bool(self.value != value)
         if values_changed:
             self.value = value
-            # Ensure watchers are called after both values are updated
-            self.param.update(
-                values_changed=values_changed,
-                start_value_set=self.user_value is not None,
-            )
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            values_changed=values_changed,
+            start_value_set=self.user_value is not None,
+        )
