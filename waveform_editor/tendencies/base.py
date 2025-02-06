@@ -138,12 +138,12 @@ class BaseTendency(param.Parameterized):
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array."""
-        return np.array([0]), np.array([0])
+        raise NotImplementedError()
 
     @abstractmethod
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
         """Get the values of the derivatives at the provided time array."""
-        return np.array([0])
+        raise NotImplementedError()
 
     @depends(
         "prev_tendency.times_changed",
