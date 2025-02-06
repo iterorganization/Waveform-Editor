@@ -45,11 +45,6 @@ class SmoothTendency(BaseTendency):
             num_steps = int(self.duration * sampling_rate) + 1
             time = np.linspace(float(self.start), float(self.end), num_steps)
 
-        self.spline = CubicSpline(
-            [self.start, self.end],
-            [self.from_, self.to],
-            bc_type=((1, self.start_derivative), (1, self.end_derivative)),
-        )
         values = self.spline(time)
         return time, values
 
@@ -111,6 +106,12 @@ class SmoothTendency(BaseTendency):
         if self.next_tendency is not None:
             d_end = self.next_tendency.start_derivative
 
+        self.spline = CubicSpline(
+            [self.start, self.end],
+            [from_, to],
+            bc_type=((1, d_start), (1, d_end)),
+        )
+
         values_changed = (
             self.from_,
             self.to,
@@ -121,10 +122,10 @@ class SmoothTendency(BaseTendency):
         if values_changed:
             self.from_, self.to = from_, to
 
-            # Ensure watchers are called after both values are updated
-            self.param.update(
-                start_derivative=d_start,
-                end_derivative=d_end,
-                values_changed=values_changed,
-                start_value_set=self.user_from is not None,
-            )
+        # Ensure watchers are called after both values are updated
+        self.param.update(
+            start_derivative=d_start,
+            end_derivative=d_end,
+            values_changed=values_changed,
+            start_value_set=self.user_from is not None,
+        )
