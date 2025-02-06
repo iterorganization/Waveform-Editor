@@ -32,17 +32,12 @@ class RepeatTendency(BaseTendency):
                 "The starting point of the first repeated tendency is not set to 0."
             )
 
-        # TODO: The start of the first tendency does not link to the end of the last
-        # tendency. This might be nice to implement so you could do for example:
-        # waveform:
-        # - type: repeat
-        #   duration: 10
-        #   waveform:
-        #   - {type: linear, from: 1, to: 2, duration: 1}
-        #   - {type: linear, from: 2, to: 0, duration: 1}
-        #   - {type: smooth, duration: 3}
-        #
-        # where, the smooth tendency would smoothly interpolate from 0 to 2
+        # Link the last tendency to the first tendency in the repeated waveform
+        # We must lock the start to 0, otherwise it will take the start value of the
+        # previous tendency.
+        self.waveform.tendencies[0].user_start = 0
+        self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
+        self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
 
     def get_value(
         self, time: Optional[np.ndarray] = None
