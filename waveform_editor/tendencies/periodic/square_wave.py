@@ -38,8 +38,7 @@ class SquareWaveTendency(PeriodicBaseTendency):
         Returns:
             numpy array containing the derivatives
         """
-        derivatives = np.zeros(len(time))
-        return derivatives
+        return np.zeros(len(time))
 
     def _calc_square_wave(self, time):
         """Calculates the point of the square wave at a given time point or

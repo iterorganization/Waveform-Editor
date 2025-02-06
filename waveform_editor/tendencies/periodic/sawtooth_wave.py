@@ -39,8 +39,7 @@ class SawtoothWaveTendency(PeriodicBaseTendency):
             numpy array containing the derivatives
         """
         rate = 2 * self.frequency * self.amplitude
-        derivatives = rate * np.ones(len(time))
-        return derivatives
+        return rate * np.ones(len(time))
 
     def _calc_sawtooth_wave(self, time):
         """Calculates the point of the sawtooth wave at a given time point or

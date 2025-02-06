@@ -36,8 +36,9 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         Returns:
             numpy array containing the derivatives
         """
-        derivatives = self._calc_triangle_derivative(time)
-        return derivatives
+        is_rising = self._calc_phase(time) % (2 * np.pi) > np.pi
+        rate = 4 * self.frequency * self.amplitude
+        return np.where(is_rising, rate, -rate)
 
     def _calc_triangle_wave(self, time):
         """Calculates the point of the triangle wave at a given time point or
@@ -51,20 +52,6 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         """
         triangle_wave = 2 * np.abs((self._calc_phase(time) / np.pi) % 2 - 1) - 1
         return self.base + self.amplitude * triangle_wave
-
-    def _calc_triangle_derivative(self, time):
-        """Calculates the derivative of the triangle wave at a given time point or
-        an array of time points.
-
-        Args:
-            time: Single time value or numpy array containing time values.
-
-        Returns:
-            The derivative of the triangle wave.
-        """
-        is_rising = self._calc_phase(time) % (2 * np.pi) > np.pi
-        rate = 4 * self.frequency * self.amplitude
-        return np.where(is_rising, rate, -rate)
 
     def _calc_phase(self, time):
         """Calculates the phase of the triangle wave at a given time point or
