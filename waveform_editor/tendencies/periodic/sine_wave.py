@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
@@ -6,10 +8,12 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class SineWaveTendency(PeriodicBaseTendency):
     """A tendency representing a sine wave."""
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
-        a linearly spaced time array will be generated from the start to the end of the
-        tendency.
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a linearly spaced time array will be generated from the start to the
+        end of the tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -24,35 +28,25 @@ class SineWaveTendency(PeriodicBaseTendency):
         values = self._calc_sine(time)
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self._calc_sine(self.start)
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the values of the derivatives at the provided time array.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self._calc_sine(self.end)
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-
-        return self._calc_derivative(self.start)
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self._calc_derivative(self.end)
-
-    def _calc_sine(self, time):
-        """Returns the value of the sine wave."""
-        return self.base + self.amplitude * np.sin(
-            2 * np.pi * self.frequency * (time - self.start) + self.phase
-        )
-
-    def _calc_derivative(self, time):
-        """Returns the derivative of the sine wave."""
+        Returns:
+            numpy array containing the derivatives
+        """
         return (
             self.amplitude
             * 2
             * np.pi
             * self.frequency
             * np.cos(2 * np.pi * self.frequency * (time - self.start) + self.phase)
+        )
+
+    def _calc_sine(self, time):
+        """Returns the value of the sine wave."""
+        return self.base + self.amplitude * np.sin(
+            2 * np.pi * self.frequency * (time - self.start) + self.phase
         )

@@ -133,10 +133,10 @@ def test_start_and_end():
     Test the start and end values and their derivatives
     """
     tendency = LinearTendency(user_duration=1, user_from=1, user_rate=5)
-    assert tendency.get_start_value() == 1
-    assert tendency.get_end_value() == 6
-    assert tendency.get_derivative_start() == 5
-    assert tendency.get_derivative_end() == 5
+    assert tendency.start_value == 1
+    assert tendency.end_value == 6
+    assert tendency.start_derivative == 5
+    assert tendency.end_derivative == 5
 
 
 def test_generate():
@@ -144,7 +144,7 @@ def test_generate():
     Check the generated values.
     """
     tendency = LinearTendency(user_start=0, user_duration=1, user_from=1, user_to=10)
-    time, values = tendency.generate()
+    time, values = tendency.get_value()
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([1, 10]))
 

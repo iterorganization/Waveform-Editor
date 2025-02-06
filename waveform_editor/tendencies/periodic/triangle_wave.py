@@ -1,5 +1,6 @@
+from typing import Optional
+
 import numpy as np
-from param import depends
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
 
@@ -7,10 +8,13 @@ from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTenden
 class TriangleWaveTendency(PeriodicBaseTendency):
     """A tendency representing a triangle wave."""
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
-        a time array will be created from the start to the end of the tendency, where
-        time points are defined for every peak and trough in the tendency.
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a time array will be created from the start to the end of the
+        tendency, where time points are defined for every peak and trough in the
+        tendency.
 
         Args:
             time: The time array on which to generate points.
@@ -23,21 +27,18 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         values = self._calc_triangle_wave(time)
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self._calc_triangle_wave(self.start)
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the values of the derivatives at the provided time array.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self._calc_triangle_wave(self.end)
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return self._calc_triangle_derivative(self.start)
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self._calc_triangle_derivative(self.end)
+        Returns:
+            numpy array containing the derivatives
+        """
+        is_rising = self._calc_phase(time) % (2 * np.pi) > np.pi
+        rate = 4 * self.frequency * self.amplitude
+        return np.where(is_rising, rate, -rate)
 
     def _calc_triangle_wave(self, time):
         """Calculates the point of the triangle wave at a given time point or
@@ -52,20 +53,6 @@ class TriangleWaveTendency(PeriodicBaseTendency):
         triangle_wave = 2 * np.abs((self._calc_phase(time) / np.pi) % 2 - 1) - 1
         return self.base + self.amplitude * triangle_wave
 
-    def _calc_triangle_derivative(self, time):
-        """Calculates the derivative of the triangle wave at a given time point or
-        an array of time points.
-
-        Args:
-            time: Single time value or numpy array containing time values.
-
-        Returns:
-            The derivative of the triangle wave.
-        """
-        is_rising = self._calc_phase(time) % (2 * np.pi) > np.pi
-
-        return self.rate if is_rising else -self.rate
-
     def _calc_phase(self, time):
         """Calculates the phase of the triangle wave at a given time point or
         an array of time points.
@@ -77,11 +64,6 @@ class TriangleWaveTendency(PeriodicBaseTendency):
             The phase of the triangle wave.
         """
         return 2 * np.pi * self.frequency * (time - self.start) + self.phase - np.pi / 2
-
-    @depends("values_changed", watch=True)
-    def _update_rate(self):
-        """Calculates the rate of change."""
-        self.rate = 4 * self.frequency * self.amplitude
 
     def _calc_minimal_triangle_wave(self):
         """Calculates the time points at which the peaks and troughs of the triangle

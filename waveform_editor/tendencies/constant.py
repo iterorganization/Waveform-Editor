@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 from param import depends
@@ -19,9 +21,11 @@ class ConstantTendency(BaseTendency):
         self.value = 0.0
         super().__init__(**kwargs)
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
-        a constant line containing the start and end points will be generated.
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a constant line containing the start and end points will be generated.
 
         Args:
             time: The time array on which to generate points.
@@ -34,21 +38,17 @@ class ConstantTendency(BaseTendency):
         values = self.value * np.ones(len(time))
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.value
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the values of the derivatives at the provided time array.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.value
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return 0
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return 0
+        Returns:
+            numpy array containing the derivatives
+        """
+        derivatives = np.zeros(len(time))
+        return derivatives
 
     @depends(
         "prev_tendency.end_value",
@@ -67,8 +67,8 @@ class ConstantTendency(BaseTendency):
         else:
             value = self.user_value
 
-        # Update state
-        values_changed = self.value != value
+        # Update state and cast to bool, as param does not like numpy booleans
+        values_changed = bool(self.value != value)
         if values_changed:
             self.value = value
         # Ensure watchers are called after both values are updated

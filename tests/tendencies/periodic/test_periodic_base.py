@@ -1,9 +1,21 @@
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 from pytest import approx
 
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
+
+
+@pytest.fixture(autouse=True)
+def patch_periodic_base_tendency():
+    arr = np.array([0])
+    with (
+        patch.object(PeriodicBaseTendency, "get_value", return_value=(arr, arr)),
+        patch.object(PeriodicBaseTendency, "get_derivative", return_value=arr),
+    ):
+        yield
 
 
 @pytest.mark.parametrize(

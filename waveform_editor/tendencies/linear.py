@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import param
 from param import depends
@@ -33,9 +35,11 @@ class LinearTendency(BaseTendency):
         self.rate = 0.0
         super().__init__(**kwargs)
 
-    def generate(self, time=None):
-        """Generate time and values based on the tendency. If no time array is provided,
-        a line containing the start and end points will be generated.
+    def get_value(
+        self, time: Optional[np.ndarray] = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get the tendency values at the provided time array. If no time array is
+        provided, a line containing the start and end points will be generated.
 
         Args:
             time: The time array on which to generate points.
@@ -45,28 +49,21 @@ class LinearTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        time = np.array(time)
-
-        normalized_time = (time - self.start) / (self.end - self.start)
-
+        normalized_time = (time - self.start) / self.duration
         values = self.from_ + (self.to - self.from_) * normalized_time
         return time, values
 
-    def get_start_value(self) -> float:
-        """Returns the value of the tendency at the start."""
-        return self.from_
+    def get_derivative(self, time: np.ndarray) -> np.ndarray:
+        """Get the values of the derivatives at the provided time array.
 
-    def get_end_value(self) -> float:
-        """Returns the value of the tendency at the end."""
-        return self.to
+        Args:
+            time: The time array on which to generate points.
 
-    def get_derivative_start(self) -> float:
-        """Returns the derivative of the tendency at the start."""
-        return self.rate
-
-    def get_derivative_end(self) -> float:
-        """Returns the derivative of the tendency at the end."""
-        return self.rate
+        Returns:
+            numpy array containing the derivatives
+        """
+        derivatives = self.rate * np.ones(len(time))
+        return derivatives
 
     # Workaround: param doesn't like a @depends on both prev and next tendency
     _trigger = param.Event()
@@ -75,7 +72,12 @@ class LinearTendency(BaseTendency):
     def _trigger1(self):
         self._trigger = True
 
-    @depends("next_tendency.start_value", "next_tendency.start_value_set", watch=True)
+    @depends(
+        "next_tendency.start",
+        "next_tendency.start_value",
+        "next_tendency.start_value_set",
+        watch=True,
+    )
     def _trigger2(self):
         self._trigger = True
 
@@ -104,7 +106,7 @@ class LinearTendency(BaseTendency):
             if self.prev_tendency is None:
                 inputs[0] = 0
             else:
-                inputs[0] = self.prev_tendency.get_end_value()
+                inputs[0] = self.prev_tendency.end_value
             num_inputs += 1
             start_value_set = False
         else:
@@ -113,7 +115,7 @@ class LinearTendency(BaseTendency):
         if num_inputs < 2 and inputs[2] is None:
             # To value is not provided, set to from_ or next start value
             if self.next_tendency is not None and self.next_tendency.start_value_set:
-                inputs[2] = self.next_tendency.get_start_value()
+                inputs[2] = self.next_tendency.start_value
             else:
                 inputs[2] = inputs[0]
             num_inputs += 1
@@ -127,8 +129,8 @@ class LinearTendency(BaseTendency):
             )
             values = (0.0, 0.0, 0.0)
 
-        # Update state
-        values_changed = (self.from_, self.rate, self.to) != values
+        # Update state and cast to bool, as param does not like numpy booleans
+        values_changed = bool((self.from_, self.rate, self.to) != values)
         if values_changed:
             self.from_, self.rate, self.to = values
         # Ensure watchers are called after both values are updated

@@ -63,7 +63,7 @@ def test_repeated_values(repeat_waveform):
     """Test if generated values are correct."""
     repeat_tendency = RepeatTendency(**repeat_waveform)
     times = np.linspace(0, 8, 17)
-    _, values = repeat_tendency.generate(times)
+    _, values = repeat_tendency.get_value(times)
     check_values_at_times([0, 2.5, 5, 7.5], times, values, 1)
     check_values_at_times([0.5, 3, 5.5, 8], times, values, 1.5)
     check_values_at_times([1, 3.5, 6], times, values, 2)

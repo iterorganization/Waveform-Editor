@@ -97,7 +97,7 @@ class PeriodicBaseTendency(BaseTendency):
             if self.prev_tendency is None:
                 inputs[0] = 0.0
             else:
-                inputs[0] = self.prev_tendency.get_end_value()
+                inputs[0] = self.prev_tendency.end_value
             num_inputs += 1
 
         # Set defaults if problem is under-determined
