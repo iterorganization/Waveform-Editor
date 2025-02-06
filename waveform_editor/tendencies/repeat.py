@@ -59,29 +59,28 @@ class RepeatTendency(BaseTendency):
         """
         length = self.waveform.calc_length()
         if time is None:
-            times, values = self.waveform.get_value()
+            time, values = self.waveform.get_value()
             repeat = int(np.ceil(self.duration / length))
             repetition_array = np.arange(repeat) * length
-            times = (times + repetition_array[:, np.newaxis]).flatten() + self.start
+            time = (time + repetition_array[:, np.newaxis]).flatten() + self.start
             values = np.tile(values, repeat)
 
             # cut off everything after self.end
-            assert times[-1] >= self.end
-            cut_index = np.argmax(times >= self.end)
-            times = times[: cut_index + 1]
+            assert time[-1] >= self.end
+            cut_index = np.argmax(time >= self.end)
+            time = time[: cut_index + 1]
 
             values = values[: cut_index + 1]
-            if times[-1] != self.end:
-                times[-1] = self.end
+            if time[-1] != self.end:
+                time[-1] = self.end
                 _, end_array = self.waveform.get_value(
                     np.array([(self.end - self.start) % length])
                 )
                 values[-1] = end_array[0]
         else:
-            times = np.atleast_1d(time)
-            relative_times = (times - self.start) % length
+            relative_times = (time - self.start) % length
             _, values = self.waveform.get_value(relative_times)
-        return times, values
+        return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
         """Get the values of the derivatives at the provided time array.

@@ -52,7 +52,7 @@ class Waveform:
             time = np.concatenate(time)
             values = np.concatenate(values)
         else:
-            values = self._evaluate_tendency_values(time, "get_value")
+            values = self._evaluate_tendencies(time)
 
         return time, values
 
@@ -65,16 +65,16 @@ class Waveform:
         Returns:
             numpy array containing the derivatives
         """
-        return self._evaluate_tendency_values(time, "get_derivative")
+        return self._evaluate_tendencies(time, eval_derivatives=True)
 
-    def _evaluate_tendency_values(self, time, func_name):
-        """Evaluates a given function (either 'get_value' or 'get_derivative') on a
-        the appropriate tendency based on the time values.
+    def _evaluate_tendencies(self, time, eval_derivatives=False):
+        """Evaluates the values (or derivatives) of the tendencies at the provided
+        time array.
 
         Args:
             time: The time array on which to generate points.
-            func_name: The name of the function to apply ('get_value' or
-                'get_derivative').
+            eval_derivatives: When this is True, the derivatives will be evaluated.
+                When it is False, the values will be evaluated.
 
         Returns:
             numpy array containing the computed values.
@@ -84,9 +84,10 @@ class Waveform:
         for tendency in self.tendencies:
             mask = (time >= tendency.start) & (time <= tendency.end)
             if np.any(mask):
-                func = getattr(tendency, func_name)
-                result = func(time[mask])
-                values[mask] = result[1] if isinstance(result, tuple) else result
+                if eval_derivatives:
+                    values[mask] = tendency.get_derivative(time[mask])
+                else:
+                    _, values[mask] = tendency.get_value(time[mask])
 
         return values
 
