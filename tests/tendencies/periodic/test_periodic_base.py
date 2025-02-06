@@ -8,6 +8,16 @@ from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
 
 
+@pytest.fixture(autouse=True)
+def patch_periodic_base_tendency():
+    arr = np.array([0])
+    with (
+        patch.object(PeriodicBaseTendency, "get_value", return_value=(arr, arr)),
+        patch.object(PeriodicBaseTendency, "get_derivative", return_value=arr),
+    ):
+        yield
+
+
 @pytest.mark.parametrize(
     "base, amplitude, min, max, expected_base, expected_amplitude, has_error",
     [
@@ -46,28 +56,18 @@ def test_bounds(
     """
     Test the base, amplitude, minimum and maximum values of the periodic base tendency
     """
-    with (
-        patch.object(
-            PeriodicBaseTendency,
-            "get_value",
-            return_value=(np.array([0]), np.array([0])),
-        ),
-        patch.object(
-            PeriodicBaseTendency, "get_derivative", return_value=np.array([0])
-        ),
-    ):
-        tendency = PeriodicBaseTendency(
-            user_duration=1,
-            user_base=base,
-            user_amplitude=amplitude,
-            user_min=min,
-            user_max=max,
-        )
-        if has_error:
-            assert tendency.value_error is not None
-        else:
-            assert tendency.base == approx(expected_base)
-            assert tendency.amplitude == approx(expected_amplitude)
+    tendency = PeriodicBaseTendency(
+        user_duration=1,
+        user_base=base,
+        user_amplitude=amplitude,
+        user_min=min,
+        user_max=max,
+    )
+    if has_error:
+        assert tendency.value_error is not None
+    else:
+        assert tendency.base == approx(expected_base)
+        assert tendency.amplitude == approx(expected_amplitude)
 
 
 @pytest.mark.parametrize(
@@ -103,36 +103,26 @@ def test_bounds_prev(
     when the tendency has a previous tendency.
     """
     prev_tendency = ConstantTendency(user_start=0, user_duration=1, user_value=8)
-    with (
-        patch.object(
-            PeriodicBaseTendency,
-            "get_value",
-            return_value=(np.array([0]), np.array([0])),
-        ),
-        patch.object(
-            PeriodicBaseTendency, "get_derivative", return_value=np.array([0])
-        ),
-    ):
-        if has_error:
-            with pytest.raises(ValueError):
-                PeriodicBaseTendency(
-                    user_duration=1,
-                    user_base=base,
-                    user_amplitude=amplitude,
-                    user_min=min,
-                    user_max=max,
-                )
-        else:
-            tendency = PeriodicBaseTendency(
+    if has_error:
+        with pytest.raises(ValueError):
+            PeriodicBaseTendency(
                 user_duration=1,
                 user_base=base,
                 user_amplitude=amplitude,
                 user_min=min,
                 user_max=max,
             )
-            tendency.set_previous_tendency(prev_tendency)
-            assert tendency.base == approx(expected_base)
-            assert tendency.amplitude == approx(expected_amplitude)
+    else:
+        tendency = PeriodicBaseTendency(
+            user_duration=1,
+            user_base=base,
+            user_amplitude=amplitude,
+            user_min=min,
+            user_max=max,
+        )
+        tendency.set_previous_tendency(prev_tendency)
+        assert tendency.base == approx(expected_base)
+        assert tendency.amplitude == approx(expected_amplitude)
 
 
 @pytest.mark.parametrize(
@@ -168,97 +158,63 @@ def test_bounds_next(
     when the tendency has a next tendency.
     """
     next_tendency = ConstantTendency(user_duration=1, user_value=8)
-    with (
-        patch.object(
-            PeriodicBaseTendency,
-            "get_value",
-            return_value=(np.array([0]), np.array([0])),
-        ),
-        patch.object(
-            PeriodicBaseTendency, "get_derivative", return_value=np.array([0])
-        ),
-    ):
-        if has_error:
-            with pytest.raises(ValueError):
-                PeriodicBaseTendency(
-                    user_duration=1,
-                    user_base=base,
-                    user_amplitude=amplitude,
-                    user_min=min,
-                    user_max=max,
-                )
-        else:
-            tendency = PeriodicBaseTendency(
+    if has_error:
+        with pytest.raises(ValueError):
+            PeriodicBaseTendency(
                 user_duration=1,
                 user_base=base,
                 user_amplitude=amplitude,
                 user_min=min,
                 user_max=max,
             )
-            tendency.set_next_tendency(next_tendency)
-            assert tendency.base == approx(expected_base)
+    else:
+        tendency = PeriodicBaseTendency(
+            user_duration=1,
+            user_base=base,
+            user_amplitude=amplitude,
+            user_min=min,
+            user_max=max,
+        )
+        tendency.set_next_tendency(next_tendency)
+        assert tendency.base == approx(expected_base)
 
 
 def test_frequency_and_period():
     """Test if the frequency and period of the tendency are being set correctly."""
 
-    with (
-        patch.object(
-            PeriodicBaseTendency,
-            "get_value",
-            return_value=(np.array([0]), np.array([0])),
-        ),
-        patch.object(
-            PeriodicBaseTendency, "get_derivative", return_value=np.array([0])
-        ),
-    ):
-        tendency = PeriodicBaseTendency(user_duration=1, user_frequency=5)
-        assert tendency.frequency == 5
-        assert tendency.period == approx(0.2)
+    tendency = PeriodicBaseTendency(user_duration=1, user_frequency=5)
+    assert tendency.frequency == 5
+    assert tendency.period == approx(0.2)
 
-        tendency = PeriodicBaseTendency(user_duration=1, user_period=4)
-        assert tendency.period == 4
-        assert tendency.frequency == approx(0.25)
+    tendency = PeriodicBaseTendency(user_duration=1, user_period=4)
+    assert tendency.period == 4
+    assert tendency.frequency == approx(0.25)
 
-        tendency = PeriodicBaseTendency(
-            user_duration=1, user_period=2, user_frequency=0.5
-        )
-        assert tendency.period == 2
-        assert tendency.frequency == 0.5
+    tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=0.5)
+    assert tendency.period == 2
+    assert tendency.frequency == 0.5
 
-        tendency = PeriodicBaseTendency(
-            user_duration=1, user_period=2, user_frequency=2
-        )
-        assert tendency.value_error is not None
+    tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=2)
+    assert tendency.value_error is not None
 
-        with pytest.raises(ValueError):
-            tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
+    with pytest.raises(ValueError):
+        tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
 
-        with pytest.raises(ValueError):
-            tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
+    with pytest.raises(ValueError):
+        tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
 
 
 def test_phase():
     """Test if the phase shift of the tendency is being set correctly."""
 
-    with (
-        patch.object(
-            PeriodicBaseTendency,
-            "get_value",
-            return_value=(np.array([0]), np.array([0])),
-        ),
-        patch.object(
-            PeriodicBaseTendency, "get_derivative", return_value=np.array([0])
-        ),
-    ):
-        tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi / 2)
-        assert tendency.phase == approx(np.pi / 2)
+    tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi / 2)
+    assert tendency.phase == approx(np.pi / 2)
 
-        tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi)
-        assert tendency.phase == approx(np.pi)
+    tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi)
+    assert tendency.phase == approx(np.pi)
 
-        tendency = PeriodicBaseTendency(user_duration=1, user_phase=2 * np.pi)
-        assert tendency.phase == approx(0)
+    tendency = PeriodicBaseTendency(user_duration=1, user_phase=2 * np.pi)
+    assert tendency.phase == approx(0)
 
-        tendency = PeriodicBaseTendency(user_duration=1, user_phase=3 * np.pi)
-        assert tendency.phase == approx(np.pi)
+    tendency = PeriodicBaseTendency(user_duration=1, user_phase=3 * np.pi)
+    assert tendency.phase == approx(np.pi)
