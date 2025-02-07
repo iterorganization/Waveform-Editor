@@ -80,7 +80,8 @@ class BaseTendency(param.Parameterized):
     )
 
     def __init__(self, **kwargs):
-        self.error = None
+        self.annotations = []
+        self._check_for_unknown_kwargs(kwargs)
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -199,4 +200,31 @@ class BaseTendency(param.Parameterized):
         if self.duration <= 0:
             self.time_error = ValueError(
                 "Tendency end time must be greater than its start time."
+            )
+
+    def _check_for_unknown_kwargs(self, kwargs):
+        unknown_kwargs = []
+        line_number = kwargs.pop("user_line_number")
+        for key in list(kwargs.keys()):
+            if key not in self.param:
+                unknown_kwargs.append(key.replace("user_", ""))
+                del kwargs[key]
+        if unknown_kwargs:
+            if len(unknown_kwargs) == 1:
+                error_msg = (
+                    f"Unknown keyword passed: {', '.join(unknown_kwargs)}",
+                    " it will be ignored.",
+                )
+            else:
+                error_msg = (
+                    f"Multiple unknown keywords passed: {', '.join(unknown_kwargs)}",
+                    " they will be ignored.",
+                )
+            self.annotations.append(
+                {
+                    "row": line_number,
+                    "column": 0,
+                    "text": error_msg,
+                    "type": "warning",
+                }
             )

@@ -32,6 +32,7 @@ tendency_map = {
 class Waveform:
     def __init__(self, waveform):
         self.tendencies = []
+        self.annotations = []
         self._process_waveform(waveform)
 
     def get_value(
@@ -108,6 +109,10 @@ class Waveform:
         for i in range(1, len(self.tendencies)):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
+
+        for tendency in self.tendencies:
+            if tendency.annotations != []:
+                self.annotations.extend(tendency.annotations)
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.

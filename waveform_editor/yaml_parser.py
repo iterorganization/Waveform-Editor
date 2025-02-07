@@ -5,13 +5,21 @@ import yaml
 from waveform_editor.waveform import Waveform
 
 
+class LineNumberYamlLoader(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        # The line numbers must be extracted to be able to display the error messages
+        mapping = super().construct_mapping(node, deep)
+        mapping["line_number"] = node.start_mark.line
+        return mapping
+
+
 class YamlParser(param.Parameterized):
     waveform = param.ClassSelector(
         class_=Waveform,
         default=None,
         doc="Waveform that contains the tendencies.",
     )
-    annotations = param.List()
+    annotations = param.List(doc="List of error messages")
 
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
@@ -30,11 +38,12 @@ class YamlParser(param.Parameterized):
         Args:
             yaml_str: YAML content as a string.
         """
+        self.annotations.clear()
         try:
-            waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
+            waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
             waveform = waveform_yaml.get("waveform", [])
             self.waveform = Waveform(waveform)
-            self.annotations.clear()
+            self.annotations = self.waveform.annotations
         except yaml.YAMLError as e:
             self.annotations = self.yaml_error_to_annotation(e)
             self.waveform = None
