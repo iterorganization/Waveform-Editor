@@ -137,17 +137,12 @@ class Waveform:
             return tendency
         else:
             line_number = entry.pop("line_number")
-
-            suggestions = ""
-            close_matches = difflib.get_close_matches(
-                tendency_type, tendency_map.keys(), n=1
-            )
-            if close_matches:
-                suggestions = f"Did you mean {close_matches[0]!r}?"
+            suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
 
             error_msg = (
-                f"Unsupported tendency type: {tendency_type}, {suggestions} \n"
-                "This tendency will be ignored.",
+                f"Unsupported tendency type: '{tendency_type}'.\n"
+                f"Did you mean {suggestion}? \n"
+                "This tendency will be ignored."
             )
             self.annotations.add(line_number, error_msg, is_warning=True)
             return None

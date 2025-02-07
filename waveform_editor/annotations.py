@@ -44,11 +44,11 @@ class Annotations:
         else:
             self.add(0, f"Unknown YAML error: {error}")
 
-    def create_suggestion(self, match, list):
+    def suggest(self, word_to_match, possible_matches):
         suggestion = ""
-        close_matches = difflib.get_close_matches(match, list, n=1)
+        close_matches = difflib.get_close_matches(word_to_match, possible_matches, n=1)
         if close_matches:
-            suggestion = f"Did you mean {close_matches[0]!r}?"
+            suggestion = f"{close_matches[0]!r}"
 
         return suggestion
 
