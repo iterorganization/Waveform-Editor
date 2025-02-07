@@ -27,7 +27,7 @@ waveform:
 yaml_parser = YamlParser()
 
 alert_pane = pn.pane.Alert(
-    "### The YAML did not parse correctly (see editor)!",
+    "### The YAML did not parse correctly! (see editor)",
     alert_type="danger",
     visible=False,
 )
@@ -36,7 +36,7 @@ alert_pane = pn.pane.Alert(
 def update_plot(value):
     yaml_parser.parse_waveforms_from_string(value)
 
-    code_editor.annotations = yaml_parser.annotations
+    code_editor.annotations = yaml_parser.annotations.get()
     code_editor.param.trigger("annotations")
 
     if yaml_parser.waveform is None:

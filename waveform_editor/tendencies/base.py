@@ -5,9 +5,9 @@ import numpy as np
 import param
 from param import depends
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.util import (
     InconsistentInputsError,
-    add_annotation,
     solve_with_constraints,
 )
 
@@ -81,7 +81,7 @@ class BaseTendency(param.Parameterized):
     )
 
     def __init__(self, **kwargs):
-        self.annotations = []
+        self.annotations = Annotations()
         self._check_for_unknown_kwargs(kwargs)
         super().__init__(**kwargs)
 
@@ -222,4 +222,4 @@ class BaseTendency(param.Parameterized):
                     " they will be ignored.",
                 )
 
-            add_annotation(self.annotations, line_number, error_msg, is_warning=True)
+            self.annotations.add(line_number, error_msg, is_warning=True)

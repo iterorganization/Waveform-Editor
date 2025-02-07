@@ -33,26 +33,3 @@ def solve_with_constraints(inputs, constraint_matrix):
         raise InconsistentInputsError()
 
     return tuple(inputs)
-
-
-def add_annotation(annotations, line_number, error_msg, is_warning=False):
-    """Adds the error message to the list of annotations.
-
-    Args:
-        annotations: The list of annotations the error message is added to.
-        line_number: The line number at which the error occurs.
-        error_msg: The error message the annotation should display.
-        error_type: Whether the annotation is a warning. If set to False, it is treated
-            as an error.
-    """
-    error_type = "warning" if is_warning else "error"
-    annotations.extend(
-        [
-            {
-                "row": line_number,
-                "column": 0,
-                "text": error_msg,
-                "type": error_type,
-            }
-        ]
-    )

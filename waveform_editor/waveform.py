@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -12,7 +13,6 @@ from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTenden
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-from waveform_editor.tendencies.util import add_annotation
 
 tendency_map = {
     "linear": LinearTendency,
@@ -34,7 +34,7 @@ tendency_map = {
 class Waveform:
     def __init__(self, waveform):
         self.tendencies = []
-        self.annotations = []
+        self.annotations = Annotations()
         self._process_waveform(waveform)
 
     def get_value(
@@ -114,8 +114,8 @@ class Waveform:
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
         for tendency in self.tendencies:
-            if tendency.annotations != []:
-                self.annotations.extend(tendency.annotations)
+            if tendency.annotations.get() != []:
+                self.annotations.add_annotations(tendency.annotations)
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.
@@ -137,9 +137,17 @@ class Waveform:
             return tendency
         else:
             line_number = entry.pop("line_number")
+
+            suggestions = ""
+            close_matches = difflib.get_close_matches(
+                tendency_type, tendency_map.keys(), n=1
+            )
+            if close_matches:
+                suggestions = f"Did you mean {close_matches[0]!r}?"
+
             error_msg = (
-                f"Unsupported tendency type: {tendency_type}. "
+                f"Unsupported tendency type: {tendency_type}, {suggestions} \n"
                 "This tendency will be ignored.",
             )
-            add_annotation(self.annotations, line_number, error_msg, is_warning=True)
+            self.annotations.add(line_number, error_msg, is_warning=True)
             return None

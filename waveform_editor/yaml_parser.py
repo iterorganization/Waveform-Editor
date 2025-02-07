@@ -2,7 +2,7 @@ import holoviews as hv
 import param
 import yaml
 
-from waveform_editor.tendencies.util import add_annotation
+from waveform_editor.annotations import Annotations
 from waveform_editor.waveform import Waveform
 
 
@@ -15,12 +15,9 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser(param.Parameterized):
-    waveform = param.ClassSelector(
-        class_=Waveform,
-        default=None,
-        doc="Waveform that contains the tendencies.",
-    )
-    annotations = param.List(doc="List of error messages")
+    def __init__(self):
+        # self.waveform = None
+        self.annotations = Annotations()
 
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
@@ -46,23 +43,8 @@ class YamlParser(param.Parameterized):
             self.waveform = Waveform(waveform)
             self.annotations = self.waveform.annotations
         except yaml.YAMLError as e:
-            self.annotations = self.yaml_error_to_annotation(e)
+            self.annotations.add_yaml_error(e)
             self.waveform = None
-
-    def yaml_error_to_annotation(self, error):
-        annotations = []
-
-        if hasattr(error, "problem_mark"):
-            line = error.problem_mark.line
-            # TODO: Is there a way to visualize the column into the annotation?
-            # column = error.problem_mark.column
-            message = error.problem
-
-            add_annotation(annotations, line, message)
-        else:
-            add_annotation(0, 0, f"Unknown YAML error: {error}")
-
-        return annotations
 
     def plot_empty(self):
         overlay = hv.Overlay()
