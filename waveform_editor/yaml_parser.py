@@ -2,6 +2,7 @@ import holoviews as hv
 import param
 import yaml
 
+from waveform_editor.tendencies.util import add_annotation
 from waveform_editor.waveform import Waveform
 
 
@@ -53,26 +54,13 @@ class YamlParser(param.Parameterized):
 
         if hasattr(error, "problem_mark"):
             line = error.problem_mark.line
-            column = error.problem_mark.column
+            # TODO: Is there a way to visualize the column into the annotation?
+            # column = error.problem_mark.column
             message = error.problem
 
-            annotations.append(
-                {
-                    "row": line,
-                    "column": column,
-                    "text": f"Error: {message}",
-                    "type": "error",
-                }
-            )
+            add_annotation(annotations, line, message)
         else:
-            annotations.append(
-                {
-                    "row": 0,
-                    "column": 0,
-                    "text": f"Unknown YAML error: {error}",
-                    "type": "error",
-                }
-            )
+            add_annotation(0, 0, f"Unknown YAML error: {error}")
 
         return annotations
 

@@ -7,6 +7,7 @@ from param import depends
 
 from waveform_editor.tendencies.util import (
     InconsistentInputsError,
+    add_annotation,
     solve_with_constraints,
 )
 
@@ -220,11 +221,5 @@ class BaseTendency(param.Parameterized):
                     f"Multiple unknown keywords passed: {', '.join(unknown_kwargs)}",
                     " they will be ignored.",
                 )
-            self.annotations.append(
-                {
-                    "row": line_number,
-                    "column": 0,
-                    "text": error_msg,
-                    "type": "warning",
-                }
-            )
+
+            add_annotation(self.annotations, line_number, error_msg, is_warning=True)

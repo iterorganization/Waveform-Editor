@@ -1,3 +1,4 @@
+import difflib
 from typing import Optional
 
 import numpy as np
@@ -11,6 +12,7 @@ from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTenden
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.tendencies.util import add_annotation
 
 tendency_map = {
     "linear": LinearTendency,
@@ -104,7 +106,8 @@ class Waveform:
         """
         for entry in waveform:
             tendency = self._handle_tendency(entry)
-            self.tendencies.append(tendency)
+            if tendency is not None:
+                self.tendencies.append(tendency)
 
         for i in range(1, len(self.tendencies)):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
@@ -119,6 +122,9 @@ class Waveform:
 
         Args:
             entry: Entry in the YAML file.
+
+        Returns:
+            The created tendency or None, if the tendency cannot be created
         """
         tendency_type = entry.pop("type")
 
@@ -130,4 +136,10 @@ class Waveform:
             tendency = tendency_class(**params)
             return tendency
         else:
-            raise NotImplementedError(f"Unsupported tendency type: {tendency_type}")
+            line_number = entry.pop("line_number")
+            error_msg = (
+                f"Unsupported tendency type: {tendency_type}. "
+                "This tendency will be ignored.",
+            )
+            add_annotation(self.annotations, line_number, error_msg, is_warning=True)
+            return None
