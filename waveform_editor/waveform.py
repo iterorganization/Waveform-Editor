@@ -126,6 +126,15 @@ class Waveform:
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
+        if "type" not in entry:
+            line_number = entry.pop("line_number")
+            error_msg = (
+                "The tendency must have a 'type'.\n"
+                "For example: '- {type: constant, duration: 3, value: 3}'\n"
+                "This tendency will be ignored."
+            )
+            self.annotations.add(line_number, error_msg)
+            return None
         tendency_type = entry.pop("type")
 
         # Rewrite keys
@@ -144,5 +153,5 @@ class Waveform:
                 f"Did you mean {suggestion}? \n"
                 "This tendency will be ignored."
             )
-            self.annotations.add(line_number, error_msg, is_warning=True)
+            self.annotations.add(line_number, error_msg)
             return None
