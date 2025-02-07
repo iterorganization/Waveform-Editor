@@ -22,23 +22,21 @@ waveform:
     height=1200,
     theme="tomorrow",
     language="yaml",
-    annotations=[
-        dict(row=1, column=0, text="an error", type="error"),
-        dict(row=2, column=0, text="a warning", type="warning"),
-    ],
 )
 
 yaml_parser = YamlParser()
 
-initial_yaml_str = code_editor.value
-yaml_parser.parse_waveforms_from_string(initial_yaml_str)
-
 
 def update_plot(value):
-    yaml_parser.tendencies = []
     yaml_parser.parse_waveforms_from_string(value)
 
-    return yaml_parser.plot_tendencies()
+    code_editor.annotations = yaml_parser.annotations
+    code_editor.param.trigger("annotations")
+
+    if yaml_parser.waveform is None:
+        return yaml_parser.plot_empty()
+    else:
+        return yaml_parser.plot_tendencies()
 
 
 hv_dynamic_map = hv.DynamicMap(pn.bind(update_plot, value=code_editor.param.value))

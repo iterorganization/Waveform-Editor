@@ -1,10 +1,18 @@
 import holoviews as hv
+import param
 import yaml
 
 from waveform_editor.waveform import Waveform
 
 
-class YamlParser:
+class YamlParser(param.Parameterized):
+    waveform = param.ClassSelector(
+        class_=Waveform,
+        default=None,
+        doc="Waveform that contains the tendencies.",
+    )
+    annotations = param.List()
+
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
 
@@ -22,9 +30,45 @@ class YamlParser:
         Args:
             yaml_str: YAML content as a string.
         """
-        waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
-        waveform = waveform_yaml.get("waveform", [])
-        self.waveform = Waveform(waveform)
+        try:
+            waveform_yaml = yaml.load(yaml_str, yaml.SafeLoader)
+            waveform = waveform_yaml.get("waveform", [])
+            self.waveform = Waveform(waveform)
+            self.annotations.clear()
+        except yaml.YAMLError as e:
+            self.annotations = self.yaml_error_to_annotation(e)
+            self.waveform = None
+
+    def yaml_error_to_annotation(self, error):
+        annotations = []
+
+        print(f"Encountered the following YAMLError:\n {error}")
+        if hasattr(error, "problem_mark"):
+            line = error.problem_mark.line
+            column = error.problem_mark.column
+            message = error.problem
+
+            annotations.append(
+                {
+                    "row": line,
+                    "column": column,
+                    "text": f"Error: {message}",
+                    "type": "error",
+                }
+            )
+        else:
+            annotations.append(
+                {"row": 0, "column": 0, "text": "Unknown YAML error", "type": "error"}
+            )
+
+        return annotations
+
+    def plot_empty(self):
+        overlay = hv.Overlay()
+
+        # Force re-render by plotting an empty plot
+        overlay = overlay * hv.Curve([], "Time (s)", "Value")
+        return overlay.opts(title="Waveform", width=800, height=400)
 
     def plot_tendencies(self, plot_time_points=False):
         """
