@@ -26,6 +26,67 @@ def repeat_waveform():
     }
 
 
+def test_repeat_loop():
+    """Test if repeat tendency correctly links first and last tendencies."""
+    looped_waveform = {
+        "user_duration": 8,
+        "user_waveform": [
+            {"type": "linear", "from": 1, "to": 2, "duration": 2},
+            {"type": "linear", "from": 2, "to": -1, "duration": 1},
+            {"type": "linear", "duration": 1},
+        ],
+    }
+    repeat_tendency = RepeatTendency(**looped_waveform)
+    times = np.linspace(0, 8, 17)
+    _, values = repeat_tendency.get_value(times)
+    check_values_at_times([0, 4, 8], times, values, 1)
+    check_values_at_times([2, 6], times, values, 2)
+    check_values_at_times([3, 7], times, values, -1)
+    check_values_at_times([3.5, 7.5], times, values, 0)
+
+
+def test_smooth_loop():
+    """Test if repeat tendency correctly links the last smooth tendency to the first."""
+    looped_waveform = {
+        "user_duration": 8,
+        "user_waveform": [
+            {"type": "linear", "from": 1, "to": 2, "duration": 2},
+            {"type": "linear", "from": 2, "to": -1, "duration": 1},
+            {"type": "smooth", "duration": 1},
+        ],
+    }
+    repeat_tendency = RepeatTendency(**looped_waveform)
+    assert repeat_tendency.waveform.tendencies[-1].from_ == -1
+    assert repeat_tendency.waveform.tendencies[-1].to == 1
+
+
+def test_single_tendency():
+    """Test if a repeated tendency with a single tendency works."""
+    looped_waveform = {
+        "user_duration": 4,
+        "user_waveform": [
+            {"type": "linear", "from": 1, "to": 2, "duration": 3},
+        ],
+    }
+    repeat_tendency = RepeatTendency(**looped_waveform)
+    assert repeat_tendency.waveform.tendencies[0].start == 0
+    assert repeat_tendency.waveform.tendencies[0].end == 3
+    assert repeat_tendency.waveform.tendencies[0].from_ == 1
+    assert repeat_tendency.waveform.tendencies[0].to == 2
+
+    looped_waveform = {
+        "user_duration": 4,
+        "user_waveform": [
+            {"type": "linear", "duration": 3},
+        ],
+    }
+    repeat_tendency = RepeatTendency(**looped_waveform)
+    assert repeat_tendency.waveform.tendencies[0].start == 0
+    assert repeat_tendency.waveform.tendencies[0].end == 3
+    assert repeat_tendency.waveform.tendencies[0].from_ == 0
+    assert repeat_tendency.waveform.tendencies[0].to == 0
+
+
 def test_zero_start(repeat_waveform):
     """Test if zero start does not raise an error."""
     repeat_waveform["user_waveform"][0]["start"] = 0
