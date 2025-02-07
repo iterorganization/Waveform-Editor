@@ -42,7 +42,6 @@ class YamlParser(param.Parameterized):
     def yaml_error_to_annotation(self, error):
         annotations = []
 
-        print(f"Encountered the following YAMLError:\n {error}")
         if hasattr(error, "problem_mark"):
             line = error.problem_mark.line
             column = error.problem_mark.column
@@ -58,7 +57,12 @@ class YamlParser(param.Parameterized):
             )
         else:
             annotations.append(
-                {"row": 0, "column": 0, "text": "Unknown YAML error", "type": "error"}
+                {
+                    "row": 0,
+                    "column": 0,
+                    "text": f"Unknown YAML error: {error}",
+                    "type": "error",
+                }
             )
 
         return annotations
@@ -66,9 +70,8 @@ class YamlParser(param.Parameterized):
     def plot_empty(self):
         overlay = hv.Overlay()
 
-        # Force re-render by plotting an empty plot
-        overlay = overlay * hv.Curve([], "Time (s)", "Value")
-        return overlay.opts(title="Waveform", width=800, height=400)
+        # Since no new plot is introduced, the old plot is not updated
+        return overlay
 
     def plot_tendencies(self, plot_time_points=False):
         """
