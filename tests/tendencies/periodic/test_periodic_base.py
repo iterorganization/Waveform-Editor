@@ -64,7 +64,7 @@ def test_bounds(
         user_max=max,
     )
     if has_error:
-        assert tendency.value_error is not None
+        assert tendency.annotations.get()
     else:
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
@@ -104,14 +104,14 @@ def test_bounds_prev(
     """
     prev_tendency = ConstantTendency(user_start=0, user_duration=1, user_value=8)
     if has_error:
-        with pytest.raises(ValueError):
-            PeriodicBaseTendency(
-                user_duration=1,
-                user_base=base,
-                user_amplitude=amplitude,
-                user_min=min,
-                user_max=max,
-            )
+        tendency = PeriodicBaseTendency(
+            user_duration=1,
+            user_base=base,
+            user_amplitude=amplitude,
+            user_min=min,
+            user_max=max,
+        )
+        assert tendency.annotations.get()
     else:
         tendency = PeriodicBaseTendency(
             user_duration=1,
@@ -195,13 +195,13 @@ def test_frequency_and_period():
     assert tendency.frequency == 0.5
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=2)
-    assert tendency.value_error is not None
+    assert tendency.annotations.get()
 
-    with pytest.raises(ValueError):
-        tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
+    tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
+    assert tendency.annotations.get()
 
-    with pytest.raises(ValueError):
-        tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
+    tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
+    assert tendency.annotations.get()
 
 
 def test_phase():

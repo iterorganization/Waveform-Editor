@@ -11,9 +11,7 @@ class RepeatTendency(BaseTendency):
     """
 
     def __init__(self, **kwargs):
-        waveform_dict = []
-        if "user_waveform" in kwargs:
-            waveform_dict = kwargs.pop("user_waveform")
+        waveform_dict = kwargs.pop("user_waveform", []) or []
         super().__init__(**kwargs)
 
         for item in waveform_dict:
@@ -28,6 +26,8 @@ class RepeatTendency(BaseTendency):
 
         self.waveform = Waveform(waveform_dict)
         if not self.waveform.tendencies:
+            error_msg = "There are no tendencies in the repeated waveform."
+            self.annotations.add(self.line_number, error_msg)
             return
 
         if self.waveform.tendencies[0].start != 0:
