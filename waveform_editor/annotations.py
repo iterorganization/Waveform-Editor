@@ -48,7 +48,7 @@ class Annotations:
         suggestion = ""
         close_matches = difflib.get_close_matches(word_to_match, possible_matches, n=1)
         if close_matches:
-            suggestion = f"{close_matches[0]!r}"
+            suggestion = f"Did you mean {close_matches[0]!r}?\n"
 
         return suggestion
 

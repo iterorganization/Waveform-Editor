@@ -252,24 +252,11 @@ class BaseTendency(param.Parameterized):
             params_list = [
                 word.replace("user_", "") for word in self.param if "user_" in word
             ]
-            if len(unknown_kwargs) == 1:
-                suggestion = self.annotations.suggest(unknown_kwargs[0], params_list)
+            for unknown_kwarg in unknown_kwargs:
+                suggestion = self.annotations.suggest(unknown_kwarg, params_list)
                 error_msg = (
-                    f"Unknown keyword passed: {unknown_kwargs[0]!r}. "
-                    f"Did you mean {suggestion}?\n"
-                    "This keyword will be ignored."
-                )
-            else:
-                suggestions = []
-                for unknown_kwarg in unknown_kwargs:
-                    suggestions.append(
-                        self.annotations.suggest(unknown_kwarg, params_list)
-                    )
-                error_msg = (
-                    "Multiple unknown keywords passed: "
-                    f"{', '.join(repr(k) for k in unknown_kwargs)}.\n"
-                    f"Did you mean {', '.join(suggestions)}?\n"
-                    "These keywords will be ignored.",
+                    f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
+                    "This keyword will be ignored.\n"
                 )
 
-            self.annotations.add(line_number, error_msg, is_warning=True)
+                self.annotations.add(line_number, error_msg, is_warning=True)

@@ -1,4 +1,3 @@
-import difflib
 from typing import Optional
 
 import numpy as np
@@ -160,9 +159,8 @@ class Waveform:
             suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
 
             error_msg = (
-                f"Unsupported tendency type: '{tendency_type}'.\n"
-                f"Did you mean {suggestion}? \n"
-                "This tendency will be ignored."
+                f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
+                "This tendency will be ignored.\n"
             )
             self.annotations.add(line_number, error_msg)
             return None

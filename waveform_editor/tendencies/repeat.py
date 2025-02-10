@@ -2,7 +2,6 @@ from typing import Optional
 
 import numpy as np
 
-from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.base import BaseTendency
 
 
