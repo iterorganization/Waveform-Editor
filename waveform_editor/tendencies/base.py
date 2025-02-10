@@ -69,6 +69,10 @@ class BaseTendency(param.Parameterized):
     start_derivative = param.Number(default=0.0, doc="Derivative at self.start")
     end_derivative = param.Number(default=0.0, doc="Derivative at self.end")
 
+    line_number = param.Number(
+        default=0, doc="Line number of the tendency in the YAML file"
+    )
+
     time_error = param.ClassSelector(
         class_=Exception,
         default=None,
@@ -209,17 +213,16 @@ class BaseTendency(param.Parameterized):
         Args:
             kwargs: The passed keyword arguments.
         """
-        line_number = kwargs.pop("user_line_number")
-        self._check_for_unknown_kwargs(kwargs, line_number)
-        self._check_for_str_kwargs(kwargs, line_number)
+        self.line_number = kwargs.pop("user_line_number")
+        self._check_for_unknown_kwargs(kwargs)
+        self._check_for_str_kwargs(kwargs)
 
-    def _check_for_str_kwargs(self, kwargs, line_number):
+    def _check_for_str_kwargs(self, kwargs):
         """Filter out string values from keyword arguments, and create an annotation
         for all encountered strings.
 
         Args:
             kwargs: The passed keyword arguments.
-            line_number: The line number on which the tendency is defined in the yaml.
         """
         # Currently, all parameters are numeric, so we can safely remove any string
         # values. If string parameters are introduced in the future, we should capture
@@ -231,16 +234,15 @@ class BaseTendency(param.Parameterized):
                     f"The value for '{key.replace('user_', '')}' must be a number.\n"
                     "This keyword will be ignored."
                 )
-                self.annotations.add(line_number, error_msg, is_warning=True)
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
                 kwargs.pop(key)
 
-    def _check_for_unknown_kwargs(self, kwargs, line_number):
+    def _check_for_unknown_kwargs(self, kwargs):
         """Identifies and removes unrecognized keyword arguments, suggesting
         alternatives.
 
         Args:
             kwargs: The passed keyword arguments.
-            line_number: The line number on which the tendency is defined in the yaml.
         """
         unknown_kwargs = []
         for key in list(kwargs.keys()):
@@ -259,4 +261,4 @@ class BaseTendency(param.Parameterized):
                     "This keyword will be ignored.\n"
                 )
 
-                self.annotations.add(line_number, error_msg, is_warning=True)
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
