@@ -18,9 +18,9 @@ class PiecewiseLinearTendency(BaseTendency):
         default=np.array([0, 1]), doc="The values of the piecewise tendency."
     )
 
-    def __init__(self, *, user_time=None, user_value=None):
+    def __init__(self, user_time=None, user_value=None, **kwargs):
         self._validate_time_value(user_time, user_value)
-        super().__init__(user_start=user_time[0], user_end=user_time[-1])
+        super().__init__(user_start=user_time[0], user_end=user_time[-1], **kwargs)
         self.time = np.array(user_time)
         self.value = np.array(user_value)
         self.start_value_set = True
