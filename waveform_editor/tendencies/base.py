@@ -74,12 +74,6 @@ class BaseTendency(param.Parameterized):
         default=0, doc="Line number of the tendency in the YAML file"
     )
 
-    time_error = param.ClassSelector(
-        class_=Exception,
-        default=None,
-        doc="Error that occurred when processing user inputs.",
-    )
-
     def __init__(self, **kwargs):
         self.annotations = Annotations()
         self.line_number = kwargs.pop("user_line_number")
@@ -182,12 +176,10 @@ class BaseTendency(param.Parameterized):
 
         try:
             values = solve_with_constraints(inputs, constraint_matrix)
-            self.time_error = None
         except InconsistentInputsError:
             # Set error and make duration = 1:
-            self.time_error = ValueError(
-                "Inputs are inconsistent: start + duration != end"
-            )
+            error_msg = "Inputs are inconsistent: start + duration != end"
+            self.annotations.add(self.line_number, error_msg)
             if self.prev_tendency is None:
                 values = (0, 1, 1)
             else:
@@ -200,9 +192,8 @@ class BaseTendency(param.Parameterized):
             self.times_changed = True
 
         if self.duration <= 0:
-            self.time_error = ValueError(
-                "Tendency end time must be greater than its start time."
-            )
+            error_msg = "Tendency end time must be greater than its start time."
+            self.annotations.add(self.line_number, error_msg)
 
     def _check_for_unknown_kwargs(self, kwargs):
         """Identifies and removes unrecognized keyword arguments, suggesting
