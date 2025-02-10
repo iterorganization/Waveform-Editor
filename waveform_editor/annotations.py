@@ -6,9 +6,21 @@ class Annotations:
         self.annotations = []
 
     def get(self):
+        """
+        Retrieve the list of annotations stored in this instance.
+
+        Returns:
+            list: A list containing all annotations.
+        """
         return self.annotations
 
     def add_annotations(self, annotations):
+        """Merge another Annotations instance into this instance by appending its
+        annotations.
+
+        Args:
+            annotations: The Annotations object to append.
+        """
         return self.annotations.extend(annotations.get())
 
     def add(self, line_number, error_msg, is_warning=False):
@@ -34,9 +46,15 @@ class Annotations:
         )
 
     def add_yaml_error(self, error):
+        """Add a YAML parsing error to the annotations.
+
+        Args:
+            error: The YAML parsing error to be added as annotations.
+        """
         if hasattr(error, "problem_mark"):
             line = error.problem_mark.line
-            # TODO: Is there a way to visualize the column into the annotation?
+            # TODO: Is there a way to visualize the column into the annotation? They are
+            # currently ignored.
             # column = error.problem_mark.column
             message = error.problem
 
@@ -45,6 +63,12 @@ class Annotations:
             self.add(0, f"Unknown YAML error: {error}")
 
     def suggest(self, word_to_match, possible_matches):
+        """Suggest a close match for a given word from a list of possible matches.
+
+        Args:
+            word_to_match: The word for which a suggestion is needed.
+            possible_matches: A list of possible correct words.
+        """
         suggestion = ""
         close_matches = difflib.get_close_matches(word_to_match, possible_matches, n=1)
         if close_matches:
@@ -53,4 +77,5 @@ class Annotations:
         return suggestion
 
     def clear(self):
+        """Clear all stored annotations."""
         self.annotations.clear()
