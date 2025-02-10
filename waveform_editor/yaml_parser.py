@@ -16,7 +16,6 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 class YamlParser(param.Parameterized):
     def __init__(self):
-        # self.waveform = None
         self.annotations = Annotations()
 
     def parse_waveforms_from_file(self, file_path):

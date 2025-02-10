@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.base import BaseTendency
 
 
@@ -11,10 +12,10 @@ class RepeatTendency(BaseTendency):
     """
 
     def __init__(self, **kwargs):
-        if "user_waveform" not in kwargs:
-            self.value_error = ValueError("A repeated tendency must contain a waveform")
-            return
-        waveform_dict = kwargs.pop("user_waveform")
+        waveform_dict = []
+        if "user_waveform" in kwargs:
+            waveform_dict = kwargs.pop("user_waveform")
+        super().__init__(**kwargs)
 
         for item in waveform_dict:
             if item.get("type") == "piecewise":
@@ -26,7 +27,9 @@ class RepeatTendency(BaseTendency):
         from waveform_editor.waveform import Waveform
 
         self.waveform = Waveform(waveform_dict)
-        super().__init__(**kwargs)
+        if not self.waveform.tendencies:
+            return
+
         if self.waveform.tendencies[0].start != 0:
             self.value_error = ValueError(
                 "The starting point of the first repeated tendency is not set to 0."
@@ -38,6 +41,8 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].user_start = 0
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
+
+        self.annotations.add_annotations(self.waveform.annotations)
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -52,6 +57,8 @@ class RepeatTendency(BaseTendency):
         Returns:
             Tuple containing the time and its tendency values.
         """
+        if not self.waveform.tendencies:
+            return np.array([]), np.array([])
         length = self.waveform.calc_length()
         if time is None:
             time, values = self.waveform.get_value()
