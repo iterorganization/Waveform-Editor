@@ -18,10 +18,11 @@ class RepeatTendency(BaseTendency):
 
         for item in waveform_dict:
             if item.get("type") == "piecewise":
-                self.value_error = ValueError(
+                error_msg = (
                     "Piecewise tendencies are currently not supported inside of a "
                     "repeated tendency."
                 )
+                self.annotations.add(self.line_number, error_msg)
 
         from waveform_editor.waveform import Waveform
 
@@ -30,9 +31,8 @@ class RepeatTendency(BaseTendency):
             return
 
         if self.waveform.tendencies[0].start != 0:
-            self.value_error = ValueError(
-                "The starting point of the first repeated tendency is not set to 0."
-            )
+            error_msg = "The starting point of the first repeated must be set to 0."
+            self.annotations.add(self.line_number, error_msg)
 
         # Link the last tendency to the first tendency in the repeated waveform
         # We must lock the start to 0, otherwise it will take the start value of the

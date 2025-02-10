@@ -79,11 +79,6 @@ class BaseTendency(param.Parameterized):
         default=None,
         doc="Error that occurred when processing user inputs.",
     )
-    value_error = param.ClassSelector(
-        class_=Exception,
-        default=None,
-        doc="Error that occurred when processing user inputs.",
-    )
 
     def __init__(self, **kwargs):
         self.annotations = Annotations()
@@ -258,7 +253,7 @@ class BaseTendency(param.Parameterized):
 
             self.annotations.add(
                 self.line_number,
-                f"{cleaned_error_msg}\nThis keyword argument is ignored.",
+                f"{cleaned_error_msg}\nThis keyword is ignored.",
                 is_warning=True,
             )
             # Ignore keyword argument with ValueError
