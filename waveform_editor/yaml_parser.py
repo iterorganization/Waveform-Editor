@@ -1,8 +1,6 @@
 import holoviews as hv
-import param
 import yaml
 
-from waveform_editor.annotations import Annotations
 from waveform_editor.waveform import Waveform
 
 
@@ -14,10 +12,7 @@ class LineNumberYamlLoader(yaml.SafeLoader):
         return mapping
 
 
-class YamlParser(param.Parameterized):
-    def __init__(self):
-        self.annotations = Annotations()
-
+class YamlParser:
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
 
@@ -35,21 +30,15 @@ class YamlParser(param.Parameterized):
         Args:
             yaml_str: YAML content as a string.
         """
-        self.annotations.clear()
+        self.has_yaml_error = False
         try:
             waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
             waveform = waveform_yaml.get("waveform", [])
             self.waveform = Waveform(waveform)
-            self.annotations = self.waveform.annotations
         except yaml.YAMLError as e:
-            self.annotations.add_yaml_error(e)
-            self.waveform = None
-
-    def plot_empty(self):
-        overlay = hv.Overlay()
-
-        # Since no new plot is introduced, the old plot is not updated
-        return overlay
+            self.waveform.annotations.add_yaml_error(e)
+            self.waveform.tendencies = []
+            self.has_yaml_error = True
 
     def plot_tendencies(self, plot_time_points=False):
         """
@@ -64,6 +53,11 @@ class YamlParser(param.Parameterized):
         times, values = self.waveform.get_value()
 
         overlay = hv.Overlay()
+
+        # Prevent updating the plot if there are no tendencies, for example when a
+        # YAML error is encountered
+        if not self.waveform.tendencies:
+            return overlay
 
         # By merging all the tendencies into a single holoviews curve, we circumvent
         # an issue that occurs when returning an overlay of multiple curves, where

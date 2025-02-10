@@ -36,14 +36,11 @@ alert_pane = pn.pane.Alert(
 def update_plot(value):
     yaml_parser.parse_waveforms_from_string(value)
 
-    code_editor.annotations = yaml_parser.annotations.get()
+    code_editor.annotations = yaml_parser.waveform.annotations.get()
     code_editor.param.trigger("annotations")
 
-    if yaml_parser.waveform is None:
-        alert_pane.visible = True
-        return yaml_parser.plot_empty()
-
-    alert_pane.visible = False
+    # Show alert when there is a yaml parsing error
+    alert_pane.visible = yaml_parser.has_yaml_error
     return yaml_parser.plot_tendencies()
 
 
