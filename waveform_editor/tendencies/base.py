@@ -244,7 +244,7 @@ class BaseTendency(param.Parameterized):
 
             self.annotations.add(
                 self.line_number,
-                f"{cleaned_error_msg}\nThis keyword is ignored.",
+                f"{cleaned_error_msg}\nThis keyword is ignored.\n",
                 is_warning=True,
             )
             # Ignore keyword argument with ValueError
