@@ -235,7 +235,7 @@ class BaseTendency(param.Parameterized):
         except ValueError as error:
             # Fetch error and add to annotations
             error_msg = str(error)
-            match = re.search(r"'(\w+\.user_\w+)'", error_msg)
+            match = re.search(r"'(\w+\.\w+)'", error_msg)
             param_to_remove = match.group(1)
             param_to_remove_no_class = param_to_remove.split(".")[1]
             cleaned_error_msg = error_msg.replace(
@@ -248,7 +248,10 @@ class BaseTendency(param.Parameterized):
                 is_warning=True,
             )
             # Ignore keyword argument with ValueError
-            del kwargs[param_to_remove_no_class]
+            if param_to_remove_no_class in kwargs:
+                kwargs.pop(param_to_remove_no_class)
+            else:
+                return
 
             # Recursively retry with new kwargs
             self._setup_param(kwargs)
