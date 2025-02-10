@@ -76,7 +76,7 @@ class BaseTendency(param.Parameterized):
 
     def __init__(self, **kwargs):
         self.annotations = Annotations()
-        self.line_number = kwargs.pop("user_line_number")
+        self.line_number = kwargs.pop("user_line_number", 0)
         self._check_for_unknown_kwargs(kwargs)
         self._setup_param(kwargs)
 
