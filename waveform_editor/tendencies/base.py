@@ -1,3 +1,4 @@
+import re
 from abc import abstractmethod
 from typing import Optional
 
@@ -86,8 +87,9 @@ class BaseTendency(param.Parameterized):
 
     def __init__(self, **kwargs):
         self.annotations = Annotations()
-        self._check_kwargs(kwargs)
-        super().__init__(**kwargs)
+        self.line_number = kwargs.pop("user_line_number")
+        self._check_for_unknown_kwargs(kwargs)
+        self._setup_param(kwargs)
 
     def __repr__(self):
         # Override __repr__ from parametrized to avoid showing way too many details
@@ -207,36 +209,6 @@ class BaseTendency(param.Parameterized):
                 "Tendency end time must be greater than its start time."
             )
 
-    def _check_kwargs(self, kwargs):
-        """Validates keyword arguments by checking for unknown or invalid values.
-
-        Args:
-            kwargs: The passed keyword arguments.
-        """
-        self.line_number = kwargs.pop("user_line_number")
-        self._check_for_unknown_kwargs(kwargs)
-        self._check_for_str_kwargs(kwargs)
-
-    def _check_for_str_kwargs(self, kwargs):
-        """Filter out string values from keyword arguments, and create an annotation
-        for all encountered strings.
-
-        Args:
-            kwargs: The passed keyword arguments.
-        """
-        # Currently, all parameters are numeric, so we can safely remove any string
-        # values. If string parameters are introduced in the future, we should capture
-        # errors directly from param's exception message instead.
-        for key, value in list(kwargs.items()):
-            if isinstance(value, str):
-                error_msg = (
-                    f"Invalid input: '{value}'. "
-                    f"The value for '{key.replace('user_', '')}' must be a number.\n"
-                    "This keyword will be ignored."
-                )
-                self.annotations.add(self.line_number, error_msg, is_warning=True)
-                kwargs.pop(key)
-
     def _check_for_unknown_kwargs(self, kwargs):
         """Identifies and removes unrecognized keyword arguments, suggesting
         alternatives.
@@ -262,3 +234,35 @@ class BaseTendency(param.Parameterized):
                 )
 
                 self.annotations.add(self.line_number, error_msg, is_warning=True)
+
+    def _setup_param(self, kwargs):
+        """Call the constructor of param.Parameterized. If this results in a ValueError,
+        the ValueError is added to the annotations, and the problematic keyword
+        argument is removed. Then, the method retries the initialization process with
+        the modified keyword arguments.
+
+        Args:
+            kwargs: The passed keyword arguments.
+        """
+        try:
+            super().__init__(**kwargs)
+        except ValueError as error:
+            # Fetch error and add to annotations
+            error_msg = str(error)
+            match = re.search(r"'(\w+\.user_\w+)'", error_msg)
+            param_to_remove = match.group(1)
+            param_to_remove_no_class = param_to_remove.split(".")[1]
+            cleaned_error_msg = error_msg.replace(
+                param_to_remove, param_to_remove_no_class.replace("user_", "")
+            )
+
+            self.annotations.add(
+                self.line_number,
+                f"{cleaned_error_msg}\nThis keyword argument is ignored.",
+                is_warning=True,
+            )
+            # Ignore keyword argument with ValueError
+            del kwargs[param_to_remove_no_class]
+
+            # Recursively retry with new kwargs
+            self._setup_param(kwargs)
