@@ -82,7 +82,7 @@ class BaseTendency(param.Parameterized):
 
     def __init__(self, **kwargs):
         self.annotations = Annotations()
-        self._check_for_unknown_kwargs(kwargs)
+        self._check_kwargs(kwargs)
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -203,9 +203,46 @@ class BaseTendency(param.Parameterized):
                 "Tendency end time must be greater than its start time."
             )
 
-    def _check_for_unknown_kwargs(self, kwargs):
-        unknown_kwargs = []
+    def _check_kwargs(self, kwargs):
+        """Validates keyword arguments by checking for unknown or invalid values.
+
+        Args:
+            kwargs: The passed keyword arguments.
+        """
         line_number = kwargs.pop("user_line_number")
+        self._check_for_unknown_kwargs(kwargs, line_number)
+        self._check_for_str_kwargs(kwargs, line_number)
+
+    def _check_for_str_kwargs(self, kwargs, line_number):
+        """Filter out string values from keyword arguments, and create an annotation
+        for all encountered strings.
+
+        Args:
+            kwargs: The passed keyword arguments.
+            line_number: The line number on which the tendency is defined in the yaml.
+        """
+        # Currently, all parameters are numeric, so we can safely remove any string
+        # values. If string parameters are introduced in the future, we should capture
+        # errors directly from param's exception message instead.
+        for key, value in list(kwargs.items()):
+            if isinstance(value, str):
+                error_msg = (
+                    f"Invalid input: '{value}'. "
+                    f"The value for '{key.replace('user_', '')}' must be a number.\n"
+                    "This keyword will be ignored."
+                )
+                self.annotations.add(line_number, error_msg, is_warning=True)
+                kwargs.pop(key)
+
+    def _check_for_unknown_kwargs(self, kwargs, line_number):
+        """Identifies and removes unrecognized keyword arguments, suggesting
+        alternatives.
+
+        Args:
+            kwargs: The passed keyword arguments.
+            line_number: The line number on which the tendency is defined in the yaml.
+        """
+        unknown_kwargs = []
         for key in list(kwargs.keys()):
             if key not in self.param:
                 unknown_kwargs.append(key.replace("user_", ""))
