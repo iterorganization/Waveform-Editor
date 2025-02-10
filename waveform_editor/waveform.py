@@ -50,6 +50,9 @@ class Waveform:
         Returns:
             Tuple containing the time and its tendency values.
         """
+        if not self.tendencies:
+            return np.array([]), np.array([])
+
         if time is None:
             time, values = zip(*(t.get_value() for t in self.tendencies))
             time = np.concatenate(time)
@@ -104,6 +107,14 @@ class Waveform:
         Args:
             waveform_yaml: Parsed YAML data.
         """
+        if not waveform:
+            error_msg = (
+                "The YAML should contain a waveform. For example:\n"
+                "waveform:\n- {type: constant, value: 3, duration: 5}"
+            )
+            self.annotations.add(0, error_msg)
+            return
+
         for entry in waveform:
             tendency = self._handle_tendency(entry)
             if tendency is not None:
