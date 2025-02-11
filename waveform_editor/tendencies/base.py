@@ -77,8 +77,57 @@ class BaseTendency(param.Parameterized):
     def __init__(self, **kwargs):
         self.annotations = Annotations()
         self.line_number = kwargs.pop("user_line_number", 0)
-        self._check_for_unknown_kwargs(kwargs)
-        self._setup_param(kwargs)
+        unknown_kwargs = []
+        super().__init__()
+
+        with param.parameterized.batch_call_watchers(self):
+            for param_name, value in kwargs.items():
+                param_name_no_user = param_name.replace("user_", "")
+                if param_name not in self.param:
+                    unknown_kwargs.append(param_name_no_user)
+                    continue
+
+                try:
+                    setattr(self, param_name, value)
+                except Exception as error:
+                    self._handle_error(error)
+
+        self._handle_unknown_kwargs(unknown_kwargs)
+
+    def _handle_error(self, error):
+        """Handle exceptions raised by param assignment and add them as annotations.
+
+        Args:
+            param_name: The name of the assigned param
+            error_msg: The error message raised by param
+        """
+        error_msg = str(error)
+        # Remove the class name and user_ part of the error message
+        replace_str = f"{type(self).__name__}.user_"
+        cleaned_msg = error_msg.replace(replace_str, "")
+        self.annotations.add(
+            self.line_number,
+            f"{cleaned_msg}\nThis keyword is ignored.\n",
+            is_warning=True,
+        )
+
+    def _handle_unknown_kwargs(self, unknown_kwargs):
+        """Suggest alternative keyword arguments if the keyword argument is unknown.
+
+        Args:
+            unknown_kwargs: List of unknown keyword arguments.
+        """
+        if unknown_kwargs:
+            params_list = [
+                word.replace("user_", "") for word in self.param if "user_" in word
+            ]
+            for unknown_kwarg in unknown_kwargs:
+                suggestion = self.annotations.suggest(unknown_kwarg, params_list)
+                error_msg = (
+                    f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
+                    "This keyword will be ignored.\n"
+                )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
 
     def __repr__(self):
         # Override __repr__ from parametrized to avoid showing way too many details
@@ -194,64 +243,3 @@ class BaseTendency(param.Parameterized):
         if self.duration <= 0:
             error_msg = "Tendency end time must be greater than its start time."
             self.annotations.add(self.line_number, error_msg)
-
-    def _check_for_unknown_kwargs(self, kwargs):
-        """Identifies and removes unrecognized keyword arguments, suggesting
-        alternatives.
-
-        Args:
-            kwargs: The passed keyword arguments.
-        """
-        unknown_kwargs = []
-        for key in list(kwargs.keys()):
-            if key not in self.param:
-                unknown_kwargs.append(key.replace("user_", ""))
-                del kwargs[key]
-        if unknown_kwargs:
-            # Remove the user_ part of the param names to match suggestion
-            params_list = [
-                word.replace("user_", "") for word in self.param if "user_" in word
-            ]
-            for unknown_kwarg in unknown_kwargs:
-                suggestion = self.annotations.suggest(unknown_kwarg, params_list)
-                error_msg = (
-                    f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
-                    "This keyword will be ignored.\n"
-                )
-
-                self.annotations.add(self.line_number, error_msg, is_warning=True)
-
-    def _setup_param(self, kwargs):
-        """Call the constructor of param.Parameterized. If this results in a ValueError,
-        the ValueError is added to the annotations, and the problematic keyword
-        argument is removed. Then, the method retries the initialization process with
-        the modified keyword arguments.
-
-        Args:
-            kwargs: The passed keyword arguments.
-        """
-        try:
-            super().__init__(**kwargs)
-        except ValueError as error:
-            # Fetch error and add to annotations
-            error_msg = str(error)
-            match = re.search(r"'(\w+\.\w+)'", error_msg)
-            param_to_remove = match.group(1)
-            param_to_remove_no_class = param_to_remove.split(".")[1]
-            cleaned_error_msg = error_msg.replace(
-                param_to_remove, param_to_remove_no_class.replace("user_", "")
-            )
-
-            self.annotations.add(
-                self.line_number,
-                f"{cleaned_error_msg}\nThis keyword is ignored.\n",
-                is_warning=True,
-            )
-            # Ignore keyword argument with ValueError
-            if param_to_remove_no_class in kwargs:
-                kwargs.pop(param_to_remove_no_class)
-            else:
-                return
-
-            # Recursively retry with new kwargs
-            self._setup_param(kwargs)
