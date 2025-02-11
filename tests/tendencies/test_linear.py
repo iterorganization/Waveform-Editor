@@ -44,7 +44,7 @@ def test_linear_tendency(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
     if has_error:
-        assert tendency.value_error is not None
+        assert tendency.annotations
     else:
         assert tendency.duration == duration
         assert tendency.from_ == approx(expected_from)
@@ -80,7 +80,7 @@ def test_linear_tendency_with_prev(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
     if has_error:
-        assert tendency.value_error is not None
+        assert tendency.annotations
     else:
         tendency.set_previous_tendency(prev_tendency)
         assert tendency.duration == duration
@@ -119,7 +119,7 @@ def test_linear_tendency_with_next(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
     if has_error:
-        assert tendency.value_error is not None
+        assert tendency.annotations
     else:
         tendency.set_next_tendency(next_tendency)
         assert tendency.duration == duration

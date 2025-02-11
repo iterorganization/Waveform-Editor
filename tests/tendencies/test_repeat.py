@@ -91,23 +91,23 @@ def test_zero_start(repeat_waveform):
     """Test if zero start does not raise an error."""
     repeat_waveform["user_waveform"][0]["start"] = 0
     repeat_tendency = RepeatTendency(**repeat_waveform)
-    assert repeat_tendency.value_error is None
+    assert not repeat_tendency.annotations
 
 
 def test_one_start(repeat_waveform):
     """Test if non-zero start raises an error."""
     repeat_waveform["user_waveform"][0]["start"] = 1
     repeat_tendency = RepeatTendency(**repeat_waveform)
-    assert isinstance(repeat_tendency.value_error, ValueError)
+    assert repeat_tendency.annotations
 
 
 def test_empty():
     """Test if ill-defined tendency raises an error."""
     repeat_tendency = RepeatTendency()
-    assert isinstance(repeat_tendency.value_error, ValueError)
+    assert repeat_tendency.annotations
 
     repeat_tendency = RepeatTendency(user_duration=8)
-    assert isinstance(repeat_tendency.value_error, ValueError)
+    assert repeat_tendency.annotations
 
 
 def check_values_at_times(target_times, times, values, expected_value):
@@ -136,7 +136,7 @@ def test_filled(repeat_waveform):
     """Test if tendencies in repeated waveform are filled correctly."""
 
     repeat_tendency = RepeatTendency(**repeat_waveform)
-    assert repeat_tendency.value_error is None
+    assert not repeat_tendency.annotations
     tendencies = repeat_tendency.waveform.tendencies
     assert isinstance(tendencies[0], LinearTendency)
     assert tendencies[0].start == 0

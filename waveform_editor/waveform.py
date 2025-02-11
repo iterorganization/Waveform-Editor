@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -32,6 +33,7 @@ tendency_map = {
 class Waveform:
     def __init__(self, waveform):
         self.tendencies = []
+        self.annotations = Annotations()
         self._process_waveform(waveform)
 
     def get_value(
@@ -47,6 +49,9 @@ class Waveform:
         Returns:
             Tuple containing the time and its tendency values.
         """
+        if not self.tendencies:
+            return np.array([]), np.array([])
+
         if time is None:
             time, values = zip(*(t.get_value() for t in self.tendencies))
             time = np.concatenate(time)
@@ -101,20 +106,45 @@ class Waveform:
         Args:
             waveform_yaml: Parsed YAML data.
         """
+        if not waveform:
+            error_msg = (
+                "The YAML should contain a waveform. For example:\n"
+                "waveform:\n- {type: constant, value: 3, duration: 5}"
+            )
+            self.annotations.add(0, error_msg)
+            return
+
         for entry in waveform:
             tendency = self._handle_tendency(entry)
-            self.tendencies.append(tendency)
+            if tendency is not None:
+                self.tendencies.append(tendency)
 
         for i in range(1, len(self.tendencies)):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
+
+        for tendency in self.tendencies:
+            if tendency.annotations:
+                self.annotations.add_annotations(tendency.annotations)
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.
 
         Args:
             entry: Entry in the YAML file.
+
+        Returns:
+            The created tendency or None, if the tendency cannot be created
         """
+        if "type" not in entry:
+            line_number = entry.pop("line_number")
+            error_msg = (
+                "The tendency must have a 'type'.\n"
+                "For example: '- {type: constant, duration: 3, value: 3}'\n"
+                "This tendency will be ignored."
+            )
+            self.annotations.add(line_number, error_msg)
+            return None
         tendency_type = entry.pop("type")
 
         # Rewrite keys
@@ -125,4 +155,12 @@ class Waveform:
             tendency = tendency_class(**params)
             return tendency
         else:
-            raise NotImplementedError(f"Unsupported tendency type: {tendency_type}")
+            line_number = entry.pop("line_number")
+            suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
+
+            error_msg = (
+                f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
+                "This tendency will be ignored.\n"
+            )
+            self.annotations.add(line_number, error_msg)
+            return None

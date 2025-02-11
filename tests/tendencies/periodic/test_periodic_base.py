@@ -64,7 +64,7 @@ def test_bounds(
         user_max=max,
     )
     if has_error:
-        assert tendency.value_error is not None
+        assert tendency.annotations
     else:
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
@@ -103,45 +103,38 @@ def test_bounds_prev(
     when the tendency has a previous tendency.
     """
     prev_tendency = ConstantTendency(user_start=0, user_duration=1, user_value=8)
+    tendency = PeriodicBaseTendency(
+        user_duration=1,
+        user_base=base,
+        user_amplitude=amplitude,
+        user_min=min,
+        user_max=max,
+    )
     if has_error:
-        with pytest.raises(ValueError):
-            PeriodicBaseTendency(
-                user_duration=1,
-                user_base=base,
-                user_amplitude=amplitude,
-                user_min=min,
-                user_max=max,
-            )
+        assert tendency.annotations
     else:
-        tendency = PeriodicBaseTendency(
-            user_duration=1,
-            user_base=base,
-            user_amplitude=amplitude,
-            user_min=min,
-            user_max=max,
-        )
         tendency.set_previous_tendency(prev_tendency)
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
 
 
 @pytest.mark.parametrize(
-    "base, amplitude, min, max, expected_base, expected_amplitude, has_error",
+    "base, amplitude, min, max, expected_base",
     [
         # Missing 2 value
-        (None, None, 5, 15, 10, 5, False),
-        (None, 5, None, 15, 10, 5, False),
-        (None, 5, 5, None, 10, 5, False),
-        (10, None, None, 15, 10, 5, False),
-        (10, None, 5, None, 10, 5, False),
-        (10, 5, None, None, 10, 5, False),
+        (None, None, 5, 15, 10),
+        (None, 5, None, 15, 10),
+        (None, 5, 5, None, 10),
+        (10, None, None, 15, 10),
+        (10, None, 5, None, 10),
+        (10, 5, None, None, 10),
         # Missing 3 values
-        (10, None, None, None, 10, 0, False),
-        (None, 5, None, None, 0, 5, False),
-        (None, None, 5, None, 0, -5, False),
-        (None, None, None, 15, 0, 15, False),
+        (10, None, None, None, 10),
+        (None, 5, None, None, 0),
+        (None, None, 5, None, 0),
+        (None, None, None, 15, 0),
         # Missing all values
-        (None, None, None, None, 0, 1, False),
+        (None, None, None, None, 0),
     ],
 )
 def test_bounds_next(
@@ -150,33 +143,21 @@ def test_bounds_next(
     min,
     max,
     expected_base,
-    expected_amplitude,
-    has_error,
 ):
     """
     Test the base, amplitude, minimum and maximum values of the periodic base tendency,
     when the tendency has a next tendency.
     """
     next_tendency = ConstantTendency(user_duration=1, user_value=8)
-    if has_error:
-        with pytest.raises(ValueError):
-            PeriodicBaseTendency(
-                user_duration=1,
-                user_base=base,
-                user_amplitude=amplitude,
-                user_min=min,
-                user_max=max,
-            )
-    else:
-        tendency = PeriodicBaseTendency(
-            user_duration=1,
-            user_base=base,
-            user_amplitude=amplitude,
-            user_min=min,
-            user_max=max,
-        )
-        tendency.set_next_tendency(next_tendency)
-        assert tendency.base == approx(expected_base)
+    tendency = PeriodicBaseTendency(
+        user_duration=1,
+        user_base=base,
+        user_amplitude=amplitude,
+        user_min=min,
+        user_max=max,
+    )
+    tendency.set_next_tendency(next_tendency)
+    assert tendency.base == approx(expected_base)
 
 
 def test_frequency_and_period():
@@ -195,13 +176,13 @@ def test_frequency_and_period():
     assert tendency.frequency == 0.5
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=2)
-    assert tendency.value_error is not None
+    assert tendency.annotations
 
-    with pytest.raises(ValueError):
-        tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
+    tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
+    assert tendency.annotations
 
-    with pytest.raises(ValueError):
-        tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
+    tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
+    assert tendency.annotations
 
 
 def test_phase():

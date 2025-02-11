@@ -5,6 +5,7 @@ import numpy as np
 import param
 from param import depends
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.util import (
     InconsistentInputsError,
     solve_with_constraints,
@@ -68,20 +69,62 @@ class BaseTendency(param.Parameterized):
     start_derivative = param.Number(default=0.0, doc="Derivative at self.start")
     end_derivative = param.Number(default=0.0, doc="Derivative at self.end")
 
-    time_error = param.ClassSelector(
-        class_=Exception,
-        default=None,
-        doc="Error that occurred when processing user inputs.",
-    )
-    value_error = param.ClassSelector(
-        class_=Exception,
-        default=None,
-        doc="Error that occurred when processing user inputs.",
+    line_number = param.Number(
+        default=0, doc="Line number of the tendency in the YAML file"
     )
 
     def __init__(self, **kwargs):
-        self.error = None
-        super().__init__(**kwargs)
+        self.annotations = Annotations()
+        self.line_number = kwargs.pop("user_line_number", 0)
+        unknown_kwargs = []
+        super().__init__()
+
+        with param.parameterized.batch_call_watchers(self):
+            for param_name, value in kwargs.items():
+                if param_name not in self.param:
+                    unknown_kwargs.append(param_name.replace("user_", ""))
+                    continue
+
+                try:
+                    setattr(self, param_name, value)
+                except Exception as error:
+                    self._handle_error(error)
+
+        self._handle_unknown_kwargs(unknown_kwargs)
+
+    def _handle_error(self, error):
+        """Handle exceptions raised by param assignment and add them as annotations.
+
+        Args:
+            param_name: The name of the assigned param
+            error_msg: The error message raised by param
+        """
+        error_msg = str(error)
+        # Remove the class name and user_ part of the error message
+        replace_str = f"{type(self).__name__}.user_"
+        cleaned_msg = error_msg.replace(replace_str, "")
+        self.annotations.add(
+            self.line_number,
+            f"{cleaned_msg}\nThis keyword is ignored.\n",
+            is_warning=True,
+        )
+
+    def _handle_unknown_kwargs(self, unknown_kwargs):
+        """Suggest alternative keyword arguments if the keyword argument is unknown.
+
+        Args:
+            unknown_kwargs: List of unknown keyword arguments.
+        """
+        params_list = [
+            word.replace("user_", "") for word in self.param if "user_" in word
+        ]
+        for unknown_kwarg in unknown_kwargs:
+            suggestion = self.annotations.suggest(unknown_kwarg, params_list)
+            error_msg = (
+                f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
+                "This keyword will be ignored.\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
 
     def __repr__(self):
         # Override __repr__ from parametrized to avoid showing way too many details
@@ -179,12 +222,10 @@ class BaseTendency(param.Parameterized):
 
         try:
             values = solve_with_constraints(inputs, constraint_matrix)
-            self.time_error = None
         except InconsistentInputsError:
             # Set error and make duration = 1:
-            self.time_error = ValueError(
-                "Inputs are inconsistent: start + duration != end"
-            )
+            error_msg = "Inputs are inconsistent: start + duration != end"
+            self.annotations.add(self.line_number, error_msg)
             if self.prev_tendency is None:
                 values = (0, 1, 1)
             else:
@@ -197,6 +238,5 @@ class BaseTendency(param.Parameterized):
             self.times_changed = True
 
         if self.duration <= 0:
-            self.time_error = ValueError(
-                "Tendency end time must be greater than its start time."
-            )
+            error_msg = "Tendency end time must be greater than its start time."
+            self.annotations.add(self.line_number, error_msg)

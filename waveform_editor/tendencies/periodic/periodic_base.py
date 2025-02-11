@@ -64,7 +64,6 @@ class PeriodicBaseTendency(BaseTendency):
     )
     def _calc_values(self):
         """Update all derived values in a single function"""
-        self.value_error = None  # clear value error
 
         # Determine frequency
         frequency = 1.0
@@ -72,9 +71,11 @@ class PeriodicBaseTendency(BaseTendency):
             if self.user_period is not None and not np.isclose(
                 self.user_frequency, 1 / self.user_period
             ):
-                self.value_error = ValueError(
-                    "The frequency and period do not match! (freq != 1 / period)."
+                error_msg = (
+                    "The frequency and period do not match! (freq != 1 / period).\n"
+                    "The period will be ignored and only the frequency is used.\n"
                 )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
             frequency = self.user_frequency
         elif self.user_period is not None:
             frequency = 1 / self.user_period
@@ -106,9 +107,11 @@ class PeriodicBaseTendency(BaseTendency):
             inputs[1] = 0.0
 
         if num_inputs > 2:
-            self.value_error = ValueError(
-                "Too many inputs: expected two out of {base, amplitude, min and max}."
+            error_msg = (
+                "Too many inputs: expected two out of {base, amplitude, min and max}.\n"
+                "The 'base', 'amplitude', 'min', and 'max' are set to 0.\n"
             )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
             values = (0.0, 0.0, 0.0, 0.0)
         else:
             values = solve_with_constraints(inputs, constraint_matrix)

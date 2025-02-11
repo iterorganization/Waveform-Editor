@@ -11,26 +11,20 @@ class RepeatTendency(BaseTendency):
     """
 
     def __init__(self, **kwargs):
-        if "user_waveform" not in kwargs:
-            self.value_error = ValueError("A repeated tendency must contain a waveform")
-            return
-        waveform_dict = kwargs.pop("user_waveform")
-
-        for item in waveform_dict:
-            if item.get("type") == "piecewise":
-                self.value_error = ValueError(
-                    "Piecewise tendencies are currently not supported inside of a "
-                    "repeated tendency."
-                )
+        waveform = kwargs.pop("user_waveform", []) or []
+        super().__init__(**kwargs)
 
         from waveform_editor.waveform import Waveform
 
-        self.waveform = Waveform(waveform_dict)
-        super().__init__(**kwargs)
+        self.waveform = Waveform(waveform)
+        if not self.waveform.tendencies:
+            error_msg = "There are no tendencies in the repeated waveform."
+            self.annotations.add(self.line_number, error_msg)
+            return
+
         if self.waveform.tendencies[0].start != 0:
-            self.value_error = ValueError(
-                "The starting point of the first repeated tendency is not set to 0."
-            )
+            error_msg = "The starting point of the first repeated must be set to 0."
+            self.annotations.add(self.line_number, error_msg)
 
         # Link the last tendency to the first tendency in the repeated waveform
         # We must lock the start to 0, otherwise it will take the start value of the
@@ -38,6 +32,8 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].user_start = 0
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
+
+        self.annotations.add_annotations(self.waveform.annotations)
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -52,6 +48,8 @@ class RepeatTendency(BaseTendency):
         Returns:
             Tuple containing the time and its tendency values.
         """
+        if not self.waveform.tendencies:
+            return np.array([]), np.array([])
         length = self.waveform.calc_length()
         if time is None:
             time, values = self.waveform.get_value()

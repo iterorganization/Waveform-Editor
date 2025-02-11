@@ -1,0 +1,64 @@
+import difflib
+from collections import UserList
+
+
+class Annotations(UserList):
+    def add_annotations(self, annotations):
+        """Merge another Annotations instance into this instance by appending its
+        annotations.
+
+        Args:
+            annotations: The Annotations object to append.
+        """
+        return self.extend(annotations)
+
+    def add(self, line_number, error_msg, is_warning=False):
+        """Adds the error message to the list of annotations.
+
+        Args:
+            annotations: The list of annotations the error message is added to.
+            line_number: The line number at which the error occurs.
+            error_msg: The error message the annotation should display.
+            error_type: Whether the annotation is a warning. If set to False, it is
+                treated as an error.
+        """
+        error_type = "warning" if is_warning else "error"
+        self.append(
+            {
+                "row": line_number,
+                "column": 0,
+                "text": error_msg,
+                "type": error_type,
+            }
+        )
+
+    def add_yaml_error(self, error):
+        """Add a YAML parsing error to the annotations.
+
+        Args:
+            error: The YAML parsing error to be added as annotations.
+        """
+        if hasattr(error, "problem_mark"):
+            line = error.problem_mark.line
+            # TODO: Is there a way to visualize the column into the annotation? They are
+            # currently ignored.
+            # column = error.problem_mark.column
+            message = f"Unable to parse the YAML file:\n{error.problem}"
+
+            self.add(line, message)
+        else:
+            self.add(0, f"Unknown YAML error: {error}")
+
+    def suggest(self, word_to_match, possible_matches):
+        """Suggest a close match for a given word from a list of possible matches.
+
+        Args:
+            word_to_match: The word for which a suggestion is needed.
+            possible_matches: A list of possible correct words.
+        """
+        suggestion = ""
+        close_matches = difflib.get_close_matches(word_to_match, possible_matches, n=1)
+        if close_matches:
+            suggestion = f"Did you mean {close_matches[0]!r}?\n"
+
+        return suggestion
