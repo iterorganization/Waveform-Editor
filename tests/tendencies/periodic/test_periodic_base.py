@@ -64,7 +64,7 @@ def test_bounds(
         user_max=max,
     )
     if has_error:
-        assert tendency.annotations.get()
+        assert tendency.annotations
     else:
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
@@ -111,7 +111,7 @@ def test_bounds_prev(
         user_max=max,
     )
     if has_error:
-        assert tendency.annotations.get()
+        assert tendency.annotations
     else:
         tendency.set_previous_tendency(prev_tendency)
         assert tendency.base == approx(expected_base)
@@ -176,13 +176,13 @@ def test_frequency_and_period():
     assert tendency.frequency == 0.5
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=2)
-    assert tendency.annotations.get()
+    assert tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=0)
-    assert tendency.annotations.get()
+    assert tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_frequency=0)
-    assert tendency.annotations.get()
+    assert tendency.annotations
 
 
 def test_phase():

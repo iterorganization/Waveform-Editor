@@ -1,19 +1,8 @@
 import difflib
+from collections import UserList
 
 
-class Annotations:
-    def __init__(self):
-        self.annotations = []
-
-    def get(self):
-        """
-        Retrieve the list of annotations stored in this instance.
-
-        Returns:
-            list: A list containing all annotations.
-        """
-        return self.annotations
-
+class Annotations(UserList):
     def add_annotations(self, annotations):
         """Merge another Annotations instance into this instance by appending its
         annotations.
@@ -21,7 +10,7 @@ class Annotations:
         Args:
             annotations: The Annotations object to append.
         """
-        return self.annotations.extend(annotations.get())
+        return self.extend(annotations)
 
     def add(self, line_number, error_msg, is_warning=False):
         """Adds the error message to the list of annotations.
@@ -34,7 +23,7 @@ class Annotations:
                 treated as an error.
         """
         error_type = "warning" if is_warning else "error"
-        self.annotations.append(
+        self.append(
             {
                 "row": line_number,
                 "column": 0,
@@ -73,7 +62,3 @@ class Annotations:
             suggestion = f"Did you mean {close_matches[0]!r}?\n"
 
         return suggestion
-
-    def clear(self):
-        """Clear all stored annotations."""
-        self.annotations.clear()

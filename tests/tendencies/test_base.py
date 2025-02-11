@@ -33,7 +33,7 @@ def test_first_base_tendency(
     base_tendency = BaseTendency(**kwargs)
 
     if has_error:
-        assert base_tendency.annotations.get()
+        assert base_tendency.annotations
     else:
         assert base_tendency.start == approx(expected_start)
         assert base_tendency.duration == approx(expected_duration)
@@ -70,7 +70,7 @@ def test_second_base_tendency(
     base_tendency = BaseTendency(**kwargs)
 
     if has_error:
-        assert base_tendency.annotations.get()
+        assert base_tendency.annotations
     else:
         base_tendency.set_previous_tendency(prev_tendency)
         assert base_tendency.start == approx(expected_start)

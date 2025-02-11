@@ -42,7 +42,7 @@ def update_plot(value):
     yaml_alert.visible = error_alert.visible = False
     yaml_parser.parse_waveforms_from_string(value)
 
-    code_editor.annotations = yaml_parser.waveform.annotations.get()
+    code_editor.annotations = list(yaml_parser.waveform.annotations)
     code_editor.param.trigger("annotations")
 
     # Show alert when there is a yaml parsing error
