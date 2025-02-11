@@ -36,6 +36,7 @@ class YamlParser:
             waveform = waveform_yaml.get("waveform", [])
             self.waveform = Waveform(waveform)
         except yaml.YAMLError as e:
+            self.waveform.annotations.clear()
             self.waveform.annotations.add_yaml_error(e)
             self.waveform.tendencies = []
             self.has_yaml_error = True
