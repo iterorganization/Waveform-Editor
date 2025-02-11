@@ -34,15 +34,13 @@ class Annotations:
                 treated as an error.
         """
         error_type = "warning" if is_warning else "error"
-        self.annotations.extend(
-            [
-                {
-                    "row": line_number,
-                    "column": 0,
-                    "text": error_msg,
-                    "type": error_type,
-                }
-            ]
+        self.annotations.append(
+            {
+                "row": line_number,
+                "column": 0,
+                "text": error_msg,
+                "type": error_type,
+            }
         )
 
     def add_yaml_error(self, error):
@@ -56,7 +54,7 @@ class Annotations:
             # TODO: Is there a way to visualize the column into the annotation? They are
             # currently ignored.
             # column = error.problem_mark.column
-            message = error.problem
+            message = f"Unable to parse the YAML file:\n{error.problem}"
 
             self.add(line, message)
         else:

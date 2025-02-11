@@ -124,7 +124,7 @@ class Waveform:
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
         for tendency in self.tendencies:
-            if tendency.annotations.get() != []:
+            if tendency.annotations.get():
                 self.annotations.add_annotations(tendency.annotations)
 
     def _handle_tendency(self, entry):
