@@ -14,14 +14,6 @@ class RepeatTendency(BaseTendency):
         waveform = kwargs.pop("user_waveform", []) or []
         super().__init__(**kwargs)
 
-        for item in waveform:
-            if item.get("type") == "piecewise":
-                error_msg = (
-                    "Piecewise tendencies are not supported inside of a "
-                    "repeated tendency."
-                )
-                self.annotations.add(self.line_number, error_msg)
-
         from waveform_editor.waveform import Waveform
 
         self.waveform = Waveform(waveform)
