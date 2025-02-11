@@ -26,25 +26,34 @@ waveform:
 
 yaml_parser = YamlParser()
 
-alert_pane = pn.pane.Alert(
+yaml_alert = pn.pane.Alert(
     "### The YAML did not parse correctly! (see editor)",
     alert_type="danger",
+    visible=False,
+)
+error_alert = pn.pane.Alert(
+    "### There was an error in the YAML configuration (see editor).",
+    alert_type="warning",
     visible=False,
 )
 
 
 def update_plot(value):
+    yaml_alert.visible = error_alert.visible = False
     yaml_parser.parse_waveforms_from_string(value)
 
     code_editor.annotations = yaml_parser.waveform.annotations.get()
     code_editor.param.trigger("annotations")
 
     # Show alert when there is a yaml parsing error
-    alert_pane.visible = yaml_parser.has_yaml_error
+    if yaml_parser.has_yaml_error:
+        yaml_alert.visible = True
+    elif code_editor.annotations:
+        error_alert.visible = True
     return yaml_parser.plot_tendencies()
 
 
 plot = hv.DynamicMap(pn.bind(update_plot, value=code_editor.param.value))
-plot_and_alert = pn.Column(plot, alert_pane)
+plot_and_alert = pn.Column(plot, yaml_alert, error_alert)
 layout = pn.Row(code_editor, plot_and_alert)
 layout.servable()
