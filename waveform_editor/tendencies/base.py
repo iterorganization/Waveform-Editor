@@ -81,9 +81,8 @@ class BaseTendency(param.Parameterized):
 
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
-                param_name_no_user = param_name.replace("user_", "")
                 if param_name not in self.param:
-                    unknown_kwargs.append(param_name_no_user)
+                    unknown_kwargs.append(param_name.replace("user_", ""))
                     continue
 
                 try:
@@ -116,17 +115,16 @@ class BaseTendency(param.Parameterized):
         Args:
             unknown_kwargs: List of unknown keyword arguments.
         """
-        if unknown_kwargs:
-            params_list = [
-                word.replace("user_", "") for word in self.param if "user_" in word
-            ]
-            for unknown_kwarg in unknown_kwargs:
-                suggestion = self.annotations.suggest(unknown_kwarg, params_list)
-                error_msg = (
-                    f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
-                    "This keyword will be ignored.\n"
-                )
-                self.annotations.add(self.line_number, error_msg, is_warning=True)
+        params_list = [
+            word.replace("user_", "") for word in self.param if "user_" in word
+        ]
+        for unknown_kwarg in unknown_kwargs:
+            suggestion = self.annotations.suggest(unknown_kwarg, params_list)
+            error_msg = (
+                f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
+                "This keyword will be ignored.\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
 
     def __repr__(self):
         # Override __repr__ from parametrized to avoid showing way too many details
