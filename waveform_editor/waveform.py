@@ -31,10 +31,11 @@ tendency_map = {
 
 
 class Waveform:
-    def __init__(self, waveform):
+    def __init__(self, waveform=None):
         self.tendencies = []
         self.annotations = Annotations()
-        self._process_waveform(waveform)
+        if waveform is not None:
+            self._process_waveform(waveform)
 
     def get_value(
         self, time: Optional[np.ndarray] = None

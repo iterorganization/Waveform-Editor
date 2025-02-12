@@ -13,6 +13,9 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
+    def __init__(self):
+        self.waveform = Waveform()
+
     def parse_waveforms_from_file(self, file_path):
         """Loads a YAML file from a file path and stores its tendencies into a list.
 
@@ -20,9 +23,7 @@ class YamlParser:
             file_path: File path of the YAML file.
         """
         with open(file_path) as file:
-            waveform_yaml = yaml.load(file, yaml.SafeLoader)
-        waveform = waveform_yaml.get("waveform", [])
-        self.waveform = Waveform(waveform)
+            self.parse_waveforms_from_string(file)
 
     def parse_waveforms_from_string(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
@@ -36,10 +37,18 @@ class YamlParser:
             waveform = waveform_yaml.get("waveform", [])
             self.waveform = Waveform(waveform)
         except yaml.YAMLError as e:
-            self.waveform.annotations.clear()
-            self.waveform.annotations.add_yaml_error(e)
-            self.waveform.tendencies = []
-            self.has_yaml_error = True
+            self._handle_yaml_error(e)
+
+    def _handle_yaml_error(self, error):
+        """Handles YAML parsing errors by adding it to the annotations of the waveform.
+
+        Args:
+            error: The YAML error to add to the annotations.
+        """
+        self.waveform.annotations.clear()
+        self.waveform.annotations.add_yaml_error(error)
+        self.waveform.tendencies = []
+        self.has_yaml_error = True
 
     def plot_tendencies(self, plot_time_points=False):
         """
