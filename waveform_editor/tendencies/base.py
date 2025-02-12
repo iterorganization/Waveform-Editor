@@ -146,6 +146,18 @@ class BaseTendency(param.Parameterized):
             prev_tendency: The tendency precedes the current tendency.
         """
         self.prev_tendency = prev_tendency
+        if self.prev_tendency.end > self.start:
+            error_msg = (
+                f"The end of the previous tendency ({self.prev_tendency.end})\nis "
+                f"later than the start of the current tendency ({self.start}).\n"
+            )
+            self.annotations.add(self.line_number, error_msg)
+        elif self.prev_tendency.end < self.start:
+            error_msg = (
+                "Previous tendency ends before the start of the current tendency.\n"
+                "The values inbetween the tendencies will be linearly interpolated.\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
 
     def set_next_tendency(self, next_tendency):
         """Sets the next tendency as a param.
