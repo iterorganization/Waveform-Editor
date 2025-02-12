@@ -73,8 +73,9 @@ class BaseTendency(param.Parameterized):
         default=0, doc="Line number of the tendency in the YAML file"
     )
 
+    annotations = param.ClassSelector(class_=Annotations, default=Annotations())
+
     def __init__(self, **kwargs):
-        self.annotations = Annotations()
         self.line_number = kwargs.pop("user_line_number", 0)
         unknown_kwargs = []
         super().__init__()
