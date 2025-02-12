@@ -86,16 +86,15 @@ class BaseTendency(param.Parameterized):
         unknown_kwargs = []
         super().__init__()
 
-        with param.parameterized.batch_call_watchers(self):
-            for param_name, value in kwargs.items():
-                if param_name not in self.param:
-                    unknown_kwargs.append(param_name.replace("user_", ""))
-                    continue
+        for param_name, value in kwargs.items():
+            if param_name not in self.param:
+                unknown_kwargs.append(param_name.replace("user_", ""))
+                continue
 
-                try:
-                    setattr(self, param_name, value)
-                except Exception as error:
-                    self._handle_error(error)
+            try:
+                setattr(self, param_name, value)
+            except Exception as error:
+                self._handle_error(error)
 
         self._handle_unknown_kwargs(unknown_kwargs)
 
@@ -112,8 +111,7 @@ class BaseTendency(param.Parameterized):
         cleaned_msg = error_msg.replace(replace_str, "")
         self.annotations.add(
             self.line_number,
-            f"{cleaned_msg}\nThis keyword is ignored.\n",
-            is_warning=True,
+            f"{cleaned_msg}\nThis tendency is ignored.\n",
         )
 
     def _handle_unknown_kwargs(self, unknown_kwargs):
