@@ -33,6 +33,10 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
 
+        _, self.start_value = self.get_value(self.start)
+        self.start_derivative = self.get_derivative(self.start)
+        _, self.end_value = self.get_value(self.end)
+        self.end_derivative = self.get_derivative(self.end)
         self.annotations.add_annotations(self.waveform.annotations)
 
     def get_value(
