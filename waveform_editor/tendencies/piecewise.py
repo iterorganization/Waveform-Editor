@@ -12,17 +12,31 @@ class PiecewiseLinearTendency(BaseTendency):
     """
 
     time = param.Array(
-        default=np.array([0, 1]), doc="The times of the piecewise tendency."
+        default=np.array([0, 1, 2]), doc="The times of the piecewise tendency."
     )
     value = param.Array(
-        default=np.array([0, 1]), doc="The values of the piecewise tendency."
+        default=np.array([0, 1, 2]), doc="The values of the piecewise tendency."
     )
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
+        if (
+            user_time is not None
+            and len(user_time) > 1
+            and (user_time[-1] - user_time[0]) > 0
+        ):
+            user_start = user_time[0]
+            user_end = user_time[-1]
+        else:
+            user_start = self.time[0]
+            user_end = self.time[-1]
+
+        super().__init__(user_start=user_start, user_end=user_end, **kwargs)
         self._validate_time_value(user_time, user_value)
-        super().__init__(user_start=user_time[0], user_end=user_time[-1], **kwargs)
-        self.time = np.array(user_time)
-        self.value = np.array(user_value)
+
+        # Only update the time and value arrays if there are no errors
+        if user_time is not None and user_value is not None and not self.annotations:
+            self.time = np.array(user_time)
+            self.value = np.array(user_value)
         self.start_value_set = True
         self.param.update(values_changed=True)
 
@@ -56,20 +70,17 @@ class PiecewiseLinearTendency(BaseTendency):
             numpy array containing the derivatives
         """
         self._validate_requested_time(time)
-        derivatives = np.zeros_like(time)
 
-        for i, t in enumerate(time):
-            if t == self.time[-1]:
-                derivatives[i] = (self.value[-1] - self.value[-2]) / (
-                    self.time[-1] - self.time[-2]
-                )
-            else:
-                index = np.searchsorted(self.time, t)
-                dv = self.value[index + 1] - self.value[index]
-                dt = self.time[index + 1] - self.time[index]
-                derivatives[i] = dv / dt
+        # Compute piecewise derivatives
+        dv = np.diff(self.value)
+        dt = np.diff(self.time)
+        piecewise_derivatives = dv / dt
 
-        return derivatives
+        # Assign derivatives based on which interval each time point falls into
+        indices = np.searchsorted(self.time, time, side="right") - 1
+        indices = np.clip(indices, 0, len(piecewise_derivatives) - 1)
+
+        return piecewise_derivatives[indices]
 
     def _validate_requested_time(self, time):
         """Check if the requested time data falls within the piecewise tendency.
@@ -78,10 +89,11 @@ class PiecewiseLinearTendency(BaseTendency):
             time: The time array on which to generate points.
         """
         if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
-            raise ValueError(
+            error_msg = (
                 f"The provided time array contains values outside the valid range "
-                f"({self.time[0]}, {self.time[-1]})."
+                f"({self.time[0]}, {self.time[-1]}).\n"
             )
+            self.annotations.add(self.line_number, error_msg)
 
     def _validate_time_value(self, time, value):
         """Validates the provided time and value lists.
@@ -91,18 +103,22 @@ class PiecewiseLinearTendency(BaseTendency):
             value: List of values defined on each time step.
         """
         if time is None or value is None:
-            raise ValueError("Both the `time` and `value` arrays must be specified.")
-
-        is_monotonic = np.all(np.diff(time) > 0)
-        if not is_monotonic:
-            raise ValueError("The provided time array is not monotonically increasing.")
-
-        if len(time) != len(value):
-            raise ValueError(
-                "The provided time and value arrays are not of the same length."
+            error_msg = "Both the `time` and `value` arrays must be specified.\n"
+            self.annotations.add(self.line_number, error_msg)
+        elif len(time) != len(value):
+            error_msg = (
+                "The provided time and value arrays are not of the same length.\n"
+            )
+            self.annotations.add(self.line_number, error_msg)
+        elif len(time) < 2:
+            error_msg = (
+                "The provided time and value arrays should have a length "
+                "of at least 2.\n"
             )
 
-        if len(time) < 2:
-            raise ValueError(
-                "The provided time and value arrays should have a length of at least 2."
-            )
+            self.annotations.add(self.line_number, error_msg)
+        else:
+            is_monotonic = np.all(np.diff(time) > 0)
+            if not is_monotonic:
+                error_msg = "The provided time array is not monotonically increasing.\n"
+                self.annotations.add(self.line_number, error_msg)
