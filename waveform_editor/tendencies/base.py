@@ -73,10 +73,16 @@ class BaseTendency(param.Parameterized):
         default=0, doc="Line number of the tendency in the YAML file"
     )
 
+    is_first_repeated = param.Number(
+        default=False,
+        doc="Whether the tendency is the first tendency within a repeated tendency",
+    )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
 
     def __init__(self, **kwargs):
         self.line_number = kwargs.pop("user_line_number", 0)
+        self.is_first_repeated = kwargs.pop("user_is_first_repeated", False)
+
         unknown_kwargs = []
         super().__init__()
 
@@ -146,7 +152,10 @@ class BaseTendency(param.Parameterized):
             prev_tendency: The tendency precedes the current tendency.
         """
         self.prev_tendency = prev_tendency
-        if self.prev_tendency.end > self.start:
+        # If the tendency is the first tendency of a repeated tendency, it is linked to
+        # the last tendency in the repeated tendency. In this case we can ignore this
+        # error.
+        if self.prev_tendency.end > self.start and not self.is_first_repeated:
             error_msg = (
                 f"The end of the previous tendency ({self.prev_tendency.end})\nis "
                 f"later than the start of the current tendency ({self.start}).\n"
@@ -158,6 +167,8 @@ class BaseTendency(param.Parameterized):
                 "The values inbetween the tendencies will be linearly interpolated.\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
+
+        self.param.trigger("annotations")
 
     def set_next_tendency(self, next_tendency):
         """Sets the next tendency as a param.

@@ -16,7 +16,7 @@ class RepeatTendency(BaseTendency):
 
         from waveform_editor.waveform import Waveform
 
-        self.waveform = Waveform(waveform)
+        self.waveform = Waveform(waveform=waveform, is_repeated=True)
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform."
             self.annotations.add(self.line_number, error_msg)

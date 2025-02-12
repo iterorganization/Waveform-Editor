@@ -31,9 +31,10 @@ tendency_map = {
 
 
 class Waveform:
-    def __init__(self, waveform=None):
+    def __init__(self, *, waveform=None, is_repeated=False):
         self.tendencies = []
         self.annotations = Annotations()
+        self.is_repeated = is_repeated
         if waveform is not None:
             self._process_waveform(waveform)
 
@@ -116,7 +117,10 @@ class Waveform:
             self.annotations.add(0, error_msg)
             return
 
-        for entry in waveform:
+        for i, entry in enumerate(waveform):
+            # Add key to notify the tendency is the first repeated tendency
+            if i == 0:
+                entry["is_first_repeated"] = self.is_repeated
             tendency = self._handle_tendency(entry)
             if tendency is not None:
                 self.tendencies.append(tendency)
@@ -125,8 +129,17 @@ class Waveform:
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
+        self.update_annotations()
+
         for tendency in self.tendencies:
-            if tendency.annotations:
+            tendency.param.watch(self.update_annotations, "annotations")
+
+    def update_annotations(self, event=None):
+        """Merges the annotations of the individual tendencies into the annotations
+        of this waveform."""
+
+        for tendency in self.tendencies:
+            if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
 
     def _handle_tendency(self, entry):

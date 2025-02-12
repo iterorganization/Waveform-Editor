@@ -35,7 +35,7 @@ class YamlParser:
         try:
             waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
             waveform = waveform_yaml.get("waveform", [])
-            self.waveform = Waveform(waveform)
+            self.waveform = Waveform(waveform=waveform)
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)
 
