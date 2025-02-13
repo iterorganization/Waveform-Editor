@@ -96,19 +96,22 @@ class Waveform:
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
-            # If there still remain nans in the values, this means that there are gaps
-            # between the tendencies. In this case we linearly interpolate between the
-            # gap values
+            # Handle gaps between tendencies, we linearly interpolate between the
+            # gap values.
             if i and tendency.prev_tendency.end < tendency.start:
-                mask = (time < tendency.start) & (time > tendency.prev_tendency.end)
+                prev_tendency = tendency.prev_tendency
+                mask = (time < tendency.start) & (time > prev_tendency.end)
+                slope = (tendency.start_value - prev_tendency.end_value) / (
+                    tendency.start - prev_tendency.end
+                )
                 if np.any(mask):
                     if eval_derivatives:
-                        values[mask] = 0
+                        values[mask] = slope
                     else:
                         values[mask] = np.interp(
                             time[mask],
-                            [tendency.prev_tendency.end, tendency.start],
-                            [tendency.prev_tendency.end_value, tendency.start_value],
+                            [prev_tendency.end, tendency.start],
+                            [prev_tendency.end_value, tendency.start_value],
                         )
         # Handle extrapolation
         if eval_derivatives:

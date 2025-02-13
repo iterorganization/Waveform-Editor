@@ -96,14 +96,22 @@ def test_gap():
 def test_gap_derivative():
     """Test if derivative of gap between tendency is set to zero."""
     gap_waveform = [
-        {"type": "constant", "value": 3, "start": 0, "end": 2, "line_number": 1},
-        {"type": "constant", "value": 5, "start": 4, "end": 5, "line_number": 2},
+        {"type": "linear", "from": 3, "to": 7, "start": 0, "end": 2, "line_number": 1},
+        {
+            "type": "linear",
+            "from": 6,
+            "to": 3,
+            "start": 4,
+            "end": 5,
+            "line_number": 2,
+        },
     ]
     waveform = Waveform(waveform=gap_waveform)
     assert waveform.annotations
 
     values = waveform.get_derivative(np.linspace(0, 5, 11))
-    assert np.allclose(values, np.zeros(11))
+    expected = [2, 2, 2, 2, 2, -0.5, -0.5, -0.5, -3, -3, -3]
+    assert np.allclose(values, expected)
 
 
 def test_get_value_outside(waveform):
