@@ -1,7 +1,29 @@
+import pytest
 import yaml
 
 from waveform_editor.annotations import Annotations
 from waveform_editor.yaml_parser import LineNumberYamlLoader
+
+
+@pytest.fixture
+def filled_annotations():
+    test_messages = ["error message", "warning message"]
+    line_numbers = [0, 5]
+    annotations = [
+        {
+            "row": line_numbers[0],
+            "column": 0,
+            "text": test_messages[0],
+            "type": "error",
+        },
+        {
+            "row": line_numbers[1],
+            "column": 0,
+            "text": test_messages[1],
+            "type": "warning",
+        },
+    ]
+    return test_messages, line_numbers, annotations
 
 
 def test_empty():
@@ -10,55 +32,27 @@ def test_empty():
     assert annotations == []
 
 
-def test_add():
+def test_add(filled_annotations):
     """Test adding error to the annotations instance."""
+    (test_messages, line_numbers, annotation_list) = filled_annotations
     annotations = Annotations()
-    test_messages = ["error message", "warning message"]
-    line_numbers = [0, 5]
     annotations.add(line_numbers[0], test_messages[0])
     annotations.add(line_numbers[1], test_messages[1], is_warning=True)
 
-    assert annotations == [
-        {
-            "row": line_numbers[0],
-            "column": 0,
-            "text": test_messages[0],
-            "type": "error",
-        },
-        {
-            "row": line_numbers[1],
-            "column": 0,
-            "text": test_messages[1],
-            "type": "warning",
-        },
-    ]
+    assert annotations == annotation_list
 
 
-def test_add_annotations():
+def test_add_annotations(filled_annotations):
     """Test adding annotations to the annotations."""
+    (test_messages, line_numbers, annotation_list) = filled_annotations
     annotations1 = Annotations()
     annotations2 = Annotations()
-    test_messages = ["error message", "warning message"]
-    line_numbers = [0, 5]
     annotations1.add(line_numbers[0], test_messages[0])
     annotations2.add(line_numbers[1], test_messages[1], is_warning=True)
 
     annotations1.add_annotations(annotations2)
 
-    assert annotations1 == [
-        {
-            "row": line_numbers[0],
-            "column": 0,
-            "text": test_messages[0],
-            "type": "error",
-        },
-        {
-            "row": line_numbers[1],
-            "column": 0,
-            "text": test_messages[1],
-            "type": "warning",
-        },
-    ]
+    assert annotations1 == annotation_list
 
 
 def test_add_yaml_error():

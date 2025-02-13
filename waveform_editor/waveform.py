@@ -87,7 +87,7 @@ class Waveform:
         Returns:
             numpy array containing the computed values.
         """
-        values = np.zeros_like(time, dtype=float)
+        values = np.full_like(time, np.nan, dtype=float)
 
         for tendency in self.tendencies:
             mask = (time >= tendency.start) & (time <= tendency.end)
@@ -97,7 +97,63 @@ class Waveform:
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
+        # If there still remain nans in the values, this means that there are gaps
+        # between the tendencies. In this case we linearly interpolate between the gap
+        # values
+        for idx, t in enumerate(time):
+            if np.isnan(values[idx]):
+                # The derivatives of interpolated gaps are not calculated
+                if eval_derivatives:
+                    values[idx] = 0
+                else:
+                    values[idx] = self._interpolate_gap(t)
+
         return values
+
+    def _interpolate_gap(self, t):
+        """Interpolates the value for a given time t based on the nearest tendencies.
+        Also extrapolates the values if the time requested falls before the first, or
+        after the last tendency.
+
+        Args:
+            t: The time for which the value needs to be interpolated.
+
+        Returns:
+            The interpolated value.
+        """
+        # Find nearest tendencies before and after time t
+        prev_tendency = max(
+            (tend for tend in self.tendencies if tend.end <= t),
+            default=None,
+            key=lambda tend: tend.end,
+        )
+        next_tendency = min(
+            (tend for tend in self.tendencies if tend.start >= t),
+            default=None,
+            key=lambda tend: tend.start,
+        )
+
+        if prev_tendency and next_tendency:
+            val_end = prev_tendency.end_value
+            val_start = next_tendency.start_value
+
+            return np.interp(
+                t, [prev_tendency.end, next_tendency.start], [val_end, val_start]
+            )
+
+        # Handle extrapolation if t is before the first or after the last tendency
+        if prev_tendency is None:
+            next_tendency = self.tendencies[0]
+            val_start = next_tendency.start_value
+            return val_start
+
+        if next_tendency is None:
+            prev_tendency = self.tendencies[-1]
+            val_end = prev_tendency.end_value
+            return val_end
+
+        # If no valid interpolation or extrapolation can be performed, return 0
+        return 0.0
 
     def calc_length(self):
         """Returns the length of the waveform."""

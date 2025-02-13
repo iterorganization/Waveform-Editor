@@ -100,7 +100,7 @@ def test_get_value_interpolate():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 8])
     )
-    time, values = tendency.get_value(time=[1.0, 1.5, 2.0, 2.5, 3.0])
+    time, values = tendency.get_value(np.array([1.0, 1.5, 2.0, 2.5, 3.0]))
     assert np.all(time == [1.0, 1.5, 2.0, 2.5, 3.0])
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
     assert not tendency.annotations
@@ -109,7 +109,7 @@ def test_get_value_interpolate():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 8])
     )
-    time, values = tendency.get_value(time=[0.5, 1.5, 2.0, 2.5, 3.0])
+    time, values = tendency.get_value(np.array([0.5, 1.5, 2.0, 2.5, 3.0]))
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
     assert tendency.annotations
 
@@ -117,7 +117,7 @@ def test_get_value_interpolate():
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 8])
     )
-    time, values = tendency.get_value(time=[1.0, 1.5, 2.0, 2.5, 3.5])
+    time, values = tendency.get_value(np.array([1.0, 1.5, 2.0, 2.5, 3.5]))
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
     assert tendency.annotations
 
