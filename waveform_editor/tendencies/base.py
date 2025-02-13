@@ -85,16 +85,16 @@ class BaseTendency(param.Parameterized):
 
         unknown_kwargs = []
         super().__init__()
+        with param.parameterized.batch_call_watchers(self):
+            for param_name, value in kwargs.items():
+                if param_name not in self.param:
+                    unknown_kwargs.append(param_name.replace("user_", ""))
+                    continue
 
-        for param_name, value in kwargs.items():
-            if param_name not in self.param:
-                unknown_kwargs.append(param_name.replace("user_", ""))
-                continue
-
-            try:
-                setattr(self, param_name, value)
-            except Exception as error:
-                self._handle_error(error)
+                try:
+                    setattr(self, param_name, value)
+                except Exception as error:
+                    self._handle_error(error)
 
         self._handle_unknown_kwargs(unknown_kwargs)
 
