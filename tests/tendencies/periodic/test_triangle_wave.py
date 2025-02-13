@@ -15,6 +15,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(4)
     assert tendency.end_derivative == approx(4)
+    assert not tendency.annotations
 
     tendency = TriangleWaveTendency(
         user_duration=1,
@@ -27,6 +28,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0.5)
     assert tendency.start_derivative == approx(4)
     assert tendency.end_derivative == approx(4)
+    assert not tendency.annotations
 
     tendency = TriangleWaveTendency(
         user_duration=1,
@@ -39,6 +41,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(-4)
     assert tendency.end_derivative == approx(-4)
+    assert not tendency.annotations
 
     tendency = TriangleWaveTendency(
         user_duration=1.5,
@@ -51,6 +54,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(-4)
     assert tendency.end_derivative == approx(4)
+    assert not tendency.annotations
 
 
 def test_generate():
@@ -68,3 +72,4 @@ def test_generate():
     time, values = tendency.get_value()
     assert np.allclose(time, [0, 0.25, 0.75, 1.25, 1.5])
     assert np.allclose(values, [6, 9, 3, 9, 6])
+    assert not tendency.annotations

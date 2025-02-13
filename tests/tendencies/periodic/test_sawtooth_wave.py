@@ -15,6 +15,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(2)
     assert tendency.end_derivative == approx(2)
+    assert not tendency.annotations
 
     tendency = SawtoothWaveTendency(
         user_duration=1,
@@ -27,6 +28,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0.5)
     assert tendency.start_derivative == approx(2)
     assert tendency.end_derivative == approx(2)
+    assert not tendency.annotations
 
     tendency = SawtoothWaveTendency(
         user_duration=1,
@@ -39,6 +41,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0.25)
     assert tendency.start_derivative == approx(2)
     assert tendency.end_derivative == approx(2)
+    assert not tendency.annotations
 
 
 def test_generate():
@@ -56,3 +59,4 @@ def test_generate():
     time, values = tendency.get_value()
     assert np.allclose(time, [0, 0.25, 0.25, 1])
     assert np.allclose(values, [4.5, 6, 0, 4.5])
+    assert not tendency.annotations

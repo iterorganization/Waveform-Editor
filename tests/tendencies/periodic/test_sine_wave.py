@@ -15,6 +15,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(2 * np.pi)
     assert tendency.end_derivative == approx(2 * np.pi)
+    assert not tendency.annotations
 
     tendency = SineWaveTendency(
         user_duration=1,
@@ -27,6 +28,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(1)
     assert tendency.start_derivative == approx(0)
     assert tendency.end_derivative == approx(0)
+    assert not tendency.annotations
 
     tendency = SineWaveTendency(
         user_duration=1,
@@ -39,6 +41,7 @@ def test_start_and_end():
     assert tendency.end_value == approx(0)
     assert tendency.start_derivative == approx(-2 * np.pi)
     assert tendency.end_derivative == approx(-2 * np.pi)
+    assert not tendency.annotations
 
 
 def test_generate():
@@ -51,11 +54,13 @@ def test_generate():
     time, values = tendency.get_value()
     assert np.all(time == np.linspace(0, 1, 101))
     assert np.allclose(values, 2 + 3 * np.sin(2 * np.pi * time + 1))
+    assert not tendency.annotations
 
 
 def test_declarative_assignment():
     tendency = SineWaveTendency(user_duration=1, user_amplitude=10, user_frequency=1)
     assert tendency.start_value == approx(0)
+    assert not tendency.annotations
 
     tendency.user_base = 12
     assert tendency.start_value == approx(12)

@@ -68,6 +68,7 @@ def test_bounds(
     else:
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
+        assert not tendency.annotations
 
 
 @pytest.mark.parametrize(
@@ -116,6 +117,7 @@ def test_bounds_prev(
         tendency.set_previous_tendency(prev_tendency)
         assert tendency.base == approx(expected_base)
         assert tendency.amplitude == approx(expected_amplitude)
+        assert not tendency.annotations
 
 
 @pytest.mark.parametrize(
@@ -158,6 +160,7 @@ def test_bounds_next(
     )
     tendency.set_next_tendency(next_tendency)
     assert tendency.base == approx(expected_base)
+    assert not tendency.annotations
 
 
 def test_frequency_and_period():
@@ -166,14 +169,17 @@ def test_frequency_and_period():
     tendency = PeriodicBaseTendency(user_duration=1, user_frequency=5)
     assert tendency.frequency == 5
     assert tendency.period == approx(0.2)
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=4)
     assert tendency.period == 4
     assert tendency.frequency == approx(0.25)
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=0.5)
     assert tendency.period == 2
     assert tendency.frequency == 0.5
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_period=2, user_frequency=2)
     assert tendency.annotations
@@ -190,12 +196,16 @@ def test_phase():
 
     tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi / 2)
     assert tendency.phase == approx(np.pi / 2)
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_phase=np.pi)
     assert tendency.phase == approx(np.pi)
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_phase=2 * np.pi)
     assert tendency.phase == approx(0)
+    assert not tendency.annotations
 
     tendency = PeriodicBaseTendency(user_duration=1, user_phase=3 * np.pi)
     assert tendency.phase == approx(np.pi)
+    assert not tendency.annotations
