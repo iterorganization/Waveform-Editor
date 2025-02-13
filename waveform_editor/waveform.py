@@ -174,6 +174,13 @@ class Waveform:
             return
 
         for i, entry in enumerate(waveform):
+            if not isinstance(entry, dict):
+                error_msg = (
+                    "Waveform entry should be a dictionary. For example:\n"
+                    "waveform:\n- {type: constant, value: 3, duration: 5}"
+                )
+                self.annotations.add(0, error_msg)
+                continue
             # Add key to notify the tendency is the first repeated tendency
             if i == 0:
                 entry["is_first_repeated"] = self.is_repeated
