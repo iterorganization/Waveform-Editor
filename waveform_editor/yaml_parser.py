@@ -16,16 +16,7 @@ class YamlParser:
     def __init__(self):
         self.waveform = Waveform()
 
-    def parse_waveforms_from_file(self, file_path):
-        """Loads a YAML file from a file path and stores its tendencies into a list.
-
-        Args:
-            file_path: File path of the YAML file.
-        """
-        with open(file_path) as file:
-            self.parse_waveforms_from_string(file)
-
-    def parse_waveforms_from_string(self, yaml_str):
+    def parse_waveforms(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
 
         Args:

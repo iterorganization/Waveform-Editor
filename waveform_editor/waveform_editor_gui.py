@@ -40,7 +40,7 @@ error_alert = pn.pane.Alert(
 
 def update_plot(value):
     yaml_alert.visible = error_alert.visible = False
-    yaml_parser.parse_waveforms_from_string(value)
+    yaml_parser.parse_waveforms(value)
 
     code_editor.annotations = list(yaml_parser.waveform.annotations)
     code_editor.param.trigger("annotations")
