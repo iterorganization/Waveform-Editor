@@ -27,10 +27,6 @@ class PiecewiseLinearTendency(BaseTendency):
         self.annotations.add_annotations(annotations)
         self._validate_time_value(user_time, user_value)
 
-        # Only update the time and value arrays if there are no errors
-        if user_time is not None and user_value is not None and not self.annotations:
-            self.time = np.array(user_time)
-            self.value = np.array(user_value)
         self.start_value_set = True
         self.param.update(values_changed=True)
 
@@ -116,6 +112,16 @@ class PiecewiseLinearTendency(BaseTendency):
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
                 self.annotations.add(self.line_number, error_msg)
+
+        try:
+            time = np.asarray(time, dtype=float)
+            value = np.asarray(value, dtype=float)
+        except Exception as error:
+            self.annotations.add(self.line_number, str(error))
+        # Only update the time and value arrays if there are no errors
+        if not self.annotations:
+            self.time = np.array(time)
+            self.value = np.array(value)
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,

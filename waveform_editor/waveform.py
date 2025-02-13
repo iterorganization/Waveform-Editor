@@ -61,8 +61,7 @@ class Waveform:
         else:
             values = self._evaluate_tendencies(time)
 
-        # Ensure that values are float, even if the user provides an array of integers
-        return np.asarray(time, dtype=float), np.asarray(values, dtype=float)
+        return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
         """Get the values of the derivatives at the provided time array.
