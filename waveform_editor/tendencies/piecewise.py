@@ -3,6 +3,7 @@ from typing import Optional
 import numpy as np
 import param
 
+from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.base import BaseTendency
 
 
@@ -19,18 +20,11 @@ class PiecewiseLinearTendency(BaseTendency):
     )
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
-        if (
-            user_time is not None
-            and len(user_time) > 1
-            and (user_time[-1] - user_time[0]) > 0
-        ):
-            user_start = user_time[0]
-            user_end = user_time[-1]
-        else:
-            user_start = self.time[0]
-            user_end = self.time[-1]
+        user_start, user_end = self._handle_user_time(user_time)
+        annotations = self._remove_user_time_params(kwargs)
 
         super().__init__(user_start=user_start, user_end=user_end, **kwargs)
+        self.annotations.add_annotations(annotations)
         self._validate_time_value(user_time, user_value)
 
         # Only update the time and value arrays if there are no errors
@@ -122,3 +116,45 @@ class PiecewiseLinearTendency(BaseTendency):
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
                 self.annotations.add(self.line_number, error_msg)
+
+    def _remove_user_time_params(self, kwargs):
+        """Remove user_start, user_duration, and user_end if they are passed as kwargs,
+        and add error messages as annotations. These variables will be set from the
+        self.time array.
+
+        Args:
+            kwargs: the keyword arguments.
+
+        Returns:
+            annotations containing the errors, or an empty annotations object.
+        """
+        line_number = kwargs.get("user_line_number", 0)
+        annotations = Annotations()
+
+        error_msg = "is not allowed in a piecewise tendency\nIt will be ignored.\n"
+        for key in ["user_start", "user_duration", "user_end"]:
+            if key in kwargs:
+                kwargs.pop(key)
+                annotations.add(
+                    line_number, f"'{key.replace('user_', '')}' {error_msg}"
+                )
+
+        return annotations
+
+    def _handle_user_time(self, user_time):
+        """Get the start and end of the time array.
+
+        Args:
+            user_time: Time array provided by the user.
+        """
+        if (
+            user_time is not None
+            and len(user_time) > 1
+            and (user_time[-1] - user_time[0]) > 0
+        ):
+            user_start = user_time[0]
+            user_end = user_time[-1]
+        else:
+            user_start = self.time[0]
+            user_end = self.time[-1]
+        return user_start, user_end

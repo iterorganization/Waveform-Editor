@@ -65,6 +65,20 @@ def test_filled_invalid():
     )
     assert tendency.annotations
 
+    tendency = PiecewiseLinearTendency(
+        user_time=np.array([1, 2, 3]), user_value=np.array([1, 2, 3]), user_start=1
+    )
+    assert tendency.annotations
+
+    tendency = PiecewiseLinearTendency(
+        user_time=np.array([1, 2, 3]),
+        user_value=np.array([1, 2, 3]),
+        user_start=1,
+        user_duration=2,
+        user_end=3,
+    )
+    assert tendency.annotations
+
 
 def test_start_and_end():
     """
