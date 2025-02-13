@@ -255,10 +255,9 @@ class BaseTendency(param.Parameterized):
 
         # Check if any value has changed
         if (self.start, self.duration, self.end) != values:
-            self.start, self.duration, self.end = values
+            try:
+                self.start, self.duration, self.end = values
+            except Exception as error:
+                self._handle_error(error)
             # Trigger timing event
             self.times_changed = True
-
-        if self.duration <= 0:
-            error_msg = "Tendency end time must be greater than its start time."
-            self.annotations.add(self.line_number, error_msg)
