@@ -34,6 +34,12 @@ class YamlParser:
         self.has_yaml_error = False
         try:
             waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
+
+            if not isinstance(waveform_yaml, dict):
+                raise yaml.YAMLError(
+                    f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
+                )
+
             waveform = waveform_yaml.get("waveform", [])
             self.waveform = Waveform(waveform=waveform)
         except yaml.YAMLError as e:
