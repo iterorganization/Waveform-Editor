@@ -73,7 +73,7 @@ class BaseTendency(param.Parameterized):
         default=0, doc="Line number of the tendency in the YAML file"
     )
 
-    is_first_repeated = param.Number(
+    is_first_repeated = param.Boolean(
         default=False,
         doc="Whether the tendency is the first tendency within a repeated tendency",
     )
