@@ -8,23 +8,19 @@ class LineNumberYamlLoader(yaml.SafeLoader):
     def construct_mapping(self, node, deep=False):
         # The line numbers must be extracted to be able to display the error messages
         mapping = super().construct_mapping(node, deep)
+
+        # Prepend "user_" to all keys
+        mapping = {f"user_{key}": value for key, value in mapping.items()}
         mapping["line_number"] = node.start_mark.line
+
         return mapping
 
 
 class YamlParser:
-    def parse_waveforms_from_file(self, file_path):
-        """Loads a YAML file from a file path and stores its tendencies into a list.
+    def __init__(self):
+        self.waveform = Waveform()
 
-        Args:
-            file_path: File path of the YAML file.
-        """
-        with open(file_path) as file:
-            waveform_yaml = yaml.load(file, yaml.SafeLoader)
-        waveform = waveform_yaml.get("waveform", [])
-        self.waveform = Waveform(waveform)
-
-    def parse_waveforms_from_string(self, yaml_str):
+    def parse_waveforms(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
 
         Args:
@@ -33,13 +29,27 @@ class YamlParser:
         self.has_yaml_error = False
         try:
             waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
-            waveform = waveform_yaml.get("waveform", [])
-            self.waveform = Waveform(waveform)
+
+            if not isinstance(waveform_yaml, dict):
+                raise yaml.YAMLError(
+                    f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
+                )
+
+            waveform = waveform_yaml.get("user_waveform", [])
+            self.waveform = Waveform(waveform=waveform)
         except yaml.YAMLError as e:
-            self.waveform.annotations.clear()
-            self.waveform.annotations.add_yaml_error(e)
-            self.waveform.tendencies = []
-            self.has_yaml_error = True
+            self._handle_yaml_error(e)
+
+    def _handle_yaml_error(self, error):
+        """Handles YAML parsing errors by adding it to the annotations of the waveform.
+
+        Args:
+            error: The YAML error to add to the annotations.
+        """
+        self.waveform.annotations.clear()
+        self.waveform.annotations.add_yaml_error(error)
+        self.waveform.tendencies = []
+        self.has_yaml_error = True
 
     def plot_tendencies(self, plot_time_points=False):
         """

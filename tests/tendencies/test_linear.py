@@ -11,6 +11,7 @@ def test_empty():
     assert tendency.from_ == 0.0
     assert tendency.to == 0.0
     assert tendency.rate == 0.0
+    assert not tendency.annotations
 
 
 @pytest.mark.parametrize(
@@ -50,6 +51,7 @@ def test_linear_tendency(
         assert tendency.from_ == approx(expected_from)
         assert tendency.to == approx(expected_to)
         assert tendency.rate == approx(expected_rate)
+        assert not tendency.annotations
 
 
 @pytest.mark.parametrize(
@@ -87,6 +89,7 @@ def test_linear_tendency_with_prev(
         assert tendency.from_ == approx(expected_from)
         assert tendency.to == approx(expected_to)
         assert tendency.rate == approx(expected_rate)
+        assert not tendency.annotations
 
 
 @pytest.mark.parametrize(
@@ -126,6 +129,7 @@ def test_linear_tendency_with_next(
         assert tendency.from_ == approx(expected_from)
         assert tendency.to == approx(expected_to)
         assert tendency.rate == approx(expected_rate)
+        assert not tendency.annotations
 
 
 def test_start_and_end():
@@ -137,6 +141,7 @@ def test_start_and_end():
     assert tendency.end_value == 6
     assert tendency.start_derivative == 5
     assert tendency.end_derivative == 5
+    assert not tendency.annotations
 
 
 def test_generate():
@@ -147,6 +152,7 @@ def test_generate():
     time, values = tendency.get_value()
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([1, 10]))
+    assert not tendency.annotations
 
 
 def test_declarative_assignments():
@@ -168,3 +174,7 @@ def test_declarative_assignments():
     assert t1.from_ == 0
     assert t1.to == t2.from_ == 1
     assert t2.to == t3.from_ == t3.to == 2
+
+    assert not t1.annotations
+    assert not t2.annotations
+    assert not t3.annotations

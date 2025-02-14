@@ -38,16 +38,17 @@ class Annotations(UserList):
         Args:
             error: The YAML parsing error to be added as annotations.
         """
+        message = "Unable to parse the YAML file:\n"
         if hasattr(error, "problem_mark"):
             line = error.problem_mark.line
             # TODO: Is there a way to visualize the column into the annotation? They are
             # currently ignored.
             # column = error.problem_mark.column
-            message = f"Unable to parse the YAML file:\n{error.problem}"
-
-            self.add(line, message)
+            message += f"{error.problem}"
         else:
-            self.add(0, f"Unknown YAML error: {error}")
+            line = 0
+            message += f"{error}"
+        self.add(line, message)
 
     def suggest(self, word_to_match, possible_matches):
         """Suggest a close match for a given word from a list of possible matches.

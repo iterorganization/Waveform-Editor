@@ -31,10 +31,12 @@ tendency_map = {
 
 
 class Waveform:
-    def __init__(self, waveform):
+    def __init__(self, *, waveform=None, is_repeated=False):
         self.tendencies = []
         self.annotations = Annotations()
-        self._process_waveform(waveform)
+        self.is_repeated = is_repeated
+        if waveform is not None:
+            self._process_waveform(waveform)
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -86,7 +88,7 @@ class Waveform:
         """
         values = np.zeros_like(time, dtype=float)
 
-        for tendency in self.tendencies:
+        for i, tendency in enumerate(self.tendencies):
             mask = (time >= tendency.start) & (time <= tendency.end)
             if np.any(mask):
                 if eval_derivatives:
@@ -94,6 +96,33 @@ class Waveform:
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
+            # Handle gaps between tendencies, we linearly interpolate between the
+            # gap values.
+            if i and tendency.prev_tendency.end < tendency.start:
+                prev_tendency = tendency.prev_tendency
+                mask = (time < tendency.start) & (time > prev_tendency.end)
+                slope = (tendency.start_value - prev_tendency.end_value) / (
+                    tendency.start - prev_tendency.end
+                )
+                if np.any(mask):
+                    if eval_derivatives:
+                        values[mask] = slope
+                    else:
+                        values[mask] = np.interp(
+                            time[mask],
+                            [prev_tendency.end, tendency.start],
+                            [prev_tendency.end_value, tendency.start_value],
+                        )
+        # Handle extrapolation
+        if eval_derivatives:
+            values[time < self.tendencies[0].start] = 0
+            values[time > self.tendencies[-1].end] = 0
+        else:
+            first_tendency = self.tendencies[0]
+            values[time < first_tendency.start] = first_tendency.start_value
+
+            last_tendency = self.tendencies[-1]
+            values[time > last_tendency.end] = last_tendency.end_value
         return values
 
     def calc_length(self):
@@ -114,7 +143,17 @@ class Waveform:
             self.annotations.add(0, error_msg)
             return
 
-        for entry in waveform:
+        for i, entry in enumerate(waveform):
+            if not isinstance(entry, dict):
+                error_msg = (
+                    "Waveform entry should be a dictionary. For example:\n"
+                    "waveform:\n- {type: constant, value: 3, duration: 5}"
+                )
+                self.annotations.add(0, error_msg)
+                continue
+            # Add key to notify the tendency is the first repeated tendency
+            if i == 0:
+                entry["is_first_repeated"] = self.is_repeated
             tendency = self._handle_tendency(entry)
             if tendency is not None:
                 self.tendencies.append(tendency)
@@ -123,8 +162,17 @@ class Waveform:
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
+        self.update_annotations()
+
         for tendency in self.tendencies:
-            if tendency.annotations:
+            tendency.param.watch(self.update_annotations, "annotations")
+
+    def update_annotations(self, event=None):
+        """Merges the annotations of the individual tendencies into the annotations
+        of this waveform."""
+
+        for tendency in self.tendencies:
+            if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
 
     def _handle_tendency(self, entry):
@@ -136,7 +184,7 @@ class Waveform:
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
-        if "type" not in entry:
+        if "user_type" not in entry:
             line_number = entry.pop("line_number")
             error_msg = (
                 "The tendency must have a 'type'.\n"
@@ -145,19 +193,16 @@ class Waveform:
             )
             self.annotations.add(line_number, error_msg)
             return None
-        tendency_type = entry.pop("type")
-
-        # Rewrite keys
-        params = {f"user_{key}": value for key, value in entry.items()}
+        tendency_type = entry.pop("user_type")
 
         if tendency_type in tendency_map:
             tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**params)
+            tendency = tendency_class(**entry)
             return tendency
         else:
-            line_number = entry.pop("line_number")
             suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
 
+            line_number = entry.pop("line_number")
             error_msg = (
                 f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
                 "This tendency will be ignored.\n"

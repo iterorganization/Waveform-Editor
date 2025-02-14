@@ -16,7 +16,7 @@ class RepeatTendency(BaseTendency):
 
         from waveform_editor.waveform import Waveform
 
-        self.waveform = Waveform(waveform)
+        self.waveform = Waveform(waveform=waveform, is_repeated=True)
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform."
             self.annotations.add(self.line_number, error_msg)
@@ -33,7 +33,19 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
 
+        self._set_bounds()
         self.annotations.add_annotations(self.waveform.annotations)
+
+    def _set_bounds(self):
+        """Sets the start and end values, as well as derivatives"""
+        _, start_values = self.get_value(np.array([self.start]))
+        self.start_value = start_values[0]
+        start_derivatives = self.get_derivative(np.array([self.start]))
+        self.start_derivative = start_derivatives[0]
+        _, end_values = self.get_value(np.array([self.end]))
+        self.end_value = end_values[0]
+        end_derivatives = self.get_derivative(np.array([self.end]))
+        self.end_derivative = end_derivatives[0]
 
     def get_value(
         self, time: Optional[np.ndarray] = None

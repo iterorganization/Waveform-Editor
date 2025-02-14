@@ -9,6 +9,7 @@ def test_empty():
     assert tendency.to == 0.0
     assert tendency.start_derivative == 0.0
     assert tendency.end_derivative == 0.0
+    assert not tendency.annotations
 
 
 def test_filled_value():
@@ -18,6 +19,7 @@ def test_filled_value():
     assert tendency.to == 2.2
     assert tendency.start_derivative == 0.0
     assert tendency.end_derivative == 0.0
+    assert not tendency.annotations
 
 
 def test_prev_value():
@@ -33,6 +35,7 @@ def test_prev_value():
     assert tendency.end_derivative == 0.0
     assert tendency.prev_tendency == prev_tendency
     assert tendency.next_tendency is None
+    assert not tendency.annotations
 
 
 def test_next_value():
@@ -47,6 +50,7 @@ def test_next_value():
     assert tendency.end_derivative == 5
     assert tendency.prev_tendency is None
     assert tendency.next_tendency == next_tendency
+    assert not tendency.annotations
 
 
 def test_prev_and_next_value():
@@ -66,6 +70,7 @@ def test_prev_and_next_value():
     assert tendency.end_derivative == 5
     assert tendency.prev_tendency == prev_tendency
     assert tendency.next_tendency == next_tendency
+    assert not tendency.annotations
 
 
 def test_generate():
@@ -77,3 +82,4 @@ def test_generate():
 
     assert values[0] == 3
     assert values[-1] == 6
+    assert not tendency.annotations

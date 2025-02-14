@@ -10,19 +10,32 @@ from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.yaml_parser import YamlParser
 
 
-def test_yaml_parser_from_string():
+def test_yaml_parser():
     """Test loading a yaml file as a string."""
+    # Valid YAML
     with open("tests/tendencies/test_yaml/test.yaml") as file:
-        yaml_parser = YamlParser()
-        yaml_parser.parse_waveforms_from_string(file.read())
-        assert_tendencies_correct(yaml_parser.waveform.tendencies)
-
-
-def test_yaml_parser_from_file():
-    """Test loading a yaml file as a file."""
+        yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms_from_file("tests/tendencies/test_yaml/test.yaml")
+    yaml_parser.parse_waveforms(yaml_file)
     assert_tendencies_correct(yaml_parser.waveform.tendencies)
+    assert not yaml_parser.waveform.annotations
+    assert not yaml_parser.has_yaml_error
+
+    # Invalid configuration
+    with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
+        yaml_file = file.read()
+    yaml_parser = YamlParser()
+    yaml_parser.parse_waveforms(yaml_file)
+    assert yaml_parser.waveform.annotations
+    assert not yaml_parser.has_yaml_error
+
+    # Invalid YAML
+    with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
+        yaml_file = file.read()
+    yaml_parser = YamlParser()
+    yaml_parser.parse_waveforms(yaml_file)
+    assert yaml_parser.waveform.annotations
+    assert yaml_parser.has_yaml_error
 
 
 def assert_tendencies_correct(tendencies):
