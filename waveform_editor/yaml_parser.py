@@ -10,8 +10,7 @@ class LineNumberYamlLoader(yaml.SafeLoader):
         mapping = super().construct_mapping(node, deep)
 
         # Prepend "user_" to all keys
-        for key in list(mapping.keys()):
-            mapping[f"user_{key}"] = mapping.pop(key)
+        mapping = {f"user_{key}": value for key, value in mapping.items()}
         mapping["line_number"] = node.start_mark.line
 
         return mapping
