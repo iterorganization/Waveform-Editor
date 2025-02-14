@@ -46,7 +46,6 @@ class PiecewiseLinearTendency(BaseTendency):
         if time is None:
             return self.time, self.value
 
-        self._validate_requested_time(time)
         interpolated_values = np.interp(time, self.time, self.value)
         return time, interpolated_values
 
@@ -59,7 +58,6 @@ class PiecewiseLinearTendency(BaseTendency):
         Returns:
             numpy array containing the derivatives
         """
-        self._validate_requested_time(time)
 
         # Compute piecewise derivatives
         dv = np.diff(self.value)
@@ -71,19 +69,6 @@ class PiecewiseLinearTendency(BaseTendency):
         indices = np.clip(indices, 0, len(piecewise_derivatives) - 1)
 
         return piecewise_derivatives[indices]
-
-    def _validate_requested_time(self, time):
-        """Check if the requested time data falls within the piecewise tendency.
-
-        Args:
-            time: The time array on which to generate points.
-        """
-        if np.any(time < self.time[0]) or np.any(time > self.time[-1]):
-            error_msg = (
-                f"The provided time array contains values outside the valid range "
-                f"({self.time[0]}, {self.time[-1]}).\n"
-            )
-            self.annotations.add(self.line_number, error_msg)
 
     def _validate_time_value(self, time, value):
         """Validates the provided time and value lists.

@@ -107,6 +107,18 @@ def test_generate():
     assert not tendency.annotations
 
 
+def test_get_value_bounds():
+    """
+    Check the generated values outside of the time array.
+    """
+    tendency = PiecewiseLinearTendency(
+        user_time=np.array([1, 2, 3]), user_value=np.array([2, 4, 8])
+    )
+    _, values = tendency.get_value(np.array([0.0, 0.5, 1.0, 3.0, 3.5, 4.0]))
+    assert np.allclose(values, [2, 2, 2, 8, 8, 8])
+    assert not tendency.annotations
+
+
 def test_get_value_interpolate():
     """
     Check the generated interpolated values.
@@ -125,7 +137,7 @@ def test_get_value_interpolate():
     )
     time, values = tendency.get_value(np.array([0.5, 1.5, 2.0, 2.5, 3.0]))
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
-    assert tendency.annotations
+    assert not tendency.annotations
 
     # Request after time range
     tendency = PiecewiseLinearTendency(
@@ -133,7 +145,7 @@ def test_get_value_interpolate():
     )
     time, values = tendency.get_value(np.array([1.0, 1.5, 2.0, 2.5, 3.5]))
     assert np.allclose(values, [2.0, 3.0, 4.0, 6.0, 8.0])
-    assert tendency.annotations
+    assert not tendency.annotations
 
 
 def test_get_derivative_interpolate():
@@ -159,7 +171,7 @@ def test_get_derivative_interpolate():
     )
     expected_derivatives = [2, 2, -1, -1, -0.5, -0.5, -0.5, -0.5, 2, 2, 2, 2, 2]
     assert np.allclose(derivatives, expected_derivatives)
-    assert tendency.annotations
+    assert not tendency.annotations
 
     # Request derivative after time range
     tendency = PiecewiseLinearTendency(
@@ -170,4 +182,4 @@ def test_get_derivative_interpolate():
     )
     expected_derivatives = [2, 2, -1, -1, -0.5, -0.5, -0.5, -0.5, 2, 2, 2, 2, 2]
     assert np.allclose(derivatives, expected_derivatives)
-    assert tendency.annotations
+    assert not tendency.annotations
