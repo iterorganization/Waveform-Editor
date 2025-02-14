@@ -17,17 +17,34 @@ def test_empty():
 @pytest.fixture
 def waveform_list():
     return [
-        {"type": "linear", "from": 0, "to": 8, "duration": 5, "line_number": 1},
         {
-            "type": "sine-wave",
-            "base": 8,
-            "amplitude": 2,
-            "frequency": 1,
-            "duration": 4,
+            "user_type": "linear",
+            "user_from": 0,
+            "user_to": 8,
+            "user_duration": 5,
+            "line_number": 1,
+        },
+        {
+            "user_type": "sine-wave",
+            "user_base": 8,
+            "user_amplitude": 2,
+            "user_frequency": 1,
+            "user_duration": 4,
             "line_number": 2,
         },
-        {"type": "constant", "value": 8, "duration": 3, "line_number": 3},
-        {"type": "smooth", "from": 8, "to": 0, "duration": 2, "line_number": 4},
+        {
+            "user_type": "constant",
+            "user_value": 8,
+            "user_duration": 3,
+            "line_number": 3,
+        },
+        {
+            "user_type": "smooth",
+            "user_from": 8,
+            "user_to": 0,
+            "user_duration": 2,
+            "line_number": 4,
+        },
     ]
 
 
@@ -79,8 +96,20 @@ def test_length(waveform):
 def test_gap():
     """Test if gap between tendency is interpolated."""
     gap_waveform = [
-        {"type": "constant", "value": 3, "start": 0, "end": 2, "line_number": 1},
-        {"type": "constant", "value": 5, "start": 4, "end": 5, "line_number": 2},
+        {
+            "user_type": "constant",
+            "user_value": 3,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "constant",
+            "user_value": 5,
+            "user_start": 4,
+            "user_end": 5,
+            "line_number": 2,
+        },
     ]
     waveform = Waveform(waveform=gap_waveform)
     assert waveform.annotations
@@ -96,13 +125,20 @@ def test_gap():
 def test_gap_derivative():
     """Test if derivative of gap between tendency is interpolated."""
     gap_waveform = [
-        {"type": "linear", "from": 3, "to": 7, "start": 0, "end": 2, "line_number": 1},
         {
-            "type": "linear",
-            "from": 6,
-            "to": 3,
-            "start": 4,
-            "end": 5,
+            "user_type": "linear",
+            "user_from": 3,
+            "user_to": 7,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "linear",
+            "user_from": 6,
+            "user_to": 3,
+            "user_start": 4,
+            "user_end": 5,
             "line_number": 2,
         },
     ]
@@ -117,8 +153,20 @@ def test_gap_derivative():
 def test_get_value_outside(waveform):
     """Test if values outside of range are clipped."""
     gap_waveform = [
-        {"type": "constant", "value": 3, "start": 0, "end": 2, "line_number": 1},
-        {"type": "constant", "value": 5, "start": 4, "end": 5, "line_number": 2},
+        {
+            "user_type": "constant",
+            "user_value": 3,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "constant",
+            "user_value": 5,
+            "user_start": 4,
+            "user_end": 5,
+            "line_number": 2,
+        },
     ]
     gap_waveform = Waveform(waveform=gap_waveform)
     # test requesting values outside of time range
@@ -137,13 +185,20 @@ def test_get_value_outside(waveform):
 def test_get_derivative_outside(waveform):
     """Test if derivatives outside of range are set to zero."""
     gap_waveform = [
-        {"type": "linear", "from": 3, "to": 7, "start": 0, "end": 2, "line_number": 1},
         {
-            "type": "linear",
-            "from": 6,
-            "to": 3,
-            "start": 4,
-            "end": 5,
+            "user_type": "linear",
+            "user_from": 3,
+            "user_to": 7,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "linear",
+            "user_from": 6,
+            "user_to": 3,
+            "user_start": 4,
+            "user_end": 5,
             "line_number": 2,
         },
     ]
@@ -164,8 +219,20 @@ def test_get_derivative_outside(waveform):
 def test_overlap():
     """Test values if tendencies overlap."""
     overlap_waveform = [
-        {"type": "constant", "value": 3, "start": 0, "end": 2, "line_number": 1},
-        {"type": "constant", "value": 5, "start": 1, "end": 3, "line_number": 2},
+        {
+            "user_type": "constant",
+            "user_value": 3,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "constant",
+            "user_value": 5,
+            "user_start": 1,
+            "user_end": 3,
+            "line_number": 2,
+        },
     ]
     waveform = Waveform(waveform=overlap_waveform)
     assert waveform.annotations
@@ -182,13 +249,20 @@ def test_overlap():
 def test_overlap_derivatives():
     """Test derivatives if tendencies overlap."""
     overlap_waveform = [
-        {"type": "linear", "from": 3, "to": 7, "start": 0, "end": 2, "line_number": 1},
         {
-            "type": "linear",
-            "from": 6,
-            "to": 3,
-            "start": 1,
-            "end": 3,
+            "user_type": "linear",
+            "user_from": 3,
+            "user_to": 7,
+            "user_start": 0,
+            "user_end": 2,
+            "line_number": 1,
+        },
+        {
+            "user_type": "linear",
+            "user_from": 6,
+            "user_to": 3,
+            "user_start": 1,
+            "user_end": 3,
             "line_number": 2,
         },
     ]

@@ -8,7 +8,12 @@ class LineNumberYamlLoader(yaml.SafeLoader):
     def construct_mapping(self, node, deep=False):
         # The line numbers must be extracted to be able to display the error messages
         mapping = super().construct_mapping(node, deep)
+
+        # Prepend "user_" to all keys
+        for key in list(mapping.keys()):
+            mapping[f"user_{key}"] = mapping.pop(key)
         mapping["line_number"] = node.start_mark.line
+
         return mapping
 
 
@@ -31,7 +36,7 @@ class YamlParser:
                     f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
                 )
 
-            waveform = waveform_yaml.get("waveform", [])
+            waveform = waveform_yaml.get("user_waveform", [])
             self.waveform = Waveform(waveform=waveform)
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)

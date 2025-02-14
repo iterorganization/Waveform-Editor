@@ -184,7 +184,7 @@ class Waveform:
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
-        if "type" not in entry:
+        if "user_type" not in entry:
             line_number = entry.pop("line_number")
             error_msg = (
                 "The tendency must have a 'type'.\n"
@@ -193,19 +193,16 @@ class Waveform:
             )
             self.annotations.add(line_number, error_msg)
             return None
-        tendency_type = entry.pop("type")
-
-        # Rewrite keys
-        params = {f"user_{key}": value for key, value in entry.items()}
+        tendency_type = entry.pop("user_type")
 
         if tendency_type in tendency_map:
             tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**params)
+            tendency = tendency_class(**entry)
             return tendency
         else:
-            line_number = entry.pop("line_number")
             suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
 
+            line_number = entry.pop("line_number")
             error_msg = (
                 f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
                 "This tendency will be ignored.\n"

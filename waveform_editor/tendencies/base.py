@@ -80,8 +80,8 @@ class BaseTendency(param.Parameterized):
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
 
     def __init__(self, **kwargs):
-        self.line_number = kwargs.pop("user_line_number", 0)
-        self.is_first_repeated = kwargs.pop("user_is_first_repeated", False)
+        self.line_number = kwargs.pop("line_number", 0)
+        self.is_first_repeated = kwargs.pop("is_first_repeated", False)
 
         unknown_kwargs = []
         super().__init__()
