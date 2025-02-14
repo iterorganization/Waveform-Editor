@@ -94,7 +94,7 @@ def test_gap():
 
 
 def test_gap_derivative():
-    """Test if derivative of gap between tendency is set to zero."""
+    """Test if derivative of gap between tendency is interpolated."""
     gap_waveform = [
         {"type": "linear", "from": 3, "to": 7, "start": 0, "end": 2, "line_number": 1},
         {
