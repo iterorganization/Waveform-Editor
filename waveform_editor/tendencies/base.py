@@ -87,7 +87,7 @@ class BaseTendency(param.Parameterized):
         super().__init__()
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
-                if value is None:
+                if param_name in self.param and value is None:
                     self.annotations.add(
                         self.line_number,
                         f"The value of {param_name.replace('user_', '')!r} cannot be "
