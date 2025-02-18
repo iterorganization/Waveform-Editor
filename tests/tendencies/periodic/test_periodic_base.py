@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from pytest import approx
 
+from tests.utils import filter_kwargs
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
 
@@ -56,13 +57,11 @@ def test_bounds(
     """
     Test the base, amplitude, minimum and maximum values of the periodic base tendency
     """
-    tendency = PeriodicBaseTendency(
-        user_duration=1,
-        user_base=base,
-        user_amplitude=amplitude,
-        user_min=min,
-        user_max=max,
+    kwargs = filter_kwargs(
+        user_base=base, user_amplitude=amplitude, user_min=min, user_max=max
     )
+
+    tendency = PeriodicBaseTendency(user_duration=1, **kwargs)
     if has_error:
         assert tendency.annotations
     else:
@@ -104,13 +103,10 @@ def test_bounds_prev(
     when the tendency has a previous tendency.
     """
     prev_tendency = ConstantTendency(user_start=0, user_duration=1, user_value=8)
-    tendency = PeriodicBaseTendency(
-        user_duration=1,
-        user_base=base,
-        user_amplitude=amplitude,
-        user_min=min,
-        user_max=max,
+    kwargs = filter_kwargs(
+        user_base=base, user_amplitude=amplitude, user_min=min, user_max=max
     )
+    tendency = PeriodicBaseTendency(user_duration=1, **kwargs)
     if has_error:
         assert tendency.annotations
     else:
@@ -151,13 +147,10 @@ def test_bounds_next(
     when the tendency has a next tendency.
     """
     next_tendency = ConstantTendency(user_duration=1, user_value=8)
-    tendency = PeriodicBaseTendency(
-        user_duration=1,
-        user_base=base,
-        user_amplitude=amplitude,
-        user_min=min,
-        user_max=max,
+    kwargs = filter_kwargs(
+        user_base=base, user_amplitude=amplitude, user_min=min, user_max=max
     )
+    tendency = PeriodicBaseTendency(user_duration=1, **kwargs)
     tendency.set_next_tendency(next_tendency)
     assert tendency.base == approx(expected_base)
     assert not tendency.annotations
