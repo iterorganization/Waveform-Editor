@@ -73,11 +73,23 @@ def test_prev_and_next_value():
     assert not tendency.annotations
 
 
-def test_generate():
+def test_get_value():
     """
     Check the generated values.
     """
     tendency = SmoothTendency(user_start=0, user_duration=1, user_from=3, user_to=6)
+    _, values = tendency.get_value()
+
+    assert values[0] == 3
+    assert values[-1] == 6
+    assert not tendency.annotations
+
+
+def test_get_value_no_start():
+    """
+    Check the generated values when no start is provided.
+    """
+    tendency = SmoothTendency(user_duration=8, user_from=3, user_to=6)
     _, values = tendency.get_value()
 
     assert values[0] == 3
