@@ -1,6 +1,7 @@
 import pytest
 from pytest import approx
 
+from tests.utils import filter_kwargs
 from waveform_editor.tendencies.base import BaseTendency
 
 
@@ -31,7 +32,7 @@ def test_first_base_tendency(
     has_error,
 ):
     """Test validity of the created base tendency when it is the first tendency."""
-    kwargs = dict(user_start=start, user_duration=duration, user_end=end)
+    kwargs = filter_kwargs(user_start=start, user_duration=duration, user_end=end)
     base_tendency = BaseTendency(**kwargs)
 
     assert base_tendency.start == approx(expected_start)
@@ -71,7 +72,7 @@ def test_second_base_tendency(
 ):
     """Test validity of the created base tendency when it is the second tendency."""
     prev_tendency = BaseTendency(user_start=0, user_end=10)
-    kwargs = dict(user_start=start, user_duration=duration, user_end=end)
+    kwargs = filter_kwargs(user_start=start, user_duration=duration, user_end=end)
     base_tendency = BaseTendency(**kwargs)
     base_tendency.set_previous_tendency(prev_tendency)
     prev_tendency.set_next_tendency(base_tendency)

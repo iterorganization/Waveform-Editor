@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from pytest import approx
 
+from tests.utils import filter_kwargs
 from waveform_editor.tendencies.linear import LinearTendency
 
 
@@ -41,9 +42,11 @@ def test_linear_tendency(
     duration, from_, to, rate, expected_from, expected_to, expected_rate, has_error
 ):
     """Test values of filled tendency."""
-    tendency = LinearTendency(
+    kwargs = filter_kwargs(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
+
+    tendency = LinearTendency(**kwargs)
     if has_error:
         assert tendency.annotations
     else:
@@ -78,9 +81,10 @@ def test_linear_tendency_with_prev(
 ):
     """Test values of tendency that has a previous tendency."""
     prev_tendency = LinearTendency(user_duration=10, user_from=1, user_to=5)
-    tendency = LinearTendency(
+    kwargs = filter_kwargs(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
+    tendency = LinearTendency(**kwargs)
     if has_error:
         assert tendency.annotations
     else:
@@ -118,9 +122,10 @@ def test_linear_tendency_with_next(
     next_tendency = LinearTendency(
         user_start=10, user_duration=10, user_from=5, user_to=10
     )
-    tendency = LinearTendency(
+    kwargs = filter_kwargs(
         user_duration=duration, user_from=from_, user_to=to, user_rate=rate
     )
+    tendency = LinearTendency(**kwargs)
     if has_error:
         assert tendency.annotations
     else:
