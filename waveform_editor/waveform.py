@@ -184,8 +184,8 @@ class Waveform:
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
+        line_number = entry.get("line_number", 0)
         if "user_type" not in entry:
-            line_number = entry.pop("line_number")
             error_msg = (
                 "The tendency must have a 'type'.\n"
                 "For example: '- {type: constant, duration: 3, value: 3}'\n"
@@ -193,7 +193,14 @@ class Waveform:
             )
             self.annotations.add(line_number, error_msg)
             return None
+
         tendency_type = entry.pop("user_type")
+        if tendency_type is None:
+            error_msg = (
+                "The tendency type cannot be empty.\nThis tendency will be ignored.\n"
+            )
+            self.annotations.add(line_number, error_msg)
+            return None
 
         if tendency_type in tendency_map:
             tendency_class = tendency_map[tendency_type]
@@ -202,7 +209,6 @@ class Waveform:
         else:
             suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
 
-            line_number = entry.pop("line_number")
             error_msg = (
                 f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
                 "This tendency will be ignored.\n"
