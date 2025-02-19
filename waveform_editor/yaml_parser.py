@@ -5,6 +5,22 @@ from waveform_editor.waveform import Waveform
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
+    def _check_for_duplicates(self, node, deep):
+        seen = set()
+
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                # Mock a problem mark so we can pass the line number of the error
+                problem_mark = yaml.Mark(
+                    "<duplicate>", 0, node.start_mark.line, 0, 0, 0
+                )
+                raise yaml.MarkedYAMLError(
+                    problem=f"Found duplicate entry {key!r}.",
+                    problem_mark=problem_mark,
+                )
+            seen.add(key)
+
     def construct_mapping(self, node, deep=False):
         # The line numbers must be extracted to be able to display the error messages
         mapping = super().construct_mapping(node, deep)
@@ -12,6 +28,10 @@ class LineNumberYamlLoader(yaml.SafeLoader):
         # Prepend "user_" to all keys
         mapping = {f"user_{key}": value for key, value in mapping.items()}
         mapping["line_number"] = node.start_mark.line
+
+        # Check if all entries of the duplicate mapping are unique, as the yaml
+        # SafeLoader silently ignores duplicate keys
+        self._check_for_duplicates(node, deep)
 
         return mapping
 
