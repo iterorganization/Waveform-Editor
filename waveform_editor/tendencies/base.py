@@ -95,6 +95,15 @@ class BaseTendency(param.Parameterized):
                         is_warning=True,
                     )
 
+                if isinstance(value, (int, float)) and not np.isfinite(value):
+                    self.annotations.add(
+                        self.line_number,
+                        f"The value for {param_name.replace('user_', '')!r} is not a "
+                        "valid number.\nIt will be set to its default value.\n",
+                        is_warning=True,
+                    )
+                    continue
+
                 if param_name not in self.param:
                     unknown_kwargs.append(param_name.replace("user_", ""))
                     continue
