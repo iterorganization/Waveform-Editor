@@ -98,10 +98,8 @@ class PiecewiseLinearTendency(BaseTendency):
             self.pre_check_annotations.add(self.line_number, error_msg)
 
         try:
-            np.asarray_chkfinite(time)
-            np.asarray_chkfinite(value)
-            time = np.asarray(time, dtype=float)
-            value = np.asarray(value, dtype=float)
+            time = np.asarray_chkfinite(time, dtype=float)
+            value = np.asarray_chkfinite(value, dtype=float)
             is_monotonic = np.all(np.diff(time) > 0)
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
