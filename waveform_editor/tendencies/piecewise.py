@@ -98,6 +98,8 @@ class PiecewiseLinearTendency(BaseTendency):
             self.pre_check_annotations.add(self.line_number, error_msg)
 
         try:
+            np.asarray_chkfinite(time)
+            np.asarray_chkfinite(value)
             time = np.asarray(time, dtype=float)
             value = np.asarray(value, dtype=float)
             is_monotonic = np.all(np.diff(time) > 0)
@@ -108,8 +110,8 @@ class PiecewiseLinearTendency(BaseTendency):
             self.pre_check_annotations.add(self.line_number, str(error))
 
         if not self.pre_check_annotations:
-            self.time = np.asarray(time, dtype=float)
-            self.value = np.asarray(value, dtype=float)
+            self.time = time
+            self.value = value
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,
