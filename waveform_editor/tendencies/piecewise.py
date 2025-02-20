@@ -22,14 +22,20 @@ class PiecewiseLinearTendency(BaseTendency):
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
         self.line_number = kwargs.get("line_number", 0)
-        self._validate_time_value(user_time, user_value)
+        time, value = self._validate_time_value(user_time, user_value)
         self._remove_user_time_params(kwargs)
-        super().__init__(user_start=self.time[0], user_end=self.time[-1], **kwargs)
+        super().__init__(
+            user_start=time[0],
+            user_end=time[-1],
+            time=time,
+            value=value,
+            **kwargs,
+        )
 
-        # If there are any errors, use the default time and value arrays instead
-        if not self.pre_check_annotations:
-            self.time = np.asarray(user_time, dtype=float)
-            self.value = np.asarray(user_value, dtype=float)
+        # Param arrays are overwritten by its defaults after initialization, so assign
+        # them here
+        self.time = time
+        self.value = value
         self.annotations.add_annotations(self.pre_check_annotations)
 
         self.start_value_set = True
@@ -81,6 +87,11 @@ class PiecewiseLinearTendency(BaseTendency):
         Args:
             time: List of time values.
             value: List of values defined on each time step.
+
+        Returns:
+            Tuple containing the validated time and value arrays. If any errors are
+            encountered during the validation, the self.time and self.value defaults are
+            returned instead.
         """
         if time is None or value is None:
             error_msg = "Both the `time` and `value` arrays must be specified.\n"
@@ -107,9 +118,11 @@ class PiecewiseLinearTendency(BaseTendency):
         except Exception as error:
             self.pre_check_annotations.add(self.line_number, str(error))
 
+        # If there are any errors, use the default values instead
         if not self.pre_check_annotations:
-            self.time = time
-            self.value = value
+            return time, value
+        else:
+            return self.time, self.value
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,
