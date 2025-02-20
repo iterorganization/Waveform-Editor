@@ -87,6 +87,10 @@ class BaseTendency(param.Parameterized):
         super().__init__()
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
+                if param_name not in self.param:
+                    unknown_kwargs.append(param_name.replace("user_", ""))
+                    continue
+
                 if value is None:
                     self.annotations.add(
                         self.line_number,
@@ -94,9 +98,15 @@ class BaseTendency(param.Parameterized):
                         "empty.\nIt will be set to its default value.\n",
                         is_warning=True,
                     )
+                    continue
 
-                if param_name not in self.param:
-                    unknown_kwargs.append(param_name.replace("user_", ""))
+                if isinstance(value, (int, float)) and not np.isfinite(value):
+                    self.annotations.add(
+                        self.line_number,
+                        f"The value for {param_name.replace('user_', '')!r} is not a "
+                        "valid number.\nIt will be set to its default value.\n",
+                        is_warning=True,
+                    )
                     continue
 
                 try:
