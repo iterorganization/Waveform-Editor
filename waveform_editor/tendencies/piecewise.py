@@ -31,11 +31,6 @@ class PiecewiseLinearTendency(BaseTendency):
             value=value,
             **kwargs,
         )
-
-        # Param arrays are overwritten by its defaults after initialization, so assign
-        # them here
-        self.time = time
-        self.value = value
         self.annotations.add_annotations(self.pre_check_annotations)
 
         self.start_value_set = True
