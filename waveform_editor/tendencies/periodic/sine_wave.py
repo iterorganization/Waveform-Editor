@@ -22,8 +22,10 @@ class SineWaveTendency(PeriodicBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            sampling_rate = 100
+            sampling_rate = 32 * self.frequency
             num_steps = int(self.duration * sampling_rate) + 1
+            # Choosing prime number instead of 100k to reduce aliasing artifacts
+            num_steps = min(num_steps, 100003)
             time = np.linspace(float(self.start), float(self.end), num_steps)
         values = self._calc_sine(time)
         return time, values
