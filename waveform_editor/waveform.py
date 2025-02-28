@@ -186,14 +186,10 @@ class Waveform:
         """
         line_number = entry.get("line_number", 0)
         ignore_msg = "This tendency will be ignored.\n"
+
+        # If no type is given, take linear as default
         if "user_type" not in entry:
-            error_msg = (
-                "The tendency must have a 'type'.\n"
-                "For example: '- {type: constant, duration: 3, value: 3}'\n"
-                f"{ignore_msg}"
-            )
-            self.annotations.add(line_number, error_msg)
-            return True
+            entry["user_type"] = "linear"
 
         tendency_type = entry.get("user_type", None)
         if tendency_type is None:
