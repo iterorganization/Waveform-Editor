@@ -18,13 +18,20 @@ class RepeatTendency(BaseTendency):
 
         self.waveform = Waveform(waveform=waveform, is_repeated=True)
         if not self.waveform.tendencies:
-            error_msg = "There are no tendencies in the repeated waveform."
+            error_msg = "There are no tendencies in the repeated waveform.\n"
             self.annotations.add(self.line_number, error_msg)
             return
 
         if self.waveform.tendencies[0].start != 0:
-            error_msg = "The starting point of the first repeated must be set to 0."
+            error_msg = "The starting point of the first repeated must be set to 0.\n"
             self.annotations.add(self.line_number, error_msg)
+
+        if self.duration < self.waveform.tendencies[-1].end:
+            error_msg = (
+                "The repeated tendency has not completed a single repetition.\n"
+                "Perhaps increase the duration of the repeated tendency?\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
 
         # Link the last tendency to the first tendency in the repeated waveform
         # We must lock the start to 0, otherwise it will take the start value of the

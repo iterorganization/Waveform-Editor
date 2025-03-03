@@ -166,3 +166,12 @@ def test_filled(repeat_waveform):
     assert tendencies[2].base == 2
     assert tendencies[2].amplitude == -1
     assert tendencies[2].frequency == 0.25
+
+
+def test_too_short(repeat_waveform):
+    """Check for warning in annotations if repeated waveform has not completed a
+    single repetition."""
+    repeat_waveform["user_duration"] = 2
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    assert repeat_tendency.annotations
+    assert repeat_tendency.annotations[0]["type"] == "warning"
