@@ -142,6 +142,14 @@ class BaseTendency(param.Parameterized):
             word.replace("user_", "") for word in self.param if "user_" in word
         ]
         for unknown_kwarg in unknown_kwargs:
+            if ":" in unknown_kwarg:
+                error_msg = (
+                    f"Found ':' in {unknown_kwarg!r}. "
+                    "Did you forget a space after the ':'?\n"
+                )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
+                continue
+
             suggestion = self.annotations.suggest(unknown_kwarg, params_list)
             error_msg = (
                 f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"
