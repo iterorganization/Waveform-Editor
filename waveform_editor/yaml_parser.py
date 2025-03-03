@@ -1,3 +1,5 @@
+import re
+
 import holoviews as hv
 import yaml
 
@@ -48,7 +50,24 @@ class YamlParser:
         """
         self.has_yaml_error = False
         try:
-            waveform_yaml = yaml.load(yaml_str, Loader=LineNumberYamlLoader)
+            loader = LineNumberYamlLoader
+            # Parse scientific notation as a float, instead of a string. For
+            # more information see: https://stackoverflow.com/a/30462009/8196245
+            loader.add_implicit_resolver(
+                "tag:yaml.org,2002:float",
+                re.compile(
+                    """^(?:
+                     [-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
+                    |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
+                    |\\.[0-9_]+(?:[eE][-+][0-9]+)?
+                    |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*
+                    |[-+]?\\.(?:inf|Inf|INF)
+                    |\\.(?:nan|NaN|NAN))$""",
+                    re.X,
+                ),
+                list("-+0123456789."),
+            )
+            waveform_yaml = yaml.load(yaml_str, Loader=loader)
 
             if not isinstance(waveform_yaml, dict):
                 raise yaml.YAMLError(
