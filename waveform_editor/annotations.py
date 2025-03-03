@@ -6,7 +6,7 @@ class Annotations(UserList):
     def __str__(self):
         sorted_annotations = sorted(self, key=lambda ann: ann["row"])
         return "\n".join(
-            f"Line {ann['row']}: {ann['text']}" for ann in sorted_annotations
+            f"Line {a['row'] + 1}: {a['text']}" for a in sorted_annotations
         )
 
     def add_annotations(self, annotations):

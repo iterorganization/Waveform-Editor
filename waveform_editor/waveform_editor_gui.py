@@ -48,11 +48,11 @@ def update_plot(value):
 
     # Show alert when there is a yaml parsing error
     if yaml_parser.has_yaml_error:
-        yaml_alert.bject = (f"### The YAML did not parse correctly!\n {bleep}",)
+        yaml_alert.object = f"### The YAML did not parse correctly\n {annotations}"
         yaml_alert.visible = True
     elif code_editor.annotations:
         error_alert.object = (
-            f"### There was an error in the YAML configuration.\n {annotations}"
+            f"### There was an error in the YAML configuration\n {annotations}"
         )
         error_alert.visible = True
     return yaml_parser.plot_tendencies()
