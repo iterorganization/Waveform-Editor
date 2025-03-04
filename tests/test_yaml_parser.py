@@ -91,3 +91,30 @@ def assert_tendencies_correct(tendencies):
     assert tendencies[6].duration == approx(2)
     assert tendencies[6].from_ == approx(8)
     assert tendencies[6].to == approx(0)
+
+
+def test_scientific_notation():
+    """Test if scientific notation is parsed correctly."""
+    waveforms = {
+        "waveform:\n- {type: linear, to: 1.5e5}": 1.5e5,
+        "waveform:\n- {type: linear, to: 1.5e+5}": 1.5e5,
+        "waveform:\n- {type: linear, to: 1.5E+5}": 1.5e5,
+        "waveform:\n- {type: linear, to: 1.5e-5}": 1.5e-5,
+        "waveform:\n- {type: linear, to: 1.5E-5}": 1.5e-5,
+        "waveform:\n- {type: linear, to: 1e5}": 1e5,
+        "waveform:\n- {type: linear, to: 1e+5}": 1e5,
+        "waveform:\n- {type: linear, to: 1E+5}": 1e5,
+        "waveform:\n- {type: linear, to: 1e-5}": 1e-5,
+        "waveform:\n- {type: linear, to: 1E-5}": 1e-5,
+        "waveform:\n- {type: linear, to: 0e5}": 0.0,
+        "waveform:\n- {type: linear, to: 0E0}": 0.0,
+        "waveform:\n- {type: linear, to: -1.5e5}": -1.5e5,
+        "waveform:\n- {type: linear, to: -1E+5}": -1e5,
+        "waveform:\n- {type: linear, to: -1.5e-5}": -1.5e-5,
+    }
+
+    yaml_parser = YamlParser()
+
+    for waveform, expected_value in waveforms.items():
+        yaml_parser.parse_waveforms(waveform)
+        assert yaml_parser.waveform.tendencies[0].to == expected_value

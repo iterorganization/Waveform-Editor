@@ -27,12 +27,12 @@ waveform:
 yaml_parser = YamlParser()
 
 yaml_alert = pn.pane.Alert(
-    "### The YAML did not parse correctly! (see editor)",
+    "### The YAML did not parse correctly!",
     alert_type="danger",
     visible=False,
 )
 error_alert = pn.pane.Alert(
-    "### There was an error in the YAML configuration (see editor).",
+    "### There was an error in the YAML configuration.",
     alert_type="warning",
     visible=False,
 )
@@ -41,14 +41,19 @@ error_alert = pn.pane.Alert(
 def update_plot(value):
     yaml_alert.visible = error_alert.visible = False
     yaml_parser.parse_waveforms(value)
+    annotations = yaml_parser.waveform.annotations
 
-    code_editor.annotations = list(yaml_parser.waveform.annotations)
+    code_editor.annotations = list(annotations)
     code_editor.param.trigger("annotations")
 
     # Show alert when there is a yaml parsing error
     if yaml_parser.has_yaml_error:
+        yaml_alert.object = f"### The YAML did not parse correctly\n {annotations}"
         yaml_alert.visible = True
     elif code_editor.annotations:
+        error_alert.object = (
+            f"### There was an error in the YAML configuration\n {annotations}"
+        )
         error_alert.visible = True
     return yaml_parser.plot_tendencies()
 

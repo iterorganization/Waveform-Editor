@@ -52,7 +52,7 @@ def test_generate():
         user_start=0, user_duration=1, user_base=2, user_amplitude=3, user_phase=1
     )
     time, values = tendency.get_value()
-    assert np.all(time == np.linspace(0, 1, 101))
+    assert np.all(time == np.linspace(0, 1, 32 + 1))
     assert np.allclose(values, 2 + 3 * np.sin(2 * np.pi * time + 1))
     assert not tendency.annotations
 

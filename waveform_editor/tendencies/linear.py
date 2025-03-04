@@ -124,8 +124,8 @@ class LinearTendency(BaseTendency):
             values = solve_with_constraints(inputs, constraint_matrix)
         except InconsistentInputsError:
             error_msg = (
-                "Inputs are inconsistent: from + duration * rate != end\n"
-                "The 'from', 'to', and 'rate' values are set to 0.\n"
+                "Inputs are inconsistent: from + duration * rate != to\n"
+                "The 'from', 'to', and 'rate' values will be set to 0.\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
             values = (0.0, 0.0, 0.0)

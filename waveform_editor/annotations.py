@@ -3,6 +3,12 @@ from collections import UserList
 
 
 class Annotations(UserList):
+    def __str__(self):
+        sorted_annotations = sorted(self, key=lambda ann: ann["row"])
+        return "\n".join(
+            f"Line {a['row'] + 1}: {a['text']}" for a in sorted_annotations
+        )
+
     def add_annotations(self, annotations):
         """Merge another Annotations instance into this instance by appending its
         annotations.

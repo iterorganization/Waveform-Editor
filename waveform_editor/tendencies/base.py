@@ -87,6 +87,10 @@ class BaseTendency(param.Parameterized):
         super().__init__()
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
+                if param_name not in self.param:
+                    unknown_kwargs.append(param_name.replace("user_", ""))
+                    continue
+
                 if value is None:
                     self.annotations.add(
                         self.line_number,
@@ -94,9 +98,15 @@ class BaseTendency(param.Parameterized):
                         "empty.\nIt will be set to its default value.\n",
                         is_warning=True,
                     )
+                    continue
 
-                if param_name not in self.param:
-                    unknown_kwargs.append(param_name.replace("user_", ""))
+                if isinstance(value, (int, float)) and not np.isfinite(value):
+                    self.annotations.add(
+                        self.line_number,
+                        f"The value for {param_name.replace('user_', '')!r} is not a "
+                        "valid number.\nIt will be set to its default value.\n",
+                        is_warning=True,
+                    )
                     continue
 
                 try:
@@ -132,6 +142,14 @@ class BaseTendency(param.Parameterized):
             word.replace("user_", "") for word in self.param if "user_" in word
         ]
         for unknown_kwarg in unknown_kwargs:
+            if ":" in unknown_kwarg:
+                error_msg = (
+                    f"Found ':' in {unknown_kwarg!r}. "
+                    "Did you forget a space after the ':'?\n"
+                )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
+                continue
+
             suggestion = self.annotations.suggest(unknown_kwarg, params_list)
             error_msg = (
                 f"Unknown keyword passed: {unknown_kwarg!r}. {suggestion}"

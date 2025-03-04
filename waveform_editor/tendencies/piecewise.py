@@ -20,12 +20,18 @@ class PiecewiseLinearTendency(BaseTendency):
     )
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
-        user_start, user_end = self._handle_user_time(user_time)
-        annotations = self._remove_user_time_params(kwargs)
-
-        super().__init__(user_start=user_start, user_end=user_end, **kwargs)
-        self.annotations.add_annotations(annotations)
-        self._validate_time_value(user_time, user_value)
+        self.pre_check_annotations = Annotations()
+        self.line_number = kwargs.get("line_number", 0)
+        time, value = self._validate_time_value(user_time, user_value)
+        self._remove_user_time_params(kwargs)
+        super().__init__(
+            user_start=time[0],
+            user_end=time[-1],
+            time=time,
+            value=value,
+            **kwargs,
+        )
+        self.annotations.add_annotations(self.pre_check_annotations)
 
         self.start_value_set = True
         self.param.update(values_changed=True)
@@ -76,37 +82,42 @@ class PiecewiseLinearTendency(BaseTendency):
         Args:
             time: List of time values.
             value: List of values defined on each time step.
+
+        Returns:
+            Tuple containing the validated time and value arrays. If any errors are
+            encountered during the validation, the self.time and self.value defaults are
+            returned instead.
         """
         if time is None or value is None:
             error_msg = "Both the `time` and `value` arrays must be specified.\n"
-            self.annotations.add(self.line_number, error_msg)
+            self.pre_check_annotations.add(self.line_number, error_msg)
         elif len(time) != len(value):
             error_msg = (
                 "The provided time and value arrays are not of the same length.\n"
             )
-            self.annotations.add(self.line_number, error_msg)
+            self.pre_check_annotations.add(self.line_number, error_msg)
         elif len(time) < 2:
             error_msg = (
                 "The provided time and value arrays should have a length "
                 "of at least 2.\n"
             )
+            self.pre_check_annotations.add(self.line_number, error_msg)
 
-            self.annotations.add(self.line_number, error_msg)
-        else:
+        try:
+            time = np.asarray_chkfinite(time, dtype=float)
+            value = np.asarray_chkfinite(value, dtype=float)
             is_monotonic = np.all(np.diff(time) > 0)
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
-                self.annotations.add(self.line_number, error_msg)
-
-        try:
-            time = np.asarray(time, dtype=float)
-            value = np.asarray(value, dtype=float)
+                self.pre_check_annotations.add(self.line_number, error_msg)
         except Exception as error:
-            self.annotations.add(self.line_number, str(error))
-        # Only update the time and value arrays if there are no errors
-        if not self.annotations:
-            self.time = np.array(time)
-            self.value = np.array(value)
+            self.pre_check_annotations.add(self.line_number, str(error))
+
+        # If there are any errors, use the default values instead
+        if not self.pre_check_annotations:
+            return time, value
+        else:
+            return self.time, self.value
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,
@@ -115,37 +126,13 @@ class PiecewiseLinearTendency(BaseTendency):
 
         Args:
             kwargs: the keyword arguments.
-
-        Returns:
-            annotations containing the errors, or an empty annotations object.
         """
         line_number = kwargs.get("user_line_number", 0)
-        annotations = Annotations()
 
-        error_msg = "is not allowed in a piecewise tendency\nIt will be ignored.\n"
+        error_msg = "is not allowed in a piecewise tendency\n"
         for key in ["user_start", "user_duration", "user_end"]:
             if key in kwargs:
                 kwargs.pop(key)
-                annotations.add(
+                self.pre_check_annotations.add(
                     line_number, f"'{key.replace('user_', '')}' {error_msg}"
                 )
-
-        return annotations
-
-    def _handle_user_time(self, user_time):
-        """Get the start and end of the time array.
-
-        Args:
-            user_time: Time array provided by the user.
-        """
-        if (
-            user_time is not None
-            and len(user_time) > 1
-            and (user_time[-1] - user_time[0]) > 0
-        ):
-            user_start = user_time[0]
-            user_end = user_time[-1]
-        else:
-            user_start = self.time[0]
-            user_end = self.time[-1]
-        return user_start, user_end
