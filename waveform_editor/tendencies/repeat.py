@@ -12,11 +12,10 @@ class RepeatTendency(BaseTendency):
 
     def __init__(self, **kwargs):
         waveform = kwargs.pop("user_waveform", []) or []
-        super().__init__(**kwargs)
-
         from waveform_editor.waveform import Waveform
 
         self.waveform = Waveform(waveform=waveform, is_repeated=True)
+        super().__init__(**kwargs)
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform.\n"
             self.annotations.add(self.line_number, error_msg)
@@ -68,7 +67,7 @@ class RepeatTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if not self.waveform.tendencies:
-            return np.array([]), np.array([])
+            return np.array([0]), np.array([0])
         length = self.waveform.calc_length()
         if time is None:
             time, values = self.waveform.get_value()
@@ -103,6 +102,8 @@ class RepeatTendency(BaseTendency):
         Returns:
             numpy array containing the derivatives
         """
+        if not self.waveform.tendencies:
+            return np.array([0])
         length = self.waveform.calc_length()
         relative_times = (time - self.start) % length
         derivatives = self.waveform.get_derivative(relative_times)
