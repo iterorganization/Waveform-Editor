@@ -115,6 +115,7 @@ class BaseTendency(param.Parameterized):
                     self._handle_error(error)
 
         self._handle_unknown_kwargs(unknown_kwargs)
+        self.values_changed = True
 
     def _handle_error(self, error):
         """Handle exceptions raised by param assignment and add them as annotations.
@@ -179,18 +180,20 @@ class BaseTendency(param.Parameterized):
         # If the tendency is the first tendency of a repeated tendency, it is linked to
         # the last tendency in the repeated tendency. In this case we can ignore this
         # error.
-        if self.prev_tendency.end > self.start and not self.is_first_repeated:
-            error_msg = (
-                f"The end of the previous tendency ({self.prev_tendency.end})\nis "
-                f"later than the start of the current tendency ({self.start}).\n"
-            )
-            self.annotations.add(self.line_number, error_msg)
-        elif self.prev_tendency.end < self.start:
-            error_msg = (
-                "Previous tendency ends before the start of the current tendency.\n"
-                "The values inbetween the tendencies will be linearly interpolated.\n"
-            )
-            self.annotations.add(self.line_number, error_msg, is_warning=True)
+        if not np.isclose(self.prev_tendency.end, self.start):
+            if self.prev_tendency.end > self.start and not self.is_first_repeated:
+                error_msg = (
+                    f"The end of the previous tendency ({self.prev_tendency.end})\nis "
+                    f"later than the start of the current tendency ({self.start}).\n"
+                )
+                self.annotations.add(self.line_number, error_msg)
+            elif self.prev_tendency.end < self.start:
+                error_msg = (
+                    "Previous tendency ends before the start of the current tendency.\n"
+                    "The values inbetween the tendencies will be linearly interpolated."
+                    "\n"
+                )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
 
         self.param.trigger("annotations")
 
