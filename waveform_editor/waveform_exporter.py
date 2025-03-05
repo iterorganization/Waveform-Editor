@@ -1,6 +1,7 @@
 import csv
 import logging
 
+import imaspy
 import numpy as np
 import plotly.graph_objects as go
 
@@ -28,9 +29,75 @@ class WaveformExporter:
         self.time_label = "Time [s]"
         self.value_label = "Value [unit]"
 
-    # # TODO: implement export to IDS
-    # def to_ids(self, uri):
-    #     pass
+    def parse_uri(self, uri):
+        uri_entry, fragment = uri.split("#")
+        fragment_parts = fragment.split("/")
+        idsname_part = fragment_parts[0]
+
+        # Get occurrence number and IDS name
+        if ":" in idsname_part:
+            ids_name, occurrence_str = idsname_part.split(":")
+            occurrence = int(occurrence_str)
+        else:
+            ids_name = idsname_part
+            occurrence = 0
+
+        ids_path = "/" + "/".join(fragment_parts[1:]) if len(fragment_parts) > 1 else ""
+        return uri_entry, ids_name, occurrence, ids_path
+
+    def to_ids(self, uri, dd_version=None):
+        uri_entry, uri_ids, occurrence, path = self.parse_uri(uri)
+        entry = imaspy.DBEntry(uri_entry, "r", dd_version=dd_version)
+        ids = entry.get(uri_ids, occurrence, autoconvert=False)
+
+        if (
+            ids.ids_properties.homogeneous_time
+            == imaspy.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
+        ):
+            is_homogeneous = False
+        elif (
+            ids.ids_properties.homogeneous_time
+            == imaspy.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        ):
+            is_homogeneous = True
+            ids.time = self.times
+        else:
+            raise NotImplementedError(
+                "The time mode must be homogeneous or heterogeneous."
+            )
+
+        if "()" in path:
+            self._fill_flt_0d(ids, path, is_homogeneous)
+        else:
+            self._fill_flt_1d(ids, path, is_homogeneous)
+
+        entry.put(ids)
+        entry.close()
+
+    def _fill_flt_0d(self, ids, path, is_homogeneous):
+        aos_path, remaining_path = path.split("()")
+        aos_path = aos_path.strip("/")
+        remaining_path = remaining_path.strip("/")
+        aos = ids[aos_path]
+        aos.resize(len(self.times))
+
+        for i, time in enumerate(self.times):
+            if aos[i][remaining_path].data_type == "FLT_0D":
+                aos[i][remaining_path] = self.values[i]
+                if not is_homogeneous:
+                    aos[i].time = time
+            else:
+                raise NotImplementedError("Should be float 0d")
+
+    def _fill_flt_1d(self, ids, path, is_homogeneous):
+        quantity = ids[path]
+        struct_ref = quantity.metadata.structure_reference
+        if struct_ref == "signal_flt_1d":
+            quantity.data = self.values
+            if not is_homogeneous:
+                quantity.time = self.times
+        else:
+            raise NotImplementedError("Invalid data")
 
     def to_csv(self, file_path):
         with open(file_path, mode="w", newline="") as file:
