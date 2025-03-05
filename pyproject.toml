@@ -23,6 +23,7 @@ dependencies = [
     "plotly",
     "holoviews",
     "ruamel.yaml"
+    "kaleido",
 ]
 dynamic = ["version"]
 

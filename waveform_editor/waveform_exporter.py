@@ -28,9 +28,9 @@ class WaveformExporter:
         self.time_label = "Time [s]"
         self.value_label = "Value [unit]"
 
-    def to_ids(self, uri, path):
-        # TODO:
-        pass
+    # # TODO: implement export to IDS
+    # def to_ids(self, uri):
+    #     pass
 
     def to_csv(self, file_path):
         with open(file_path, mode="w", newline="") as file:
@@ -53,3 +53,7 @@ class WaveformExporter:
             yaxis_title=self.value_label,
         )
         fig.write_image(file_path, format="png")
+
+    # TODO: implement export to XML format
+    # def to_pcssp(self, file_path)
+    #     pass

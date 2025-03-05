@@ -6,6 +6,8 @@ from rich import box, console, traceback
 from rich.table import Table
 
 import waveform_editor
+from waveform_editor.waveform_exporter import WaveformExporter
+from waveform_editor.yaml_parser import YamlParser
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,53 @@ def print_version():
     grid.add_row("waveform editor version:", waveform_editor.__version__)
     grid.add_section()
     console.Console().print(grid)
+
+
+@cli.command("export-csv")
+@click.argument("yaml", type=click.Path(exists=True))
+@click.argument("output", type=str)
+def export_csv(yaml, output):
+    """Export waveform data to a CSV file."""
+    waveform = load_waveform_from_yaml(yaml)
+    exporter = WaveformExporter(waveform)
+    exporter.to_csv(output)
+
+
+@cli.command("export-png")
+@click.argument("yaml", type=click.Path(exists=True))
+@click.argument("output", type=str)
+def export_png(yaml, output):
+    """Export waveform data to a CSV file."""
+    waveform = load_waveform_from_yaml(yaml)
+    exporter = WaveformExporter(waveform)
+    exporter.to_png(output)
+
+
+# # TODO:
+# @cli.command("export-ids")
+# @click.argument("yaml", type=str)
+# @click.argument("uri", type=str)
+# @click.option("--dd-version", type=str)
+# def export_ids(yaml, uri, path):
+#     """Export waveform data to an IDS."""
+#     # waveform = load_waveform_from_yaml(yaml)
+#     # exporter = WaveformExporter(waveform)
+#     # exporter.to_ids(uri, path)
+
+
+def load_waveform_from_yaml(yaml_file):
+    with open(yaml_file) as file:
+        yaml_str = file.read()
+    yaml_parser = YamlParser()
+    yaml_parser.parse_waveforms(yaml_str)
+    annotations = yaml_parser.waveform.annotations
+    if annotations:
+        click.secho(
+            "The following errors and warnings were detected in the YAML file:\n"
+            f"{annotations}",
+            fg="red",
+        )
+    return yaml_parser.waveform
 
 
 if __name__ == "__main__":
