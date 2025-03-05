@@ -19,6 +19,18 @@ class WaveformExporter:
         self.value_label = "Value [unit]"
 
     def parse_uri(self, uri):
+        """Parse URI into its constituents.
+
+        Args:
+            uri: String containing the URI.
+
+        Returns:
+            Constituents of the URI:
+            - The scheme, backend and query parts of the URI
+            - The name of the IDS.
+            - The occurrence number (defaults to 0 if not provided)
+            - Path of the IDS quantity to export to
+        """
         uri_entry, fragment = uri.split("#")
         fragment_parts = fragment.split("/")
         idsname_part = fragment_parts[0]
@@ -35,6 +47,13 @@ class WaveformExporter:
         return uri_entry, ids_name, occurrence, ids_path
 
     def to_ids(self, uri, dd_version=None):
+        """Export the waveform to an IDS.
+
+        Args:
+            uri: URI containing scheme, backend, query and fragment parts.
+            dd_version: The data dictionary version to export to. If None, IMASPy's
+                default version will be used.
+        """
         uri_entry, uri_ids, occurrence, path = self.parse_uri(uri)
         entry = imaspy.DBEntry(uri_entry, "r", dd_version=dd_version)
         ids = entry.get(uri_ids, occurrence, autoconvert=False)
@@ -63,39 +82,23 @@ class WaveformExporter:
         entry.put(ids)
         entry.close()
 
-    def _fill_flt_0d(self, ids, path, is_homogeneous):
-        aos_path, remaining_path = path.split("()")
-        aos_path = aos_path.strip("/")
-        remaining_path = remaining_path.strip("/")
-        aos = ids[aos_path]
-        aos.resize(len(self.times))
-
-        for i, time in enumerate(self.times):
-            if aos[i][remaining_path].data_type == "FLT_0D":
-                aos[i][remaining_path] = self.values[i]
-                if not is_homogeneous:
-                    aos[i].time = time
-            else:
-                raise NotImplementedError("Should be float 0d")
-
-    def _fill_flt_1d(self, ids, path, is_homogeneous):
-        quantity = ids[path]
-        struct_ref = quantity.metadata.structure_reference
-        if struct_ref == "signal_flt_1d":
-            quantity.data = self.values
-            if not is_homogeneous:
-                quantity.time = self.times
-        else:
-            raise NotImplementedError("Invalid data")
-
     def to_csv(self, file_path):
+        """Export the waveform to a CSV.
+
+        Args:
+            file_path: The file path and name to store the CSV to.
+        """
         with open(file_path, mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow([self.time_label, self.value_label])
             writer.writerows(zip(self.times, self.values))
 
     def to_png(self, file_path):
-        """Export waveform data as a PNG plot using Plotly Express."""
+        """Export the waveform to a PNG.
+
+        Args:
+            file_path: The file path and name to store the PNG to.
+        """
 
         fig = go.Figure(
             data=go.Scatter(
@@ -113,3 +116,47 @@ class WaveformExporter:
     # TODO: implement export to XML format
     # def to_pcssp(self, file_path)
     #     pass
+
+    def _fill_flt_0d(self, ids, path, is_homogeneous):
+        """Fill a FLT_0D IDS quantity in an IDS.
+
+        It is assumed that the time dependent AoS is provided in the path using `()`,
+        for example:
+
+        imas:hdf5?path=./test_equilibrium#equilibrium/time_slice()/boundary/elongation
+
+        Arguments:
+            ids: The IDS to fill.
+            path: The path to the FLT_0D quantity to fill.
+            is_homogeneous: Whether to fill the local time array, or the ids.time array
+        """
+        aos_path, remaining_path = path.split("()")
+        aos_path = aos_path.strip("/")
+        remaining_path = remaining_path.strip("/")
+        aos = ids[aos_path]
+        aos.resize(len(self.times))
+
+        for i, time in enumerate(self.times):
+            if aos[i][remaining_path].data_type == "FLT_0D":
+                aos[i][remaining_path] = self.values[i]
+                if not is_homogeneous:
+                    aos[i].time = time
+            else:
+                raise NotImplementedError("Should be float 0d")
+
+    def _fill_flt_1d(self, ids, path, is_homogeneous):
+        """Fill a FLT_1D IDS quantity in an IDS.
+
+        Arguments:
+            ids: The IDS to fill.
+            path: The path to the FLT_1D quantity to fill.
+            is_homogeneous: Whether to fill the local time array, or the ids.time array
+        """
+        quantity = ids[path]
+        struct_ref = quantity.metadata.structure_reference
+        if struct_ref == "signal_flt_1d":
+            quantity.data = self.values
+            if not is_homogeneous:
+                quantity.time = self.times
+        else:
+            raise NotImplementedError("Invalid data")
