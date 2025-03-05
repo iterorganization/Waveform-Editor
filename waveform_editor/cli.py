@@ -1,7 +1,9 @@
+import csv
 import logging
 import sys
 
 import click
+import numpy as np
 from rich import box, console, traceback
 from rich.table import Table
 
@@ -57,20 +59,22 @@ def print_version():
 @cli.command("export-csv")
 @click.argument("yaml", type=click.Path(exists=True))
 @click.argument("output", type=str)
-def export_csv(yaml, output):
+@click.option("--times", type=click.Path(exists=True))
+@click.option("--num_interp", type=int)
+def export_csv(yaml, output, times, num_interp):
     """Export waveform data to a CSV file."""
-    waveform = load_waveform_from_yaml(yaml)
-    exporter = WaveformExporter(waveform)
+    exporter = setup_exporter(yaml, times, num_interp)
     exporter.to_csv(output)
 
 
 @cli.command("export-png")
 @click.argument("yaml", type=click.Path(exists=True))
 @click.argument("output", type=str)
-def export_png(yaml, output):
+@click.option("--times", type=click.Path(exists=True))
+@click.option("--num_interp", type=int)
+def export_png(yaml, output, times, num_interp):
     """Export waveform data to a CSV file."""
-    waveform = load_waveform_from_yaml(yaml)
-    exporter = WaveformExporter(waveform)
+    exporter = setup_exporter(yaml, times, num_interp)
     exporter.to_png(output)
 
 
@@ -78,11 +82,45 @@ def export_png(yaml, output):
 @click.argument("yaml", type=str)
 @click.argument("uri", type=str)
 @click.option("--dd-version", type=str)
-def export_ids(yaml, uri, dd_version):
+@click.option("--times", type=click.Path(exists=True))
+@click.option("--num_interp", type=int)
+def export_ids(yaml, uri, dd_version, times, num_interp):
     """Export waveform data to an IDS."""
-    waveform = load_waveform_from_yaml(yaml)
-    exporter = WaveformExporter(waveform)
+    exporter = setup_exporter(yaml, times, num_interp)
     exporter.to_ids(uri, dd_version=dd_version)
+
+
+def setup_exporter(yaml, times, num_interp):
+    waveform = load_waveform_from_yaml(yaml)
+    time_array = load_time_array(times, waveform, num_interp)
+    exporter = WaveformExporter(waveform, times=time_array)
+    return exporter
+
+
+def load_time_array(times, waveform, num_interp):
+    """Load time array from CSV file or use default linear interpolation."""
+    if times:
+        try:
+            # assuming single column format
+            with open(times, newline="") as csvfile:
+                reader = csv.reader(csvfile)
+                time_array = [float(row[0]) for row in reader if row]
+
+            return np.array(time_array)
+        except Exception as e:
+            click.secho(
+                f"Invalid time array file:\n {e}",
+                fg="red",
+            )
+    start = waveform.get_start()
+    end = waveform.get_end()
+    if not num_interp:
+        click.secho(
+            "No time array provided, using linear interpolation with 1000 points.",
+            fg="yellow",
+        )
+        num_interp = 1000
+    return np.linspace(start, end, num_interp)
 
 
 def load_waveform_from_yaml(yaml_file):

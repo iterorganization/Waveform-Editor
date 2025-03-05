@@ -2,26 +2,15 @@ import csv
 import logging
 
 import imaspy
-import numpy as np
 import plotly.graph_objects as go
 
 logger = logging.getLogger(__name__)
 
 
 class WaveformExporter:
-    def __init__(self, waveform, times=None):
+    def __init__(self, waveform, times):
         self.waveform = waveform
-
-        if not times:
-            start = self.waveform.get_start()
-            end = self.waveform.get_end()
-            logger.warning(
-                "No time array is provided, so using a linear interpolation with "
-                "1000 points."
-            )
-            self.times = np.linspace(start, end, 1000)
-        else:
-            self.times = times
+        self.times = times
 
         _, self.values = self.waveform.get_value(self.times)
 
