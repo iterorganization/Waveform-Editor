@@ -22,7 +22,7 @@ dependencies = [
     "pygments",
     "plotly",
     "holoviews",
-    "kaleido",
+    "kaleido", # required for exporting PNG to disk
 ]
 dynamic = ["version"]
 
