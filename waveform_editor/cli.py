@@ -74,16 +74,15 @@ def export_png(yaml, output):
     exporter.to_png(output)
 
 
-# # TODO:
-# @cli.command("export-ids")
-# @click.argument("yaml", type=str)
-# @click.argument("uri", type=str)
-# @click.option("--dd-version", type=str)
-# def export_ids(yaml, uri, path):
-#     """Export waveform data to an IDS."""
-#     # waveform = load_waveform_from_yaml(yaml)
-#     # exporter = WaveformExporter(waveform)
-#     # exporter.to_ids(uri, path)
+@cli.command("export-ids")
+@click.argument("yaml", type=str)
+@click.argument("uri", type=str)
+@click.option("--dd-version", type=str)
+def export_ids(yaml, uri, dd_version):
+    """Export waveform data to an IDS."""
+    waveform = load_waveform_from_yaml(yaml)
+    exporter = WaveformExporter(waveform)
+    exporter.to_ids(uri, dd_version=dd_version)
 
 
 def load_waveform_from_yaml(yaml_file):
