@@ -165,13 +165,13 @@ def load_time_array(times, waveform, num_interp):
     Returns:
         A numpy array containing the time values.
     """
+    if times and num_interp:
+        click.secho(
+            "Both `--num_interp` and `--times` were set. The provided times will "
+            "be used, and `num_interp` will be ignored.",
+            fg="yellow",
+        )
     if times:
-        if num_interp:
-            click.secho(
-                "Both `--num_interp` and `--times` were set. The provided times will "
-                "be used, and `num_interp` will be ignored.",
-                fg="yellow",
-            )
         try:
             # assuming single column format
             with open(times, newline="") as csvfile:
@@ -184,15 +184,17 @@ def load_time_array(times, waveform, num_interp):
                 f"Invalid time array file:\n {e}",
                 fg="red",
             )
-    start = waveform.get_start()
-    end = waveform.get_end()
-    if not num_interp:
+    elif num_interp:
+        start = waveform.get_start()
+        end = waveform.get_end()
+        return np.linspace(start, end, num_interp)
+    else:
         click.secho(
-            "No time array provided, using linear interpolation with 1000 points.",
+            "Neither `--times` nor `--num_interp` was provided. The time points will "
+            "automatically be determined, based on the tendencies in the waveform.",
             fg="yellow",
         )
-        num_interp = 1000
-    return np.linspace(start, end, num_interp)
+        return None
 
 
 def load_waveform_from_yaml(yaml_file):
