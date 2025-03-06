@@ -8,11 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class WaveformExporter:
-    def __init__(self, waveform, times):
+    def __init__(self, waveform, times=None):
         self.waveform = waveform
-        self.times = times
-
-        _, self.values = self.waveform.get_value(self.times)
+        self.times, self.values = self.waveform.get_value(times)
 
         # TODO: introduce quantity types/units units from DD
         self.time_label = "Time [s]"
