@@ -111,27 +111,9 @@ def test_to_png(exporter, tmp_path):
     assert Path(file_path).exists()
 
 
-def create_and_save_ids(ids_type, file_path, occurrence=0, is_homogeneous=True):
-    """Helper function that creates an empty IDS."""
-    if ids_type == "ec_launchers":
-        ids = imas.IDSFactory().ec_launchers()
-    elif ids_type == "equilibrium":
-        ids = imas.IDSFactory().equilibrium()
-
-    ids.time = [0]
-    if is_homogeneous:
-        ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-    else:
-        ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
-
-    with imas.DBEntry(file_path, "w") as dbentry:
-        dbentry.put(ids, occurrence)
-
-
 def test_to_ids_flt1d(exporter, tmp_path):
     """Check if FLT_1D is filled correctly for a homogeneous time IDS."""
     file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
-    create_and_save_ids("ec_launchers", file_path)
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
     exporter.to_ids(uri)
@@ -145,10 +127,9 @@ def test_to_ids_flt1d(exporter, tmp_path):
 def test_to_ids_flt1d_heterogeneous(exporter, tmp_path):
     """Check if FLT_1D is filled correctly for a heterogeneous time IDS."""
     file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
-    create_and_save_ids("ec_launchers", file_path, is_homogeneous=False)
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
-    exporter.to_ids(uri)
+    exporter.to_ids(uri, is_homogeneous=False)
 
     with imas.DBEntry(file_path, "r") as dbentry:
         ids = dbentry.get("ec_launchers", autoconvert=False)
@@ -158,22 +139,15 @@ def test_to_ids_flt1d_heterogeneous(exporter, tmp_path):
 
 def test_to_ids_flt1d_occurrence(exporter, tmp_path):
     """Check if FLT_1D is filled correctly when providing an occurrence number."""
-    ids = imas.IDSFactory().ec_launchers()
-    ids.time = [0]
-    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
     file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
-    with imas.DBEntry(file_path, "w") as dbentry:
-        dbentry.put(ids)
-        dbentry.put(ids, occurrence=1)
 
     uri = f"{file_path}#ec_launchers:1/beam(1)/power_launched"
     exporter.to_ids(uri)
 
     with imas.DBEntry(file_path, "r") as dbentry:
         # Check if only occurrence 1 is filled
-        ids = dbentry.get("ec_launchers", occurrence=0, autoconvert=False)
-        assert np.all(ids.time == [0])
-        assert not ids.beam
+        with pytest.raises(imas.exception.DataEntryException):
+            ids = dbentry.get("ec_launchers", occurrence=0, autoconvert=False)
 
         ids = dbentry.get("ec_launchers", occurrence=1, autoconvert=False)
         assert np.all(ids.time == exporter.times)
@@ -183,7 +157,6 @@ def test_to_ids_flt1d_occurrence(exporter, tmp_path):
 def test_to_ids_flt0d(exporter, tmp_path):
     """Check if FLT_0D is filled correctly for a homogeneous time IDS."""
     file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
-    create_and_save_ids("equilibrium", file_path)
 
     uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
     exporter.to_ids(uri)
@@ -198,10 +171,9 @@ def test_to_ids_flt0d(exporter, tmp_path):
 def test_to_ids_flt0d_heterogeneous(exporter, tmp_path):
     """Check if FLT_0D is filled correctly for a heterogeneous time IDS."""
     file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
-    create_and_save_ids("equilibrium", file_path, is_homogeneous=False)
 
     uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
-    exporter.to_ids(uri)
+    exporter.to_ids(uri, is_homogeneous=False)
 
     with imas.DBEntry(file_path, "r") as dbentry:
         ids = dbentry.get("equilibrium", autoconvert=False)
@@ -227,7 +199,6 @@ def test_to_ids_no_times(tmp_path):
     exporter = WaveformExporter(waveform)
 
     file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
-    create_and_save_ids("ec_launchers", file_path)
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
     exporter.to_ids(uri)
