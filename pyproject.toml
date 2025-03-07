@@ -22,7 +22,7 @@ dependencies = [
     "pygments",
     "plotly",
     "holoviews",
-    "ruamel.yaml"
+    "ruamel.yaml",
     "kaleido", # required for exporting PNG to disk
 ]
 dynamic = ["version"]
@@ -55,9 +55,6 @@ homepage = "https://github.com/iterorganization/Waveform-Editor"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["waveform_editor*"]
-
-[project.scripts]
-waveform-editor = "waveform_editor.cli:cli"
 
 [tool.setuptools_scm]
 # version_file = "waveform_editor/_version.py"
