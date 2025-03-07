@@ -1,8 +1,7 @@
 import csv
 from pathlib import Path
 
-# TODO: use netcdf and imas instead of imaspy
-import imaspy as imas
+import imas
 import numpy as np
 import pytest
 
