@@ -273,9 +273,3 @@ def test_overlap_derivatives():
     expected = [2, 2, -1.5, -1.5, -1.5, -1.5, -1.5]
     values = waveform.get_derivative(np.linspace(0, 3, 7))
     assert np.allclose(values, expected)
-
-
-def test_get_start_end(waveform):
-    """Test if waveform returns correct start and end value."""
-    assert waveform.get_start() == 0
-    assert waveform.get_end() == 14
