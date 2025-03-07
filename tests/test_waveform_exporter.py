@@ -1,6 +1,8 @@
 import csv
 from pathlib import Path
 
+# TODO: use netcdf and imas instead of imaspy
+import imaspy as imas
 import numpy as np
 import pytest
 
@@ -109,6 +111,95 @@ def test_to_png(exporter, tmp_path):
     assert Path(file_path).exists()
 
 
-# TODO: Write tests for exporting to IDS, this requires IMASPy as a dependency
-# def test_to_ids(exporter):
-#     pass
+def test_to_ids_flt1d(exporter, tmp_path):
+    ids = imas.IDSFactory().ec_launchers()
+    ids.time = [0]
+    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    with imas.DBEntry(file_path, "w") as dbentry:
+        dbentry.put(ids)
+
+    uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
+    exporter.to_ids(uri)
+
+    with imas.DBEntry(file_path, "r") as dbentry:
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.all(ids.time == exporter.times)
+        assert np.all(ids.beam[0].power_launched.data == exporter.values)
+
+
+def test_to_ids_flt1d_heterogeneous(exporter, tmp_path):
+    ids = imas.IDSFactory().ec_launchers()
+    ids.time = [0]
+    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
+    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    with imas.DBEntry(file_path, "w") as dbentry:
+        dbentry.put(ids)
+
+    uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
+    exporter.to_ids(uri)
+
+    with imas.DBEntry(file_path, "r") as dbentry:
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.all(ids.beam[0].power_launched.time == exporter.times)
+        assert np.all(ids.beam[0].power_launched.data == exporter.values)
+
+
+def test_to_ids_flt1d_occurrence(exporter, tmp_path):
+    ids = imas.IDSFactory().ec_launchers()
+    ids.time = [0]
+    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    with imas.DBEntry(file_path, "w") as dbentry:
+        dbentry.put(ids)
+        dbentry.put(ids, occurrence=1)
+
+    uri = f"{file_path}#ec_launchers:1/beam(1)/power_launched"
+    exporter.to_ids(uri)
+
+    with imas.DBEntry(file_path, "r") as dbentry:
+        # Check if only occurrence 1 is filled
+        ids = dbentry.get("ec_launchers", occurrence=0, autoconvert=False)
+        assert np.all(ids.time == [0])
+        assert not ids.beam
+
+        ids = dbentry.get("ec_launchers", occurrence=1, autoconvert=False)
+        assert np.all(ids.time == exporter.times)
+        assert np.all(ids.beam[0].power_launched.data == exporter.values)
+
+
+def test_to_ids_flt0d(exporter, tmp_path):
+    ids = imas.IDSFactory().equilibrium()
+    ids.time = [0]
+    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+    file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
+    with imas.DBEntry(file_path, "w") as dbentry:
+        dbentry.put(ids)
+
+    uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
+    exporter.to_ids(uri)
+
+    with imas.DBEntry(file_path, "r") as dbentry:
+        ids = dbentry.get("equilibrium", autoconvert=False)
+        assert np.all(ids.time == exporter.times)
+        for i, time_slice in enumerate(ids.time_slice):
+            assert time_slice.boundary.elongation == exporter.values[i]
+
+
+def test_to_ids_flt0d_heterogeneous(exporter, tmp_path):
+    ids = imas.IDSFactory().equilibrium()
+    ids.time = [0]
+    ids.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
+    file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
+    with imas.DBEntry(file_path, "w") as dbentry:
+        dbentry.put(ids)
+
+    uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
+    exporter.to_ids(uri)
+
+    with imas.DBEntry(file_path, "r") as dbentry:
+        ids = dbentry.get("equilibrium", autoconvert=False)
+        imas.util.print_tree(ids)
+        for i, time_slice in enumerate(ids.time_slice):
+            assert time_slice.boundary.elongation == exporter.values[i]
+            assert time_slice.time == exporter.times[i]
