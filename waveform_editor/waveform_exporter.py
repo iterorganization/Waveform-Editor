@@ -45,7 +45,7 @@ class WaveformExporter:
         ids_path = "/" + "/".join(fragment_parts[1:]) if len(fragment_parts) > 1 else ""
         return uri_entry, ids_name, occurrence, ids_path
 
-    def to_ids(self, uri, dd_version=None):
+    def to_ids(self, uri, dd_version=None, is_homogeneous=True):
         """Export the waveform to an IDS.
 
         Args:
@@ -54,34 +54,27 @@ class WaveformExporter:
                 default version will be used.
         """
         uri_entry, uri_ids, occurrence, path = self.parse_uri(uri)
-        entry = imas.DBEntry(uri_entry, "r", dd_version=dd_version)
-        ids = entry.get(uri_ids, occurrence, autoconvert=False)
+        with imas.DBEntry(uri_entry, "x", dd_version=dd_version) as entry:
+            ids = imas.IDSFactory().new(uri_ids)
 
-        if (
-            ids.ids_properties.homogeneous_time
-            == imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
-        ):
-            is_homogeneous = False
-        elif (
-            ids.ids_properties.homogeneous_time
-            == imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-        ):
-            is_homogeneous = True
+            if is_homogeneous:
+                ids.ids_properties.homogeneous_time = (
+                    imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+                )
+            else:
+                ids.ids_properties.homogeneous_time = (
+                    imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
+                )
             ids.time = self.times
-        else:
-            raise NotImplementedError(
-                "The time mode must be homogeneous or heterogeneous."
-            )
 
-        self._ensure_path_exists(ids, path)
+            self._ensure_path_exists(ids, path)
 
-        if "()" in path:
-            self._fill_flt_0d(ids, path, is_homogeneous)
-        else:
-            self._fill_flt_1d(ids, path, is_homogeneous)
+            if "()" in path:
+                self._fill_flt_0d(ids, path, is_homogeneous)
+            else:
+                self._fill_flt_1d(ids, path, is_homogeneous)
 
-        entry.put(ids, occurrence)
-        entry.close()
+            entry.put(ids, occurrence)
 
     def to_csv(self, file_path):
         """Export the waveform to a CSV.
