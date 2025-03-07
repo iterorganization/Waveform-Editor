@@ -87,6 +87,15 @@ def test_parse_uri(exporter):
         "/time_slice()/boundary/elongation",
     )
 
+    uri4 = "test_db.nc#equilibrium/time_slice()/boundary/elongation"
+    parsed_uri = exporter.parse_uri(uri4)
+    assert parsed_uri == (
+        "test_db.nc",
+        "equilibrium",
+        0,
+        "/time_slice()/boundary/elongation",
+    )
+
 
 def test_to_csv(exporter, tmp_path):
     """Test if exported CSV exists and is filled with correct times and values."""
@@ -113,7 +122,7 @@ def test_to_png(exporter, tmp_path):
 
 def test_to_ids_flt1d(exporter, tmp_path):
     """Check if FLT_1D is filled correctly for a homogeneous time IDS."""
-    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    file_path = f"{tmp_path}/test_ec_launchers.nc"
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
     exporter.to_ids(uri)
@@ -126,7 +135,7 @@ def test_to_ids_flt1d(exporter, tmp_path):
 
 def test_to_ids_flt1d_heterogeneous(exporter, tmp_path):
     """Check if FLT_1D is filled correctly for a heterogeneous time IDS."""
-    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    file_path = f"{tmp_path}/test_ec_launchers.nc"
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
     exporter.to_ids(uri, is_homogeneous=False)
@@ -139,14 +148,14 @@ def test_to_ids_flt1d_heterogeneous(exporter, tmp_path):
 
 def test_to_ids_flt1d_occurrence(exporter, tmp_path):
     """Check if FLT_1D is filled correctly when providing an occurrence number."""
-    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    file_path = f"{tmp_path}/test_ec_launchers.nc"
 
     uri = f"{file_path}#ec_launchers:1/beam(1)/power_launched"
     exporter.to_ids(uri)
 
     with imas.DBEntry(file_path, "r") as dbentry:
         # Check if only occurrence 1 is filled
-        with pytest.raises(imas.exception.DataEntryException):
+        with pytest.raises(IndexError):
             ids = dbentry.get("ec_launchers", occurrence=0, autoconvert=False)
 
         ids = dbentry.get("ec_launchers", occurrence=1, autoconvert=False)
@@ -156,7 +165,7 @@ def test_to_ids_flt1d_occurrence(exporter, tmp_path):
 
 def test_to_ids_flt0d(exporter, tmp_path):
     """Check if FLT_0D is filled correctly for a homogeneous time IDS."""
-    file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
+    file_path = f"{tmp_path}/test_equilibrium.nc"
 
     uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
     exporter.to_ids(uri)
@@ -170,7 +179,7 @@ def test_to_ids_flt0d(exporter, tmp_path):
 
 def test_to_ids_flt0d_heterogeneous(exporter, tmp_path):
     """Check if FLT_0D is filled correctly for a heterogeneous time IDS."""
-    file_path = f"imas:hdf5?path={tmp_path}/test_equilibrium"
+    file_path = f"{tmp_path}/test_equilibrium.nc"
 
     uri = f"{file_path}#equilibrium/time_slice()/boundary/elongation"
     exporter.to_ids(uri, is_homogeneous=False)
@@ -198,7 +207,7 @@ def test_to_ids_no_times(tmp_path):
     waveform = Waveform(waveform=waveform_list)
     exporter = WaveformExporter(waveform)
 
-    file_path = f"imas:hdf5?path={tmp_path}/test_ec_launchers"
+    file_path = f"{tmp_path}/test_ec_launchers.nc"
 
     uri = f"{file_path}#ec_launchers/beam(1)/power_launched"
     exporter.to_ids(uri)
