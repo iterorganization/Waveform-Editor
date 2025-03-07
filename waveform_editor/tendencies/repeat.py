@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+import param
 
 from waveform_editor.tendencies.base import BaseTendency
 
@@ -10,11 +11,25 @@ class RepeatTendency(BaseTendency):
     Tendency class for a repeated signal.
     """
 
+    user_frequency = param.Number(
+        default=None,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        doc="The frequency of the tendency, as provided by the user.",
+    )
+    user_period = param.Number(
+        default=None,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        doc="The period of the tendency, as provided by the user.",
+    )
+
     def __init__(self, **kwargs):
         waveform = kwargs.pop("user_waveform", []) or []
         from waveform_editor.waveform import Waveform
 
         self.waveform = Waveform(waveform=waveform, is_repeated=True)
+        self.period = 1
         super().__init__(**kwargs)
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform.\n"
@@ -39,19 +54,44 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
 
-        self._set_bounds()
+        self._set_frequency()
+        self.values_changed = True
         self.annotations.add_annotations(self.waveform.annotations)
 
-    def _set_bounds(self):
-        """Sets the start and end values, as well as derivatives"""
-        _, start_values = self.get_value(np.array([self.start]))
-        self.start_value = start_values[0]
-        start_derivatives = self.get_derivative(np.array([self.start]))
-        self.start_derivative = start_derivatives[0]
-        _, end_values = self.get_value(np.array([self.end]))
-        self.end_value = end_values[0]
-        end_derivatives = self.get_derivative(np.array([self.end]))
-        self.end_derivative = end_derivatives[0]
+    def _set_frequency(self):
+        has_freq_param = self.user_frequency is not None or self.user_period is not None
+        start = self.waveform.tendencies[0].start
+        end = self.waveform.tendencies[-1].end
+
+        if has_freq_param and (start != 0 or end != 1):
+            error_msg = (
+                "If the period of frequency of the repeated signal is provided, \nit is"
+                "advised that the tendencies start at 0, and end at 1.\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
+
+        if self.user_frequency is not None:
+            if self.user_period is not None and not np.isclose(
+                self.user_frequency, 1 / self.user_period
+            ):
+                error_msg = (
+                    "The frequency and period do not match! (freq != 1 / period).\n"
+                    "The period will be ignored and only the frequency is used.\n"
+                )
+                self.annotations.add(self.line_number, error_msg, is_warning=True)
+            self.period = 1 / self.user_frequency
+        elif self.user_period is not None:
+            self.period = self.user_period
+        else:
+            self.period = self.waveform.tendencies[-1].end
+
+        if has_freq_param and self.period > self.duration:
+            error_msg = (
+                "If the period of repeated tendency must be shorter than its duration. "
+                "\nThe frequency or period will be ignored\n"
+            )
+            self.annotations.add(self.line_number, error_msg, is_warning=True)
+            self.period = self.waveform.tendencies[-1].end
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -69,27 +109,36 @@ class RepeatTendency(BaseTendency):
         if not self.waveform.tendencies:
             return np.array([0]), np.array([0])
         length = self.waveform.calc_length()
+        repeat_factor = self.period / length
+
         if time is None:
             time, values = self.waveform.get_value()
-            repeat = int(np.ceil(self.duration / length))
-            repetition_array = np.arange(repeat) * length
-            time = (time + repetition_array[:, np.newaxis]).flatten() + self.start
-            values = np.tile(values, repeat)
 
-            # cut off everything after self.end
-            assert time[-1] >= self.end
+            # Compute how many full cycles fit in duration
+            repeat_count = int(np.round(self.duration / self.period))
+            repetition_array = np.arange(repeat_count) * self.period
+
+            time = (
+                (time * repeat_factor) + repetition_array[:, np.newaxis]
+            ).flatten() + self.start
+            values = np.tile(values, repeat_count)
+
+            # Ensure we don't go beyond self.end
+            time = np.clip(time, self.start, self.end)
             cut_index = np.argmax(time >= self.end)
-            time = time[: cut_index + 1]
 
-            values = values[: cut_index + 1]
-            if time[-1] != self.end:
-                time[-1] = self.end
-                _, end_array = self.waveform.get_value(
-                    np.array([(self.end - self.start) % length])
-                )
-                values[-1] = end_array[0]
+            if cut_index > 0:
+                time = time[: cut_index + 1]
+                values = values[: cut_index + 1]
+
+                if time[-1] != self.end:
+                    time[-1] = self.end
+                    _, end_array = self.waveform.get_value(
+                        np.array([(self.end - self.start) % self.period])
+                    )
+                    values[-1] = end_array[0]
         else:
-            relative_times = (time - self.start) % length
+            relative_times = ((time - self.start) % self.period) / repeat_factor
             _, values = self.waveform.get_value(relative_times)
         return time, values
 
@@ -104,7 +153,11 @@ class RepeatTendency(BaseTendency):
         """
         if not self.waveform.tendencies:
             return np.array([0])
-        length = self.waveform.calc_length()
-        relative_times = (time - self.start) % length
-        derivatives = self.waveform.get_derivative(relative_times)
+
+        base_length = self.waveform.calc_length()
+        repeat_factor = self.period / base_length
+
+        relative_times = ((time - self.start) % self.period) / repeat_factor
+        derivatives = self.waveform.get_derivative(relative_times) / repeat_factor
+
         return derivatives
