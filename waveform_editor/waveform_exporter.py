@@ -1,7 +1,8 @@
 import csv
 import logging
+import re
 
-import imaspy
+import imas
 import plotly.graph_objects as go
 
 logger = logging.getLogger(__name__)
@@ -53,17 +54,17 @@ class WaveformExporter:
                 default version will be used.
         """
         uri_entry, uri_ids, occurrence, path = self.parse_uri(uri)
-        entry = imaspy.DBEntry(uri_entry, "r", dd_version=dd_version)
+        entry = imas.DBEntry(uri_entry, "r", dd_version=dd_version)
         ids = entry.get(uri_ids, occurrence, autoconvert=False)
 
         if (
             ids.ids_properties.homogeneous_time
-            == imaspy.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
+            == imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS
         ):
             is_homogeneous = False
         elif (
             ids.ids_properties.homogeneous_time
-            == imaspy.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+            == imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
         ):
             is_homogeneous = True
             ids.time = self.times
@@ -72,12 +73,14 @@ class WaveformExporter:
                 "The time mode must be homogeneous or heterogeneous."
             )
 
+        self._ensure_path_exists(ids, path)
+
         if "()" in path:
             self._fill_flt_0d(ids, path, is_homogeneous)
         else:
             self._fill_flt_1d(ids, path, is_homogeneous)
 
-        entry.put(ids)
+        entry.put(ids, occurrence)
         entry.close()
 
     def to_csv(self, file_path):
@@ -132,7 +135,6 @@ class WaveformExporter:
         aos_path = aos_path.strip("/")
         remaining_path = remaining_path.strip("/")
         aos = ids[aos_path]
-        aos.resize(len(self.times))
 
         for i, time in enumerate(self.times):
             if aos[i][remaining_path].data_type == "FLT_0D":
@@ -158,3 +160,48 @@ class WaveformExporter:
                 quantity.time = self.times
         else:
             raise NotImplementedError("Invalid data")
+
+    def _ensure_path_exists(self, ids, path):
+        """
+        Traverses a given path and modifies the AoS in the IDS to ensure the IDS
+        quantity to be filled exists.
+
+        Examples:
+
+        - imas:hdf5?path=./testdb#ec_launchers/beam(123)/power_launched
+          This will ensure ec_launchers.beam has a length of at least 123. Note, 1-based
+          indexing is used in the URI.
+
+        - imas:hdf5?path=./testdb#equilibrium/time_slice()/boundary/elongation
+          When '()' is encountered, it is assumed that this AoS should be the length of
+          the exported time array, i.e. len(equilibrium.time_slice) == len(self.times)
+
+        Args:
+            ids: The IDS to export to.
+            path: The path of the IDS quantity to export to.
+
+        Returns:
+            None. Modifies the `ids` structure in place.
+        """
+        path = path.strip("/")
+        path_parts = path.split("/")
+        current = ids
+        for part in path_parts:
+            if "()" in part:
+                current = current[part.split("(")[0]]
+                current.resize(len(self.times))
+                current = current[0]
+
+            elif "(" in part:
+                match = re.search(r"\((\d+)\)", part)
+                index = int(match.group(1))
+                current = current[part.split("(")[0]]
+
+                # We use 1-based indexing in the URI
+                if len(current) < index:
+                    current.resize(index)
+
+                # Revert to 0-based indexing
+                current = current[index - 1]
+            else:
+                current = current[part]
