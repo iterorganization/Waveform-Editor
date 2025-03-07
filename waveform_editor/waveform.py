@@ -129,6 +129,14 @@ class Waveform:
         """Returns the length of the waveform."""
         return self.tendencies[-1].end - self.tendencies[0].start
 
+    def get_start(self):
+        """Returns the start time of the first tendency in the waveform."""
+        return self.tendencies[0].start
+
+    def get_end(self):
+        """Returns the end time of the last tendency in the waveform."""
+        return self.tendencies[-1].end
+
     def _process_waveform(self, waveform):
         """Processes the waveform YAML and populates the tendencies list.
 
