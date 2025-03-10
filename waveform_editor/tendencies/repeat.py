@@ -64,8 +64,13 @@ class RepeatTendency(BaseTendency):
         end = self.waveform.tendencies[-1].end
 
         if has_freq_param and (start != 0 or end != 1):
+            # Is this warning required? This is not strictly required. If you have a
+            # repeated tendency consisting of two tendencies, the first of length 2, and
+            # the second of length 1, and a period of 1. The lengths will be distributed
+            # accordingly, i.e. the first tendency takes 2/3 and the second tendency
+            # takes 1/3.
             error_msg = (
-                "If the period of frequency of the repeated signal is provided, \nit is"
+                "If the period or frequency of a repeated signal is provided, \nit is"
                 " advised that the tendencies start at 0, and end at 1.\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
@@ -139,8 +144,8 @@ class RepeatTendency(BaseTendency):
         if not self.waveform.tendencies:
             return np.array([0])
 
-        base_length = self.waveform.calc_length()
-        repeat_factor = self.period / base_length
+        length = self.waveform.calc_length()
+        repeat_factor = self.period / length
 
         relative_times = ((time - self.start) % self.period) / repeat_factor
         derivatives = self.waveform.get_derivative(relative_times) / repeat_factor
