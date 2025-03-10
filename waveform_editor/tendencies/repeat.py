@@ -120,7 +120,7 @@ class RepeatTendency(BaseTendency):
             time, _ = self.waveform.get_value()
 
             # Compute how many full cycles fit in duration
-            repeat_count = int(np.round(self.duration / self.period))
+            repeat_count = int(np.ceil(self.duration / self.period))
             repetition_array = np.arange(repeat_count) * self.period
 
             time = (
