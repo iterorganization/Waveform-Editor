@@ -15,13 +15,13 @@ class RepeatTendency(BaseTendency):
         default=None,
         bounds=(0, None),
         inclusive_bounds=(False, True),
-        doc="The frequency of the tendency, as provided by the user.",
+        doc="The frequency of the repeated waveform, as provided by the user.",
     )
     user_period = param.Number(
         default=None,
         bounds=(0, None),
         inclusive_bounds=(False, True),
-        doc="The period of the tendency, as provided by the user.",
+        doc="The period of the repeated waveform, as provided by the user.",
     )
 
     def __init__(self, **kwargs):
@@ -37,7 +37,9 @@ class RepeatTendency(BaseTendency):
             return
 
         if self.waveform.tendencies[0].start != 0:
-            error_msg = "The starting point of the first repeated must be set to 0.\n"
+            error_msg = (
+                "The starting point of the first repeated tendency must be set to 0.\n"
+            )
             self.annotations.add(self.line_number, error_msg)
 
         if self.duration < self.waveform.tendencies[-1].end:
@@ -54,16 +56,22 @@ class RepeatTendency(BaseTendency):
         self.waveform.tendencies[0].set_previous_tendency(self.waveform.tendencies[-1])
         self.waveform.tendencies[-1].set_next_tendency(self.waveform.tendencies[0])
 
-        self._set_frequency()
+        self._set_period()
         self.values_changed = True
         self.annotations.add_annotations(self.waveform.annotations)
 
-    def _set_frequency(self):
+    def _set_period(self):
+        """Sets the period of the repeated waveform. If no period or frequency are
+        provided by the user, the period is set to the combined length of the
+        tendencies.
+        """
+
         has_freq_param = self.user_frequency is not None or self.user_period is not None
+
         start = self.waveform.tendencies[0].start
         end = self.waveform.tendencies[-1].end
-
         if has_freq_param and (start != 0 or end != 1):
+            # NOTE:
             # Is this warning required? This is not strictly required. If you have a
             # repeated tendency consisting of two tendencies, the first of length 2, and
             # the second of length 1, and a period of 1. The lengths will be distributed
@@ -92,7 +100,7 @@ class RepeatTendency(BaseTendency):
 
         if has_freq_param and self.period > self.duration:
             error_msg = (
-                "If the period of repeated tendency must be shorter than its duration. "
+                "The period of repeated tendency must be shorter than its duration. "
                 "\nThe frequency or period will be ignored\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
