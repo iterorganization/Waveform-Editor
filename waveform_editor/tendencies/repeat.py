@@ -66,7 +66,7 @@ class RepeatTendency(BaseTendency):
         if has_freq_param and (start != 0 or end != 1):
             error_msg = (
                 "If the period of frequency of the repeated signal is provided, \nit is"
-                "advised that the tendencies start at 0, and end at 1.\n"
+                " advised that the tendencies start at 0, and end at 1.\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
 
@@ -112,7 +112,7 @@ class RepeatTendency(BaseTendency):
         repeat_factor = self.period / length
 
         if time is None:
-            time, values = self.waveform.get_value()
+            time, _ = self.waveform.get_value()
 
             # Compute how many full cycles fit in duration
             repeat_count = int(np.round(self.duration / self.period))
@@ -121,25 +121,10 @@ class RepeatTendency(BaseTendency):
             time = (
                 (time * repeat_factor) + repetition_array[:, np.newaxis]
             ).flatten() + self.start
-            values = np.tile(values, repeat_count)
-
-            # Ensure we don't go beyond self.end
             time = np.clip(time, self.start, self.end)
-            cut_index = np.argmax(time >= self.end)
 
-            if cut_index > 0:
-                time = time[: cut_index + 1]
-                values = values[: cut_index + 1]
-
-                if time[-1] != self.end:
-                    time[-1] = self.end
-                    _, end_array = self.waveform.get_value(
-                        np.array([(self.end - self.start) % self.period])
-                    )
-                    values[-1] = end_array[0]
-        else:
-            relative_times = ((time - self.start) % self.period) / repeat_factor
-            _, values = self.waveform.get_value(relative_times)
+        relative_times = ((time - self.start) % self.period) / repeat_factor
+        _, values = self.waveform.get_value(relative_times)
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
