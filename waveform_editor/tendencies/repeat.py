@@ -114,11 +114,12 @@ class RepeatTendency(BaseTendency):
             values = np.tile(values, repeat)
 
             # cut off everything after self.end
-            assert time[-1] >= self.end
-            cut_index = np.argmax(time >= self.end)
-            time = time[: cut_index + 1]
+            if not np.isclose(time[-1], self.end):
+                assert time[-1] >= self.end
+                cut_index = np.argmax(time >= self.end)
+                time = time[: cut_index + 1]
+                values = values[: cut_index + 1]
 
-            values = values[: cut_index + 1]
             if time[-1] != self.end:
                 time[-1] = self.end
                 _, end_array = self.waveform.get_value(
