@@ -123,7 +123,7 @@ class RepeatTendency(BaseTendency):
             if time[-1] != self.end:
                 time[-1] = self.end
                 _, end_array = self.waveform.get_value(
-                    np.array([(self.end - self.start) % self.period / scaling_factor])
+                    np.array([((self.end - self.start) % self.period) / scaling_factor])
                 )
                 values[-1] = end_array[0]
         else:
