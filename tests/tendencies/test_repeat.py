@@ -175,3 +175,18 @@ def test_too_short(repeat_waveform):
     repeat_tendency = RepeatTendency(**repeat_waveform)
     assert repeat_tendency.annotations
     assert repeat_tendency.annotations[0]["type"] == "warning"
+
+
+def test_period(repeat_waveform):
+    """Check values when period is provided."""
+    repeat_waveform["user_period"] = 1
+    repeat_tendency = RepeatTendency(**repeat_waveform)
+    times = np.linspace(0, 8, 33)
+
+    _, values = repeat_tendency.get_value(times)
+    check_values_at_times(np.arange(0, 9), times, values, 1)
+    check_values_at_times(np.arange(0.25, 8, 1), times, values, 1.625)
+    check_values_at_times(np.arange(0.5, 8.5, 1), times, values, 2)
+    check_values_at_times(
+        np.arange(0.75, 8, 1), times, values, 2 - np.sin(np.pi * 3 / 16)
+    )
