@@ -68,21 +68,6 @@ class RepeatTendency(BaseTendency):
 
         has_freq_param = self.user_frequency is not None or self.user_period is not None
 
-        start = self.waveform.tendencies[0].start
-        end = self.waveform.tendencies[-1].end
-        if has_freq_param and (start != 0 or end != 1):
-            # NOTE:
-            # Is this warning required? This is not strictly required. If you have a
-            # repeated tendency consisting of two tendencies, the first of length 2, and
-            # the second of length 1, and a period of 1. The lengths will be distributed
-            # accordingly, i.e. the first tendency takes 2/3 and the second tendency
-            # takes 1/3.
-            error_msg = (
-                "If the period or frequency of a repeated signal is provided, \nit is"
-                " advised that the tendencies start at 0, and end at 1.\n"
-            )
-            self.annotations.add(self.line_number, error_msg, is_warning=True)
-
         if self.user_frequency is not None:
             if self.user_period is not None and not np.isclose(
                 self.user_frequency, 1 / self.user_period
@@ -122,22 +107,35 @@ class RepeatTendency(BaseTendency):
         if not self.waveform.tendencies:
             return np.array([0]), np.array([0])
         length = self.waveform.calc_length()
-        repeat_factor = self.period / length
+        scaling_factor = self.period / length
 
         if time is None:
-            time, _ = self.waveform.get_value()
+            time, values = self.waveform.get_value()
 
             # Compute how many full cycles fit in duration
-            repeat_count = int(np.ceil(self.duration / self.period))
-            repetition_array = np.arange(repeat_count) * self.period
+            repeat = int(np.ceil(self.duration / self.period))
+            repetition_array = np.arange(repeat) * self.period
 
             time = (
-                (time * repeat_factor) + repetition_array[:, np.newaxis]
+                (time * scaling_factor) + repetition_array[:, np.newaxis]
             ).flatten() + self.start
-            time = np.clip(time, self.start, self.end)
+            values = np.tile(values, repeat)
 
-        relative_times = ((time - self.start) % self.period) / repeat_factor
-        _, values = self.waveform.get_value(relative_times)
+            # cut off everything after self.end
+            assert time[-1] >= self.end
+            cut_index = np.argmax(time >= self.end)
+            time = time[: cut_index + 1]
+
+            values = values[: cut_index + 1]
+            if time[-1] != self.end:
+                time[-1] = self.end
+                _, end_array = self.waveform.get_value(
+                    np.array([(self.end - self.start) % self.period / scaling_factor])
+                )
+                values[-1] = end_array[0]
+        else:
+            relative_times = ((time - self.start) % self.period) / scaling_factor
+            _, values = self.waveform.get_value(relative_times)
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
