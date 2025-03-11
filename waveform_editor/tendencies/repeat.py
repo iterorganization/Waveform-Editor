@@ -59,8 +59,6 @@ class RepeatTendency(BaseTendency):
         tendencies.
         """
 
-        has_freq_param = self.user_frequency is not None or self.user_period is not None
-
         if self.user_frequency is not None:
             if self.user_period is not None and not np.isclose(
                 self.user_frequency, 1 / self.user_period
