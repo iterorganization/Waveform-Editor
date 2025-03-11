@@ -42,13 +42,6 @@ class RepeatTendency(BaseTendency):
             )
             self.annotations.add(self.line_number, error_msg)
 
-        if self.duration < self.waveform.tendencies[-1].end:
-            error_msg = (
-                "The repeated tendency has not completed a single repetition.\n"
-                "Perhaps increase the duration of the repeated tendency?\n"
-            )
-            self.annotations.add(self.line_number, error_msg, is_warning=True)
-
         # Link the last tendency to the first tendency in the repeated waveform
         # We must lock the start to 0, otherwise it will take the start value of the
         # previous tendency.
@@ -83,13 +76,14 @@ class RepeatTendency(BaseTendency):
         else:
             self.period = self.waveform.tendencies[-1].end
 
-        if has_freq_param and self.period > self.duration:
+        length = self.waveform.calc_length()
+        scaling_factor = self.period / length
+        if self.duration < length * scaling_factor:
             error_msg = (
-                "The period of repeated tendency must be shorter than its duration. "
-                "\nThe frequency or period will be ignored\n"
+                "The repeated tendency has not completed a single repetition.\n"
+                "Perhaps increase the duration of the repeated tendency?\n"
             )
             self.annotations.add(self.line_number, error_msg, is_warning=True)
-            self.period = self.waveform.tendencies[-1].end
 
     def get_value(
         self, time: Optional[np.ndarray] = None
