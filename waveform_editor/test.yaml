@@ -1,0 +1,210 @@
+# Global variables which apply to the entire YAML file
+globals:
+  DD_version: 3.42.0
+  # Assuming we use a single machine description for all IDSs
+  machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+
+# TODO: decide on 1-based ()-notation or 0-based []-notation, here 1-based is used
+ec_launchers:
+    beams:
+      phase_angles:
+        # Phase angles
+        # this is shorthand notation for {type: constant, value: -1.65898}
+        ec_launchers/beam(1)/phase/angle: -1.65898 
+        ec_launchers/beam(2)/phase/angle: -1.65379
+        ec_launchers/beam(3)/phase/angle: -1.64701
+        ec_launchers/beam(4)/phase/angle: -1.71866
+        ec_launchers/beam(5)/phase/angle: -1.71090
+        ec_launchers/beam(6)/phase/angle: -1.78598
+        ec_launchers/beam(7)/phase/angle: -1.77781
+        ec_launchers/beam(8)/phase/angle: -1.76698
+        ec_launchers/beam(9)/phase/angle: 1.70814
+        ec_launchers/beam(10)/phase/angle: 1.70543
+        ec_launchers/beam(11)/phase/angle: 1.70045
+        ec_launchers/beam(12)/phase/angle: 1.63377
+        ec_launchers/beam(13)/phase/angle: 1.63111
+        ec_launchers/beam(14)/phase/angle: 1.56212
+        ec_launchers/beam(15)/phase/angle: 1.56072
+        ec_launchers/beam(16)/phase/angle: 1.55927
+        ec_launchers/beam(17)/phase/angle: 1.47403
+        ec_launchers/beam(18)/phase/angle: 1.48083
+        ec_launchers/beam(19)/phase/angle: 1.49001
+        ec_launchers/beam(20)/phase/angle: 1.43267
+        ec_launchers/beam(21)/phase/angle: 1.44194
+        ec_launchers/beam(22)/phase/angle: 1.38286
+        ec_launchers/beam(23)/phase/angle: 1.39179
+        ec_launchers/beam(24)/phase/angle: 1.40392
+        ec_launchers/beam(25)/phase/angle: -0.18702
+        ec_launchers/beam(26)/phase/angle: -0.19665
+        ec_launchers/beam(27)/phase/angle: -0.15280
+        ec_launchers/beam(28)/phase/angle: -0.06595
+        ec_launchers/beam(29)/phase/angle: -0.03176
+        ec_launchers/beam(30)/phase/angle: -0.06506
+        ec_launchers/beam(31)/phase/angle: -0.10052
+        ec_launchers/beam(32)/phase/angle: -0.13093
+        ec_launchers/beam(33)/phase/angle: -0.18702
+        ec_launchers/beam(34)/phase/angle: -0.19665
+        ec_launchers/beam(35)/phase/angle: -0.15280
+        ec_launchers/beam(36)/phase/angle: -0.06595
+        ec_launchers/beam(37)/phase/angle: -0.03176
+        ec_launchers/beam(38)/phase/angle: -0.06506
+        ec_launchers/beam(39)/phase/angle: -0.10052
+        ec_launchers/beam(40)/phase/angle: -0.13093
+        ec_launchers/beam(41)/phase/angle: -0.18702
+        ec_launchers/beam(42)/phase/angle: -0.19665
+        ec_launchers/beam(43)/phase/angle: -0.15280
+        ec_launchers/beam(44)/phase/angle: -0.06595
+        ec_launchers/beam(45)/phase/angle: -0.03176
+        ec_launchers/beam(46)/phase/angle: -0.06506
+        ec_launchers/beam(47)/phase/angle: -0.10052
+        ec_launchers/beam(48)/phase/angle: -0.13093
+        ec_launchers/beam(49)/phase/angle: -0.18702
+        ec_launchers/beam(50)/phase/angle: -0.19665
+        ec_launchers/beam(51)/phase/angle: -0.15280
+        ec_launchers/beam(52)/phase/angle: -0.06595
+        ec_launchers/beam(53)/phase/angle: -0.03176
+        ec_launchers/beam(54)/phase/angle: -0.06506
+        ec_launchers/beam(55)/phase/angle: -0.10052
+        ec_launchers/beam(56)/phase/angle: -0.13093
+
+      # spot angles, these are the same as the phase angles? so reference?
+      # We could do:
+      # ec_launchers/beam(1)/spot/angle: "ec_launchers/beam(1)/spot/angle"
+      # ec_launchers/beam(2)/spot/angle: "ec_launchers/beam(2)/spot/angle"
+      # etc...
+      # This will be much cleaner with a shorthard, such as:
+      ec_launchers/beam(:)/spot/angle: "ec_launchers/beam(:)/spot/angle"
+
+      steering_angles:
+        poloidal:
+          # Poloidal angles
+          ec_launchers/beam(1)/steering_angle_pol: 0.12185
+          ec_launchers/beam(2)/steering_angle_pol: 0.12713
+          ec_launchers/beam(3)/steering_angle_pol: 0.13376
+          ec_launchers/beam(4)/steering_angle_pol: 0.17147
+          ec_launchers/beam(5)/steering_angle_pol: 0.17971
+          ec_launchers/beam(6)/steering_angle_pol: 0.21274
+          ec_launchers/beam(7)/steering_angle_pol: 0.22161
+          ec_launchers/beam(8)/steering_angle_pol: 0.23377
+          ec_launchers/beam(9)/steering_angle_pol: 0.15039
+          ec_launchers/beam(10)/steering_angle_pol: 0.15496
+          ec_launchers/beam(11)/steering_angle_pol: 0.16251
+          ec_launchers/beam(12)/steering_angle_pol: 0.08685
+          ec_launchers/beam(13)/steering_angle_pol: 0.08968
+          ec_launchers/beam(14)/steering_angle_pol: 0.02059
+          ec_launchers/beam(15)/steering_angle_pol: 0.02011
+          ec_launchers/beam(16)/steering_angle_pol: 0.01975
+          ec_launchers/beam(17)/steering_angle_pol: -0.15622
+          ec_launchers/beam(18)/steering_angle_pol: -0.16334
+          ec_launchers/beam(19)/steering_angle_pol: -0.17315
+          ec_launchers/beam(20)/steering_angle_pol: -0.19290
+          ec_launchers/beam(21)/steering_angle_pol: -0.20322
+          ec_launchers/beam(22)/steering_angle_pol: -0.22011
+          ec_launchers/beam(23)/steering_angle_pol: -0.22985
+          ec_launchers/beam(24)/steering_angle_pol: -0.24455
+          ec_launchers/beam(25)/steering_angle_pol: 1.16262
+          ec_launchers/beam(26)/steering_angle_pol: 1.13985
+          ec_launchers/beam(27)/steering_angle_pol: 1.12039
+          ec_launchers/beam(28)/steering_angle_pol: 1.09891
+          ec_launchers/beam(29)/steering_angle_pol: 0.94833
+          ec_launchers/beam(30)/steering_angle_pol: 0.93426
+          ec_launchers/beam(31)/steering_angle_pol: 0.91812
+          ec_launchers/beam(32)/steering_angle_pol: 0.89825
+          ec_launchers/beam(33)/steering_angle_pol: 1.16262
+          ec_launchers/beam(34)/steering_angle_pol: 1.13985
+          ec_launchers/beam(35)/steering_angle_pol: 1.12039
+          ec_launchers/beam(36)/steering_angle_pol: 1.09891
+          ec_launchers/beam(37)/steering_angle_pol: 0.94833
+          ec_launchers/beam(38)/steering_angle_pol: 0.93426
+          ec_launchers/beam(39)/steering_angle_pol: 0.91812
+          ec_launchers/beam(40)/steering_angle_pol: 0.89825
+          ec_launchers/beam(41)/steering_angle_pol: 1.16262
+          ec_launchers/beam(42)/steering_angle_pol: 1.13985
+          ec_launchers/beam(43)/steering_angle_pol: 1.12039
+          ec_launchers/beam(44)/steering_angle_pol: 1.09891
+          ec_launchers/beam(45)/steering_angle_pol: 0.94833
+          ec_launchers/beam(46)/steering_angle_pol: 0.93426
+          ec_launchers/beam(47)/steering_angle_pol: 0.91812
+          ec_launchers/beam(48)/steering_angle_pol: 0.89825
+          ec_launchers/beam(49)/steering_angle_pol: 1.16262
+          ec_launchers/beam(50)/steering_angle_pol: 1.13985
+          ec_launchers/beam(51)/steering_angle_pol: 1.12039
+          ec_launchers/beam(52)/steering_angle_pol: 1.09891
+          ec_launchers/beam(53)/steering_angle_pol: 0.94833
+          ec_launchers/beam(54)/steering_angle_pol: 0.93426
+          ec_launchers/beam(55)/steering_angle_pol: 0.91812
+          ec_launchers/beam(56)/steering_angle_pol: 0.89825
+
+        toroidal:
+          # Toroidal angles
+          ec_launchers/beam(1)/steering_angle_tor: -0.30350
+          ec_launchers/beam(2)/steering_angle_tor: -0.31625
+          ec_launchers/beam(3)/steering_angle_tor: -0.34549
+          ec_launchers/beam(4)/steering_angle_tor: -0.30714
+          ec_launchers/beam(5)/steering_angle_tor: -0.32771
+          ec_launchers/beam(6)/steering_angle_tor: -0.29343
+          ec_launchers/beam(7)/steering_angle_tor: -0.30577
+          ec_launchers/beam(8)/steering_angle_tor: -0.33402
+          ec_launchers/beam(9)/steering_angle_tor: 0.41249
+          ec_launchers/beam(10)/steering_angle_tor: 0.41748
+          ec_launchers/beam(11)/steering_angle_tor: 0.44024
+          ec_launchers/beam(12)/steering_angle_tor: 0.42232
+          ec_launchers/beam(13)/steering_angle_tor: 0.43644
+          ec_launchers/beam(14)/steering_angle_tor: 0.42159
+          ec_launchers/beam(15)/steering_angle_tor: 0.42678
+          ec_launchers/beam(16)/steering_angle_tor: 0.45008
+          ec_launchers/beam(17)/steering_angle_tor: 0.42423
+          ec_launchers/beam(18)/steering_angle_tor: 0.44151
+          ec_launchers/beam(19)/steering_angle_tor: 0.47983
+          ec_launchers/beam(20)/steering_angle_tor: 0.43207
+          ec_launchers/beam(21)/steering_angle_tor: 0.45934
+          ec_launchers/beam(22)/steering_angle_tor: 0.41946
+          ec_launchers/beam(23)/steering_angle_tor: 0.43618
+          ec_launchers/beam(24)/steering_angle_tor: 0.47327
+          ec_launchers/beam(25)/steering_angle_tor: 0.37811
+          ec_launchers/beam(26)/steering_angle_tor: 0.34975
+          ec_launchers/beam(27)/steering_angle_tor: 0.32498
+          ec_launchers/beam(28)/steering_angle_tor: 0.29817
+          ec_launchers/beam(29)/steering_angle_tor: 0.36440
+          ec_launchers/beam(30)/steering_angle_tor: 0.34023
+          ec_launchers/beam(31)/steering_angle_tor: 0.31959
+          ec_launchers/beam(32)/steering_angle_tor: 0.29827
+          ec_launchers/beam(33)/steering_angle_tor: 0.37811
+          ec_launchers/beam(34)/steering_angle_tor: 0.34975
+          ec_launchers/beam(35)/steering_angle_tor: 0.32498
+          ec_launchers/beam(36)/steering_angle_tor: 0.29817
+          ec_launchers/beam(37)/steering_angle_tor: 0.36440
+          ec_launchers/beam(38)/steering_angle_tor: 0.34023
+          ec_launchers/beam(39)/steering_angle_tor: 0.31959
+          ec_launchers/beam(40)/steering_angle_tor: 0.29827
+          ec_launchers/beam(41)/steering_angle_tor: 0.37811
+          ec_launchers/beam(42)/steering_angle_tor: 0.34975
+          ec_launchers/beam(43)/steering_angle_tor: 0.32498
+          ec_launchers/beam(44)/steering_angle_tor: 0.29817
+          ec_launchers/beam(45)/steering_angle_tor: 0.36440
+          ec_launchers/beam(46)/steering_angle_tor: 0.34023
+          ec_launchers/beam(47)/steering_angle_tor: 0.31959
+          ec_launchers/beam(48)/steering_angle_tor: 0.29827
+          ec_launchers/beam(49)/steering_angle_tor: 0.37811
+          ec_launchers/beam(50)/steering_angle_tor: 0.34975
+          ec_launchers/beam(51)/steering_angle_tor: 0.32498
+          ec_launchers/beam(52)/steering_angle_tor: 0.29817
+          ec_launchers/beam(53)/steering_angle_tor: 0.36440
+          ec_launchers/beam(54)/steering_angle_tor: 0.34023
+          ec_launchers/beam(55)/steering_angle_tor: 0.31959
+          ec_launchers/beam(56)/steering_angle_tor: 0.29827
+
+
+      # TODO: For the signal_1d structures, refer to frequency.data or just frequency? As time is stored at frequency.time
+      ec_launchers/beam(:)/frequency: 1.7e11 
+      # # TODO: do we support non-waveform?
+      # ec_launchers/beam(:)/mode: -1
+      EL:
+        ec_launchers/beam(1:24)/power_launched:
+            - {to: 8.33e5, duration: 20} # implicit linear ramp
+            - {type: constant, duration: 20}
+            - {duration: 25} # implicit linear back to 0
+      UL:
+        ec_launchers/beam(33:56)/power_launched: "ec_launchers/beam(1:24)/power_launched"
+        UL12:
+          ec_launchers/beam(25:32)/power_launched: {} # zero waveform

@@ -1,64 +1,52 @@
-import holoviews as hv
 import panel as pn
+import yaml
 
-from waveform_editor.yaml_parser import YamlParser
+pn.extension()
 
-hv.extension("plotly")
+yaml_file = "waveform_editor/test.yaml"
 
-# TODO: Current UI implementation is only for testing purposes. In this future this is
-# to be rewritten in a proper class-based form.
-# The gui can be launched using:
-# panel serve waveform_editor/waveform_editor_gui.py --dev --show
-
-code_editor = pn.widgets.CodeEditor(
-    value="""\
-waveform:
-- {type: linear, from: 0, to: 8, duration: 5}
-- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
-- {type: constant, value: 8, duration: 3}
-- {type: smooth, from: 8, to: 0, duration: 2}
-""",
-    width=600,
-    height=1200,
-    theme="tomorrow",
-    language="yaml",
-)
-
-yaml_parser = YamlParser()
-
-yaml_alert = pn.pane.Alert(
-    "### The YAML did not parse correctly!",
-    alert_type="danger",
-    visible=False,
-)
-error_alert = pn.pane.Alert(
-    "### There was an error in the YAML configuration.",
-    alert_type="warning",
-    visible=False,
-)
+with open(yaml_file) as f:
+    yaml_data = yaml.safe_load(f)
 
 
-def update_plot(value):
-    yaml_alert.visible = error_alert.visible = False
-    yaml_parser.parse_waveforms(value)
-    annotations = yaml_parser.waveform.annotations
+def create_ui(data):
+    """Recursively create a Panel UI structure from the YAML"""
+    categories = []
+    options = []
 
-    code_editor.annotations = list(annotations)
-    code_editor.param.trigger("annotations")
+    for key, value in data.items():
+        if key == "globals":
+            continue
+        elif "/" in key:
+            # If it contains '/', treat it as an option for selection
+            options.append(key)
+        else:
+            categories.append((key, create_ui(value)))
 
-    # Show alert when there is a yaml parsing error
-    if yaml_parser.has_yaml_error:
-        yaml_alert.object = f"### The YAML did not parse correctly\n {annotations}"
-        yaml_alert.visible = True
-    elif code_editor.annotations:
-        error_alert.object = (
-            f"### There was an error in the YAML configuration\n {annotations}"
+    content = []
+    if options:
+        check_buttons = pn.widgets.CheckButtonGroup(
+            value=[],
+            options=options,
+            button_style="outline",
+            button_type="primary",
+            sizing_mode="stretch_width",
+            orientation="vertical",
+            stylesheets=["button {text-align: left!important;}"],
         )
-        error_alert.visible = True
-    return yaml_parser.plot_tendencies()
+        content.append(check_buttons)
+
+    if categories:
+        accordion = pn.Accordion(*categories)
+        content.append(accordion)
+
+    return pn.Column(*content, sizing_mode="stretch_width")
 
 
-plot = hv.DynamicMap(pn.bind(update_plot, value=code_editor.param.value))
-plot_and_alert = pn.Column(plot, yaml_alert, error_alert)
-layout = pn.Row(code_editor, plot_and_alert)
-layout.servable()
+yaml_ui = create_ui(yaml_data)
+
+pn.template.MaterialTemplate(
+    title="Waveform Editor (v0.0 ~ mockup)",
+    sidebar=[yaml_ui],
+    main=pn.Column(pn.pane.Markdown("## Dynamic YAML Viewer")),
+).servable()
