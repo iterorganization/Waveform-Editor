@@ -31,12 +31,16 @@ tendency_map = {
 
 
 class Waveform:
-    def __init__(self, *, waveform=None, is_repeated=False):
+    def __init__(self, *, waveform=None, line_number=0, is_repeated=False):
         self.tendencies = []
+        self.line_number = line_number
         self.annotations = Annotations()
         self.is_repeated = is_repeated
         if waveform is not None:
-            self._process_waveform(waveform)
+            if isinstance(waveform, list):
+                self._process_waveform(waveform)
+            elif isinstance(waveform, (int, float)):
+                self._process_number_as_waveform(waveform)
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -166,6 +170,31 @@ class Waveform:
 
         for tendency in self.tendencies:
             tendency.param.watch(self.update_annotations, "annotations")
+
+    def _process_number_as_waveform(self, value):
+        """Create a constant tendency when the waveform contains a single value. This
+        allows for a single number to be interpreted as a constant tendency.
+
+        For example, the following YAML notation:
+
+        ``waveform: 1.42e6``
+
+        will be treated similarly as:
+
+        ``waveform: {type: constant, value: 1.42e6}``
+
+        Args:
+            value: The value of the constant tendency
+        """
+        entry = {
+            "user_type": "constant",
+            "user_value": value,
+            "line_number": self.line_number,
+        }
+        tendency = self._handle_tendency(entry)
+        if tendency is not None:
+            self.tendencies.append(tendency)
+        self.update_annotations()
 
     def update_annotations(self, event=None):
         """Merges the annotations of the individual tendencies into the annotations
