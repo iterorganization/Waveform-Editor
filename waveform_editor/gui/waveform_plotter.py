@@ -31,6 +31,7 @@ class WaveformPlotter(param.Parameterized):
         if not waveform.tendencies:
             return hv.Curve([])
 
+        # TODO: The y axis should show the units of the plotted waveform
         line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
             line_width=2, framewise=True
         )
@@ -49,7 +50,7 @@ class WaveformPlotter(param.Parameterized):
         """Update plot when waveform keys are selected using YamlParser."""
         yaml_parser = YamlParser()
         empty_overlay = hv.Overlay([hv.Curve([])]).opts(
-            title="Select a waveform to view",
+            title="",
             show_legend=True,
             width=width,
             height=height,
@@ -65,6 +66,7 @@ class WaveformPlotter(param.Parameterized):
             if value is None:
                 continue
 
+            # TODO: Dont dump back to yaml
             yaml_string = yaml.dump({key: value})
 
             waveform = yaml_parser.parse_waveforms(yaml_string)
@@ -76,7 +78,7 @@ class WaveformPlotter(param.Parameterized):
         if curves:
             combined_overlay = hv.Overlay(curves)
             return combined_overlay.opts(
-                title="Selected Waveforms",
+                title="",
                 show_legend=True,
                 width=width,
                 height=height,
