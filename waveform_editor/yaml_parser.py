@@ -1,6 +1,5 @@
 import re
 
-import holoviews as hv
 import yaml
 
 from waveform_editor.waveform import Waveform
