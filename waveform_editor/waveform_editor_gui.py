@@ -5,7 +5,10 @@ import yaml
 
 from waveform_editor.yaml_parser import YamlParser
 
-hv.extension("plotly")
+# Use bokeh since there are issues with the plotting when deselecting using plotly.
+# Bokeh seems quite a bit slower than plotly, so it might be worth switching back to
+# plotly later
+hv.extension("bokeh")
 
 # Load YAML data
 yaml_parser = YamlParser()
@@ -38,7 +41,7 @@ class WaveformPlotter(param.Parameterized):
             return hv.Curve([])
 
         line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
-            line_width=2
+            line_width=2, framewise=True
         )
 
         if plot_time_points:
