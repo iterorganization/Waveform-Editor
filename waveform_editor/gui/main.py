@@ -2,6 +2,7 @@ import holoviews as hv
 import panel as pn
 import yaml
 
+import waveform_editor
 from waveform_editor.gui.waveform_editor_widget import WaveformEditor
 from waveform_editor.gui.waveform_plotter import WaveformPlotter
 from waveform_editor.gui.waveform_selector import WaveformSelector
@@ -12,31 +13,30 @@ from waveform_editor.gui.waveform_selector import WaveformSelector
 hv.extension("bokeh")
 
 
-class TemplateGUI:
+class WaveformEditorGui:
     def __init__(self, yaml_file):
         """Initialize the Waveform Editor Panel App"""
         with open(yaml_file) as f:
             yaml_data = yaml.safe_load(f)
 
-        self.waveform_plotter = WaveformPlotter(yaml_data)
-        self.waveform_editor = WaveformEditor()
-        self.waveform_selector = WaveformSelector(yaml_data, self.waveform_plotter)
+        editor = WaveformEditor()
+        waveform_plotter = WaveformPlotter(yaml_data)
+        waveform_selector = WaveformSelector(yaml_data, waveform_plotter)
 
-        self.waveform_plot = hv.DynamicMap(
-            self.waveform_plotter.update_plot,
-            streams=[self.waveform_plotter.param.selected_keys],
-        )
-
-        main = pn.Tabs(
-            pn.Column(self.waveform_plot, name="View Waveforms"),
-            pn.Column(self.waveform_editor.get_layout(), name="Edit Waveforms"),
-            pn.Column(name="Plasma shape editor"),
+        tabs = pn.Tabs(
+            pn.Column(waveform_plotter.get_dynamic_map(), name="View Waveforms"),
+            pn.Column(editor.get_layout(), name="Edit Waveforms"),
             dynamic=True,
         )
+
+        sidebar = pn.Column(
+            pn.pane.Markdown(f"## File: `{yaml_file}`\\*", margin=0),
+            waveform_selector.get_selector(),
+        )
         self.template = pn.template.MaterialTemplate(
-            title="Waveform Editor (Draft version)",
-            sidebar=[self.waveform_selector.get_selector()],
-            main=main,
+            title=f"Waveform Editor (v{waveform_editor.__version__})",
+            sidebar=sidebar,
+            main=tabs,
         )
 
     def serve(self):
@@ -44,6 +44,6 @@ class TemplateGUI:
         return self.template.servable()
 
 
-# Main
+# TODO: Add option to load yaml from GUI
 yaml_file = "waveform_editor/test.yaml"
-TemplateGUI(yaml_file).serve()
+WaveformEditorGui(yaml_file).serve()

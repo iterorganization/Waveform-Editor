@@ -50,6 +50,7 @@ waveform:
         # Layout: Code Editor | Plot + Errors
         self.layout = pn.Row(self.code_editor, self.plot_and_alert)
 
+    # TODO: value should be determined by the select waveform in the GUI
     def update_plot(self, value, width=1200, height=800):
         """Update the plot based on the YAML editor input."""
         self.yaml_alert.visible = self.error_alert.visible = False

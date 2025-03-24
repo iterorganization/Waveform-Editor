@@ -96,3 +96,9 @@ class WaveformPlotter(param.Parameterized):
                     if result is not None:
                         return result
         return None
+
+    def get_dynamic_map(self):
+        return hv.DynamicMap(
+            self.update_plot,
+            streams=[self.param.selected_keys],
+        )
