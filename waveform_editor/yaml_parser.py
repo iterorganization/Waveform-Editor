@@ -100,38 +100,33 @@ class YamlParser:
         self.waveform.tendencies = []
         self.has_yaml_error = True
 
-    def plot_tendencies(self, plot_time_points=False):
+    def plot_tendencies(self, label, plot_time_points=False):
         """
-        Plot the tendencies in a Holoviews Overlay and return this Overlay.
+        Plot the tendencies and return the curve.
 
         Args:
             plot_time_points (bool): Whether to include markers for the data points.
 
         Returns:
-            A Holoviews Overlay object.
+            A Holoviews Curve object.
         """
         times, values = self.waveform.get_value()
-
-        overlay = hv.Overlay()
 
         # Prevent updating the plot if there are no tendencies, for example when a
         # YAML error is encountered
         if not self.waveform.tendencies:
-            return overlay
+            return hv.Curve([])
 
-        # By merging all the tendencies into a single holoviews curve, we circumvent
-        # an issue that occurs when returning an overlay of multiple curves, where
-        # tendencies of previous inputs are sometimes not cleared correctly.
-        line = hv.Curve((times, values), "Time (s)", "Value").opts(
-            line_width=2, color="blue"
+        line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
+            line_width=2
         )
-        overlay *= line
+
         if plot_time_points:
             points = hv.Scatter((times, values), "Time (s)", "Value").opts(
                 size=5,
                 color="red",
                 marker="circle",
             )
-            overlay *= points
+            return line * points
 
-        return overlay.opts(title="Waveform", width=800, height=400)
+        return line
