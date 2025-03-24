@@ -20,6 +20,37 @@ class WaveformPlotter(param.Parameterized):
 
     selected_keys = param.ListSelector(default=[], objects=[])
 
+    def plot_tendencies(self, waveform, label, plot_time_points=False):
+        """
+        Plot the tendencies and return the curve.
+
+        Args:
+            plot_time_points (bool): Whether to include markers for the data points.
+
+        Returns:
+            A Holoviews Curve object.
+        """
+        times, values = waveform.get_value()
+
+        # Prevent updating the plot if there are no tendencies, for example when a
+        # YAML error is encountered
+        if not waveform.tendencies:
+            return hv.Curve([])
+
+        line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
+            line_width=2
+        )
+
+        if plot_time_points:
+            points = hv.Scatter((times, values), "Time (s)", "Value").opts(
+                size=5,
+                color="red",
+                marker="circle",
+            )
+            return line * points
+
+        return line
+
     def update_plot(self, selected_keys, width=1200, height=600):
         """Update plot when waveform keys are selected using YamlParser."""
         empty_overlay = hv.Overlay([hv.Curve([])]).opts(
@@ -41,8 +72,8 @@ class WaveformPlotter(param.Parameterized):
 
             yaml_string = yaml.dump({key: value})
 
-            yaml_parser.parse_waveforms(yaml_string)
-            plot = yaml_parser.plot_tendencies(key)
+            waveform = yaml_parser.parse_waveforms(yaml_string)
+            plot = self.plot_tendencies(waveform, key)
 
             curves.append(plot)
 

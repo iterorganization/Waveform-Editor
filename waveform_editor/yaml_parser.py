@@ -89,6 +89,8 @@ class YamlParser:
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)
 
+        return self.waveform
+
     def _handle_yaml_error(self, error):
         """Handles YAML parsing errors by adding it to the annotations of the waveform.
 
@@ -99,34 +101,3 @@ class YamlParser:
         self.waveform.annotations.add_yaml_error(error)
         self.waveform.tendencies = []
         self.has_yaml_error = True
-
-    def plot_tendencies(self, label, plot_time_points=False):
-        """
-        Plot the tendencies and return the curve.
-
-        Args:
-            plot_time_points (bool): Whether to include markers for the data points.
-
-        Returns:
-            A Holoviews Curve object.
-        """
-        times, values = self.waveform.get_value()
-
-        # Prevent updating the plot if there are no tendencies, for example when a
-        # YAML error is encountered
-        if not self.waveform.tendencies:
-            return hv.Curve([])
-
-        line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
-            line_width=2
-        )
-
-        if plot_time_points:
-            points = hv.Scatter((times, values), "Time (s)", "Value").opts(
-                size=5,
-                color="red",
-                marker="circle",
-            )
-            return line * points
-
-        return line
