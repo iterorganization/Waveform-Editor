@@ -74,7 +74,16 @@ class YamlParser:
                     f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
                 )
 
-            waveform = waveform_yaml.get("user_waveform", [])
+            waveform_key = next(
+                (
+                    key
+                    for key in waveform_yaml
+                    if key.startswith("user_") and key != "line_number"
+                ),
+                None,
+            )
+
+            waveform = waveform_yaml.get(waveform_key, [])
             self.waveform = Waveform(waveform=waveform)
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)

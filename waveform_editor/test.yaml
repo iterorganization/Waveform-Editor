@@ -203,7 +203,7 @@ ec_launchers:
         ec_launchers/beam(1:24)/power_launched:
             - {to: 8.33e5, duration: 20} # implicit linear ramp
             - {type: constant, duration: 20}
-            - {duration: 25} # implicit linear back to 0
+            - {duration: 25, to: 0} # implicit linear back to 0
       UL:
         ec_launchers/beam(33:56)/power_launched: "ec_launchers/beam(1:24)/power_launched"
         UL12:
