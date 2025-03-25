@@ -16,13 +16,7 @@ class WaveformEditor:
 
         # YAML Code Editor
         self.code_editor = pn.widgets.CodeEditor(
-            value="""\
-waveform:
-- {type: linear, from: 0, to: 8, duration: 5}
-- {type: sine-wave, base: 8, amplitude: 2, frequency: 1, duration: 4}
-- {type: constant, value: 8, duration: 3}
-- {type: smooth, from: 8, to: 0, duration: 2}
-""",
+            value="empty_waveform: {}",
             width=600,
             height=1200,
             language="yaml",
@@ -73,7 +67,7 @@ waveform:
 
         waveform_plotter = WaveformPlotter(value)
 
-        return waveform_plotter.plot_tendencies(waveform, "asdf").opts(
+        return waveform_plotter.plot_tendencies(waveform, "").opts(
             width=width, height=height
         )
 

@@ -1,10 +1,11 @@
 import panel as pn
+import yaml
 
 
 class WaveformSelector:
     """Class to generate a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, yaml_data, waveform_plotter):
+    def __init__(self, yaml_data, waveform_plotter, waveform_editor):
         """
         Initialize the waveform selector.
 
@@ -14,9 +15,16 @@ class WaveformSelector:
                 updates.
         """
         self.waveform_plotter = waveform_plotter
+        self.waveform_editor = waveform_editor
         self.selected_keys = []
         self.previous_selection = {}
+        self.yaml_map = {}
         self.selector = self.create_waveform_selector(yaml_data)
+        self.deselect_logic_enabled = False  # Control flag for deselect behavior
+
+    def enable_deselect_logic(self, enable):
+        """Enable or disable the deselect logic based on the tab selection."""
+        self.deselect_logic_enabled = enable
 
     def create_waveform_selector(self, data):
         """Recursively create a Panel UI structure from the YAML."""
@@ -28,13 +36,14 @@ class WaveformSelector:
                 continue
             elif "/" in key:
                 options.append(key)
+                self.yaml_map[key] = value
             else:
                 categories.append((key, self.create_waveform_selector(value)))
 
         content = []
         if options:
             check_buttons = pn.widgets.CheckButtonGroup(
-                value=[],
+                value=[],  # initially no selection
                 options=options,
                 button_style="outline",
                 button_type="primary",
@@ -43,20 +52,32 @@ class WaveformSelector:
                 stylesheets=["button {text-align: left!important;}"],
             )
 
-            # Only changes for a single CheckButtonGroup are provided in event.new, so
-            # we need to track the state of the selected keys for other
-            # CheckButtonGroups
             def on_select(event):
                 new_selection = event.new
                 old_selection = self.previous_selection.get(check_buttons, [])
                 newly_selected = [
                     key for key in new_selection if key not in old_selection
                 ]
-                deselected = [key for key in old_selection if key not in new_selection]
-                self.selected_keys = list(
-                    set(self.selected_keys + newly_selected) - set(deselected)
-                )
-                self.waveform_plotter.selected_keys = self.selected_keys
+                if self.deselect_logic_enabled:
+                    # Deselect all except for newly_selected
+                    if newly_selected:
+                        newly_selected = newly_selected[0]
+                        self.deselect_all(exclude=newly_selected)
+
+                        value = self.yaml_map[newly_selected]
+                        if isinstance(value, (int, float)):
+                            yaml_dump = f"{newly_selected}: {value}"
+                        else:
+                            yaml_dump = f"{newly_selected}:\n{yaml.dump(value)}"
+                        self.waveform_editor.code_editor.value = yaml_dump
+                else:
+                    deselected = [
+                        key for key in old_selection if key not in new_selection
+                    ]
+                    self.selected_keys = list(
+                        set(self.selected_keys + newly_selected) - set(deselected)
+                    )
+                    self.waveform_plotter.selected_keys = self.selected_keys
                 self.previous_selection[check_buttons] = new_selection
 
             check_buttons.param.watch(on_select, "value")
@@ -72,17 +93,23 @@ class WaveformSelector:
         """Returns the waveform selector UI component."""
         return self.selector
 
-    def deselect_all(self):
-        """Deselect all options in all CheckButtonGroup widgets."""
-        self.selected_keys = []
-        self._deselect_checkbuttons(self.selector)
+    def deselect_all(self, exclude=None):
+        """Deselect all options in all CheckButtonGroup widgets, excluding certain items."""
+        if exclude:
+            self.selected_keys = [exclude]
+        else:
+            self.selected_keys = []
+        self._deselect_checkbuttons(self.selector, exclude)
         self.waveform_plotter.selected_keys = self.selected_keys
 
-    def _deselect_checkbuttons(self, widget):
+    def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
         widgets."""
         if isinstance(widget, pn.widgets.CheckButtonGroup):
-            widget.value = []
+            if exclude in widget.value:
+                widget.value = [exclude]
+            else:
+                widget.value = []
         else:
             for child in widget:
-                self._deselect_checkbuttons(child)
+                self._deselect_checkbuttons(child, exclude)

@@ -69,11 +69,11 @@ ec_launchers:
 
       # spot angles, these are the same as the phase angles? so reference?
       # We could do:
-      # ec_launchers/beam(1)/spot/angle: "ec_launchers/beam(1)/spot/angle"
-      # ec_launchers/beam(2)/spot/angle: "ec_launchers/beam(2)/spot/angle"
+      # ec_launchers/beam(1)/spot/angle: "ec_launchers/beam(1)/phase/angle"
+      # ec_launchers/beam(2)/spot/angle: "ec_launchers/beam(2)/phase/angle"
       # etc...
       # This will be much cleaner with a shorthard, such as:
-      ec_launchers/beam(:)/spot/angle: "ec_launchers/beam(:)/spot/angle"
+      ec_launchers/beam(:)/spot/angle: "ec_launchers/beam(:)/phase/angle"
 
       steering_angles:
         poloidal:

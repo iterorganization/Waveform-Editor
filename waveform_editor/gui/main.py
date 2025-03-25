@@ -21,8 +21,9 @@ class WaveformEditorGui:
 
         editor = WaveformEditor()
         waveform_plotter = WaveformPlotter(yaml_data)
-        waveform_selector = WaveformSelector(yaml_data, waveform_plotter)
+        waveform_selector = WaveformSelector(yaml_data, waveform_plotter, editor)
 
+        # Tabs to handle the "View" and "Edit" tabs
         tabs = pn.Tabs(
             ("View Waveforms", waveform_plotter.get_dynamic_map()),
             ("Edit Waveforms", editor.get_layout()),
@@ -30,8 +31,12 @@ class WaveformEditorGui:
         )
 
         def on_tab_change(event):
-            if event.new == 1:  # Check if "Edit Waveforms" tab is selected (index 1)
+            # Check if "Edit Waveforms" tab is selected (index 1)
+            if event.new == 1:
                 waveform_selector.deselect_all()
+                waveform_selector.enable_deselect_logic(True)
+            else:
+                waveform_selector.enable_deselect_logic(False)
 
         tabs.param.watch(on_tab_change, "active")
 
