@@ -29,6 +29,12 @@ class WaveformEditorGui:
             dynamic=True,
         )
 
+        def on_tab_change(event):
+            if event.new == 1:  # Check if "Edit Waveforms" tab is selected (index 1)
+                waveform_selector.deselect_all()
+
+        tabs.param.watch(on_tab_change, "active")
+
         sidebar = pn.Column(
             pn.pane.Markdown(f"## File: `{yaml_file}`", margin=0),
             waveform_selector.get_selector(),
@@ -38,6 +44,7 @@ class WaveformEditorGui:
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             sidebar=sidebar,
             main=tabs,
+            sidebar_width=400,
         )
 
     def serve(self):

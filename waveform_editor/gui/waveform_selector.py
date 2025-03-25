@@ -57,3 +57,15 @@ class WaveformSelector:
     def get_selector(self):
         """Returns the waveform selector UI component."""
         return self.selector
+
+    def deselect_all(self):
+        """Deselect all options in all CheckButtonGroup widgets."""
+        # Recursively find and deselect all CheckButtonGroups in the UI structure
+        self._deselect_checkbuttons(self.selector)
+
+    def _deselect_checkbuttons(self, widget):
+        if isinstance(widget, pn.widgets.CheckButtonGroup):
+            widget.value = []  # Deselect the checkbutton group
+        else:
+            for child in widget:
+                self._deselect_checkbuttons(child)
