@@ -43,7 +43,7 @@ class WaveformSelector:
         content = []
         if options:
             check_buttons = pn.widgets.CheckButtonGroup(
-                value=[],  # initially no selection
+                value=[],
                 options=options,
                 button_style="outline",
                 button_type="primary",
@@ -51,6 +51,28 @@ class WaveformSelector:
                 orientation="vertical",
                 stylesheets=["button {text-align: left!important;}"],
             )
+
+            # Select all button
+            select_all_button = pn.widgets.Button(
+                name="Select All", button_type="success", width=100
+            )
+
+            def select_all(event):
+                """Select all options in this CheckButtonGroup."""
+                check_buttons.value = options
+
+            select_all_button.on_click(select_all)
+
+            # Deselect all button
+            deselect_all_button = pn.widgets.Button(
+                name="Deselect All", button_type="danger", width=100
+            )
+
+            def deselect_all(event):
+                """Deselect all options in this CheckButtonGroup."""
+                check_buttons.value = []
+
+            deselect_all_button.on_click(deselect_all)
 
             def on_select(event):
                 new_selection = event.new
@@ -81,6 +103,9 @@ class WaveformSelector:
                 self.previous_selection[check_buttons] = new_selection
 
             check_buttons.param.watch(on_select, "value")
+
+            button_row = pn.Row(select_all_button, deselect_all_button)
+            content.append(button_row)
             content.append(check_buttons)
 
         if categories:
@@ -94,7 +119,8 @@ class WaveformSelector:
         return self.selector
 
     def deselect_all(self, exclude=None):
-        """Deselect all options in all CheckButtonGroup widgets, excluding certain items."""
+        """Deselect all options in all CheckButtonGroup widgets, excluding certain
+        items."""
         if exclude:
             self.selected_keys = [exclude]
         else:
@@ -112,4 +138,7 @@ class WaveformSelector:
                 widget.value = []
         else:
             for child in widget:
+                # Skip select/deselect buttons row
+                if isinstance(widget, pn.Row):
+                    continue
                 self._deselect_checkbuttons(child, exclude)

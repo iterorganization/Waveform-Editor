@@ -33,7 +33,7 @@ class WaveformPlotter(param.Parameterized):
 
         # TODO: The y axis should show the units of the plotted waveform
         line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
-            line_width=2, framewise=True
+            line_width=2, framewise=True, show_legend=True
         )
 
         if plot_time_points:
