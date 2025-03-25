@@ -25,7 +25,6 @@ waveform:
 """,
             width=600,
             height=1200,
-            theme="tomorrow",
             language="yaml",
         )
 

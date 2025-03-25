@@ -24,16 +24,17 @@ class WaveformEditorGui:
         waveform_selector = WaveformSelector(yaml_data, waveform_plotter)
 
         tabs = pn.Tabs(
-            pn.Column(waveform_plotter.get_dynamic_map(), name="View Waveforms"),
-            pn.Column(editor.get_layout(), name="Edit Waveforms"),
+            ("View Waveforms", waveform_plotter.get_dynamic_map()),
+            ("Edit Waveforms", editor.get_layout()),
             dynamic=True,
         )
 
         sidebar = pn.Column(
-            pn.pane.Markdown(f"## File: `{yaml_file}`\\*", margin=0),
+            pn.pane.Markdown(f"## File: `{yaml_file}`", margin=0),
             waveform_selector.get_selector(),
         )
-        self.template = pn.template.MaterialTemplate(
+
+        self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             sidebar=sidebar,
             main=tabs,
@@ -44,6 +45,6 @@ class WaveformEditorGui:
         return self.template.servable()
 
 
-# TODO: Add option to load yaml from GUI
+# Run the app
 yaml_file = "waveform_editor/test.yaml"
 WaveformEditorGui(yaml_file).serve()
