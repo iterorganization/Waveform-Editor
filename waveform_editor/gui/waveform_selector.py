@@ -52,9 +52,8 @@ class WaveformSelector:
                 stylesheets=["button {text-align: left!important;}"],
             )
 
-            # Select all button
-            select_all_button = pn.widgets.Button(
-                name="Select All", button_type="success", width=100
+            select_all_button = pn.widgets.ButtonIcon(
+                icon="select-all", size="30px", active_icon="check"
             )
 
             def select_all(event):
@@ -63,9 +62,8 @@ class WaveformSelector:
 
             select_all_button.on_click(select_all)
 
-            # Deselect all button
-            deselect_all_button = pn.widgets.Button(
-                name="Deselect All", button_type="danger", width=100
+            deselect_all_button = pn.widgets.ButtonIcon(
+                icon="deselect", size="30px", active_icon="check"
             )
 
             def deselect_all(event):
