@@ -31,7 +31,7 @@ class WaveformEditorGui:
         # template-sidebar-based-on-active-tab/1535/2
         self.sidebar_column = pn.Column(
             pn.Column(
-                pn.pane.Markdown("## Select YAML File", margin=0),
+                pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
                 self.file_input,
             )
         )

@@ -102,8 +102,39 @@ class WaveformSelector:
 
             check_buttons.param.watch(on_select, "value")
 
-            button_row = pn.Row(select_all_button, deselect_all_button)
+            plus_button = pn.widgets.ButtonIcon(
+                icon="plus", size="30px", active_icon="check"
+            )
+
+            # Widget for adding new waveforms
+            new_option_input = pn.widgets.TextInput(
+                placeholder="Enter name of new waveform"
+            )
+            new_option_button = pn.widgets.Button(
+                name="Add", sizing_mode="stretch_width"
+            )
+            add_option_panel = pn.Row(new_option_input, new_option_button)
+            add_option_panel.visible = False
+
+            def on_plus_button_click(event):
+                """Show the text input to add a new option."""
+                add_option_panel.visible = True
+
+            def add_new_option(event):
+                """Add the new option to CheckButtonGroup."""
+                new_option = new_option_input.value.strip()
+                if new_option and new_option not in check_buttons.options:
+                    check_buttons.options.append(new_option)
+                    add_option_panel.visible = False
+                    new_option_input.value = ""
+                    check_buttons.param.trigger("options")
+
+            plus_button.on_click(on_plus_button_click)
+            new_option_button.on_click(add_new_option)
+
+            button_row = pn.Row(select_all_button, deselect_all_button, plus_button)
             content.append(button_row)
+            content.append(add_option_panel)
             content.append(check_buttons)
 
         if categories:
