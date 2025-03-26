@@ -1,0 +1,10 @@
+# Global variables which apply to the entire YAML file
+globals:
+  DD_version: 3.42.0
+  # Assuming we use a single machine description for all IDSs
+  machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+
+# TODO: decide on 1-based ()-notation or 0-based []-notation, here 1-based is used
+ec_launchers:
+    beams:
+      phase_angles:
