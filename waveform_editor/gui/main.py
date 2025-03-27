@@ -1,3 +1,5 @@
+import io
+
 import holoviews as hv
 import panel as pn
 import yaml
@@ -11,19 +13,32 @@ from waveform_editor.gui.waveform_selector import WaveformSelector
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
 # back to plotly later, or improve performance with bokeh
 hv.extension("bokeh")
+pn.extension(notifications=True)
+pn.extension("codeeditor")
 
 
 class WaveformEditorGui:
     def __init__(self):
-        """Initialize the Waveform self.Editor Panel App"""
+        """Initialize the Waveform Editor Panel App"""
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
+        self.yaml_map = {}
+        self.yaml = {}
 
-        self.editor = WaveformEditor()
+        self.editor = WaveformEditor(self.yaml, self.yaml_map)
         self.waveform_plotter = WaveformPlotter()
         self.waveform_selector = WaveformSelector(
-            {}, self.waveform_plotter, self.editor
+            self.yaml, self.yaml_map, self.waveform_plotter, self.editor
         )
+
+        self.file_download = pn.widgets.FileDownload(
+            callback=self.save_yaml,
+            icon="download",
+            filename="output.yaml",
+            button_type="primary",
+            auto=True,
+        )
+        self.file_download.visible = False
 
         self.tabs = pn.Tabs(dynamic=True)
         self.template = pn.template.FastListTemplate(
@@ -34,6 +49,7 @@ class WaveformEditorGui:
         self.tabs.param.watch(self.on_tab_change, "active")
 
         self.sidebar_column = pn.Column(
+            self.file_download,
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
             self.file_input,
             self.waveform_selector.get_selector(),
@@ -51,21 +67,33 @@ class WaveformEditorGui:
 
     def load_yaml(self, event):
         """Load YAML data from uploaded file"""
+        self.file_download.visible = True
         yaml_content = event.new.decode("utf-8")
-        self.yaml_data = yaml.safe_load(yaml_content)
+        self.yaml = yaml.safe_load(yaml_content)
 
+        self.editor = WaveformEditor(self.yaml, self.yaml_map)
         self.tabs[:] = [
             ("View Waveforms", self.waveform_plotter.get_dynamic_map()),
             ("Edit Waveforms", self.editor.get_layout()),
         ]
-
         self.waveform_selector = WaveformSelector(
-            self.yaml_data, self.waveform_plotter, self.editor
+            self.yaml, self.yaml_map, self.waveform_plotter, self.editor
         )
-        self.sidebar_column[0] = pn.pane.Markdown(
-            f"## Succesfully loaded `{self.file_input.filename}`", margin=0
+        self.sidebar_column[1] = pn.pane.Markdown(
+            f"## Successfully loaded `{self.file_input.filename}`", margin=0
         )
-        self.sidebar_column[2] = self.waveform_selector.get_selector()
+        self.sidebar_column[3] = self.waveform_selector.get_selector()
+
+        if self.file_input.filename:
+            new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")
+            self.file_download.filename = new_filename
+
+    def save_yaml(self):
+        """Generate and return the YAML file as a BytesIO object"""
+        if hasattr(self, "yaml"):
+            yaml_str = yaml.dump(self.yaml, default_flow_style=False)
+            return io.BytesIO(yaml_str.encode("utf-8"))  # Return a file-like object
+        return None
 
     def serve(self):
         """Serve the Panel app"""

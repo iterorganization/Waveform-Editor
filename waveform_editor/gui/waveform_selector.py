@@ -5,7 +5,7 @@ import yaml
 class WaveformSelector:
     """Class to generate a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, yaml_data, waveform_plotter, waveform_editor):
+    def __init__(self, yaml_data, yaml_map, waveform_plotter, waveform_editor):
         """
         Initialize the waveform selector.
 
@@ -18,7 +18,7 @@ class WaveformSelector:
         self.waveform_editor = waveform_editor
         self.selected_dict = {}
         self.previous_selection = {}
-        self.yaml_map = {}
+        self.yaml_map = yaml_map
         self.yaml = yaml_data
         self.selector = self.create_waveform_selector(self.yaml, is_root=True)
         self.edit_waveforms_enabled = False
