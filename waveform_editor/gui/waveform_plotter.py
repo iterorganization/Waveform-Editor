@@ -8,11 +8,11 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformPlotter(param.Parameterized):
     """Class to handle dynamic waveform plotting."""
 
-    selected_keys = param.ListSelector(default=[], objects=[])
+    selected_waveforms = param.Dict(default={})
 
-    def __init__(self, yaml_data, **params):
+    def __init__(self, **params):
         super().__init__(**params)
-        self.yaml_data = yaml_data
+        self.yaml_parser = YamlParser()
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
@@ -46,9 +46,8 @@ class WaveformPlotter(param.Parameterized):
 
         return line
 
-    def update_plot(self, selected_keys, width=1200, height=600):
-        """Update plot when waveform keys are selected using YamlParser."""
-        yaml_parser = YamlParser()
+    def update_plot(self, selected_waveforms, width=1200, height=600):
+        """Update plot based on selected waveforms."""
         empty_overlay = hv.Overlay([hv.Curve([])]).opts(
             title="",
             show_legend=True,
@@ -56,49 +55,25 @@ class WaveformPlotter(param.Parameterized):
             height=height,
         )
 
-        if not selected_keys:
+        if not selected_waveforms:
             return empty_overlay
+
         curves = []
-
-        for key in selected_keys:
-            value = self.get_yaml_value(self.yaml_data, key)
-
-            if value is None:
-                continue
-
-            # TODO: Dont dump back to yaml
-            yaml_string = yaml.dump({key: value})
-
-            waveform = yaml_parser.parse_waveforms(yaml_string)
+        for key, value in selected_waveforms.items():
+            # TODO: Let yaml_parser accept dict instead of pure yaml
+            waveform = self.yaml_parser.parse_waveforms(yaml.dump({key: value}))
             plot = self.plot_tendencies(waveform, key)
-
             curves.append(plot)
 
-        # Combine all curve objects into a single overlay
         if curves:
-            combined_overlay = hv.Overlay(curves)
-            return combined_overlay.opts(
-                title="",
-                show_legend=True,
-                width=width,
-                height=height,
+            return hv.Overlay(curves).opts(
+                title="", show_legend=True, width=width, height=height
             )
 
         return empty_overlay
 
-    def get_yaml_value(self, yaml_dict, key):
-        if isinstance(yaml_dict, dict):
-            for k, v in yaml_dict.items():
-                if k == key:
-                    return v  # Found the exact key, return its value
-                elif isinstance(v, dict):  # Recursive search in nested dictionaries
-                    result = self.get_yaml_value(v, key)
-                    if result is not None:
-                        return result
-        return None
-
     def get_dynamic_map(self):
         return hv.DynamicMap(
             self.update_plot,
-            streams=[self.param.selected_keys],
+            streams=[self.param.selected_waveforms],
         )

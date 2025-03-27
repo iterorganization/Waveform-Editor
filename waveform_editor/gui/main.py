@@ -39,12 +39,12 @@ class WaveformEditorGui:
 
         # Change selection logic depending on which tab is selected
         def on_tab_change(event):
-            # Check if "Edit Waveforms" tab is selected (index 1)
+            # Check if "Edit Waveforms" tab is selected
             if event.new == 1:
                 self.waveform_selector.deselect_all()
-                self.waveform_selector.enable_deselect_logic(True)
+                self.waveform_selector.edit_waveforms_enabled = True
             else:
-                self.waveform_selector.enable_deselect_logic(False)
+                self.waveform_selector.edit_waveforms_enabled = False
 
         self.tabs.param.watch(on_tab_change, "active")
 
@@ -54,7 +54,7 @@ class WaveformEditorGui:
         self.yaml_data = yaml.safe_load(yaml_content)
 
         editor = WaveformEditor()
-        self.waveform_plotter = WaveformPlotter(self.yaml_data)
+        self.waveform_plotter = WaveformPlotter()
         self.waveform_selector = WaveformSelector(
             self.yaml_data, self.waveform_plotter, editor
         )

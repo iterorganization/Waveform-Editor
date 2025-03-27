@@ -65,7 +65,7 @@ class WaveformEditor:
             )
             self.error_alert.visible = True
 
-        waveform_plotter = WaveformPlotter(value)
+        waveform_plotter = WaveformPlotter()
 
         return waveform_plotter.plot_tendencies(waveform, "").opts(
             width=width, height=height

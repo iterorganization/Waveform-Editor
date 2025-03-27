@@ -16,15 +16,11 @@ class WaveformSelector:
         """
         self.waveform_plotter = waveform_plotter
         self.waveform_editor = waveform_editor
-        self.selected_keys = []
+        self.selected_dict = {}
         self.previous_selection = {}
         self.yaml_map = {}
         self.selector = self.create_waveform_selector(yaml_data, is_root=True)
-        self.deselect_logic_enabled = False  # Control flag for deselect behavior
-
-    def enable_deselect_logic(self, enable):
-        """Enable or disable the deselect logic based on the tab selection."""
-        self.deselect_logic_enabled = enable
+        self.edit_waveforms_enabled = False  # Control flag for deselect behavior
 
     def create_waveform_selector(self, data, is_root=False):
         """Recursively create a Panel UI structure from the YAML."""
@@ -76,26 +72,36 @@ class WaveformSelector:
 
         def on_select(event):
             new_selection = event.new
-            old_selection = self.previous_selection.get(check_buttons, [])
-            newly_selected = [key for key in new_selection if key not in old_selection]
-            if self.deselect_logic_enabled:
-                # Deselect all except for newly_selected
-                if newly_selected:
-                    newly_selected = newly_selected[0]
-                    self.deselect_all(exclude=newly_selected)
+            old_selection = self.previous_selection.get(check_buttons, {})
 
-                    value = self.yaml_map[newly_selected]
+            newly_selected = {
+                key: self.yaml_map[key]
+                for key in new_selection
+                if key not in old_selection
+            }
+
+            if self.edit_waveforms_enabled:
+                if newly_selected:
+                    newly_selected_key = list(newly_selected.keys())[0]
+                    self.deselect_all(exclude=newly_selected_key)
+
+                    # Update code editor with the selected value
+                    value = newly_selected[newly_selected_key]
                     if isinstance(value, (int, float)):
-                        yaml_dump = f"{newly_selected}: {value}"
+                        yaml_dump = f"{newly_selected_key}: {value}"
                     else:
-                        yaml_dump = f"{newly_selected}:\n{yaml.dump(value)}"
+                        yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
                     self.waveform_editor.code_editor.value = yaml_dump
             else:
                 deselected = [key for key in old_selection if key not in new_selection]
-                self.selected_keys = list(
-                    set(self.selected_keys + newly_selected) - set(deselected)
-                )
-                self.waveform_plotter.selected_keys = self.selected_keys
+                for key in deselected:
+                    self.selected_dict.pop(key, None)
+
+                for key, value in newly_selected.items():
+                    self.selected_dict[key] = value
+
+            self.waveform_plotter.selected_waveforms = self.selected_dict
+            self.waveform_plotter.param.trigger("selected_waveforms")
             self.previous_selection[check_buttons] = new_selection
 
         check_buttons.param.watch(on_select, "value")
@@ -159,14 +165,15 @@ class WaveformSelector:
         return self.selector
 
     def deselect_all(self, exclude=None):
-        """Deselect all options in all CheckButtonGroup widgets, excluding certain
-        items."""
+        """Deselect all options in all CheckButtonGroup widgets, excluding a certain
+        item."""
         if exclude:
-            self.selected_keys = [exclude]
+            self.selected_dict = {exclude: self.yaml_map[exclude]}
         else:
-            self.selected_keys = []
+            self.selected_dict = {}
+
         self._deselect_checkbuttons(self.selector, exclude)
-        self.waveform_plotter.selected_keys = self.selected_keys
+        self.waveform_plotter.selected_waveforms = self.selected_dict
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
