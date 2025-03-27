@@ -28,7 +28,7 @@ class WaveformSelector:
         options = []
 
         if data is None:
-            return
+            data = {}
 
         for key, value in data.items():
             if key == "globals":

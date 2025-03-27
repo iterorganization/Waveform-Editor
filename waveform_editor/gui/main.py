@@ -15,7 +15,7 @@ hv.extension("bokeh")
 
 class WaveformEditorGui:
     def __init__(self):
-        """Initialize the Waveform Editor Panel App"""
+        """Initialize the Waveform self.Editor Panel App"""
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
 
@@ -47,21 +47,21 @@ class WaveformEditorGui:
                 self.waveform_selector.edit_waveforms_enabled = False
 
         self.tabs.param.watch(on_tab_change, "active")
+        self.editor = WaveformEditor()
+        self.waveform_plotter = WaveformPlotter()
 
     def load_yaml(self, event):
         """Load YAML data from uploaded file"""
         yaml_content = event.new.decode("utf-8")
         self.yaml_data = yaml.safe_load(yaml_content)
 
-        editor = WaveformEditor()
-        self.waveform_plotter = WaveformPlotter()
         self.waveform_selector = WaveformSelector(
-            self.yaml_data, self.waveform_plotter, editor
+            self.yaml_data, self.waveform_plotter, self.editor
         )
 
         self.tabs[:] = [
             ("View Waveforms", self.waveform_plotter.get_dynamic_map()),
-            ("Edit Waveforms", editor.get_layout()),
+            ("Edit Waveforms", self.editor.get_layout()),
         ]
 
         self.sidebar_column[0] = pn.Column(
