@@ -19,24 +19,6 @@ class WaveformEditorGui:
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
 
-        self.tabs = pn.Tabs(dynamic=True)
-        self.template = pn.template.FastListTemplate(
-            title=f"Waveform Editor (v{waveform_editor.__version__})",
-            main=self.tabs,
-            sidebar_width=400,
-        )
-        # To update the sidebar we wrap it into a panel column object and update this.
-        # This trick is taken from:
-        # https://discourse.holoviz.org/t/callbacks-to-update-widgets-in-bootstrap-
-        # template-sidebar-based-on-active-tab/1535/2
-        self.sidebar_column = pn.Column(
-            pn.Column(
-                pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
-                self.file_input,
-            )
-        )
-        self.template.sidebar.append(self.sidebar_column)
-
         # Change selection logic depending on which tab is selected
         def on_tab_change(event):
             # Check if "Edit Waveforms" tab is selected
@@ -46,31 +28,44 @@ class WaveformEditorGui:
             else:
                 self.waveform_selector.edit_waveforms_enabled = False
 
-        self.tabs.param.watch(on_tab_change, "active")
         self.editor = WaveformEditor()
         self.waveform_plotter = WaveformPlotter()
+        self.waveform_selector = WaveformSelector(
+            {}, self.waveform_plotter, self.editor
+        )
+
+        self.tabs = pn.Tabs(dynamic=True)
+        self.template = pn.template.FastListTemplate(
+            title=f"Waveform Editor (v{waveform_editor.__version__})",
+            main=self.tabs,
+            sidebar_width=400,
+        )
+        self.tabs.param.watch(on_tab_change, "active")
+
+        self.sidebar_column = pn.Column(
+            pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
+            self.file_input,
+            self.waveform_selector.get_selector(),
+        )
+        self.template.sidebar.append(self.sidebar_column)
 
     def load_yaml(self, event):
         """Load YAML data from uploaded file"""
         yaml_content = event.new.decode("utf-8")
         self.yaml_data = yaml.safe_load(yaml_content)
 
-        self.waveform_selector = WaveformSelector(
-            self.yaml_data, self.waveform_plotter, self.editor
-        )
-
         self.tabs[:] = [
             ("View Waveforms", self.waveform_plotter.get_dynamic_map()),
             ("Edit Waveforms", self.editor.get_layout()),
         ]
 
-        self.sidebar_column[0] = pn.Column(
-            pn.pane.Markdown(
-                f"## Succesfully loaded `{self.file_input.filename}`", margin=0
-            ),
-            self.file_input,
-            self.waveform_selector.get_selector(),
+        self.waveform_selector = WaveformSelector(
+            self.yaml_data, self.waveform_plotter, self.editor
         )
+        self.sidebar_column[0] = pn.pane.Markdown(
+            f"## Succesfully loaded `{self.file_input.filename}`", margin=0
+        )
+        self.sidebar_column[2] = self.waveform_selector.get_selector()
 
     def serve(self):
         """Serve the Panel app"""
