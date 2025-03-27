@@ -11,3 +11,5 @@ ec_launchers:
         # Phase angles
         # this is shorthand notation for {type: constant, value: -1.65898}
         ec_launchers/beam(1)/phase/angle: -1.65898 
+        ec_launchers/beam(2)/phase/angle: -1.65898 
+        ec_launchers/beam(3)/phase/angle: -1.65898 

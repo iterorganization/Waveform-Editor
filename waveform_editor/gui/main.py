@@ -19,15 +19,6 @@ class WaveformEditorGui:
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
 
-        # Change selection logic depending on which tab is selected
-        def on_tab_change(event):
-            # Check if "Edit Waveforms" tab is selected
-            if event.new == 1:
-                self.waveform_selector.deselect_all()
-                self.waveform_selector.edit_waveforms_enabled = True
-            else:
-                self.waveform_selector.edit_waveforms_enabled = False
-
         self.editor = WaveformEditor()
         self.waveform_plotter = WaveformPlotter()
         self.waveform_selector = WaveformSelector(
@@ -40,7 +31,7 @@ class WaveformEditorGui:
             main=self.tabs,
             sidebar_width=400,
         )
-        self.tabs.param.watch(on_tab_change, "active")
+        self.tabs.param.watch(self.on_tab_change, "active")
 
         self.sidebar_column = pn.Column(
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
@@ -48,6 +39,15 @@ class WaveformEditorGui:
             self.waveform_selector.get_selector(),
         )
         self.template.sidebar.append(self.sidebar_column)
+
+    # Change selection logic depending on which tab is selected
+    def on_tab_change(self, event):
+        # Check if "Edit Waveforms" tab is selected
+        if event.new == 1:
+            self.waveform_selector.deselect_all()
+            self.waveform_selector.edit_waveforms_enabled = True
+        else:
+            self.waveform_selector.edit_waveforms_enabled = False
 
     def load_yaml(self, event):
         """Load YAML data from uploaded file"""

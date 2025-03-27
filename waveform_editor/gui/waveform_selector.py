@@ -19,13 +19,17 @@ class WaveformSelector:
         self.selected_dict = {}
         self.previous_selection = {}
         self.yaml_map = {}
-        self.selector = self.create_waveform_selector(yaml_data, is_root=True)
-        self.edit_waveforms_enabled = False  # Control flag for deselect behavior
+        self.yaml = yaml_data
+        self.selector = self.create_waveform_selector(self.yaml, is_root=True)
+        self.edit_waveforms_enabled = False
 
-    def create_waveform_selector(self, data, is_root=False):
+    def create_waveform_selector(self, data, is_root=False, path=None):
         """Recursively create a Panel UI structure from the YAML."""
-        categories = []
-        options = []
+        if path is None:
+            path = []
+
+        groups = []
+        waveforms = []
 
         if data is None:
             data = {}
@@ -34,15 +38,19 @@ class WaveformSelector:
             if key == "globals":
                 continue
             elif "/" in key:
-                options.append(key)
+                waveforms.append(key)
                 self.yaml_map[key] = value
             else:
-                categories.append((key, self.create_waveform_selector(value)))
+                # Track path in yaml groups
+                new_path = path + [key]
+                groups.append(
+                    (key, self.create_waveform_selector(value, path=new_path))
+                )
 
         content = []
         check_buttons = pn.widgets.CheckButtonGroup(
             value=[],
-            options=options,
+            options=waveforms,
             button_style="outline",
             button_type="primary",
             sizing_mode="stretch_width",
@@ -56,7 +64,7 @@ class WaveformSelector:
 
         def select_all(event):
             """Select all options in this CheckButtonGroup."""
-            check_buttons.value = options
+            check_buttons.value = waveforms
 
         select_all_button.on_click(select_all)
 
@@ -119,32 +127,35 @@ class WaveformSelector:
         new_waveform_panel = pn.Row(new_waveform_input, add_new_waveform_button)
         new_waveform_panel.visible = False
 
-        def on_add_waveform_button_click(event):
+        def on_add_waveform_button_click(event, path):
             """Show the text input to add a new option."""
+            self.selected_category_path = path
             new_waveform_panel.visible = True
 
         def add_new_waveform(event):
-            """Add the new option to CheckButtonGroup."""
+            """Add the new option to CheckButtonGroup and update the YAML."""
             new_waveform = new_waveform_input.value.strip()
             if new_waveform and new_waveform not in check_buttons.options:
                 check_buttons.options.append(new_waveform)
+
+                if self.selected_category_path:
+                    self.add_waveform_to_yaml(self.selected_category_path, new_waveform)
+
                 new_waveform_panel.visible = False
                 new_waveform_input.value = ""
                 check_buttons.param.trigger("options")
                 select_all_button.visible = True
                 deselect_all_button.visible = True
 
-        new_waveform_button.on_click(on_add_waveform_button_click)
+        new_waveform_button.on_click(
+            lambda event, path=path: on_add_waveform_button_click(event, path)
+        )
         add_new_waveform_button.on_click(add_new_waveform)
 
         # Add buttons
-        button_row = pn.Row(
-            new_waveform_button,
-            select_all_button,
-            deselect_all_button,
-        )
+        button_row = pn.Row(new_waveform_button, select_all_button, deselect_all_button)
 
-        if not options:
+        if not waveforms:
             select_all_button.visible = False
             deselect_all_button.visible = False
         if is_root:
@@ -154,8 +165,8 @@ class WaveformSelector:
         content.append(new_waveform_panel)
         content.append(check_buttons)
 
-        if categories:
-            accordion = pn.Accordion(*categories)
+        if groups:
+            accordion = pn.Accordion(*groups)
             content.append(accordion)
 
         return pn.Column(*content, sizing_mode="stretch_width")
@@ -163,6 +174,15 @@ class WaveformSelector:
     def get_selector(self):
         """Returns the waveform selector UI component."""
         return self.selector
+
+    def add_waveform_to_yaml(self, category_path, new_waveform):
+        """Navigate YAML tree and insert new waveform correctly."""
+        current = self.yaml
+        for key in category_path:
+            current = current.setdefault(key, {})
+
+        current[new_waveform] = {}
+        self.yaml_map[new_waveform] = [{}]
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain
