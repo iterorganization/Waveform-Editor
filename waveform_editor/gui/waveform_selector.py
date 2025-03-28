@@ -58,8 +58,12 @@ class WaveformSelector:
             stylesheets=["button {text-align: left!important;}"],
         )
 
+        # Select all Button
         select_all_button = pn.widgets.ButtonIcon(
-            icon="select-all", size="30px", active_icon="check"
+            icon="select-all",
+            size="30px",
+            active_icon="check",
+            description="Select all waveforms in this group",
         )
 
         def select_all(event):
@@ -68,8 +72,12 @@ class WaveformSelector:
 
         select_all_button.on_click(select_all)
 
+        # Deselect all Button
         deselect_all_button = pn.widgets.ButtonIcon(
-            icon="deselect", size="30px", active_icon="check"
+            icon="deselect",
+            size="30px",
+            active_icon="check",
+            description="Deselect all waveforms in this group",
         )
 
         def deselect_all(event):
@@ -78,45 +86,12 @@ class WaveformSelector:
 
         deselect_all_button.on_click(deselect_all)
 
-        def on_select(event):
-            new_selection = event.new
-            old_selection = self.previous_selection.get(check_buttons, {})
-
-            newly_selected = {
-                key: self.yaml_map[key]
-                for key in new_selection
-                if key not in old_selection
-            }
-
-            if self.edit_waveforms_enabled:
-                if newly_selected:
-                    newly_selected_key = list(newly_selected.keys())[0]
-                    self.deselect_all(exclude=newly_selected_key)
-
-                    # Update code editor with the selected value
-                    value = newly_selected[newly_selected_key]
-                    if isinstance(value, (int, float)):
-                        yaml_dump = f"{newly_selected_key}: {value}"
-                    else:
-                        yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
-                    self.waveform_editor.code_editor.value = yaml_dump
-            else:
-                deselected = [key for key in old_selection if key not in new_selection]
-                for key in deselected:
-                    self.selected_dict.pop(key, None)
-
-                for key, value in newly_selected.items():
-                    self.selected_dict[key] = value
-
-            self.waveform_plotter.selected_waveforms = self.selected_dict
-            self.waveform_plotter.param.trigger("selected_waveforms")
-            self.previous_selection[check_buttons] = new_selection
-
-        check_buttons.param.watch(on_select, "value")
-
-        # Widget for adding new waveforms
+        # Add new waveform button
         new_waveform_button = pn.widgets.ButtonIcon(
-            icon="plus", size="30px", active_icon="check"
+            icon="plus",
+            size="30px",
+            active_icon="check",
+            description="Add new waveform",
         )
         new_waveform_input = pn.widgets.TextInput(
             placeholder="Enter name of new waveform"
@@ -158,9 +133,12 @@ class WaveformSelector:
         )
         add_new_waveform_button.on_click(add_new_waveform)
 
-        # Widget for adding new groups
+        # Add new group button
         new_group_button = pn.widgets.ButtonIcon(
-            icon="library-plus", size="30px", active_icon="check"
+            icon="library-plus",
+            size="30px",
+            active_icon="check",
+            description="Add new group",
         )
         new_group_input = pn.widgets.TextInput(placeholder="Enter name of new group")
         add_new_group_button = pn.widgets.Button(
@@ -214,7 +192,44 @@ class WaveformSelector:
         )
         add_new_group_button.on_click(add_new_group)
 
-        # Add buttons
+        # Selecting a waveform
+        def on_select(event):
+            new_selection = event.new
+            old_selection = self.previous_selection.get(check_buttons, {})
+
+            newly_selected = {
+                key: self.yaml_map[key]
+                for key in new_selection
+                if key not in old_selection
+            }
+
+            if self.edit_waveforms_enabled:
+                if newly_selected:
+                    newly_selected_key = list(newly_selected.keys())[0]
+                    self.deselect_all(exclude=newly_selected_key)
+
+                    # Update code editor with the selected value
+                    value = newly_selected[newly_selected_key]
+                    if isinstance(value, (int, float)):
+                        yaml_dump = f"{newly_selected_key}: {value}"
+                    else:
+                        yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
+                    self.waveform_editor.code_editor.value = yaml_dump
+            else:
+                deselected = [key for key in old_selection if key not in new_selection]
+                for key in deselected:
+                    self.selected_dict.pop(key, None)
+
+                for key, value in newly_selected.items():
+                    self.selected_dict[key] = value
+
+            self.waveform_plotter.selected_waveforms = self.selected_dict
+            self.waveform_plotter.param.trigger("selected_waveforms")
+            self.previous_selection[check_buttons] = new_selection
+
+        check_buttons.param.watch(on_select, "value")
+
+        # Add row of option buttons
         button_row = pn.Row(
             new_waveform_button,
             new_group_button,
