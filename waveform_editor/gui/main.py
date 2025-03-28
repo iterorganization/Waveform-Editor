@@ -7,7 +7,7 @@ import yaml
 import waveform_editor
 from waveform_editor.gui.waveform_editor_widget import WaveformEditor
 from waveform_editor.gui.waveform_plotter import WaveformPlotter
-from waveform_editor.gui.waveform_selector import WaveformSelector
+from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
@@ -59,8 +59,8 @@ class WaveformEditorGui:
     # Change selection logic depending on which tab is selected
     def on_tab_change(self, event):
         # Check if "Edit Waveforms" tab is selected
+        self.waveform_selector.deselect_all()
         if event.new == 1:
-            self.waveform_selector.deselect_all()
             self.waveform_selector.edit_waveforms_enabled = True
         else:
             self.waveform_selector.edit_waveforms_enabled = False
