@@ -14,8 +14,8 @@ class WaveformSelector:
         self.previous_selection = {}
         self.yaml_map = yaml_map
         self.yaml = yaml
-        self.selector = self.create_waveform_selector(self.yaml, is_root=True)
         self.edit_waveforms_enabled = False
+        self.selector = self.create_waveform_selector(self.yaml, is_root=True)
 
     def create_waveform_selector(self, data, is_root=False, path=None):
         """Recursively create a Panel UI structure from the YAML."""
@@ -89,6 +89,7 @@ class WaveformSelector:
 
         check_buttons.param.watch(on_select, "value")
 
+        # Create options row for each group
         button_row = OptionsButtonRow(
             self,
             self.yaml,
@@ -107,10 +108,7 @@ class WaveformSelector:
         parent_container = pn.Column(*content, sizing_mode="stretch_width")
         button_row.parent_ui = parent_container
 
-        # Set visibility
-        if not waveforms:
-            button_row.select_all_button.visible = False
-            button_row.deselect_all_button.visible = False
+        # Set visibility of button row
         if is_root:
             if self.yaml != {}:
                 button_row.new_group_button.visible = True
