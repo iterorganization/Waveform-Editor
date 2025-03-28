@@ -2,6 +2,45 @@ import panel as pn
 import yaml
 
 
+class NameInputPanel:
+    def __init__(self, text, is_visible=True):
+        self.input = pn.widgets.TextInput(placeholder=text.strip())
+        self.button = pn.widgets.ButtonIcon(
+            icon="square-rounded-plus",
+            size="30px",
+            active_icon="square-rounded-plus-filled",
+            description="Accept",
+            margin=(10, 0, 0, 0),
+        )
+        self.cancel_button = pn.widgets.ButtonIcon(
+            icon="circle-x",
+            size="30px",
+            active_icon="circle-x-filled",
+            description="Cancel",
+            margin=(10, 0, 0, 0),
+        )
+        self.panel = pn.Row(
+            self.input,
+            self.button,
+            self.cancel_button,
+            visible=is_visible,
+        )
+        self.cancel_button.on_click(self._on_select_cancel)
+
+    def is_visible(self, is_visible):
+        self.panel.visible = is_visible
+
+    def clear_input(self):
+        self.input.value = ""
+
+    def get(self):
+        return self.panel
+
+    def _on_select_cancel(self, event):
+        self.panel.visible = False
+        self.clear_input()
+
+
 class WaveformSelector:
     """Class to generate a dynamic waveform selection UI from YAML data."""
 
@@ -85,50 +124,43 @@ class WaveformSelector:
             active_icon="check",
             description="Add new waveform",
         )
-        new_waveform_input = pn.widgets.TextInput(
-            placeholder="Enter name of new waveform"
-        )
-        add_new_waveform_button = pn.widgets.Button(
-            name="Add", sizing_mode="stretch_width"
-        )
-        new_waveform_panel = pn.Row(
-            new_waveform_input, add_new_waveform_button, visible=False
+
+        new_waveform_panel = NameInputPanel(
+            "Enter name of new waveform", is_visible=False
         )
 
         def on_add_waveform_button_click(event, path):
             """Show the text input to add a new option."""
             self.selected_category_path = path
-            new_waveform_panel.visible = True
+            new_waveform_panel.is_visible(True)
 
         def add_new_waveform(event):
             """Add the new option to CheckButtonGroup and update the YAML."""
-            new_waveform = new_waveform_input.value.strip()
-            if new_waveform in self.yaml_map:
-                pn.state.notifications.error(
-                    f"Waveform {new_waveform!r} already exists!"
-                )
+            name = new_waveform_panel.input.value
+            if name in self.yaml_map:
+                pn.state.notifications.error(f"Waveform {name!r} already exists!")
                 return
             # TODO: Perhaps we should allow this, and distinguish between groups and
             # waveforms in another way
-            if "/" not in new_waveform:
+            if "/" not in name:
                 pn.state.notifications.error("A waveform should contain '/'.")
                 return
-            if new_waveform and new_waveform not in check_buttons.options:
-                check_buttons.options.append(new_waveform)
+            if name and name not in check_buttons.options:
+                check_buttons.options.append(name)
 
                 if self.selected_category_path:
-                    self.add_entry_to_yaml(self.selected_category_path, new_waveform)
+                    self.add_entry_to_yaml(self.selected_category_path, name)
 
-                new_waveform_panel.visible = False
-                new_waveform_input.value = ""
+                new_waveform_panel.is_visible(False)
                 check_buttons.param.trigger("options")
                 select_all_button.visible = True
                 deselect_all_button.visible = True
+                new_waveform_panel.clear_input()
 
         new_waveform_button.on_click(
             lambda event, path=path: on_add_waveform_button_click(event, path)
         )
-        add_new_waveform_button.on_click(add_new_waveform)
+        new_waveform_panel.button.on_click(add_new_waveform)
 
         # Add new group button
         new_group_button = pn.widgets.ButtonIcon(
@@ -137,21 +169,18 @@ class WaveformSelector:
             active_icon="check",
             description="Add new group",
         )
-        new_group_input = pn.widgets.TextInput(placeholder="Enter name of new group")
-        add_new_group_button = pn.widgets.Button(
-            name="Add", sizing_mode="stretch_width"
-        )
-        new_group_panel = pn.Row(new_group_input, add_new_group_button, visible=False)
+
+        new_group_panel = NameInputPanel("Enter name of new group", is_visible=False)
 
         def on_add_group_button_click(event, path):
             """Show the text input to add a new option."""
             self.selected_category_path = path
-            new_group_panel.visible = True
+            new_group_panel.is_visible(True)
 
         def add_new_group(event):
             """Add the new group to the correct place in the UI and YAML."""
-            new_group = new_group_input.value.strip()
-            if "/" in new_group:
+            name = new_group_panel.input.value
+            if "/" in name:
                 pn.state.notifications.error("Groups may not contain '/'.")
                 return
             parent_ui = self.find_ui_container(
@@ -169,30 +198,30 @@ class WaveformSelector:
                     existing_accordion = obj
                     break
 
-            new_path = self.selected_category_path + [new_group]
+            new_path = self.selected_category_path + [name]
             new_group_content = self.create_waveform_selector({}, path=new_path)
             if existing_accordion:
-                if new_group in existing_accordion._names:
+                if name in existing_accordion._names:
                     pn.state.notifications.error(
-                        f"A group named '{new_group}' already exists."
+                        f"A group named '{name}' already exists."
                     )
                     return
 
-                existing_accordion.append((new_group, new_group_content))
+                existing_accordion.append((name, new_group_content))
             else:
-                new_accordion = pn.Accordion((new_group, new_group_content))
+                new_accordion = pn.Accordion((name, new_group_content))
                 parent_ui.append(new_accordion)
 
             if self.selected_category_path:
-                self.add_entry_to_yaml(self.selected_category_path, new_group)
+                self.add_entry_to_yaml(self.selected_category_path, name)
 
-            new_group_panel.visible = False
-            new_group_input.value = ""
+            new_group_panel.is_visible(False)
+            new_group_panel.clear_input()
 
         new_group_button.on_click(
             lambda event, path=path: on_add_group_button_click(event, path)
         )
-        add_new_group_button.on_click(add_new_group)
+        new_group_panel.button.on_click(add_new_group)
 
         # Selecting a waveform
         def on_select(event):
@@ -240,8 +269,8 @@ class WaveformSelector:
         )
 
         content.append(button_row)
-        content.append(new_waveform_panel)
-        content.append(new_group_panel)
+        content.append(new_waveform_panel.get())
+        content.append(new_group_panel.get())
         content.append(check_buttons)
 
         if groups:
