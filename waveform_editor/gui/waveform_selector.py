@@ -103,7 +103,11 @@ class WaveformSelector:
         def add_new_waveform(event):
             """Add the new option to CheckButtonGroup and update the YAML."""
             new_waveform = new_waveform_input.value.strip()
-
+            if new_waveform in self.yaml_map:
+                pn.state.notifications.error(
+                    f"Waveform {new_waveform!r} already exists!"
+                )
+                return
             # TODO: Perhaps we should allow this, and distinguish between groups and
             # waveforms in another way
             if "/" not in new_waveform:
@@ -168,6 +172,12 @@ class WaveformSelector:
             new_path = self.selected_category_path + [new_group]
             new_group_content = self.create_waveform_selector({}, path=new_path)
             if existing_accordion:
+                if new_group in existing_accordion._names:
+                    pn.state.notifications.error(
+                        f"A group named '{new_group}' already exists."
+                    )
+                    return
+
                 existing_accordion.append((new_group, new_group_content))
             else:
                 new_accordion = pn.Accordion((new_group, new_group_content))
