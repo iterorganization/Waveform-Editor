@@ -135,11 +135,17 @@ class WaveformSelector:
         def add_new_waveform(event):
             """Add the new option to CheckButtonGroup and update the YAML."""
             new_waveform = new_waveform_input.value.strip()
+
+            # TODO: Perhaps we should allow this, and distinguish between groups and
+            # waveforms in another way
+            if "/" not in new_waveform:
+                pn.state.notifications.error("A waveform should contain '/'.")
+                return
             if new_waveform and new_waveform not in check_buttons.options:
                 check_buttons.options.append(new_waveform)
 
                 if self.selected_category_path:
-                    self.add_waveform_to_yaml(self.selected_category_path, new_waveform)
+                    self.add_entry_to_yaml(self.selected_category_path, new_waveform)
 
                 new_waveform_panel.visible = False
                 new_waveform_input.value = ""
@@ -152,17 +158,80 @@ class WaveformSelector:
         )
         add_new_waveform_button.on_click(add_new_waveform)
 
+        # Widget for adding new groups
+        new_group_button = pn.widgets.ButtonIcon(
+            icon="library-plus", size="30px", active_icon="check"
+        )
+        new_group_input = pn.widgets.TextInput(placeholder="Enter name of new group")
+        add_new_group_button = pn.widgets.Button(
+            name="Add", sizing_mode="stretch_width"
+        )
+        new_group_panel = pn.Row(new_group_input, add_new_group_button)
+        new_group_panel.visible = False
+
+        def on_add_group_button_click(event, path):
+            """Show the text input to add a new option."""
+            self.selected_category_path = path
+            new_group_panel.visible = True
+
+        def add_new_group(event):
+            """Add the new group to the correct place in the UI and YAML."""
+            new_group = new_group_input.value.strip()
+            if "/" in new_group:
+                pn.state.notifications.error("Groups may not contain '/'.")
+                return
+            parent_ui = self.find_ui_container(
+                self.selector, self.selected_category_path
+            )
+            if parent_ui is None:
+                pn.state.notifications.error(
+                    "Could not find the parent UI element to create the new group in."
+                )
+                return
+
+            existing_accordion = None
+            for obj in parent_ui.objects:
+                if isinstance(obj, pn.Accordion):
+                    existing_accordion = obj
+                    break
+
+            new_path = self.selected_category_path + [new_group]
+            new_group_content = self.create_waveform_selector({}, path=new_path)
+            if existing_accordion:
+                existing_accordion.append((new_group, new_group_content))
+            else:
+                new_accordion = pn.Accordion((new_group, new_group_content))
+                parent_ui.append(new_accordion)
+
+            if self.selected_category_path:
+                self.add_entry_to_yaml(self.selected_category_path, new_group)
+
+            new_group_panel.visible = False
+            new_group_input.value = ""
+
+        new_group_button.on_click(
+            lambda event, path=path: on_add_group_button_click(event, path)
+        )
+        add_new_group_button.on_click(add_new_group)
+
         # Add buttons
-        button_row = pn.Row(new_waveform_button, select_all_button, deselect_all_button)
+        button_row = pn.Row(
+            new_waveform_button,
+            new_group_button,
+            select_all_button,
+            deselect_all_button,
+        )
 
         if not waveforms:
             select_all_button.visible = False
             deselect_all_button.visible = False
         if is_root:
             new_waveform_button.visible = False
+            new_group_button.visible = False
 
         content.append(button_row)
         content.append(new_waveform_panel)
+        content.append(new_group_panel)
         content.append(check_buttons)
 
         if groups:
@@ -175,14 +244,49 @@ class WaveformSelector:
         """Returns the waveform selector UI component."""
         return self.selector
 
-    def add_waveform_to_yaml(self, category_path, new_waveform):
+    def add_entry_to_yaml(self, category_path, new_entry):
         """Navigate YAML tree and insert new waveform correctly."""
         current = self.yaml
         for key in category_path:
             current = current.setdefault(key, {})
 
-        current[new_waveform] = {}
-        self.yaml_map[new_waveform] = [{}]
+        if "/" in new_entry:
+            current[new_entry] = [{}]
+            self.yaml_map[new_entry] = [{}]
+        else:
+            current[new_entry] = {}
+
+    def find_ui_container(self, widget, category_path):
+        """
+        Recursively search for the correct UI container based on the category path.
+
+        Args:
+            widget: The current widget to search in.
+            category_path: List of category keys representing the path.
+
+        Returns:
+            The found UI container where new groups should be added.
+        """
+        if not category_path:
+            return widget
+
+        current_category = category_path[0]
+
+        if isinstance(widget, pn.Accordion):
+            for idx, section in enumerate(widget.objects):
+                section_title = widget._names[idx]
+
+                if section_title == current_category and isinstance(section, pn.Column):
+                    return self.find_ui_container(section, category_path[1:])
+
+        if isinstance(widget, pn.Column):
+            for child in widget.objects:
+                if isinstance(child, (pn.Accordion, pn.Column)):
+                    result = self.find_ui_container(child, category_path)
+                    if result:
+                        return result
+
+        return None
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain
