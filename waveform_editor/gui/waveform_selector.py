@@ -5,21 +5,13 @@ import yaml
 class WaveformSelector:
     """Class to generate a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, yaml_data, yaml_map, waveform_plotter, waveform_editor):
-        """
-        Initialize the waveform selector.
-
-        Args:
-            yaml_data (dict): Parsed YAML data.
-            waveform_plotter: Reference to the waveform plotter instance for selection
-                updates.
-        """
+    def __init__(self, yaml, yaml_map, waveform_plotter, waveform_editor):
         self.waveform_plotter = waveform_plotter
         self.waveform_editor = waveform_editor
         self.selected_dict = {}
         self.previous_selection = {}
         self.yaml_map = yaml_map
-        self.yaml = yaml_data
+        self.yaml = yaml
         self.selector = self.create_waveform_selector(self.yaml, is_root=True)
         self.edit_waveforms_enabled = False
 
@@ -99,8 +91,9 @@ class WaveformSelector:
         add_new_waveform_button = pn.widgets.Button(
             name="Add", sizing_mode="stretch_width"
         )
-        new_waveform_panel = pn.Row(new_waveform_input, add_new_waveform_button)
-        new_waveform_panel.visible = False
+        new_waveform_panel = pn.Row(
+            new_waveform_input, add_new_waveform_button, visible=False
+        )
 
         def on_add_waveform_button_click(event, path):
             """Show the text input to add a new option."""
@@ -144,8 +137,7 @@ class WaveformSelector:
         add_new_group_button = pn.widgets.Button(
             name="Add", sizing_mode="stretch_width"
         )
-        new_group_panel = pn.Row(new_group_input, add_new_group_button)
-        new_group_panel.visible = False
+        new_group_panel = pn.Row(new_group_input, add_new_group_button, visible=False)
 
         def on_add_group_button_click(event, path):
             """Show the text input to add a new option."""
@@ -237,13 +229,6 @@ class WaveformSelector:
             deselect_all_button,
         )
 
-        if not waveforms:
-            select_all_button.visible = False
-            deselect_all_button.visible = False
-        if is_root:
-            new_waveform_button.visible = False
-            new_group_button.visible = False
-
         content.append(button_row)
         content.append(new_waveform_panel)
         content.append(new_group_panel)
@@ -253,6 +238,16 @@ class WaveformSelector:
             accordion = pn.Accordion(*groups)
             content.append(accordion)
 
+        # Set visibility
+        if not waveforms:
+            select_all_button.visible = False
+            deselect_all_button.visible = False
+        if is_root:
+            if self.yaml != {}:
+                new_group_button.visible = True
+            else:
+                new_group_button.visible = False
+            new_waveform_button.visible = False
         return pn.Column(*content, sizing_mode="stretch_width")
 
     def get_selector(self):
