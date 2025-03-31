@@ -157,8 +157,8 @@ class OptionsButtonRow:
             is_waveform: Boolean representing whether to add a group or a waveform.
         """
         current = self.selector.yaml
-        for key in self.path:
-            current = current[key]
+        for path in self.path:
+            current = current.setdefault(path, {})
 
         if is_waveform:
             self.selector.yaml_map[key] = value
