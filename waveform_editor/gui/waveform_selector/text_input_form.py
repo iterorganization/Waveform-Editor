@@ -2,6 +2,9 @@ import panel as pn
 
 
 class TextInputForm:
+    """Panel containing a text input field, and a button to accept or cancel the
+    current input."""
+
     def __init__(self, text, is_visible=True):
         self.input = pn.widgets.TextInput(placeholder=text.strip())
         self.button = pn.widgets.ButtonIcon(

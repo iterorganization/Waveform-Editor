@@ -5,7 +5,7 @@ from waveform_editor.gui.waveform_selector.options_button_row import OptionsButt
 
 
 class WaveformSelector:
-    """Class to generate a dynamic waveform selection UI from YAML data."""
+    """Panel containing a dynamic waveform selection UI from YAML data."""
 
     def __init__(self, yaml, yaml_map, waveform_plotter, waveform_editor):
         self.waveform_plotter = waveform_plotter
@@ -18,7 +18,13 @@ class WaveformSelector:
         self.selector = self.create_waveform_selector(self.yaml, is_root=True)
 
     def create_waveform_selector(self, data, is_root=False, path=None):
-        """Recursively create a Panel UI structure from the YAML."""
+        """Recursively create a Panel UI structure from the YAML.
+
+        Args:
+            data: Dictionary containing the yaml data.
+            is_root: Whether function is called from the root level of the YAML.
+            path: The path of the nested groups in the YAML data, as a list of strings.
+        """
         if path is None:
             path = []
 
@@ -29,6 +35,8 @@ class WaveformSelector:
             data = {}
 
         for key, value in data.items():
+            # TODO: Currently groups and waveforms are distinguished by them containing
+            # a slash in the name or not. Perhaps a more general approach is necessary
             if key == "globals":
                 continue
             elif "/" in key:
@@ -51,45 +59,11 @@ class WaveformSelector:
             orientation="vertical",
             stylesheets=["button {text-align: left!important;}"],
         )
+        check_buttons.param.watch(
+            lambda event: self.on_select(event, check_buttons), "value"
+        )
 
-        # Selecting a waveform
-        def on_select(event):
-            new_selection = event.new
-            old_selection = self.previous_selection.get(check_buttons, {})
-
-            newly_selected = {
-                key: self.yaml_map[key]
-                for key in new_selection
-                if key not in old_selection
-            }
-
-            if self.edit_waveforms_enabled:
-                if newly_selected:
-                    newly_selected_key = list(newly_selected.keys())[0]
-                    self.deselect_all(exclude=newly_selected_key)
-
-                    # Update code editor with the selected value
-                    value = newly_selected[newly_selected_key]
-                    if isinstance(value, (int, float)):
-                        yaml_dump = f"{newly_selected_key}: {value}"
-                    else:
-                        yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
-                    self.waveform_editor.code_editor.value = yaml_dump
-            else:
-                deselected = [key for key in old_selection if key not in new_selection]
-                for key in deselected:
-                    self.selected_dict.pop(key, None)
-
-                for key, value in newly_selected.items():
-                    self.selected_dict[key] = value
-
-            self.waveform_plotter.selected_waveforms = self.selected_dict
-            self.waveform_plotter.param.trigger("selected_waveforms")
-            self.previous_selection[check_buttons] = new_selection
-
-        check_buttons.param.watch(on_select, "value")
-
-        # Create options row for each group
+        # Create row of options for each group
         button_row = OptionsButtonRow(self, check_buttons, waveforms, path)
         content.append(button_row.get())
         content.append(check_buttons)
@@ -109,6 +83,46 @@ class WaveformSelector:
                 button_row.new_group_button.visible = False
             button_row.new_waveform_button.visible = False
         return parent_container
+
+    def on_select(self, event, check_buttons):
+        """Handles the selection and deselection of waveforms in the check button
+        group."""
+        new_selection = event.new
+        old_selection = self.previous_selection.get(check_buttons, {})
+
+        newly_selected = {
+            key: self.yaml_map[key] for key in new_selection if key not in old_selection
+        }
+
+        if self.edit_waveforms_enabled:
+            self.select_in_editor(newly_selected)
+        else:
+            self.select_in_viewer(newly_selected, new_selection, old_selection)
+
+        self.waveform_plotter.selected_waveforms = self.selected_dict
+        self.waveform_plotter.param.trigger("selected_waveforms")
+        self.previous_selection[check_buttons] = new_selection
+
+    def select_in_editor(self, newly_selected):
+        if newly_selected:
+            newly_selected_key = list(newly_selected.keys())[0]
+            self.deselect_all(exclude=newly_selected_key)
+
+            # Update code editor with the selected value
+            value = newly_selected[newly_selected_key]
+            if isinstance(value, (int, float)):
+                yaml_dump = f"{newly_selected_key}: {value}"
+            else:
+                yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
+            self.waveform_editor.code_editor.value = yaml_dump
+
+    def select_in_viewer(self, newly_selected, new_selection, old_selection):
+        deselected = [key for key in old_selection if key not in new_selection]
+        for key in deselected:
+            self.selected_dict.pop(key, None)
+
+        for key, value in newly_selected.items():
+            self.selected_dict[key] = value
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain

@@ -19,7 +19,7 @@ class WaveformPlotter(param.Parameterized):
         Plot the tendencies of a waveform and return a holoviews curve.
 
         Args:
-            plot_time_points (bool): Whether to include markers for the data points.
+            plot_time_points: Whether to include markers for the data points.
 
         Returns:
             A Holoviews Curve object.
@@ -66,7 +66,7 @@ class WaveformPlotter(param.Parameterized):
 
         curves = []
         for key, value in selected_waveforms.items():
-            # TODO: Let yaml_parser accept dict instead of yaml string
+            # TODO: Let yaml_parser accept dict instead of yaml string?
             waveform = self.yaml_parser.parse_waveforms(yaml.dump({key: value}))
             plot = self.plot_tendencies(waveform, key)
             curves.append(plot)
