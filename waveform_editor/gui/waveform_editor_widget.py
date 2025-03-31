@@ -120,6 +120,6 @@ class WaveformEditor:
                             return True
         return False
 
-    def get_layout(self):
+    def get(self):
         """Return the Panel layout for integration into the main GUI."""
         return self.layout

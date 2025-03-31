@@ -110,10 +110,6 @@ class WaveformSelector:
             button_row.new_waveform_button.visible = False
         return parent_container
 
-    def get_selector(self):
-        """Returns the waveform selector UI component."""
-        return self.selector
-
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain
         item."""
@@ -139,3 +135,7 @@ class WaveformSelector:
                 if isinstance(widget, pn.Row):
                     continue
                 self._deselect_checkbuttons(child, exclude)
+
+    def get(self):
+        """Returns the waveform selector UI component."""
+        return self.selector

@@ -58,7 +58,7 @@ class WaveformEditorGui:
             self.file_download,
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
             self.file_input,
-            self.waveform_selector.get_selector(),
+            self.waveform_selector.get(),
         )
         self.template.sidebar.append(self.sidebar_column)
 
@@ -79,8 +79,8 @@ class WaveformEditorGui:
 
         self.editor = WaveformEditor(self.yaml, self.yaml_map)
         self.tabs[:] = [
-            ("View Waveforms", self.waveform_plotter.get_dynamic_map()),
-            ("Edit Waveforms", self.editor.get_layout()),
+            ("View Waveforms", self.waveform_plotter.get()),
+            ("Edit Waveforms", self.editor.get()),
         ]
         self.waveform_selector = WaveformSelector(
             self.yaml, self.yaml_map, self.waveform_plotter, self.editor
@@ -88,7 +88,7 @@ class WaveformEditorGui:
         self.sidebar_column[1] = pn.pane.Markdown(
             f"## Successfully loaded `{self.file_input.filename}`", margin=0
         )
-        self.sidebar_column[3] = self.waveform_selector.get_selector()
+        self.sidebar_column[3] = self.waveform_selector.get()
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")

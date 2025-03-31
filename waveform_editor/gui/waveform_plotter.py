@@ -16,7 +16,7 @@ class WaveformPlotter(param.Parameterized):
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
-        Plot the tendencies and return the curve.
+        Plot the tendencies of a waveform and return a holoviews curve.
 
         Args:
             plot_time_points (bool): Whether to include markers for the data points.
@@ -24,12 +24,9 @@ class WaveformPlotter(param.Parameterized):
         Returns:
             A Holoviews Curve object.
         """
-        times, values = waveform.get_value()
-
-        # Prevent updating the plot if there are no tendencies, for example when a
-        # YAML error is encountered
         if not waveform.tendencies:
             return hv.Curve([])
+        times, values = waveform.get_value()
 
         # TODO: The y axis should show the units of the plotted waveform
         line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
@@ -47,7 +44,16 @@ class WaveformPlotter(param.Parameterized):
         return line
 
     def update_plot(self, selected_waveforms, width=1200, height=600):
-        """Update plot based on selected waveforms."""
+        """
+        Generate curves for each selected waveform and combine them into a Holoviews
+        Overlay object.
+
+        Args:
+            selected_waveforms: dict containing all selected waveforms.
+
+        Returns:
+            An Holoviews overlay containing the curves
+        """
         empty_overlay = hv.Overlay([hv.Curve([])]).opts(
             title="",
             show_legend=True,
@@ -60,7 +66,7 @@ class WaveformPlotter(param.Parameterized):
 
         curves = []
         for key, value in selected_waveforms.items():
-            # TODO: Let yaml_parser accept dict instead of pure yaml
+            # TODO: Let yaml_parser accept dict instead of yaml string
             waveform = self.yaml_parser.parse_waveforms(yaml.dump({key: value}))
             plot = self.plot_tendencies(waveform, key)
             curves.append(plot)
@@ -72,7 +78,7 @@ class WaveformPlotter(param.Parameterized):
 
         return empty_overlay
 
-    def get_dynamic_map(self):
+    def get(self):
         return hv.DynamicMap(
             self.update_plot,
             streams=[self.param.selected_waveforms],
