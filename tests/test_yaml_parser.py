@@ -118,3 +118,18 @@ def test_scientific_notation():
     for waveform, expected_value in waveforms.items():
         yaml_parser.parse_waveforms(waveform)
         assert yaml_parser.waveform.tendencies[0].to == expected_value
+
+
+def test_constant_shorthand_notation():
+    """Test if shorthand notation is parsed correctly."""
+
+    waveforms = {"waveform: 5": 5, "waveform: 1.23": 1.23}
+    yaml_parser = YamlParser()
+
+    for waveform, expected_value in waveforms.items():
+        yaml_parser.parse_waveforms(waveform)
+        assert len(yaml_parser.waveform.tendencies) == 1
+        assert isinstance(yaml_parser.waveform.tendencies[0], ConstantTendency)
+        assert yaml_parser.waveform.tendencies[0].value == expected_value
+        assert not yaml_parser.waveform.annotations
+        assert not yaml_parser.has_yaml_error
