@@ -101,7 +101,7 @@ class WaveformSelector:
 
         self.waveform_plotter.selected_waveforms = self.selected_dict
         self.waveform_plotter.param.trigger("selected_waveforms")
-        self.previous_selection[check_buttons] = new_selection
+        self.previous_selection[check_buttons] = check_buttons.value
 
     def select_in_editor(self, newly_selected):
         if newly_selected:
@@ -115,6 +115,8 @@ class WaveformSelector:
             else:
                 yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
             self.waveform_editor.code_editor.value = yaml_dump
+        else:
+            self.waveform_editor.set_default()
 
     def select_in_viewer(self, newly_selected, new_selection, old_selection):
         deselected = [key for key in old_selection if key not in new_selection]

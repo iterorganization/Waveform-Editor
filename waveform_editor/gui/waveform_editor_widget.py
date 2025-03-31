@@ -18,11 +18,11 @@ class WaveformEditor:
 
         # TODO: Decide on size, or dynamically scale UI based on screen resolution?
         self.code_editor = pn.widgets.CodeEditor(
-            value="empty_waveform: {}",
             width=600,
             height=1200,
             language="yaml",
         )
+        self.set_default()
 
         self.save_button = pn.widgets.ButtonIcon(
             icon="device-floppy",
@@ -84,6 +84,10 @@ class WaveformEditor:
         return waveform_plotter.plot_tendencies(self.waveform, "").opts(
             width=width, height=height
         )
+
+    def set_default(self):
+        """Set code editor value to default."""
+        self.code_editor.value = "empty_waveform: {}"
 
     def save_waveform(self, event=None):
         """Search for the waveform name in the nested YAML structure and replace its
