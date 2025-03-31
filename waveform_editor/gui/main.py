@@ -34,6 +34,8 @@ class WaveformEditorGui:
 
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
+        # TODO: The file download button is a placeholder for the actual saving
+        # behavior, which should be implemented later
         self.file_download = pn.widgets.FileDownload(
             callback=self.save_yaml,
             icon="download",
@@ -60,9 +62,9 @@ class WaveformEditorGui:
         )
         self.template.sidebar.append(self.sidebar_column)
 
-    # Change selection logic depending on which tab is selected
     def on_tab_change(self, event):
-        # Check if "Edit Waveforms" tab is selected
+        """Change selection behavior of the waveform selector, depending on which tab
+        is selected."""
         self.waveform_selector.deselect_all()
         if event.new == 1:
             self.waveform_selector.edit_waveforms_enabled = True
@@ -70,7 +72,7 @@ class WaveformEditorGui:
             self.waveform_selector.edit_waveforms_enabled = False
 
     def load_yaml(self, event):
-        """Load YAML data from uploaded file"""
+        """Load YAML data from uploaded file."""
         self.file_download.visible = True
         yaml_content = event.new.decode("utf-8")
         self.yaml = yaml.safe_load(yaml_content)
