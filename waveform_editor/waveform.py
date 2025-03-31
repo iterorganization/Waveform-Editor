@@ -178,13 +178,8 @@ class Waveform:
         """Create a constant tendency when the waveform contains a single value. This
         allows for a single number to be interpreted as a constant tendency.
 
-        For example, the following YAML notation:
-
-        ``waveform: 1.42e6``
-
-        will be treated similarly as:
-
-        ``waveform: {type: constant, value: 1.42e6}``
+        For example, the YAML notation ``waveform: 1.42e6`` will be treated the same as
+        ``waveform: {type: constant, value: 1.42e6}``.
 
         Args:
             value: The value of the constant tendency
