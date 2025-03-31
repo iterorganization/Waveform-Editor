@@ -1,8 +1,8 @@
 import re
 
-import holoviews as hv
 import yaml
 
+from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
 
 
@@ -39,8 +39,39 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self):
-        self.waveform = Waveform()
+    def __init__(self, yaml):
+        self.parsed_yaml = self.load_yaml(yaml)
+
+    def load_yaml(self, yaml_data):
+        root_group = WaveformGroup("root")
+
+        if not isinstance(yaml_data, dict):
+            raise ValueError("Input yaml_data must be a dictionary.")
+
+        for group_name, group_content in yaml_data.items():
+            if group_name == "globals":
+                continue
+
+            if not isinstance(group_content, dict):
+                raise ValueError("Waveforms must belong to a group.")
+
+            processed_group = self._recursive_load(group_content, group_name)
+            root_group.groups.append(processed_group)
+
+        return root_group
+
+    def _recursive_load(self, data_dict, group_name):
+        current_group = WaveformGroup(group_name)
+
+        for key, value in data_dict.items():
+            if "/" in key:
+                waveform = self.parse_waveforms(yaml.dump({key: value}))
+                current_group.waveforms[key] = waveform
+            elif isinstance(value, dict):
+                nested_group = self._recursive_load(value, key)
+                current_group.groups.append(nested_group)
+
+        return current_group
 
     def parse_waveforms(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
@@ -74,55 +105,20 @@ class YamlParser:
                     f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
                 )
 
-            waveform = waveform_yaml.get("user_waveform", [])
-            line_number = waveform_yaml.get("line_number", 0)
-            self.waveform = Waveform(waveform=waveform, line_number=line_number)
-        except yaml.YAMLError as e:
-            self._handle_yaml_error(e)
-
-    def _handle_yaml_error(self, error):
-        """Handles YAML parsing errors by adding it to the annotations of the waveform.
-
-        Args:
-            error: The YAML error to add to the annotations.
-        """
-        self.waveform.annotations.clear()
-        self.waveform.annotations.add_yaml_error(error)
-        self.waveform.tendencies = []
-        self.has_yaml_error = True
-
-    def plot_tendencies(self, plot_time_points=False):
-        """
-        Plot the tendencies in a Holoviews Overlay and return this Overlay.
-
-        Args:
-            plot_time_points (bool): Whether to include markers for the data points.
-
-        Returns:
-            A Holoviews Overlay object.
-        """
-        times, values = self.waveform.get_value()
-
-        overlay = hv.Overlay()
-
-        # Prevent updating the plot if there are no tendencies, for example when a
-        # YAML error is encountered
-        if not self.waveform.tendencies:
-            return overlay
-
-        # By merging all the tendencies into a single holoviews curve, we circumvent
-        # an issue that occurs when returning an overlay of multiple curves, where
-        # tendencies of previous inputs are sometimes not cleared correctly.
-        line = hv.Curve((times, values), "Time (s)", "Value").opts(
-            line_width=2, color="blue"
-        )
-        overlay *= line
-        if plot_time_points:
-            points = hv.Scatter((times, values), "Time (s)", "Value").opts(
-                size=5,
-                color="red",
-                marker="circle",
+            waveform_key = next(
+                (
+                    key
+                    for key in waveform_yaml
+                    if key.startswith("user_") and key != "line_number"
+                ),
+                None,
             )
-            overlay *= points
+            name = waveform_key.removeprefix("user_")
 
-        return overlay.opts(title="Waveform", width=800, height=400)
+            waveform = waveform_yaml.get(waveform_key, [])
+            line_number = waveform_yaml.get("line_number", 0)
+            waveform = Waveform(waveform=waveform, line_number=line_number, name=name)
+            return waveform
+        except yaml.YAMLError as e:
+            # TODO: YAML errors must be displayed in the UI
+            print(e)

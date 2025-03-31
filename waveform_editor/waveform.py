@@ -31,8 +31,11 @@ tendency_map = {
 
 
 class Waveform:
-    def __init__(self, *, waveform=None, line_number=0, is_repeated=False):
+    def __init__(
+        self, *, waveform=None, line_number=0, is_repeated=False, name="waveform"
+    ):
         self.tendencies = []
+        self.name = name
         self.line_number = line_number
         self.annotations = Annotations()
         self.is_repeated = is_repeated
