@@ -20,12 +20,10 @@ pn.extension("codeeditor")
 class WaveformEditorGui:
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
-        self.file_input = pn.widgets.FileInput(accept=".yaml")
-        self.file_input.param.watch(self.load_yaml, "value")
-
         # The parsed YAML file
         self.yaml = {}
-        # The name and parsed yaml for all waveforms in the YAML file
+        # Waveform mapping for all waveforms in the YAML file. The keys are the waveform
+        # names, and the values are the parsed YAML content.
         self.yaml_map = {}
 
         self.editor = WaveformEditor(self.yaml, self.yaml_map)
@@ -34,22 +32,25 @@ class WaveformEditorGui:
             self.yaml, self.yaml_map, self.waveform_plotter, self.editor
         )
 
+        self.file_input = pn.widgets.FileInput(accept=".yaml")
+        self.file_input.param.watch(self.load_yaml, "value")
         self.file_download = pn.widgets.FileDownload(
             callback=self.save_yaml,
             icon="download",
             filename="output.yaml",
             button_type="primary",
             auto=True,
+            visible=False,
         )
-        self.file_download.visible = False
 
         self.tabs = pn.Tabs(dynamic=True)
+        self.tabs.param.watch(self.on_tab_change, "active")
+
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
             sidebar_width=400,
         )
-        self.tabs.param.watch(self.on_tab_change, "active")
 
         self.sidebar_column = pn.Column(
             self.file_download,
