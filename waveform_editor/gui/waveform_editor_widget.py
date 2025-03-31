@@ -7,15 +7,16 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class WaveformEditor:
-    """An interface for waveform editing and live plotting."""
+    """A Panel interface for waveform editing and live plotting."""
 
-    def __init__(self, yaml_data, yaml_map):
-        self.yaml_parser = YamlParser()
-        self.waveform = None
-        self.yaml = yaml_data
+    def __init__(self, yaml, yaml_map):
+        self.yaml = yaml
         self.yaml_map = yaml_map
 
-        # YAML Code Editor
+        self.yaml_parser = YamlParser()
+        self.waveform = None
+
+        # TODO: Decide on size, or dynamically scale UI based on screen resolution?
         self.code_editor = pn.widgets.CodeEditor(
             value="empty_waveform: {}",
             width=600,
@@ -23,13 +24,14 @@ class WaveformEditor:
             language="yaml",
         )
 
-        # Save Button
-        self.save_button = pn.widgets.Button(
-            name="Save Waveform", button_type="success"
+        self.save_button = pn.widgets.ButtonIcon(
+            icon="device-floppy",
+            size="30px",
+            active_icon="check",
+            description="Save waveform",
         )
         self.save_button.on_click(self.save_waveform)
 
-        # Waveform YAML Error Alerts
         self.yaml_alert = pn.pane.Alert(
             "### The YAML did not parse correctly!",
             alert_type="danger",
@@ -41,18 +43,23 @@ class WaveformEditor:
             visible=False,
         )
 
-        self.plot = hv.DynamicMap(
+        plot = hv.DynamicMap(
             pn.bind(self.update_plot, value=self.code_editor.param.value)
         )
-        self.plot_and_alert = pn.Column(self.plot, self.yaml_alert, self.error_alert)
 
         self.layout = pn.Row(
             pn.Column(self.save_button, self.code_editor),
-            self.plot_and_alert,
+            pn.Column(plot, self.yaml_alert, self.error_alert),
         )
 
     def update_plot(self, value, width=1200, height=800):
-        """Update the plot based on the YAML editor input."""
+        """Update the plot based on the YAML editor input.
+
+        Args:
+            value: Value of the code editor.
+            width: Width of the plot in pixels.
+            height: Height of the plot in pixels.
+        """
         self.yaml_alert.visible = self.error_alert.visible = False
         self.waveform = self.yaml_parser.parse_waveforms(value)
         annotations = self.yaml_parser.waveform.annotations
@@ -85,8 +92,9 @@ class WaveformEditor:
         name = self.waveform.name
         new_value = yaml.safe_load(self.code_editor.value).get(name, None)
 
-        # Search and update
-        if self.search_and_replace(self.yaml, name, new_value):
+        # Search for name as key in the yaml file and update the yaml, as well as the
+        # YAML map if it exists
+        if self._search_and_replace(self.yaml, name, new_value):
             self.yaml_map[name] = new_value
             pn.state.notifications.success("Succesfully saved waveform!")
         else:
@@ -94,7 +102,7 @@ class WaveformEditor:
                 f"Error: `{name}` not found in YAML", duration=5000
             )
 
-    def search_and_replace(self, d, key, new_value):
+    def _search_and_replace(self, d, key, new_value):
         """Recursively search for a key in a nested dictionary and replace its value."""
         if isinstance(d, dict):
             for k, v in d.items():
@@ -102,11 +110,11 @@ class WaveformEditor:
                     d[k] = new_value
                     return True
                 elif isinstance(v, dict):
-                    if self.search_and_replace(v, key, new_value):
+                    if self._search_and_replace(v, key, new_value):
                         return True
                 elif isinstance(v, list):
                     for item in v:
-                        if isinstance(item, dict) and self.search_and_replace(
+                        if isinstance(item, dict) and self._search_and_replace(
                             item, key, new_value
                         ):
                             return True

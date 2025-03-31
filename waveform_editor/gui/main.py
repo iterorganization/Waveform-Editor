@@ -96,10 +96,8 @@ class WaveformEditorGui:
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""
-        if hasattr(self, "yaml"):
-            yaml_str = yaml.dump(self.yaml, default_flow_style=False)
-            return io.BytesIO(yaml_str.encode("utf-8"))  # Return a file-like object
-        return None
+        yaml_str = yaml.dump(self.yaml, default_flow_style=False)
+        return io.BytesIO(yaml_str.encode("utf-8"))
 
     def serve(self):
         """Serve the Panel app"""
