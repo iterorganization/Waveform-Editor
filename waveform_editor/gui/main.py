@@ -22,8 +22,11 @@ class WaveformEditorGui:
         """Initialize the Waveform Editor Panel App"""
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
-        self.yaml_map = {}
+
+        # The parsed YAML file
         self.yaml = {}
+        # The name and parsed yaml for all waveforms in the YAML file
+        self.yaml_map = {}
 
         self.editor = WaveformEditor(self.yaml, self.yaml_map)
         self.waveform_plotter = WaveformPlotter()

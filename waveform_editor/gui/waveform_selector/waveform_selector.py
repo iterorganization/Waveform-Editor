@@ -90,14 +90,7 @@ class WaveformSelector:
         check_buttons.param.watch(on_select, "value")
 
         # Create options row for each group
-        button_row = OptionsButtonRow(
-            self,
-            self.yaml,
-            self.yaml_map,
-            check_buttons,
-            waveforms,
-            path,
-        )
+        button_row = OptionsButtonRow(self, check_buttons, waveforms, path)
         content.append(button_row.get())
         content.append(check_buttons)
 

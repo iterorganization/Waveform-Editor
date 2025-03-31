@@ -1,7 +1,7 @@
 import panel as pn
 
 
-class NameInputForm:
+class TextInputForm:
     def __init__(self, text, is_visible=True):
         self.input = pn.widgets.TextInput(placeholder=text.strip())
         self.button = pn.widgets.ButtonIcon(
