@@ -9,7 +9,8 @@ class WaveformGroup:
         result = f"{indent}WaveformGroup({self.name})\n"
 
         if self.waveforms:
-            result += f"{indent}  Waveforms: {self.waveforms}\n"
+            for name, waveform in self.waveforms.items():
+                result += f"{indent}  {name}: {waveform.tendencies}\n"
 
         for group in self.groups:
             result += group._repr_recursive(level + 1)

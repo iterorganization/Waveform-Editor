@@ -16,25 +16,25 @@ def test_yaml_parser():
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert_tendencies_correct(yaml_parser.waveform.tendencies)
-    assert not yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert_tendencies_correct(waveform.tendencies)
+    assert not waveform.annotations
     assert not yaml_parser.has_yaml_error
 
     # Invalid configuration
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert waveform.annotations
     assert not yaml_parser.has_yaml_error
 
     # Invalid YAML
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert not waveform
     assert yaml_parser.has_yaml_error
 
 
@@ -116,8 +116,8 @@ def test_scientific_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        yaml_parser.parse_waveforms(waveform)
-        assert yaml_parser.waveform.tendencies[0].to == expected_value
+        waveform = yaml_parser.parse_waveforms(waveform)
+        assert waveform.tendencies[0].to == expected_value
 
 
 def test_constant_shorthand_notation():
@@ -127,9 +127,9 @@ def test_constant_shorthand_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        yaml_parser.parse_waveforms(waveform)
-        assert len(yaml_parser.waveform.tendencies) == 1
-        assert isinstance(yaml_parser.waveform.tendencies[0], ConstantTendency)
-        assert yaml_parser.waveform.tendencies[0].value == expected_value
-        assert not yaml_parser.waveform.annotations
+        waveform = yaml_parser.parse_waveforms(waveform)
+        assert len(waveform.tendencies) == 1
+        assert isinstance(waveform.tendencies[0], ConstantTendency)
+        assert waveform.tendencies[0].value == expected_value
+        assert not waveform.annotations
         assert not yaml_parser.has_yaml_error

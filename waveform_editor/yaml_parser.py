@@ -39,8 +39,9 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self, yaml):
-        self.parsed_yaml = self.load_yaml(yaml)
+    def __init__(self, yaml=None):
+        if yaml:
+            self.parsed_yaml = self.load_yaml(yaml)
 
     def load_yaml(self, yaml_data):
         root_group = WaveformGroup("root")
@@ -120,5 +121,8 @@ class YamlParser:
             waveform = Waveform(waveform=waveform, line_number=line_number, name=name)
             return waveform
         except yaml.YAMLError as e:
-            # TODO: YAML errors must be displayed in the UI
-            print(e)
+            self._handle_yaml_error(e)
+
+    def _handle_yaml_error(self, error):
+        # TODO: YAML errors at the groups level must be displayed in the UI
+        self.has_yaml_error = True
