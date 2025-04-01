@@ -2,9 +2,9 @@ import re
 
 import yaml
 
+from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
-from waveform_editor.waveform_configuration import WaveformConfiguration
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
@@ -125,5 +125,5 @@ class YamlParser:
             self._handle_yaml_error(e)
 
     def _handle_yaml_error(self, error):
-        # TODO: YAML errors must be displayed in the UI
+        # TODO: YAML errors must be displayed in the code editor UI
         self.has_yaml_error = True
