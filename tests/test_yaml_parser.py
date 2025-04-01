@@ -1,3 +1,4 @@
+import pytest
 from pytest import approx
 
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -135,22 +136,43 @@ def test_constant_shorthand_notation():
         assert not yaml_parser.has_yaml_error
 
 
-# def test_load_yaml():
-#     yaml_str = """
-#     ec_launchers:
-#       beams:
-#         power_launched:
-#           ec_launchers/beam(:)/power_launched:
-#               - {to: 8.33e5, duration: 20} # implicit linear ramp
-#               - {type: constant, duration: 20}
-#               - {duration: 25, to: 0} # implicit linear back to 0
-#         phase_angles:
-#           ec_launchers/beam(1)/phase/angle: 1
-#           ec_launchers/beam(2)/phase/angle: 2e3
-#           ec_launchers/beam(3)/phase/angle: 3.5
-#     globals:
-#       DD_version: 3.42.0
-#       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
-#     """
-#     parser = YamlParser()
-#     parsed_yaml = parser.load_yaml(yaml_str)
+def test_load_yaml():
+    """Test if yaml is loaded correctly."""
+    yaml_str = """
+    ec_launchers:
+      beams:
+        power_launched:
+          ec_launchers/beam(:)/power_launched:
+              - {to: 8.33e5, duration: 20} # implicit linear ramp
+              - {type: constant, duration: 20}
+              - {duration: 25, to: 0} # implicit linear back to 0
+        phase_angles:
+          ec_launchers/beam(1)/phase/angle: 1
+          ec_launchers/beam(2)/phase/angle: 2e3
+          ec_launchers/beam(3)/phase/angle: 3.5
+    globals:
+      DD_version: 3.42.0
+      machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+    """
+    parser = YamlParser()
+    waveform_config = parser.load_yaml(yaml_str)
+    root_group = waveform_config.groups["ec_launchers"]
+    power_launched_waveform = root_group["beams"]["power_launched"][
+        "ec_launchers/beam(:)/power_launched"
+    ]
+
+    assert power_launched_waveform.tendencies[0].to == 8.33e5
+    assert power_launched_waveform.tendencies[0].duration == 20
+    assert power_launched_waveform.tendencies[1].duration == 20
+    assert power_launched_waveform.tendencies[2].duration == 25
+    assert power_launched_waveform.tendencies[2].to == 0
+
+    phase_angles = root_group["beams"]["phase_angles"]
+    assert phase_angles["ec_launchers/beam(1)/phase/angle"].tendencies[0].value == 1
+    assert phase_angles["ec_launchers/beam(2)/phase/angle"].tendencies[0].value == 2e3
+    assert phase_angles["ec_launchers/beam(3)/phase/angle"].tendencies[0].value == 3.5
+
+    with pytest.raises(KeyError):
+        root_group["asdf"]
+    with pytest.raises(KeyError):
+        root_group["beams"]["asdf/asdf"]

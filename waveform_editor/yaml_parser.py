@@ -4,6 +4,7 @@ import yaml
 
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
+from waveform_editor.waveform_configuration import WaveformConfiguration
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
@@ -41,8 +42,6 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 class YamlParser:
     def load_yaml(self, yaml_str):
         try:
-            root_group = WaveformGroup("root")
-
             yaml_data = yaml.safe_load(yaml_str)
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
@@ -54,9 +53,10 @@ class YamlParser:
                 if not isinstance(group_content, dict):
                     raise ValueError("Waveforms must belong to a group.")
 
-                processed_group = self._recursive_load(group_content, group_name)
-                root_group.groups.append(processed_group)
-            return root_group
+                root_group = self._recursive_load(group_content, group_name)
+                waveform_config = WaveformConfiguration()
+                waveform_config.groups[group_name] = root_group
+            return waveform_config
         except yaml.YAMLError as e:
             # TODO: global YAML errors should be shown in an error notification in UI
             print(f"The YAML could not be parsed.\n{e}")
@@ -71,7 +71,7 @@ class YamlParser:
                 current_group.waveforms[key] = waveform
             elif isinstance(value, dict):
                 nested_group = self._recursive_load(value, key)
-                current_group.groups.append(nested_group)
+                current_group.groups[key] = nested_group
 
         return current_group
 
