@@ -39,27 +39,28 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self, yaml=None):
-        if yaml:
-            self.parsed_yaml = self.load_yaml(yaml)
+    def load_yaml(self, yaml_str):
+        try:
+            root_group = WaveformGroup("root")
 
-    def load_yaml(self, yaml_data):
-        root_group = WaveformGroup("root")
+            yaml_data = yaml.safe_load(yaml_str)
+            if not isinstance(yaml_data, dict):
+                raise ValueError("Input yaml_data must be a dictionary.")
 
-        if not isinstance(yaml_data, dict):
-            raise ValueError("Input yaml_data must be a dictionary.")
+            for group_name, group_content in yaml_data.items():
+                if group_name == "globals":
+                    continue
 
-        for group_name, group_content in yaml_data.items():
-            if group_name == "globals":
-                continue
+                if not isinstance(group_content, dict):
+                    raise ValueError("Waveforms must belong to a group.")
 
-            if not isinstance(group_content, dict):
-                raise ValueError("Waveforms must belong to a group.")
-
-            processed_group = self._recursive_load(group_content, group_name)
-            root_group.groups.append(processed_group)
-
-        return root_group
+                processed_group = self._recursive_load(group_content, group_name)
+                root_group.groups.append(processed_group)
+            return root_group
+        except yaml.YAMLError as e:
+            # TODO: global YAML errors should be shown in an error notification in UI
+            print(f"The YAML could not be parsed.\n{e}")
+            return None
 
     def _recursive_load(self, data_dict, group_name):
         current_group = WaveformGroup(group_name)
@@ -124,5 +125,5 @@ class YamlParser:
             self._handle_yaml_error(e)
 
     def _handle_yaml_error(self, error):
-        # TODO: YAML errors at the groups level must be displayed in the UI
+        # TODO: YAML errors must be displayed in the UI
         self.has_yaml_error = True

@@ -133,3 +133,24 @@ def test_constant_shorthand_notation():
         assert waveform.tendencies[0].value == expected_value
         assert not waveform.annotations
         assert not yaml_parser.has_yaml_error
+
+
+# def test_load_yaml():
+#     yaml_str = """
+#     ec_launchers:
+#       beams:
+#         power_launched:
+#           ec_launchers/beam(:)/power_launched:
+#               - {to: 8.33e5, duration: 20} # implicit linear ramp
+#               - {type: constant, duration: 20}
+#               - {duration: 25, to: 0} # implicit linear back to 0
+#         phase_angles:
+#           ec_launchers/beam(1)/phase/angle: 1
+#           ec_launchers/beam(2)/phase/angle: 2e3
+#           ec_launchers/beam(3)/phase/angle: 3.5
+#     globals:
+#       DD_version: 3.42.0
+#       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+#     """
+#     parser = YamlParser()
+#     parsed_yaml = parser.load_yaml(yaml_str)
