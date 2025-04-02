@@ -41,6 +41,7 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 class YamlParser:
     def load_yaml(self, yaml_str):
+        waveform_config = WaveformConfiguration()
         try:
             yaml_data = yaml.safe_load(yaml_str)
             if not isinstance(yaml_data, dict):
@@ -54,13 +55,11 @@ class YamlParser:
                     raise ValueError("Waveforms must belong to a group.")
 
                 root_group = self._recursive_load(group_content, group_name)
-                waveform_config = WaveformConfiguration()
                 waveform_config.groups[group_name] = root_group
-            return waveform_config
         except yaml.YAMLError as e:
             # TODO: global YAML errors should be shown in an error notification in UI
             print(f"The YAML could not be parsed.\n{e}")
-            return None
+        return waveform_config
 
     def _recursive_load(self, data_dict, group_name):
         current_group = WaveformGroup(group_name)
@@ -107,17 +106,15 @@ class YamlParser:
                     f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
                 )
 
-            waveform_key = next(
-                (
-                    key
-                    for key in waveform_yaml
-                    if key.startswith("user_") and key != "line_number"
-                ),
-                None,
-            )
-            name = waveform_key.removeprefix("user_")
+            # Find first key in the yaml that starts with "user_"
+            for waveform_key in waveform_yaml:
+                if waveform_key.startswith("user_") and waveform_key != "line_number":
+                    break
+            else:
+                raise RuntimeError("Missing key")
 
-            waveform = waveform_yaml.get(waveform_key, [])
+            name = waveform_key.removeprefix("user_")
+            waveform = waveform_yaml[waveform_key]
             line_number = waveform_yaml.get("line_number", 0)
             waveform = Waveform(waveform=waveform, line_number=line_number, name=name)
             return waveform
