@@ -51,6 +51,11 @@ class YamlParser:
                 if group_name == "globals":
                     continue
 
+                if "/" in group_name:
+                    raise ValueError(
+                        f"Invalid group name '{group_name}': "
+                        "Group names may not contain '/'."
+                    )
                 if not isinstance(group_content, dict):
                     raise ValueError("Waveforms must belong to a group.")
 
@@ -66,9 +71,17 @@ class YamlParser:
 
         for key, value in data_dict.items():
             if "/" in key:
+                if isinstance(value, dict):
+                    raise ValueError(
+                        f"Invalid group '{key}': Group names may not contain '/'."
+                    )
                 waveform = self.parse_waveforms(yaml.dump({key: value}))
                 current_group.waveforms[key] = waveform
-            elif isinstance(value, dict):
+            else:
+                if not isinstance(value, dict):
+                    raise ValueError(
+                        f"Invalid waveform '{key}': Waveforms names must contain '/'."
+                    )
                 nested_group = self._recursive_load(value, key)
                 current_group.groups[key] = nested_group
 
