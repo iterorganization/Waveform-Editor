@@ -9,7 +9,8 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformEditor:
     """A Panel interface for waveform editing and live plotting."""
 
-    def __init__(self, yaml, yaml_map):
+    def __init__(self, waveform_plotter, yaml, yaml_map):
+        self.waveform_plotter = waveform_plotter
         self.yaml = yaml
         self.yaml_map = yaml_map
 
@@ -62,7 +63,7 @@ class WaveformEditor:
         """
         self.yaml_alert.visible = self.error_alert.visible = False
         self.waveform = self.yaml_parser.parse_waveforms(value)
-        annotations = self.yaml_parser.waveform.annotations
+        annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
         self.code_editor.param.trigger("annotations")
@@ -79,9 +80,7 @@ class WaveformEditor:
             )
             self.error_alert.visible = True
 
-        waveform_plotter = WaveformPlotter()
-
-        return waveform_plotter.plot_tendencies(self.waveform, "").opts(
+        return self.waveform_plotter.plot_tendencies(self.waveform, "").opts(
             width=width, height=height
         )
 

@@ -26,11 +26,8 @@ class WaveformEditorGui:
         # names, and the values are the parsed YAML content.
         self.yaml_map = {}
 
-        self.editor = WaveformEditor(self.yaml, self.yaml_map)
         self.waveform_plotter = WaveformPlotter()
-        self.waveform_selector = WaveformSelector(
-            self.yaml, self.yaml_map, self.waveform_plotter, self.editor
-        )
+        self.editor = WaveformEditor(self.waveform_plotter, self.yaml, self.yaml_map)
 
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
@@ -45,7 +42,11 @@ class WaveformEditorGui:
             visible=False,
         )
 
-        self.tabs = pn.Tabs(dynamic=True)
+        self.tabs = pn.Tabs(
+            ("View Waveforms", self.waveform_plotter.get()),
+            ("Edit Waveforms", self.editor.get()),
+            dynamic=True,
+        )
         self.tabs.param.watch(self.on_tab_change, "active")
 
         self.template = pn.template.FastListTemplate(
@@ -58,7 +59,6 @@ class WaveformEditorGui:
             self.file_download,
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
             self.file_input,
-            self.waveform_selector.get(),
         )
         self.template.sidebar.append(self.sidebar_column)
 
@@ -75,20 +75,20 @@ class WaveformEditorGui:
         """Load YAML data from uploaded file."""
         self.file_download.visible = True
         yaml_content = event.new.decode("utf-8")
-        self.yaml = yaml.safe_load(yaml_content)
+        self.yaml.clear()
+        self.yaml_map.clear()
+        self.yaml.update(yaml.safe_load(yaml_content))
 
-        self.editor = WaveformEditor(self.yaml, self.yaml_map)
-        self.tabs[:] = [
-            ("View Waveforms", self.waveform_plotter.get()),
-            ("Edit Waveforms", self.editor.get()),
-        ]
         self.waveform_selector = WaveformSelector(
             self.yaml, self.yaml_map, self.waveform_plotter, self.editor
         )
         self.sidebar_column[1] = pn.pane.Markdown(
             f"## Successfully loaded `{self.file_input.filename}`", margin=0
         )
-        self.sidebar_column[3] = self.waveform_selector.get()
+        if len(self.sidebar_column) == 3:
+            self.sidebar_column.append(self.waveform_selector.get())
+        else:
+            self.sidebar_column[3] = self.waveform_selector.get()
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")
