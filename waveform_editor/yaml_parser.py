@@ -70,20 +70,22 @@ class YamlParser:
         current_group = WaveformGroup(group_name)
 
         for key, value in data_dict.items():
-            if "/" in key:
-                if isinstance(value, dict):
+            # If value is a dictionary, treat it as a group, otherwise as a waveform
+            if isinstance(value, dict):
+                if "/" in key:
                     raise ValueError(
                         f"Invalid group '{key}': Group names may not contain '/'."
                     )
-                waveform = self.parse_waveforms(yaml.dump({key: value}))
-                current_group.waveforms[key] = waveform
-            else:
-                if not isinstance(value, dict):
-                    raise ValueError(
-                        f"Invalid waveform '{key}': Waveforms names must contain '/'."
-                    )
                 nested_group = self._recursive_load(value, key)
                 current_group.groups[key] = nested_group
+            else:
+                if "/" not in key:
+                    raise ValueError(
+                        f"Invalid waveform name '{key}': "
+                        "Waveform names must contain '/'."
+                    )
+                waveform = self.parse_waveforms(yaml.dump({key: value}))
+                current_group.waveforms[key] = waveform
 
         return current_group
 
