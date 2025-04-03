@@ -5,9 +5,11 @@ import panel as pn
 import yaml
 
 import waveform_editor
+from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.waveform_editor_widget import WaveformEditor
 from waveform_editor.gui.waveform_plotter import WaveformPlotter
 from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
+from waveform_editor.yaml_parser import YamlParser
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
@@ -20,14 +22,10 @@ pn.extension("codeeditor")
 class WaveformEditorGui:
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
-        # The parsed YAML file
-        self.yaml = {}
-        # Waveform mapping for all waveforms in the YAML file. The keys are the waveform
-        # names, and the values are the parsed YAML content.
-        self.yaml_map = {}
+        self.config = WaveformConfiguration()
 
         self.waveform_plotter = WaveformPlotter()
-        self.editor = WaveformEditor(self.waveform_plotter, self.yaml, self.yaml_map)
+        self.editor = WaveformEditor(self.waveform_plotter, self.config)
 
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
@@ -75,12 +73,10 @@ class WaveformEditorGui:
         """Load YAML data from uploaded file."""
         self.file_download.visible = True
         yaml_content = event.new.decode("utf-8")
-        self.yaml.clear()
-        self.yaml_map.clear()
-        self.yaml.update(yaml.safe_load(yaml_content))
+        self.config.load_yaml(yaml_content)
 
         self.waveform_selector = WaveformSelector(
-            self.yaml, self.yaml_map, self.waveform_plotter, self.editor
+            self.config, self.waveform_plotter, self.editor
         )
         self.sidebar_column[1] = pn.pane.Markdown(
             f"## Successfully loaded `{self.file_input.filename}`", margin=0
@@ -96,7 +92,7 @@ class WaveformEditorGui:
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""
-        yaml_str = yaml.dump(self.yaml, default_flow_style=False)
+        yaml_str = self.config.to_yaml()
         return io.BytesIO(yaml_str.encode("utf-8"))
 
     def serve(self):

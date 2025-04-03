@@ -9,10 +9,10 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformEditor:
     """A Panel interface for waveform editing and live plotting."""
 
-    def __init__(self, waveform_plotter, yaml, yaml_map):
+    def __init__(self, waveform_plotter, config):
         self.waveform_plotter = waveform_plotter
-        self.yaml = yaml
-        self.yaml_map = yaml_map
+        self.config = config
+        self.path = []
 
         self.yaml_parser = YamlParser()
         self.waveform = None
@@ -92,36 +92,16 @@ class WaveformEditor:
         """Search for the waveform name in the nested YAML structure and replace its
         value."""
 
-        name = self.waveform.name
-        new_value = yaml.safe_load(self.code_editor.value).get(name, None)
+        if not self.path:
+            raise ValueError("The path in the waveform editor was not set.")
 
-        # Search for name as key in the yaml file and update the yaml, as well as the
-        # YAML map if it exists
-        if self._search_and_replace(self.yaml, name, new_value):
-            self.yaml_map[name] = new_value
+        if self.waveform.name in self.config.waveform_map:
+            self.config.add_waveform(self.waveform, self.path)
             pn.state.notifications.success("Succesfully saved waveform!")
         else:
             pn.state.notifications.error(
-                f"Error: `{name}` not found in YAML", duration=5000
+                f"Error: `{self.waveformr.name}` not found in YAML", duration=5000
             )
-
-    def _search_and_replace(self, d, key, new_value):
-        """Recursively search for a key in a nested dictionary and replace its value."""
-        if isinstance(d, dict):
-            for k, v in d.items():
-                if k == key:
-                    d[k] = new_value
-                    return True
-                elif isinstance(v, dict):
-                    if self._search_and_replace(v, key, new_value):
-                        return True
-                elif isinstance(v, list):
-                    for item in v:
-                        if isinstance(item, dict) and self._search_and_replace(
-                            item, key, new_value
-                        ):
-                            return True
-        return False
 
     def get(self):
         """Return the Panel layout for integration into the main GUI."""

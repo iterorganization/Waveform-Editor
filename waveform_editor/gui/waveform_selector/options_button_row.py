@@ -1,6 +1,7 @@
 import panel as pn
 
 from waveform_editor.gui.waveform_selector.text_input_form import TextInputForm
+from waveform_editor.waveform import Waveform
 
 
 class OptionsButtonRow:
@@ -85,7 +86,7 @@ class OptionsButtonRow:
     def _add_new_waveform(self, event):
         """Add the new waveform to CheckButtonGroup and update the YAML."""
         name = self.new_waveform_panel.input.value
-        if name in self.selector.yaml_map:
+        if name in self.selector.config.waveform_map:
             pn.state.notifications.error(f"Waveform {name!r} already exists!")
             return
         # TODO: Perhaps we should allow this, and distinguish between groups and
@@ -97,7 +98,8 @@ class OptionsButtonRow:
         self.check_buttons.options.append(name)
 
         # Add empty waveform to YAML
-        self._add_entry_to_yaml(name, [{}])
+        empty_waveform = Waveform(name=name)
+        self.selector.config.add_waveform(empty_waveform, self.path)
 
         self.check_buttons.param.trigger("options")
         self.new_waveform_panel.clear_input()
@@ -121,48 +123,31 @@ class OptionsButtonRow:
             pn.state.notifications.error("Groups may not contain '/'.")
             return
 
+        # Create new group in configuration
+        new_group = self.selector.config.add_group(name, self.path)
+        new_path = self.path + [name]
+        new_group_ui = self.selector.create_group_ui(new_group, new_path)
+
+        # Check if there exists an accordion already at this level
         existing_accordion = None
         for obj in self.parent_ui.objects:
             if isinstance(obj, pn.Accordion):
                 existing_accordion = obj
                 break
 
-        new_path = self.path + [name]
-        new_group = self.selector.create_waveform_selector({}, path=new_path)
-
-        # Update UI
+        # Update UI with new group
         if existing_accordion:
             if name in existing_accordion._names:
                 pn.state.notifications.error(f"A group named '{name}' already exists.")
                 return
 
-            existing_accordion.append((name, new_group))
+            existing_accordion.append((name, new_group_ui))
         else:
-            new_accordion = pn.Accordion((name, new_group))
+            new_accordion = pn.Accordion((name, new_group_ui))
             self.parent_ui.append(new_accordion)
-
-        # Add empty group to YAML
-        self._add_entry_to_yaml(name, {}, is_waveform=False)
 
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()
-
-    def _add_entry_to_yaml(self, key, value, is_waveform=True):
-        """Navigate YAML tree and insert new group or waveform in the YAML. If entry is
-        a waveform, it will also be added to the YAML map.
-
-        Args:
-            key: name of the waveform/group.
-            value: value of the waveform/group.
-            is_waveform: Boolean representing whether to add a group or a waveform.
-        """
-        current = self.selector.yaml
-        for path in self.path:
-            current = current.setdefault(path, {})
-
-        if is_waveform:
-            self.selector.yaml_map[key] = value
-        current[key] = value
 
     def get(self):
         """Returns the panel UI element."""

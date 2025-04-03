@@ -1,4 +1,5 @@
 import panel as pn
+import rich
 import yaml
 
 from waveform_editor.gui.waveform_selector.options_button_row import OptionsButtonRow
@@ -7,17 +8,23 @@ from waveform_editor.gui.waveform_selector.options_button_row import OptionsButt
 class WaveformSelector:
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, yaml, yaml_map, waveform_plotter, waveform_editor):
+    def __init__(self, config, waveform_plotter, waveform_editor):
+        self.config = config
         self.waveform_plotter = waveform_plotter
         self.waveform_editor = waveform_editor
         self.selected_dict = {}
         self.previous_selection = {}
-        self.yaml_map = yaml_map
-        self.yaml = yaml
         self.edit_waveforms_enabled = False
-        self.selector = self.create_waveform_selector(self.yaml, is_root=True)
+        self.selector = self.create_waveform_selector()
 
-    def create_waveform_selector(self, data, is_root=False, path=None):
+    def create_waveform_selector(self):
+        ui_content = []
+        for group in self.config.groups.values():
+            path = [group.name]
+            ui_content.append((group.name, self.create_group_ui(group, path)))
+        return pn.Accordion(*ui_content, sizing_mode="stretch_width")
+
+    def create_group_ui(self, group, path):
         """Recursively create a Panel UI structure from the YAML.
 
         Args:
@@ -25,31 +32,17 @@ class WaveformSelector:
             is_root: Whether function is called from the root level of the YAML.
             path: The path of the nested groups in the YAML data, as a list of strings.
         """
-        if path is None:
-            path = []
 
-        groups = []
-        waveforms = []
+        # Build UI of each group recursively
+        inner_groups_ui = []
+        for inner_group in group.groups.values():
+            new_path = path + [inner_group.name]
+            inner_groups_ui.append(
+                (inner_group.name, self.create_group_ui(inner_group, new_path))
+            )
 
-        if data is None:
-            data = {}
-
-        for key, value in data.items():
-            # TODO: Currently groups and waveforms are distinguished by them containing
-            # a slash in the name or not. Perhaps a more general approach is necessary
-            if key == "globals":
-                continue
-            elif "/" in key:
-                waveforms.append(key)
-                self.yaml_map[key] = value
-            else:
-                # Track path in yaml groups
-                new_path = path + [key]
-                groups.append(
-                    (key, self.create_waveform_selector(value, path=new_path))
-                )
-
-        content = []
+        # List of waveforms to select
+        waveforms = list(group.waveforms.keys())
         check_buttons = pn.widgets.CheckButtonGroup(
             value=[],
             options=waveforms,
@@ -60,42 +53,41 @@ class WaveformSelector:
             stylesheets=["button {text-align: left!important;}"],
         )
         check_buttons.param.watch(
-            lambda event: self.on_select(event, check_buttons), "value"
+            lambda event: self.on_select(event, check_buttons, path), "value"
         )
 
         # Create row of options for each group
         button_row = OptionsButtonRow(self, check_buttons, waveforms, path)
-        content.append(button_row.get())
-        content.append(check_buttons)
 
-        if groups:
-            accordion = pn.Accordion(*groups)
-            content.append(accordion)
+        # Add buttons, waveform list and groups to UI content list
+        ui_content = []
+        ui_content.append(button_row.get())
+        ui_content.append(check_buttons)
 
-        parent_container = pn.Column(*content, sizing_mode="stretch_width")
+        # Create accordion to store the inner groups UI objects into
+        if group.groups:
+            accordion = pn.Accordion(*inner_groups_ui)
+            ui_content.append(accordion)
+
+        parent_container = pn.Column(*ui_content, sizing_mode="stretch_width")
         button_row.parent_ui = parent_container
 
-        # Set visibility of button row
-        if is_root:
-            if self.yaml != {}:
-                button_row.new_group_button.visible = True
-            else:
-                button_row.new_group_button.visible = False
-            button_row.new_waveform_button.visible = False
         return parent_container
 
-    def on_select(self, event, check_buttons):
+    def on_select(self, event, check_buttons, path):
         """Handles the selection and deselection of waveforms in the check button
         group."""
         new_selection = event.new
         old_selection = self.previous_selection.get(check_buttons, {})
 
         newly_selected = {
-            key: self.yaml_map[key] for key in new_selection if key not in old_selection
+            key: self.config.waveform_map[key]
+            for key in new_selection
+            if key not in old_selection
         }
 
         if self.edit_waveforms_enabled:
-            self.select_in_editor(newly_selected)
+            self.select_in_editor(newly_selected, path)
         else:
             self.select_in_viewer(newly_selected, new_selection, old_selection)
 
@@ -103,18 +95,15 @@ class WaveformSelector:
         self.waveform_plotter.param.trigger("selected_waveforms")
         self.previous_selection[check_buttons] = check_buttons.value
 
-    def select_in_editor(self, newly_selected):
+    def select_in_editor(self, newly_selected, path):
         if newly_selected:
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key)
 
             # Update code editor with the selected value
-            value = newly_selected[newly_selected_key]
-            if isinstance(value, (int, float)):
-                yaml_dump = f"{newly_selected_key}: {value}"
-            else:
-                yaml_dump = f"{newly_selected_key}:\n{yaml.dump(value)}"
-            self.waveform_editor.code_editor.value = yaml_dump
+            waveform = newly_selected[newly_selected_key]
+            self.waveform_editor.code_editor.value = waveform.yaml_str
+            self.waveform_editor.path = path
         else:
             self.waveform_editor.set_default()
 
@@ -130,7 +119,7 @@ class WaveformSelector:
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain
         item."""
         if exclude:
-            self.selected_dict = {exclude: self.yaml_map[exclude]}
+            self.selected_dict = {exclude: self.config.waveform_map[exclude]}
         else:
             self.selected_dict = {}
 

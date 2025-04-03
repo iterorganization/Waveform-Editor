@@ -1,6 +1,5 @@
 import holoviews as hv
 import param
-import yaml
 
 from waveform_editor.yaml_parser import YamlParser
 
@@ -65,10 +64,8 @@ class WaveformPlotter(param.Parameterized):
             return empty_overlay
 
         curves = []
-        for key, value in selected_waveforms.items():
-            # TODO: Let yaml_parser accept dict instead of yaml string?
-            waveform = self.yaml_parser.parse_waveforms(yaml.dump({key: value}))
-            plot = self.plot_tendencies(waveform, key)
+        for name, waveform in selected_waveforms.items():
+            plot = self.plot_tendencies(waveform, name)
             curves.append(plot)
 
         if curves:
