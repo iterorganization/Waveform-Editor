@@ -6,7 +6,7 @@ import panel as pn
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
-from waveform_editor.gui.waveform_plotter import WaveformPlotter
+from waveform_editor.gui.plotter import WaveformPlotter
 from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using

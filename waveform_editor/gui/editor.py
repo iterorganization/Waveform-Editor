@@ -7,8 +7,8 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformEditor:
     """A Panel interface for waveform editing and live plotting."""
 
-    def __init__(self, waveform_plotter, config):
-        self.waveform_plotter = waveform_plotter
+    def __init__(self, plotter, config):
+        self.plotter = plotter
         self.config = config
         self.path = []
 
@@ -78,7 +78,7 @@ class WaveformEditor:
             )
             self.error_alert.visible = True
 
-        return self.waveform_plotter.plot_tendencies(self.waveform, "").opts(
+        return self.plotter.plot_tendencies(self.waveform, "").opts(
             width=width, height=height
         )
 
