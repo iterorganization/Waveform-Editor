@@ -7,7 +7,7 @@ import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.plotter import WaveformPlotter
-from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
+from waveform_editor.gui.selector.selector import WaveformSelector
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
@@ -39,14 +39,14 @@ class WaveformEditorGui:
         # Add tabs to switch from viewer to editor
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
-        self.waveform_selector = WaveformSelector()
+        self.selector = WaveformSelector()
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter.get()),
             ("Edit Waveforms", self.editor.get()),
             dynamic=True,
             visible=False,
         )
-        self.tabs.param.watch(self.waveform_selector.on_tab_change, "active")
+        self.tabs.param.watch(self.selector.on_tab_change, "active")
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
@@ -75,13 +75,13 @@ class WaveformEditorGui:
         self.config.load_yaml(yaml_content)
 
         # Create tree structure in sidebar based on waveform groups in YAML
-        self.waveform_selector.create_waveform_selector_ui(
+        self.selector.create_waveform_selector_ui(
             self.config, self.plotter, self.editor
         )
         if len(self.sidebar_column) == 3:
-            self.sidebar_column.append(self.waveform_selector.get())
+            self.sidebar_column.append(self.selector.get())
         else:
-            self.sidebar_column[3] = self.waveform_selector.get()
+            self.sidebar_column[3] = self.selector.get()
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")

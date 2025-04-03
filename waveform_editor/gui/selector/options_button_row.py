@@ -1,6 +1,6 @@
 import panel as pn
 
-from waveform_editor.gui.waveform_selector.text_input_form import TextInputForm
+from waveform_editor.gui.selector.text_input_form import TextInputForm
 from waveform_editor.waveform import Waveform
 
 

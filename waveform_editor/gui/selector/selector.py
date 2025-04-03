@@ -1,6 +1,6 @@
 import panel as pn
 
-from waveform_editor.gui.waveform_selector.options_button_row import OptionsButtonRow
+from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 
 
 class WaveformSelector:
@@ -17,7 +17,7 @@ class WaveformSelector:
         for group in self.config.groups.values():
             path = [group.name]
             ui_content.append((group.name, self.create_group_ui(group, path)))
-        self.selector = pn.Accordion(*ui_content, sizing_mode="stretch_width")
+        self.ui_selector = pn.Accordion(*ui_content, sizing_mode="stretch_width")
 
     def on_tab_change(self, event):
         """Change selection behavior of the waveform selector, depending on which tab
@@ -127,7 +127,7 @@ class WaveformSelector:
         else:
             self.selected = {}
 
-        self._deselect_checkbuttons(self.selector, exclude)
+        self._deselect_checkbuttons(self.ui_selector, exclude)
         self.plotter.selected_waveforms = self.selected
 
     def _deselect_checkbuttons(self, widget, exclude):
@@ -147,4 +147,4 @@ class WaveformSelector:
 
     def get(self):
         """Returns the waveform selector UI component."""
-        return self.selector
+        return self.ui_selector
