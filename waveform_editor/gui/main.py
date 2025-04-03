@@ -22,11 +22,9 @@ class WaveformEditorGui:
         """Initialize the Waveform Editor Panel App"""
         self.config = WaveformConfiguration()
 
-        self.waveform_plotter = WaveformPlotter()
-        self.editor = WaveformEditor(self.waveform_plotter, self.config)
-
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.load_yaml, "value")
+
         # TODO: The file download button is a placeholder for the actual saving
         # behavior, which should be implemented later
         self.file_download = pn.widgets.FileDownload(
@@ -38,19 +36,24 @@ class WaveformEditorGui:
             visible=False,
         )
 
+        # Add tabs to switch from viewer to editor
+        self.plotter = WaveformPlotter()
+        self.editor = WaveformEditor(self.plotter, self.config)
+        self.waveform_selector = WaveformSelector()
         self.tabs = pn.Tabs(
-            ("View Waveforms", self.waveform_plotter.get()),
+            ("View Waveforms", self.plotter.get()),
             ("Edit Waveforms", self.editor.get()),
             dynamic=True,
+            visible=False,
         )
-        self.tabs.param.watch(self.on_tab_change, "active")
-
+        self.tabs.param.watch(self.waveform_selector.on_tab_change, "active")
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
             sidebar_width=400,
         )
 
+        # Append to sidebar to make the content of the sidebar dynamic
         self.sidebar_column = pn.Column(
             self.file_download,
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
@@ -58,26 +61,22 @@ class WaveformEditorGui:
         )
         self.template.sidebar.append(self.sidebar_column)
 
-    def on_tab_change(self, event):
-        """Change selection behavior of the waveform selector, depending on which tab
-        is selected."""
-        self.waveform_selector.deselect_all()
-        if event.new == 1:
-            self.waveform_selector.edit_waveforms_enabled = True
-        else:
-            self.waveform_selector.edit_waveforms_enabled = False
-
     def load_yaml(self, event):
-        """Load YAML data from uploaded file."""
+        """Load waveform configuration from a YAML file.
+
+        Args:
+            event: The event object containing the uploaded file data.
+        """
+        self.tabs.visible = True
         self.file_download.visible = True
+        self.sidebar_column[1].visible = False
+
         yaml_content = event.new.decode("utf-8")
         self.config.load_yaml(yaml_content)
 
-        self.waveform_selector = WaveformSelector(
-            self.config, self.waveform_plotter, self.editor
-        )
-        self.sidebar_column[1] = pn.pane.Markdown(
-            f"## Successfully loaded `{self.file_input.filename}`", margin=0
+        # Create tree structure in sidebar based on waveform groups in YAML
+        self.waveform_selector.create_waveform_selector_ui(
+            self.config, self.plotter, self.editor
         )
         if len(self.sidebar_column) == 3:
             self.sidebar_column.append(self.waveform_selector.get())

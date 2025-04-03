@@ -6,21 +6,27 @@ from waveform_editor.gui.waveform_selector.options_button_row import OptionsButt
 class WaveformSelector:
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, config, waveform_plotter, waveform_editor):
+    def create_waveform_selector_ui(self, config, plotter, editor):
         self.config = config
-        self.waveform_plotter = waveform_plotter
-        self.waveform_editor = waveform_editor
-        self.selected_dict = {}
+        self.plotter = plotter
+        self.editor = editor
+        self.selected = {}
         self.previous_selection = {}
         self.edit_waveforms_enabled = False
-        self.selector = self.create_waveform_selector()
-
-    def create_waveform_selector(self):
         ui_content = []
         for group in self.config.groups.values():
             path = [group.name]
             ui_content.append((group.name, self.create_group_ui(group, path)))
-        return pn.Accordion(*ui_content, sizing_mode="stretch_width")
+        self.selector = pn.Accordion(*ui_content, sizing_mode="stretch_width")
+
+    def on_tab_change(self, event):
+        """Change selection behavior of the waveform selector, depending on which tab
+        is selected."""
+        self.deselect_all()
+        if event.new == 1:
+            self.edit_waveforms_enabled = True
+        else:
+            self.edit_waveforms_enabled = False
 
     def create_group_ui(self, group, path):
         """Recursively create a Panel UI structure from the YAML.
@@ -89,8 +95,8 @@ class WaveformSelector:
         else:
             self.select_in_viewer(newly_selected, new_selection, old_selection)
 
-        self.waveform_plotter.selected_waveforms = self.selected_dict
-        self.waveform_plotter.param.trigger("selected_waveforms")
+        self.plotter.selected_waveforms = self.selected
+        self.plotter.param.trigger("selected_waveforms")
         self.previous_selection[check_buttons] = check_buttons.value
 
     def select_in_editor(self, newly_selected, path):
@@ -100,29 +106,29 @@ class WaveformSelector:
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.waveform_editor.code_editor.value = waveform.yaml_str
-            self.waveform_editor.path = path
+            self.editor.code_editor.value = waveform.yaml_str
+            self.editor.path = path
         else:
-            self.waveform_editor.set_default()
+            self.editor.set_default()
 
     def select_in_viewer(self, newly_selected, new_selection, old_selection):
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
-            self.selected_dict.pop(key, None)
+            self.selected.pop(key, None)
 
         for key, value in newly_selected.items():
-            self.selected_dict[key] = value
+            self.selected[key] = value
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroup widgets, excluding a certain
         item."""
         if exclude:
-            self.selected_dict = {exclude: self.config.waveform_map[exclude]}
+            self.selected = {exclude: self.config.waveform_map[exclude]}
         else:
-            self.selected_dict = {}
+            self.selected = {}
 
         self._deselect_checkbuttons(self.selector, exclude)
-        self.waveform_plotter.selected_waveforms = self.selected_dict
+        self.plotter.selected_waveforms = self.selected
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup

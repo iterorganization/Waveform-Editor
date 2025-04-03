@@ -90,15 +90,14 @@ class WaveformEditor:
         """Search for the waveform name in the nested YAML structure and replace its
         value."""
 
-        if not self.path:
-            raise ValueError("The path in the waveform editor was not set.")
-
         if self.waveform.name in self.config.waveform_map:
+            if not self.path:
+                raise ValueError("The path in the waveform editor was not set.")
             self.config.add_waveform(self.waveform, self.path)
             pn.state.notifications.success("Succesfully saved waveform!")
         else:
             pn.state.notifications.error(
-                f"Error: `{self.waveformr.name}` not found in YAML", duration=5000
+                f"Error: `{self.waveform.name}` not found in YAML", duration=5000
             )
 
     def get(self):
