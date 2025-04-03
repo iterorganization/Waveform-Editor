@@ -2,14 +2,12 @@ import io
 
 import holoviews as hv
 import panel as pn
-import yaml
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.waveform_editor_widget import WaveformEditor
 from waveform_editor.gui.waveform_plotter import WaveformPlotter
 from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
-from waveform_editor.yaml_parser import YamlParser
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching

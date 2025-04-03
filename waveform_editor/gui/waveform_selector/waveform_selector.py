@@ -1,6 +1,4 @@
 import panel as pn
-import rich
-import yaml
 
 from waveform_editor.gui.waveform_selector.options_button_row import OptionsButtonRow
 

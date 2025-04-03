@@ -1,8 +1,6 @@
 import holoviews as hv
 import panel as pn
-import yaml
 
-from waveform_editor.gui.waveform_plotter import WaveformPlotter
 from waveform_editor.yaml_parser import YamlParser
 
 
