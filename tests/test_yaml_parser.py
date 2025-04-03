@@ -35,7 +35,7 @@ def test_yaml_parser():
         yaml_file = file.read()
     yaml_parser = YamlParser()
     waveform = yaml_parser.parse_waveforms(yaml_file)
-    assert not waveform
+    assert not waveform.tendencies
     assert yaml_parser.has_yaml_error
 
 
@@ -155,8 +155,8 @@ def test_load_yaml():
       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
     """
     parser = YamlParser()
-    waveform_config = parser.load_yaml(yaml_str)
-    root_group = waveform_config.groups["ec_launchers"]
+    parsed_yaml = parser.load_yaml(yaml_str)
+    root_group = parsed_yaml["groups"]["ec_launchers"]
     power_launched_waveform = root_group["beams"]["power_launched"][
         "ec_launchers/beam(:)/power_launched"
     ]

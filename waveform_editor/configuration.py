@@ -14,7 +14,7 @@ class WaveformConfiguration:
     def __getitem__(self, key):
         if key in self.groups:
             return self.groups[key]
-        raise KeyError(f"'{key}' not found in groups or waveforms")
+        raise KeyError(f"'{key}' not found in groups")
 
     def load_yaml(self, yaml_str):
         self.groups.clear()
