@@ -14,7 +14,11 @@ class WaveformGroup:
         raise KeyError(f"'{key}' not found in groups or waveforms")
 
     def print(self, indent=0):
-        """Recursively prints the structure of groups and waveforms."""
+        """Prints the group as a hierarchical tree.
+
+        Args:
+            indent: The indentation level for formatting the output.
+        """
         for group_name, group in self.groups.items():
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)

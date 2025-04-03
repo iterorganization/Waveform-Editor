@@ -8,25 +8,39 @@ class WaveformConfiguration:
         # Since waveform names must be unique, we can store a flat mapping of waveform
         # names to the Waveform objects, for cheap look-up
         self.waveform_map = {}
-        # TODO: This class can later be used to store additional information stored in
-        # the YAML file, such as machine description URI, DD version,etc.
 
     def __getitem__(self, key):
+        """Retrieves a waveform group by name.
+
+        Args:
+            key: The name of the group to retrieve.
+
+        Returns:
+            The requested waveform group.
+        """
         if key in self.groups:
             return self.groups[key]
         raise KeyError(f"'{key}' not found in groups")
 
     def load_yaml(self, yaml_str):
-        self.groups.clear()
-        self.waveform_map.clear()
+        """Loads waveform configuration from a YAML string.
 
+        Args:
+            yaml_str: The YAML string containing waveform configuration data.
+        """
         parser = YamlParser()
-        parsed_data = parser.load_yaml(yaml_str)  # Get structured data (fully parsed)
+        parsed_data = parser.load_yaml(yaml_str)
 
         self.groups = parsed_data["groups"]
         self.waveform_map = parsed_data["waveform_map"]
 
     def add_waveform(self, waveform, path):
+        """Adds a waveform to a specific group in the configuration.
+
+        Args:
+            waveform: The waveform object to add.
+            path: A list representing the path where the new waveform should be created.
+        """
         current = self.groups
         for path_part in path:
             current = current[path_part]
@@ -35,6 +49,15 @@ class WaveformConfiguration:
         self.waveform_map[waveform.name] = waveform
 
     def add_group(self, name, path):
+        """Adds a new waveform group at the specified path.
+
+        Args:
+            name: The name of the new group.
+            path: A list representing the path where the new group should be added.
+
+        Returns:
+            The newly created waveform group.
+        """
         current = self.groups
         for path_part in path:
             current = current[path_part]
@@ -43,15 +66,18 @@ class WaveformConfiguration:
         return current.groups[name]
 
     def to_yaml(self):
-        # TODO: write converter implementation
+        # TODO: write converter implementation that keeps the raw string in output.
+        # Ensure that comments are not removed, and formatting of tendencies
+        # is preserved.
         self.print()
         return ""
 
     def print(self, indent=0):
-        """Print the entire tree structure of the waveform configuration."""
+        """Prints the waveform configuration as a hierarchical tree.
+
+        Args:
+            indent: The indentation level for formatting the output.
+        """
         for group_name, group in self.groups.items():
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
-
-    def get_waveform(self, name):
-        return self.waveform_map[name]
