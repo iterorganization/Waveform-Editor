@@ -127,7 +127,7 @@ class YamlParser:
 
             # Find first key in the yaml that starts with "user_"
             for waveform_key in waveform_yaml:
-                if waveform_key.startswith("user_") and waveform_key != "line_number":
+                if waveform_key.startswith("user_"):
                     break
             else:
                 raise RuntimeError("Missing key")
