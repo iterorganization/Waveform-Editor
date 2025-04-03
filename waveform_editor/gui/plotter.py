@@ -7,7 +7,7 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformPlotter(param.Parameterized):
     """Class to handle dynamic waveform plotting."""
 
-    selected_waveforms = param.Dict(default={})
+    plotted_waveforms = param.Dict(default={})
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -42,13 +42,13 @@ class WaveformPlotter(param.Parameterized):
 
         return line
 
-    def update_plot(self, selected_waveforms, width=1200, height=600):
+    def update_plot(self, plotted_waveforms, width=1200, height=600):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object.
 
         Args:
-            selected_waveforms: dict containing all selected waveforms.
+            plotted_waveforms: dict containing all selected waveforms.
 
         Returns:
             An Holoviews overlay containing the curves
@@ -60,11 +60,11 @@ class WaveformPlotter(param.Parameterized):
             height=height,
         )
 
-        if not selected_waveforms:
+        if not plotted_waveforms:
             return empty_overlay
 
         curves = []
-        for name, waveform in selected_waveforms.items():
+        for name, waveform in plotted_waveforms.items():
             plot = self.plot_tendencies(waveform, name)
             curves.append(plot)
 
@@ -78,5 +78,5 @@ class WaveformPlotter(param.Parameterized):
     def get(self):
         return hv.DynamicMap(
             self.update_plot,
-            streams=[self.param.selected_waveforms],
+            streams=[self.param.plotted_waveforms],
         )

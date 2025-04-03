@@ -40,9 +40,10 @@ class WaveformEditorGui:
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
         self.selector = WaveformSelector()
+        plotter = self.plotter.get()
         self.tabs = pn.Tabs(
-            ("View Waveforms", self.plotter.get()),
-            ("Edit Waveforms", self.editor.get()),
+            ("View Waveforms", plotter),
+            ("Edit Waveforms", pn.Row(self.editor.get(), plotter)),
             dynamic=True,
             visible=False,
         )

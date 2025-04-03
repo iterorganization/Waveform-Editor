@@ -5,20 +5,17 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class WaveformEditor:
-    """A Panel interface for waveform editing and live plotting."""
+    """A Panel interface for waveform editing."""
 
     def __init__(self, plotter, config):
         self.plotter = plotter
         self.config = config
         self.path = []
 
-        self.yaml_parser = YamlParser()
         self.waveform = None
 
-        # TODO: Decide on size, or dynamically scale UI based on screen resolution?
         self.code_editor = pn.widgets.CodeEditor(
-            width=600,
-            height=1200,
+            sizing_mode="stretch_both",
             language="yaml",
         )
         self.set_default()
@@ -42,16 +39,13 @@ class WaveformEditor:
             visible=False,
         )
 
-        plot = hv.DynamicMap(
-            pn.bind(self.update_plot, value=self.code_editor.param.value)
+        self.code_editor.param.watch(self.on_value_change, "value")
+
+        self.layout = pn.Column(
+            self.save_button, self.code_editor, self.yaml_alert, self.error_alert
         )
 
-        self.layout = pn.Row(
-            pn.Column(self.save_button, self.code_editor),
-            pn.Column(plot, self.yaml_alert, self.error_alert),
-        )
-
-    def update_plot(self, value, width=1200, height=800):
+    def on_value_change(self, event):
         """Update the plot based on the YAML editor input.
 
         Args:
@@ -59,15 +53,17 @@ class WaveformEditor:
             width: Width of the plot in pixels.
             height: Height of the plot in pixels.
         """
+        value = event.new
+        yaml_parser = YamlParser()
         self.yaml_alert.visible = self.error_alert.visible = False
-        self.waveform = self.yaml_parser.parse_waveforms(value)
+        self.waveform = yaml_parser.parse_waveforms(value)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
         self.code_editor.param.trigger("annotations")
 
         # Show alert when there is a yaml parsing error
-        if self.yaml_parser.has_yaml_error:
+        if yaml_parser.has_yaml_error:
             self.yaml_alert.object = (
                 f"### The YAML did not parse correctly\n {annotations}"
             )
@@ -78,9 +74,7 @@ class WaveformEditor:
             )
             self.error_alert.visible = True
 
-        return self.plotter.plot_tendencies(self.waveform, "").opts(
-            width=width, height=height
-        )
+        self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
 
     def set_default(self):
         """Set code editor value to default."""

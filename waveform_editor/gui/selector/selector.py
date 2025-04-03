@@ -95,8 +95,8 @@ class WaveformSelector:
         else:
             self.select_in_viewer(newly_selected, new_selection, old_selection)
 
-        self.plotter.selected_waveforms = self.selected
-        self.plotter.param.trigger("selected_waveforms")
+        self.plotter.plotted_waveforms = self.selected
+        self.plotter.param.trigger("plotted_waveforms")
         self.previous_selection[check_buttons] = check_buttons.value
 
     def select_in_editor(self, newly_selected, path):
@@ -128,7 +128,7 @@ class WaveformSelector:
             self.selected = {}
 
         self._deselect_checkbuttons(self.ui_selector, exclude)
-        self.plotter.selected_waveforms = self.selected
+        self.plotter.plotted_waveforms = self.selected
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
