@@ -1,3 +1,4 @@
+import pytest
 from pytest import approx
 
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -16,25 +17,25 @@ def test_yaml_parser():
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert_tendencies_correct(yaml_parser.waveform.tendencies)
-    assert not yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert_tendencies_correct(waveform.tendencies)
+    assert not waveform.annotations
     assert not yaml_parser.has_yaml_error
 
     # Invalid configuration
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert waveform.annotations
     assert not yaml_parser.has_yaml_error
 
     # Invalid YAML
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    yaml_parser.parse_waveforms(yaml_file)
-    assert yaml_parser.waveform.annotations
+    waveform = yaml_parser.parse_waveforms(yaml_file)
+    assert not waveform
     assert yaml_parser.has_yaml_error
 
 
@@ -116,8 +117,8 @@ def test_scientific_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        yaml_parser.parse_waveforms(waveform)
-        assert yaml_parser.waveform.tendencies[0].to == expected_value
+        waveform = yaml_parser.parse_waveforms(waveform)
+        assert waveform.tendencies[0].to == expected_value
 
 
 def test_constant_shorthand_notation():
@@ -127,9 +128,51 @@ def test_constant_shorthand_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        yaml_parser.parse_waveforms(waveform)
-        assert len(yaml_parser.waveform.tendencies) == 1
-        assert isinstance(yaml_parser.waveform.tendencies[0], ConstantTendency)
-        assert yaml_parser.waveform.tendencies[0].value == expected_value
-        assert not yaml_parser.waveform.annotations
+        waveform = yaml_parser.parse_waveforms(waveform)
+        assert len(waveform.tendencies) == 1
+        assert isinstance(waveform.tendencies[0], ConstantTendency)
+        assert waveform.tendencies[0].value == expected_value
+        assert not waveform.annotations
         assert not yaml_parser.has_yaml_error
+
+
+def test_load_yaml():
+    """Test if yaml is loaded correctly."""
+    yaml_str = """
+    ec_launchers:
+      beams:
+        power_launched:
+          ec_launchers/beam(:)/power_launched:
+              - {to: 8.33e5, duration: 20} # implicit linear ramp
+              - {type: constant, duration: 20}
+              - {duration: 25, to: 0} # implicit linear back to 0
+        phase_angles:
+          ec_launchers/beam(1)/phase/angle: 1
+          ec_launchers/beam(2)/phase/angle: 2e3
+          ec_launchers/beam(3)/phase/angle: 3.5
+    globals:
+      DD_version: 3.42.0
+      machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+    """
+    parser = YamlParser()
+    waveform_config = parser.load_yaml(yaml_str)
+    root_group = waveform_config.groups["ec_launchers"]
+    power_launched_waveform = root_group["beams"]["power_launched"][
+        "ec_launchers/beam(:)/power_launched"
+    ]
+
+    assert power_launched_waveform.tendencies[0].to == 8.33e5
+    assert power_launched_waveform.tendencies[0].duration == 20
+    assert power_launched_waveform.tendencies[1].duration == 20
+    assert power_launched_waveform.tendencies[2].duration == 25
+    assert power_launched_waveform.tendencies[2].to == 0
+
+    phase_angles = root_group["beams"]["phase_angles"]
+    assert phase_angles["ec_launchers/beam(1)/phase/angle"].tendencies[0].value == 1
+    assert phase_angles["ec_launchers/beam(2)/phase/angle"].tendencies[0].value == 2e3
+    assert phase_angles["ec_launchers/beam(3)/phase/angle"].tendencies[0].value == 3.5
+
+    with pytest.raises(KeyError):
+        root_group["asdf"]
+    with pytest.raises(KeyError):
+        root_group["beams"]["asdf/asdf"]
