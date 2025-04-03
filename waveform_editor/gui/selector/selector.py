@@ -61,7 +61,7 @@ class WaveformSelector:
         )
 
         # Create row of options for each group
-        button_row = OptionsButtonRow(self, check_buttons, waveforms, path)
+        button_row = OptionsButtonRow(self, check_buttons, path)
 
         # Add buttons, waveform list and groups to UI content list
         ui_content = []
@@ -95,7 +95,7 @@ class WaveformSelector:
         else:
             self.select_in_viewer(newly_selected, new_selection, old_selection)
 
-        self.plotter.plotted_waveforms = self.selected
+        self.plotter.plotted_waveforms = list(self.selected.values())
         self.plotter.param.trigger("plotted_waveforms")
         self.previous_selection[check_buttons] = check_buttons.value
 
@@ -128,7 +128,7 @@ class WaveformSelector:
             self.selected = {}
 
         self._deselect_checkbuttons(self.ui_selector, exclude)
-        self.plotter.plotted_waveforms = self.selected
+        self.plotter.plotted_waveforms = list(self.selected.values())
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup

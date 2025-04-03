@@ -5,11 +5,10 @@ from waveform_editor.waveform import Waveform
 
 
 class OptionsButtonRow:
-    def __init__(self, selector, check_buttons, waveforms, path):
+    def __init__(self, selector, check_buttons, path):
         self.selector = selector
         self.parent_ui = None
         self.check_buttons = check_buttons
-        self.waveforms = waveforms
         self.path = path
 
         # 'Select all' Button
@@ -67,24 +66,25 @@ class OptionsButtonRow:
             option_buttons, self.new_waveform_panel.get(), self.new_group_panel.get()
         )
 
-        if not self.waveforms:
+        if not self.check_buttons.options:
             self.select_all_button.visible = False
             self.deselect_all_button.visible = False
 
     def _deselect_all(self, event):
-        """Deselect all options in this CheckButtonGroup."""
+        """Deselect all waveforms in this CheckButtonGroup."""
         self.check_buttons.value = []
 
     def _select_all(self, event):
-        """Select all options in this CheckButtonGroup."""
-        self.check_buttons.value = self.waveforms
+        """Select all waveforms in this CheckButtonGroup."""
+        self.check_buttons.value = self.check_buttons.options
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""
         self.new_waveform_panel.is_visible(True)
 
     def _add_new_waveform(self, event):
-        """Add the new waveform to CheckButtonGroup and update the YAML."""
+        """Add the new waveform to CheckButtonGroup and update the
+        WaveformConfiguration."""
         name = self.new_waveform_panel.input.value
         if name in self.selector.config.waveform_map:
             pn.state.notifications.error(f"Waveform {name!r} already exists!")
@@ -102,11 +102,11 @@ class OptionsButtonRow:
         self.selector.config.add_waveform(empty_waveform, self.path)
 
         self.check_buttons.param.trigger("options")
-        self.new_waveform_panel.clear_input()
 
         self.select_all_button.visible = True
         self.deselect_all_button.visible = True
         self.new_waveform_panel.is_visible(False)
+        self.new_waveform_panel.clear_input()
 
     def _on_add_group_button_click(self, event):
         """Show the text input form to add a new group."""

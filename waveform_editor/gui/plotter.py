@@ -7,7 +7,7 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformPlotter(param.Parameterized):
     """Class to handle dynamic waveform plotting."""
 
-    plotted_waveforms = param.Dict(default={})
+    plotted_waveforms = param.List(default=[])
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -15,9 +15,11 @@ class WaveformPlotter(param.Parameterized):
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
-        Plot the tendencies of a waveform and return a holoviews curve.
+        Store the tendencies of a waveform into a holoviews curve.
 
         Args:
+            waveform: The waveform to convert to a holoviews curve.
+            label: The label to add to the legend.
             plot_time_points: Whether to include markers for the data points.
 
         Returns:
@@ -48,7 +50,7 @@ class WaveformPlotter(param.Parameterized):
         Overlay object.
 
         Args:
-            plotted_waveforms: dict containing all selected waveforms.
+            plotted_waveforms: list containing waveforms to be plotted.
 
         Returns:
             An Holoviews overlay containing the curves
@@ -64,8 +66,8 @@ class WaveformPlotter(param.Parameterized):
             return empty_overlay
 
         curves = []
-        for name, waveform in plotted_waveforms.items():
-            plot = self.plot_tendencies(waveform, name)
+        for waveform in plotted_waveforms:
+            plot = self.plot_tendencies(waveform, waveform.name)
             curves.append(plot)
 
         if curves:
