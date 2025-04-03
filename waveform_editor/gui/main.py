@@ -5,7 +5,7 @@ import panel as pn
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.gui.waveform_editor_widget import WaveformEditor
+from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.waveform_plotter import WaveformPlotter
 from waveform_editor.gui.waveform_selector.waveform_selector import WaveformSelector
 
