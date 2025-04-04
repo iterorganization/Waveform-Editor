@@ -14,7 +14,7 @@ class OptionsButtonRow:
         # 'Select all' Button
         self.select_all_button = pn.widgets.ButtonIcon(
             icon="select-all",
-            size="30px",
+            size="20px",
             active_icon="check",
             description="Select all waveforms in this group",
         )
@@ -23,7 +23,7 @@ class OptionsButtonRow:
         # 'Deselect all' Button
         self.deselect_all_button = pn.widgets.ButtonIcon(
             icon="deselect",
-            size="30px",
+            size="20px",
             active_icon="check",
             description="Deselect all waveforms in this group",
         )
@@ -32,7 +32,7 @@ class OptionsButtonRow:
         # 'Add new waveform' button
         self.new_waveform_button = pn.widgets.ButtonIcon(
             icon="plus",
-            size="30px",
+            size="20px",
             active_icon="check",
             description="Add new waveform",
         )
@@ -45,7 +45,7 @@ class OptionsButtonRow:
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
             icon="library-plus",
-            size="30px",
+            size="20px",
             active_icon="check",
             description="Add new group",
         )
