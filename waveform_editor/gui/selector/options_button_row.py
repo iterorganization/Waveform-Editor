@@ -17,8 +17,8 @@ class OptionsButtonRow:
             size="20px",
             active_icon="check",
             description="Select all waveforms in this group",
+            on_click=self._select_all,
         )
-        self.select_all_button.on_click(self._select_all)
 
         # 'Deselect all' Button
         self.deselect_all_button = pn.widgets.ButtonIcon(
@@ -26,8 +26,8 @@ class OptionsButtonRow:
             size="20px",
             active_icon="check",
             description="Deselect all waveforms in this group",
+            on_click=self._deselect_all,
         )
-        self.deselect_all_button.on_click(self._deselect_all)
 
         # 'Add new waveform' button
         self.new_waveform_button = pn.widgets.ButtonIcon(
@@ -35,12 +35,13 @@ class OptionsButtonRow:
             size="20px",
             active_icon="check",
             description="Add new waveform",
+            on_click=self._on_add_waveform_button_click,
         )
         self.new_waveform_panel = TextInputForm(
-            "Enter name of new waveform", is_visible=False
+            "Enter name of new waveform",
+            is_visible=False,
+            on_click=self._add_new_waveform,
         )
-        self.new_waveform_button.on_click(self._on_add_waveform_button_click)
-        self.new_waveform_panel.button.on_click(self._add_new_waveform)
 
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
@@ -48,12 +49,13 @@ class OptionsButtonRow:
             size="20px",
             active_icon="check",
             description="Add new group",
+            on_click=self._on_add_group_button_click,
         )
         self.new_group_panel = TextInputForm(
-            "Enter name of new group", is_visible=False
+            "Enter name of new group",
+            is_visible=False,
+            on_click=self._add_new_group,
         )
-        self.new_group_button.on_click(self._on_add_group_button_click)
-        self.new_group_panel.button.on_click(self._add_new_group)
 
         # Combine all into a button row
         option_buttons = pn.Row(

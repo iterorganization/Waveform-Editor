@@ -5,7 +5,7 @@ class TextInputForm:
     """Panel containing a text input field, and a button to accept or cancel the
     current input."""
 
-    def __init__(self, text, is_visible=True):
+    def __init__(self, text, is_visible=True, on_click=None):
         self.input = pn.widgets.TextInput(placeholder=text.strip())
         self.button = pn.widgets.ButtonIcon(
             icon="square-rounded-plus",
@@ -14,6 +14,8 @@ class TextInputForm:
             description="Accept",
             margin=(10, 0, 0, 0),
         )
+        if on_click:
+            self.button.on_click(on_click)
         self.cancel_button = pn.widgets.ButtonIcon(
             icon="circle-x",
             size="30px",
