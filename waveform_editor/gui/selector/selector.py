@@ -7,6 +7,15 @@ class WaveformSelector:
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
     def create_waveform_selector_ui(self, config, plotter, editor):
+        """Creates a UI for the selector sidebar, containing accordions for each
+        group in the config, option buttons, and CheckButtonGroups for the lists of
+        waveforms.
+
+        Args:
+            config: The WaveformConfiguration containing the loaded YAML data.
+            plotter: The WaveformPlotter object to update the plots.
+            editor: the WaveformEditor object
+        """
         self.config = config
         self.plotter = plotter
         self.editor = editor
@@ -20,8 +29,7 @@ class WaveformSelector:
         self.ui_selector = pn.Accordion(*ui_content, sizing_mode="stretch_width")
 
     def on_tab_change(self, event):
-        """Change selection behavior of the waveform selector, depending on which tab
-        is selected."""
+        """Change selection behavior, depending on which tab is selected."""
         self.deselect_all()
         if event.new == 1:
             self.edit_waveforms_enabled = True
@@ -32,8 +40,7 @@ class WaveformSelector:
         """Recursively create a Panel UI structure from the YAML.
 
         Args:
-            data: Dictionary containing the yaml data.
-            is_root: Whether function is called from the root level of the YAML.
+            group: The group to add the new group to.
             path: The path of the nested groups in the YAML data, as a list of strings.
         """
 
@@ -57,7 +64,7 @@ class WaveformSelector:
             stylesheets=["button {text-align: left!important;}"],
         )
         check_buttons.param.watch(
-            lambda event: self.on_select(event, check_buttons, path), "value"
+            lambda event: self.on_select(event, check_buttons), "value"
         )
 
         # Create row of options for each group
@@ -78,28 +85,42 @@ class WaveformSelector:
 
         return parent_container
 
-    def on_select(self, event, check_buttons, path):
+    def on_select(self, event, check_buttons):
         """Handles the selection and deselection of waveforms in the check button
-        group."""
+        group.
+
+        Args:
+            event: list containing the new selection.
+            check_buttons: The CheckButtonGroup object the selection was called on.
+        """
         new_selection = event.new
         old_selection = self.previous_selection.get(check_buttons, {})
 
+        # Find which waveform was newly selected
         newly_selected = {
             key: self.config.waveform_map[key]
             for key in new_selection
             if key not in old_selection
         }
 
+        # Decide on selection logic, based on which tab is selected
         if self.edit_waveforms_enabled:
-            self.select_in_editor(newly_selected, path)
+            self.select_in_editor(newly_selected)
         else:
             self.select_in_viewer(newly_selected, new_selection, old_selection)
 
         self.plotter.plotted_waveforms = list(self.selected.values())
         self.plotter.param.trigger("plotted_waveforms")
+
         self.previous_selection[check_buttons] = check_buttons.value
 
-    def select_in_editor(self, newly_selected, path):
+    def select_in_editor(self, newly_selected):
+        """Only allow for a single waveform to be selected. All waveforms except for
+        the newly selected waveform will be deselected.
+
+        Args:
+            newly_selected: The newly selected waveform.
+        """
         if newly_selected:
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key)
@@ -111,6 +132,14 @@ class WaveformSelector:
             self.editor.set_default()
 
     def select_in_viewer(self, newly_selected, new_selection, old_selection):
+        """Allow for multiple waveforms to be selected. If a waveform is deselected,
+        remove it from the selection dictionary.
+
+        Args:
+            newly_selected: The newly selected waveform.
+            new_selection: All selected waveforms.
+            old_selection: The previously selected waveforms.
+        """
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
             self.selected.pop(key, None)
@@ -119,8 +148,12 @@ class WaveformSelector:
             self.selected[key] = value
 
     def deselect_all(self, exclude=None):
-        """Deselect all options in all CheckButtonGroup widgets, excluding a certain
-        item."""
+        """Deselect all options in all CheckButtonGroups. A waveform name can be
+        provided to be excluded from deselection.
+
+        Args:
+            exclude: The name of a waveform to exclude from deselection.
+        """
         if exclude:
             self.selected = {exclude: self.config.waveform_map[exclude]}
         else:
@@ -131,7 +164,12 @@ class WaveformSelector:
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
-        widgets."""
+        widgets.
+
+        Args:
+            widget: The widget in which to deselect the checkbuttons.
+            exclude: The waveform to exclude from deselection.
+        """
         if isinstance(widget, pn.widgets.CheckButtonGroup):
             if exclude in widget.value:
                 widget.value = [exclude]
