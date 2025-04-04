@@ -99,3 +99,12 @@ def test_replace_waveform(config):
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform2
     with pytest.raises(ValueError):
         config.replace_waveform(waveform3)
+
+
+def test_get_item(config):
+    """Test if __getitem__ returns the correct waveform."""
+
+    path = ["ec_launchers", "beams", "steering_angles"]
+    waveform1 = Waveform(name="waveform/1")
+    config.add_waveform(waveform1, path)
+    assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
