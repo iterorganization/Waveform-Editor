@@ -41,6 +41,10 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
+        if "/" not in waveform.name:
+            raise ValueError(
+                "Waveforms in configurations must contain '/' in their name."
+            )
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
@@ -49,6 +53,39 @@ class WaveformConfiguration:
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = waveform
+
+    def replace_waveform(self, waveform):
+        """Replaces an existing waveform with a new waveform.
+
+        Args:
+            waveform: The new waveform object to replace the old one.
+        """
+        if waveform.name not in self.waveform_map:
+            raise ValueError(
+                f"Waveform '{waveform.name}' does not exist in the configuration."
+            )
+        if not self._recursive_replace(self.groups, waveform):
+            raise ValueError(f"Waveform '{waveform.name}' not found in any group.")
+
+    def _recursive_replace(self, groups, waveform):
+        """Recursively searches for and replaces a waveform in the given groups.
+
+        Args:
+            groups: The dictionary of groups to search through.
+            waveform: The new waveform object to replace the old one.
+
+        Returns:
+            True if the waveform was found and replaced, False otherwise.
+        """
+
+        for group in groups.values():
+            if waveform.name in group.waveforms:
+                group.waveforms[waveform.name] = waveform
+                self.waveform_map[waveform.name] = waveform
+                return True
+            if self._recursive_replace(group.groups, waveform):
+                return True
+        return False
 
     def add_group(self, name, path):
         """Adds a new waveform group at the specified path.
