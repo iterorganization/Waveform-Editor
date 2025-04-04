@@ -41,11 +41,9 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
-        current = self.groups
-        for path_part in path:
-            current = current[path_part]
+        group = self.traverse(path)
 
-        current.waveforms[waveform.name] = waveform
+        group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = waveform
 
     def add_group(self, name, path):
@@ -58,12 +56,22 @@ class WaveformConfiguration:
         Returns:
             The newly created waveform group.
         """
+        group = self.traverse(path)
+
+        group.groups[name] = WaveformGroup(name)
+        return group.groups[name]
+
+    def traverse(self, path):
+        """Traverse through nested groups and return the WaveformGroup at the given
+        path.
+
+        Args:
+            path: List of strings containing the nested group names.
+        """
         current = self.groups
         for path_part in path:
             current = current[path_part]
-
-        current.groups[name] = WaveformGroup(name)
-        return current.groups[name]
+        return current
 
     def to_yaml(self):
         # TODO: write converter implementation that keeps the raw string in output.
