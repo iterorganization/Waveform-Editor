@@ -41,6 +41,10 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
+        if "/" not in waveform.name:
+            raise ValueError(
+                "Waveforms in configurations must contain '/' in their name."
+            )
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
