@@ -32,15 +32,8 @@ tendency_map = {
 
 class Waveform:
     def __init__(
-        self,
-        *,
-        waveform=None,
-        yaml_str="",
-        line_number=0,
-        is_repeated=False,
-        name="waveform",
+        self, *, waveform=None, line_number=0, is_repeated=False, name="waveform"
     ):
-        self.yaml_str = yaml_str
         self.tendencies = []
         self.name = name
         self.line_number = line_number
