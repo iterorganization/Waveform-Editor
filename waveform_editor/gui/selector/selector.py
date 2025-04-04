@@ -98,9 +98,7 @@ class WaveformSelector:
 
         # Find which waveform was newly selected
         newly_selected = {
-            key: self.config.waveform_map[key]
-            for key in new_selection
-            if key not in old_selection
+            key: self.config[key] for key in new_selection if key not in old_selection
         }
 
         # Decide on selection logic, based on which tab is selected
@@ -155,7 +153,7 @@ class WaveformSelector:
             exclude: The name of a waveform to exclude from deselection.
         """
         if exclude:
-            self.selected = {exclude: self.config.waveform_map[exclude]}
+            self.selected = {exclude: self.config[exclude]}
         else:
             self.selected = {}
 

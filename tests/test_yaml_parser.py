@@ -20,7 +20,7 @@ def test_yaml_parser():
     waveform = yaml_parser.parse_waveforms(yaml_file)
     assert_tendencies_correct(waveform.tendencies)
     assert not waveform.annotations
-    assert not yaml_parser.has_yaml_error
+    assert not yaml_parser.parse_errors
 
     # Invalid configuration
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
@@ -28,7 +28,7 @@ def test_yaml_parser():
     yaml_parser = YamlParser()
     waveform = yaml_parser.parse_waveforms(yaml_file)
     assert waveform.annotations
-    assert not yaml_parser.has_yaml_error
+    assert not yaml_parser.parse_errors
 
     # Invalid YAML
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
@@ -36,7 +36,7 @@ def test_yaml_parser():
     yaml_parser = YamlParser()
     waveform = yaml_parser.parse_waveforms(yaml_file)
     assert not waveform.tendencies
-    assert yaml_parser.has_yaml_error
+    assert yaml_parser.parse_errors
 
 
 def assert_tendencies_correct(tendencies):
@@ -133,7 +133,7 @@ def test_constant_shorthand_notation():
         assert isinstance(waveform.tendencies[0], ConstantTendency)
         assert waveform.tendencies[0].value == expected_value
         assert not waveform.annotations
-        assert not yaml_parser.has_yaml_error
+        assert not yaml_parser.parse_errors
 
 
 def test_load_yaml():

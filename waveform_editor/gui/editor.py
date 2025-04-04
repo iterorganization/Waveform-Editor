@@ -49,25 +49,29 @@ class WaveformEditor:
         """
         value = event.new
         yaml_parser = YamlParser()
-        self.yaml_alert.visible = self.error_alert.visible = False
         self.waveform = yaml_parser.parse_waveforms(value)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
-        self.code_editor.param.trigger("annotations")
 
-        if yaml_parser.has_yaml_error:
+        if yaml_parser.parse_errors:
             self.yaml_alert.object = (
-                f"### The YAML did not parse correctly\n {annotations}"
+                f"### The YAML did not parse correctly\n {yaml_parser.parse_errors[0]}"
             )
             self.yaml_alert.visible = True
-        elif self.code_editor.annotations:
-            self.error_alert.object = (
-                f"### There was an error in the YAML configuration\n {annotations}"
-            )
-            self.error_alert.visible = True
-
-        self.plotter.plotted_waveforms = [self.waveform]
+            self.error_alert.visible = False
+        else:
+            self.yaml_alert.visible = False
+            if self.code_editor.annotations:
+                self.error_alert.object = (
+                    f"### There was an error in the YAML configuration\n {annotations}"
+                )
+                self.error_alert.visible = True
+            else:
+                self.error_alert.visible = False
+        # Only update plot when there are no YAML errors
+        if not yaml_parser.parse_errors:
+            self.plotter.plotted_waveforms = [self.waveform]
 
     def set_default(self):
         """Set code editor value to default."""
@@ -76,6 +80,7 @@ class WaveformEditor:
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
         by self.path."""
+        # TODO: Perhaps only allow saving in there are warnings?
         if self.yaml_alert.visible or self.error_alert.visible:
             pn.state.notifications.error("Cannot save YAML with errors.")
             return

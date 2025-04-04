@@ -9,6 +9,7 @@ class WaveformConfiguration:
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
         # of waveforms
         self.waveform_map = {}
+        self.load_error = ""
 
     def __getitem__(self, key):
         """Retrieves a waveform group by name.
@@ -38,8 +39,11 @@ class WaveformConfiguration:
         parser = YamlParser()
         parsed_data = parser.load_yaml(yaml_str)
 
-        self.groups = parsed_data["groups"]
-        self.waveform_map = parsed_data["waveform_map"]
+        if parsed_data is None:
+            self.load_error = parser.load_yaml_error
+        else:
+            self.groups = parsed_data["groups"]
+            self.waveform_map = parsed_data["waveform_map"]
 
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.

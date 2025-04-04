@@ -68,12 +68,19 @@ class WaveformEditorGui:
         Args:
             event: The event object containing the uploaded file data.
         """
-        self.tabs.visible = True
-        self.file_download.visible = True
-        self.sidebar_column[1].visible = False
 
         yaml_content = event.new.decode("utf-8")
         self.config.load_yaml(yaml_content)
+
+        if self.config.load_error:
+            pn.state.notifications.error(
+                f"YAML could not be loaded:\n{self.config.load_error}", duration=10000
+            )
+            return
+
+        self.tabs.visible = True
+        self.file_download.visible = True
+        self.sidebar_column[1].visible = False
 
         # Create tree structure in sidebar based on waveform groups in YAML
         self.selector.create_waveform_selector_ui(
