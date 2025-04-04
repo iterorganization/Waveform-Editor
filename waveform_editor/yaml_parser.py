@@ -89,7 +89,7 @@ class YamlParser:
                     )
                 waveform = self.parse_waveforms(yaml.dump({key: value}))
                 current_group.waveforms[key] = waveform
-                waveform_map[key] = waveform
+                waveform_map[key] = current_group
 
         return current_group
 
