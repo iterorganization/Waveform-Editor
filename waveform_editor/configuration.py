@@ -6,7 +6,7 @@ class WaveformConfiguration:
     def __init__(self):
         self.groups = {}
         # Since waveform names must be unique, we can store a flat mapping of waveform
-        # names to the Waveform objects, for cheap look-up
+        # names to the Waveform objects, for cheap look-up of waveforms
         self.waveform_map = {}
 
     def __getitem__(self, key):
@@ -41,8 +41,9 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
+        if not path:
+            raise ValueError("Waveforms must be added at a specific group path.")
         group = self.traverse(path)
-
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = waveform
 
@@ -56,10 +57,13 @@ class WaveformConfiguration:
         Returns:
             The newly created waveform group.
         """
-        group = self.traverse(path)
-
-        group.groups[name] = WaveformGroup(name)
-        return group.groups[name]
+        if path:
+            group = self.traverse(path)
+            group.groups[name] = WaveformGroup(name)
+            return group.groups[name]
+        else:
+            self.groups[name] = WaveformGroup(name)
+            return self.groups[name]
 
     def traverse(self, path):
         """Traverse through nested groups and return the WaveformGroup at the given
