@@ -43,6 +43,9 @@ class WaveformConfiguration:
         """
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
+
+        if waveform.name in self.waveform_map:
+            raise ValueError("The waveform already exists in this configuration.")
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = waveform
@@ -57,13 +60,13 @@ class WaveformConfiguration:
         Returns:
             The newly created waveform group.
         """
-        if path:
-            group = self.traverse(path)
-            group.groups[name] = WaveformGroup(name)
-            return group.groups[name]
-        else:
-            self.groups[name] = WaveformGroup(name)
-            return self.groups[name]
+        group = self.traverse(path).groups if path else self.groups
+
+        if name in group:
+            raise ValueError(f"{name} already exists at path: {path or 'root'}.")
+
+        group[name] = WaveformGroup(name)
+        return group[name]
 
     def traverse(self, path):
         """Traverse through nested groups and return the WaveformGroup at the given
