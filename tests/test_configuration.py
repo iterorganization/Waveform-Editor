@@ -61,3 +61,26 @@ def test_add_waveform(config):
         key in config.waveform_map
         for key in ["waveform1", "waveform2", "waveform3", "waveform4"]
     )
+
+
+def test_add_waveform_duplicate(config):
+    """Test if error is raised when waveform that already exists is added."""
+    waveform1 = Waveform(name="waveform1")
+    path1 = ["ec_launchers", "beams", "steering_angles"]
+    path2 = ["ec_launchers"]
+    config.add_waveform(waveform1, path1)
+    with pytest.raises(ValueError):
+        config.add_waveform(waveform1, path2)
+
+
+def test_add_group_duplicate():
+    """Test if error is raised when group that already exists at a path is added."""
+    config = WaveformConfiguration()
+
+    config.add_group("ec_launchers", [])
+    with pytest.raises(ValueError):
+        config.add_group("ec_launchers", [])
+
+    config.add_group("beams", ["ec_launchers"])
+    with pytest.raises(ValueError):
+        config.add_group("beams", ["ec_launchers"])
