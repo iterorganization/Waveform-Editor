@@ -9,7 +9,6 @@ class WaveformEditor:
     def __init__(self, plotter, config):
         self.plotter = plotter
         self.config = config
-        self.path = []
         self.waveform = None
 
         # Code editor UI
@@ -82,9 +81,9 @@ class WaveformEditor:
             return
 
         if self.waveform.name in self.config.waveform_map:
-            if not self.path:
-                raise ValueError("The path in the waveform editor was not set.")
-            self.config.add_waveform(self.waveform, self.path)
+            self.config.replace_waveform(self.waveform)
+            # TODO: Sometimes notifications seem to not be shown, even when this is
+            # called, should be investigated
             pn.state.notifications.success("Succesfully saved waveform!")
         else:
             pn.state.notifications.error(

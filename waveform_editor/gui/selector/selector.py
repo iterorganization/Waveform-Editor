@@ -107,7 +107,6 @@ class WaveformSelector:
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
             self.editor.code_editor.value = waveform.yaml_str
-            self.editor.path = path
         else:
             self.editor.set_default()
 
