@@ -82,7 +82,7 @@ class WaveformConfiguration:
         # Ensure that comments are not removed, and formatting of tendencies
         # is preserved.
         self.print()
-        return ""
+        raise NotImplementedError
 
     def print(self, indent=0):
         """Prints the waveform configuration as a hierarchical tree.
