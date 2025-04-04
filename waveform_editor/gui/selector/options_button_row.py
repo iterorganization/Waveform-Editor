@@ -1,7 +1,7 @@
 import panel as pn
 
 from waveform_editor.gui.selector.text_input_form import TextInputForm
-from waveform_editor.waveform import Waveform
+from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow:
@@ -98,8 +98,9 @@ class OptionsButtonRow:
         self.check_buttons.options.append(name)
 
         # Add empty waveform to YAML
-        empty_waveform = Waveform(name=name)
-        self.selector.config.add_waveform(empty_waveform, self.path)
+        yaml_parser = YamlParser()
+        new_waveform = yaml_parser.parse_waveforms(f"{name}: [{{}}]")
+        self.selector.config.add_waveform(new_waveform, self.path)
 
         self.check_buttons.param.trigger("options")
 
