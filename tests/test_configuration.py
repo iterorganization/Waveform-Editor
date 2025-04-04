@@ -92,7 +92,10 @@ def test_replace_waveform(config):
     path = ["ec_launchers", "beams", "steering_angles"]
     waveform1 = Waveform(name="waveform/1")
     waveform2 = Waveform(name="waveform/1")
+    waveform3 = Waveform(name="waveform/3")
     config.add_waveform(waveform1, path)
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
     config.replace_waveform(waveform2)
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform2
+    with pytest.raises(ValueError):
+        config.replace_waveform(waveform3)
