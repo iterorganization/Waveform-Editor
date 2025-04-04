@@ -2,7 +2,6 @@ import re
 
 import yaml
 
-from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
 
@@ -41,7 +40,8 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 class YamlParser:
     def load_yaml(self, yaml_str):
-        waveform_config = WaveformConfiguration()
+        groups = {}
+        waveform_map = {}
         try:
             yaml_data = yaml.safe_load(yaml_str)
             if not isinstance(yaml_data, dict):
@@ -59,14 +59,17 @@ class YamlParser:
                 if not isinstance(group_content, dict):
                     raise ValueError("Waveforms must belong to a group.")
 
-                root_group = self._recursive_load(group_content, group_name)
-                waveform_config.groups[group_name] = root_group
+                root_group = self._recursive_load(
+                    group_content, group_name, waveform_map
+                )
+                groups[group_name] = root_group
+            return {"groups": groups, "waveform_map": waveform_map}
         except yaml.YAMLError as e:
             # TODO: global YAML errors should be shown in an error notification in UI
             print(f"The YAML could not be parsed.\n{e}")
-        return waveform_config
+            return None
 
-    def _recursive_load(self, data_dict, group_name):
+    def _recursive_load(self, data_dict, group_name, waveform_map):
         current_group = WaveformGroup(group_name)
 
         for key, value in data_dict.items():
@@ -76,7 +79,7 @@ class YamlParser:
                     raise ValueError(
                         f"Invalid group '{key}': Group names may not contain '/'."
                     )
-                nested_group = self._recursive_load(value, key)
+                nested_group = self._recursive_load(value, key, waveform_map)
                 current_group.groups[key] = nested_group
             else:
                 if "/" not in key:
@@ -86,6 +89,7 @@ class YamlParser:
                     )
                 waveform = self.parse_waveforms(yaml.dump({key: value}))
                 current_group.waveforms[key] = waveform
+                waveform_map[key] = waveform
 
         return current_group
 
@@ -135,6 +139,7 @@ class YamlParser:
             return waveform
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)
+            return Waveform()
 
     def _handle_yaml_error(self, error):
         # TODO: YAML errors must be displayed in the code editor UI
