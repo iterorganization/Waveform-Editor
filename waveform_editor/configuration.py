@@ -37,6 +37,7 @@ class WaveformConfiguration:
             yaml_str: The YAML string containing waveform configuration data.
         """
         parser = YamlParser()
+        self.load_error = ""
         parsed_data = parser.load_yaml(yaml_str)
 
         if parsed_data is None:

@@ -39,7 +39,7 @@ class WaveformEditorGui:
         # Add tabs to switch from viewer to editor
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
-        self.selector = WaveformSelector()
+        self.selector = WaveformSelector(self.config, self.plotter, self.editor)
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter)),
@@ -76,21 +76,29 @@ class WaveformEditorGui:
             pn.state.notifications.error(
                 f"YAML could not be loaded:\n{self.config.load_error}", duration=10000
             )
+            self.make_ui_visible(False)
             return
 
-        self.tabs.visible = True
-        self.file_download.visible = True
-        self.sidebar_column[1].visible = False
+        self.make_ui_visible(True)
 
         # Create tree structure in sidebar based on waveform groups in YAML
-        self.selector.create_waveform_selector_ui(
-            self.config, self.plotter, self.editor
-        )
-        self.sidebar_column[3] = self.selector
+        self.selector.create_waveform_selector_ui()
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")
             self.file_download.filename = new_filename
+
+    def make_ui_visible(self, is_visible):
+        """
+        Toggles the visibility of UI elements based on the given flag.
+
+        Args:
+            is_visible: If True, makes certain UI elements visible, else hides them.
+        """
+        self.tabs.visible = is_visible
+        self.file_download.visible = is_visible
+        self.sidebar_column[1].visible = not is_visible
+        self.sidebar_column[3].visible = is_visible
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""

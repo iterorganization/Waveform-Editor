@@ -7,29 +7,23 @@ from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self):
-        self.ui_selector = None
-
-    def create_waveform_selector_ui(self, config, plotter, editor):
-        """Creates a UI for the selector sidebar, containing accordions for each
-        group in the config, option buttons, and CheckButtonGroups for the lists of
-        waveforms.
-
-        Args:
-            config: The WaveformConfiguration containing the loaded YAML data.
-            plotter: The WaveformPlotter object to update the plots.
-            editor: the WaveformEditor object
-        """
+    def __init__(self, config, plotter, editor):
         self.config = config
         self.plotter = plotter
         self.editor = editor
-        self.selected = {}
         self.edit_waveforms_enabled = False
-        ui_content = []
-        for group in self.config.groups.values():
-            path = [group.name]
-            ui_content.append((group.name, self.create_group_ui(group, path)))
-        self.ui_selector = pn.Accordion(*ui_content, sizing_mode="stretch_width")
+        self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
+
+    def create_waveform_selector_ui(self):
+        """Creates a UI for the selector sidebar, containing accordions for each
+        group in the config, option buttons, and CheckButtonGroups for the lists of
+        waveforms.
+        """
+        self.selected = {}
+        self.ui_selector.objects = [
+            self.create_group_ui(group, [group.name])
+            for group in self.config.groups.values()
+        ]
 
     def on_tab_change(self, event):
         """Change selection behavior, depending on which tab is selected."""
@@ -86,7 +80,9 @@ class WaveformSelector(Viewer):
             accordion = pn.Accordion(*inner_groups_ui)
             ui_content.append(accordion)
 
-        parent_container = pn.Column(*ui_content, sizing_mode="stretch_width")
+        parent_container = pn.Column(
+            *ui_content, sizing_mode="stretch_width", name=group.name
+        )
         button_row.parent_ui = parent_container
 
         return parent_container
