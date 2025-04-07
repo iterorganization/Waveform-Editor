@@ -24,10 +24,10 @@ def test_add_group(config):
 
 def test_add_waveform(config):
     """Test if waveforms are added correctly to the configuration."""
-    waveform1 = Waveform(name="waveform1")
-    waveform2 = Waveform(name="waveform2")
-    waveform3 = Waveform(name="waveform3")
-    waveform4 = Waveform(name="waveform4")
+    waveform1 = Waveform(name="waveform/1")
+    waveform2 = Waveform(name="waveform/2")
+    waveform3 = Waveform(name="waveform/3")
+    waveform4 = Waveform(name="waveform/4")
 
     path1 = ["ec_launchers", "beams", "steering_angles"]
     path2 = ["ec_launchers"]
@@ -40,16 +40,16 @@ def test_add_waveform(config):
 
     waveforms_path1 = config.traverse(path1).waveforms
     assert len(waveforms_path1) == 1
-    assert waveforms_path1["waveform1"].name == "waveform1"
+    assert waveforms_path1["waveform/1"] == waveform1
 
     waveforms_path2 = config.traverse(path2).waveforms
     assert len(waveforms_path2) == 1
-    assert waveforms_path2["waveform2"].name == "waveform2"
+    assert waveforms_path2["waveform/2"] == waveform2
 
     waveforms_path3_4 = config.traverse(path3_4).waveforms
     assert len(waveforms_path3_4) == 2
-    assert waveforms_path3_4["waveform3"].name == "waveform3"
-    assert waveforms_path3_4["waveform4"].name == "waveform4"
+    assert waveforms_path3_4["waveform/3"] == waveform3
+    assert waveforms_path3_4["waveform/4"] == waveform4
 
     assert len(config.traverse(["ec_launchers", "beams"]).waveforms) == 0
 
@@ -57,15 +57,15 @@ def test_add_waveform(config):
     with pytest.raises(ValueError):
         config.add_waveform(waveform1, [])
 
-    assert all(
-        key in config.waveform_map
-        for key in ["waveform1", "waveform2", "waveform3", "waveform4"]
+    # Check if all waveforms are in map
+    assert set(["waveform/1", "waveform/2", "waveform/3", "waveform/4"]) == set(
+        config.waveform_map.keys()
     )
 
 
 def test_add_waveform_duplicate(config):
     """Test if error is raised when waveform that already exists is added."""
-    waveform1 = Waveform(name="waveform1")
+    waveform1 = Waveform(name="waveform/1")
     path1 = ["ec_launchers", "beams", "steering_angles"]
     path2 = ["ec_launchers"]
     config.add_waveform(waveform1, path1)
@@ -84,3 +84,27 @@ def test_add_group_duplicate():
     config.add_group("beams", ["ec_launchers"])
     with pytest.raises(ValueError):
         config.add_group("beams", ["ec_launchers"])
+
+
+def test_replace_waveform(config):
+    """Test if error is raised when group that already exists at a path is added."""
+
+    path = ["ec_launchers", "beams", "steering_angles"]
+    waveform1 = Waveform(name="waveform/1")
+    waveform2 = Waveform(name="waveform/1")
+    waveform3 = Waveform(name="waveform/3")
+    config.add_waveform(waveform1, path)
+    assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
+    config.replace_waveform(waveform2)
+    assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform2
+    with pytest.raises(ValueError):
+        config.replace_waveform(waveform3)
+
+
+def test_get_item(config):
+    """Test if __getitem__ returns the correct waveform."""
+
+    path = ["ec_launchers", "beams", "steering_angles"]
+    waveform1 = Waveform(name="waveform/1")
+    config.add_waveform(waveform1, path)
+    assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1

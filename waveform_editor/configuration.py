@@ -6,7 +6,8 @@ class WaveformConfiguration:
     def __init__(self):
         self.groups = {}
         # Since waveform names must be unique, we can store a flat mapping of waveform
-        # names to the Waveform objects, for cheap look-up of waveforms
+        # names to the WaveformGroup that this waveform belongs to, for cheap look-up
+        # of waveforms
         self.waveform_map = {}
 
     def __getitem__(self, key):
@@ -18,9 +19,15 @@ class WaveformConfiguration:
         Returns:
             The requested waveform group.
         """
-        if key in self.groups:
-            return self.groups[key]
-        raise KeyError(f"'{key}' not found in groups")
+        if "/" in key:
+            if key in self.waveform_map:
+                group = self.waveform_map[key]
+                return group[key]
+            raise KeyError(f"{key!r} not found in waveform map.")
+        else:
+            if key in self.groups:
+                return self.groups[key]
+            raise KeyError(f"{key!r} not found in groups")
 
     def load_yaml(self, yaml_str):
         """Loads waveform configuration from a YAML string.
@@ -41,6 +48,10 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
+        if "/" not in waveform.name:
+            raise ValueError(
+                "Waveforms in configurations must contain '/' in their name."
+            )
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
@@ -48,7 +59,21 @@ class WaveformConfiguration:
             raise ValueError("The waveform already exists in this configuration.")
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
-        self.waveform_map[waveform.name] = waveform
+        self.waveform_map[waveform.name] = group
+
+    def replace_waveform(self, waveform):
+        """Replaces an existing waveform with a new waveform.
+
+        Args:
+            waveform: The new waveform object to replace the old one.
+        """
+        if waveform.name not in self.waveform_map:
+            raise ValueError(
+                f"Waveform '{waveform.name}' does not exist in the configuration."
+            )
+        else:
+            group = self.waveform_map[waveform.name]
+            group.waveforms[waveform.name] = waveform
 
     def add_group(self, name, path):
         """Adds a new waveform group at the specified path.

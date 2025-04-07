@@ -89,7 +89,7 @@ class YamlParser:
                     )
                 waveform = self.parse_waveforms(yaml.dump({key: value}))
                 current_group.waveforms[key] = waveform
-                waveform_map[key] = waveform
+                waveform_map[key] = current_group
 
         return current_group
 
@@ -135,7 +135,9 @@ class YamlParser:
             name = waveform_key.removeprefix("user_")
             waveform = waveform_yaml[waveform_key]
             line_number = waveform_yaml.get("line_number", 0)
-            waveform = Waveform(waveform=waveform, line_number=line_number, name=name)
+            waveform = Waveform(
+                waveform=waveform, yaml_str=yaml_str, line_number=line_number, name=name
+            )
             return waveform
         except yaml.YAMLError as e:
             self._handle_yaml_error(e)
