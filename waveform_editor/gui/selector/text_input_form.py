@@ -1,7 +1,8 @@
 import panel as pn
+from panel.viewable import Viewer
 
 
-class TextInputForm:
+class TextInputForm(Viewer):
     """Panel containing a text input field, and a button to accept or cancel the
     current input."""
 
@@ -37,7 +38,7 @@ class TextInputForm:
     def clear_input(self):
         self.input.value = ""
 
-    def get(self):
+    def __panel__(self):
         return self.panel
 
     def _on_select_cancel(self, event):

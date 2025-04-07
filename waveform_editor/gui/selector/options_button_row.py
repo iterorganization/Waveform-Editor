@@ -1,10 +1,11 @@
 import panel as pn
+from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.text_input_form import TextInputForm
 from waveform_editor.yaml_parser import YamlParser
 
 
-class OptionsButtonRow:
+class OptionsButtonRow(Viewer):
     def __init__(self, selector, check_buttons, path):
         self.selector = selector
         self.parent_ui = None
@@ -65,7 +66,7 @@ class OptionsButtonRow:
             self.deselect_all_button,
         )
         self.panel = pn.Column(
-            option_buttons, self.new_waveform_panel.get(), self.new_group_panel.get()
+            option_buttons, self.new_waveform_panel, self.new_group_panel
         )
 
         if not self.check_buttons.options:
@@ -152,6 +153,6 @@ class OptionsButtonRow:
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()
 
-    def get(self):
+    def __panel__(self):
         """Returns the panel UI element."""
         return self.panel

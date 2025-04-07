@@ -1,10 +1,11 @@
 import holoviews as hv
 import param
+from panel.viewable import Viewer
 
 from waveform_editor.yaml_parser import YamlParser
 
 
-class WaveformPlotter(param.Parameterized):
+class WaveformPlotter(Viewer):
     """Class to handle dynamic waveform plotting."""
 
     plotted_waveforms = param.List(default=[])
@@ -77,7 +78,7 @@ class WaveformPlotter(param.Parameterized):
 
         return empty_overlay
 
-    def get(self):
+    def __panel__(self):
         return hv.DynamicMap(
             self.update_plot,
             streams=[self.param.plotted_waveforms],

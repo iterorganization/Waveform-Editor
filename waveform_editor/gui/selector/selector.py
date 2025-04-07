@@ -1,9 +1,10 @@
 import panel as pn
+from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 
 
-class WaveformSelector:
+class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
     def create_waveform_selector_ui(self, config, plotter, editor):
@@ -72,7 +73,7 @@ class WaveformSelector:
 
         # Add buttons, waveform list and groups to UI content list
         ui_content = []
-        ui_content.append(button_row.get())
+        ui_content.append(button_row)
         ui_content.append(check_buttons)
 
         # Create accordion to store the inner groups UI objects into
@@ -180,6 +181,6 @@ class WaveformSelector:
                     continue
                 self._deselect_checkbuttons(child, exclude)
 
-    def get(self):
+    def __panel__(self):
         """Returns the waveform selector UI component."""
         return self.ui_selector

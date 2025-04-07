@@ -40,10 +40,9 @@ class WaveformEditorGui:
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
         self.selector = WaveformSelector()
-        plotter = self.plotter.get()
         self.tabs = pn.Tabs(
-            ("View Waveforms", plotter),
-            ("Edit Waveforms", pn.Row(self.editor.get(), plotter)),
+            ("View Waveforms", self.plotter),
+            ("Edit Waveforms", pn.Row(self.editor, self.plotter)),
             dynamic=True,
             visible=False,
         )
@@ -87,9 +86,9 @@ class WaveformEditorGui:
             self.config, self.plotter, self.editor
         )
         if len(self.sidebar_column) == 3:
-            self.sidebar_column.append(self.selector.get())
+            self.sidebar_column.append(self.selector)
         else:
-            self.sidebar_column[3] = self.selector.get()
+            self.sidebar_column[3] = self.selector
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")

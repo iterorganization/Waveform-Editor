@@ -1,9 +1,10 @@
 import panel as pn
+from panel.viewable import Viewer
 
 from waveform_editor.yaml_parser import YamlParser
 
 
-class WaveformEditor:
+class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
     def __init__(self, plotter, config):
@@ -85,6 +86,6 @@ class WaveformEditor:
                 f"Error: `{self.waveform.name}` not found in YAML"
             )
 
-    def get(self):
+    def __panel__(self):
         """Return the editor panel UI."""
         return self.layout
