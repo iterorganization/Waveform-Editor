@@ -21,7 +21,6 @@ class WaveformSelector(Viewer):
         self.plotter = plotter
         self.editor = editor
         self.selected = {}
-        self.previous_selection = {}
         self.edit_waveforms_enabled = False
         ui_content = []
         for group in self.config.groups.values():
@@ -98,7 +97,7 @@ class WaveformSelector(Viewer):
             check_buttons: The CheckButtonGroup object the selection was called on.
         """
         new_selection = event.new
-        old_selection = self.previous_selection.get(check_buttons, {})
+        old_selection = event.old
 
         # Find which waveform was newly selected
         newly_selected = {
@@ -113,8 +112,6 @@ class WaveformSelector(Viewer):
 
         self.plotter.plotted_waveforms = list(self.selected.values())
         self.plotter.param.trigger("plotted_waveforms")
-
-        self.previous_selection[check_buttons] = check_buttons.value
 
     def select_in_editor(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
