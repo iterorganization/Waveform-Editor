@@ -45,15 +45,15 @@ class OptionsButtonRow(Viewer):
             on_click=self._add_new_waveform,
         )
 
-        # 'Remove new waveform' button
+        # 'Remove waveform' button
         self.remove_waveform_button = pn.widgets.ButtonIcon(
             icon="minus",
             size="20px",
             active_icon="check",
             description="Remove selected waveforms in this group",
-            on_click=self._show_confirm_modal,
+            on_click=self._show_remove_waveform_modal,
         )
-        self.confirm_modal = ConfirmModal(
+        self.remove_waveform_modal = ConfirmModal(
             message="Are you sure you want to delete the selected waveform(s)?",
             on_confirm=self._remove_waveforms,
         )
@@ -82,20 +82,20 @@ class OptionsButtonRow(Viewer):
         )
         self.panel = pn.Column(
             option_buttons,
-            self.new_waveform_panel.get(),
-            self.new_group_panel.get(),
-            self.confirm_modal.get(),
+            self.new_waveform_panel,
+            self.new_group_panel,
+            self.remove_waveform_modal,
         )
 
         if not self.check_buttons.options:
             self.select_all_button.visible = False
             self.deselect_all_button.visible = False
 
-    def _show_confirm_modal(self, event):
+    def _show_remove_waveform_modal(self, event):
         if not self.check_buttons.value:
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.confirm_modal.open()
+        self.remove_waveform_modal.open()
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""

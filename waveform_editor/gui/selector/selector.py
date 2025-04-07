@@ -173,7 +173,7 @@ class WaveformSelector(Viewer):
                 widget.value = [exclude]
             else:
                 widget.value = []
-        else:
+        elif isinstance(widget, (pn.Column, pn.Accordion)):
             for child in widget:
                 # Skip select/deselect buttons row
                 if isinstance(widget, pn.Row):
