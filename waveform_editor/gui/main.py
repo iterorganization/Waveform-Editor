@@ -52,11 +52,14 @@ class WaveformEditorGui:
             main=self.tabs,
             sidebar_width=400,
         )
+        self.sidebar_text = pn.pane.Markdown(
+            "## Select Waveform Editor YAML File", margin=0
+        )
 
         # Append to sidebar to make the content of the sidebar dynamic
         self.sidebar_column = pn.Column(
             self.file_download,
-            pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
+            self.sidebar_text,
             self.file_input,
             self.selector,
         )
@@ -97,8 +100,8 @@ class WaveformEditorGui:
         """
         self.tabs.visible = is_visible
         self.file_download.visible = is_visible
-        self.sidebar_column[1].visible = not is_visible
-        self.sidebar_column[3].visible = is_visible
+        self.sidebar_text.visible = not is_visible
+        self.selector.ui_selector.visible = is_visible
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""
