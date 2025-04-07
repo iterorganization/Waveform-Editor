@@ -82,7 +82,7 @@ class WaveformEditor:
             pn.state.notifications.success("Succesfully saved waveform!")
         else:
             pn.state.notifications.error(
-                f"Error: `{self.waveform.name}` not found in YAML", duration=5000
+                f"Error: `{self.waveform.name}` not found in YAML"
             )
 
     def get(self):
