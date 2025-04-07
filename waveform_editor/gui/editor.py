@@ -12,14 +12,7 @@ class WaveformEditor:
         self.waveform = None
 
         # Code editor UI
-        self.yaml_alert = pn.pane.Alert(
-            "### The YAML did not parse correctly!",
-            alert_type="danger",
-            visible=False,
-        )
         self.error_alert = pn.pane.Alert(
-            "### There was an error in the YAML configuration.",
-            alert_type="warning",
             visible=False,
         )
         self.code_editor = pn.widgets.CodeEditor(
@@ -37,9 +30,7 @@ class WaveformEditor:
         )
         save_button.on_click(self.save_waveform)
 
-        self.layout = pn.Column(
-            save_button, self.code_editor, self.yaml_alert, self.error_alert
-        )
+        self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
 
     def on_value_change(self, event):
         """Update the plot based on the YAML editor input.
@@ -55,20 +46,20 @@ class WaveformEditor:
         self.code_editor.annotations = list(annotations)
 
         if yaml_parser.parse_errors:
-            self.yaml_alert.object = (
-                f"### The YAML did not parse correctly\n {yaml_parser.parse_errors[0]}"
+            self.error_alert.object = (
+                f"### The YAML did not parse correctly\n{yaml_parser.parse_errors[0]}"
             )
-            self.yaml_alert.visible = True
-            self.error_alert.visible = False
+            self.error_alert.alert_type = "danger"
+            self.error_alert.visible = True
+        elif self.code_editor.annotations:
+            self.error_alert.object = (
+                f"### There was an error in the YAML configuration\n{annotations}"
+            )
+            self.error_alert.alert_type = "warning"
+            self.error_alert.visible = True
         else:
-            self.yaml_alert.visible = False
-            if self.code_editor.annotations:
-                self.error_alert.object = (
-                    f"### There was an error in the YAML configuration\n {annotations}"
-                )
-                self.error_alert.visible = True
-            else:
-                self.error_alert.visible = False
+            self.error_alert.visible = False
+
         # Only update plot when there are no YAML errors
         if not yaml_parser.parse_errors:
             self.plotter.plotted_waveforms = [self.waveform]
@@ -80,7 +71,7 @@ class WaveformEditor:
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
         by self.path."""
-        if self.yaml_alert.visible or self.error_alert.visible:
+        if self.error_alert.visible:
             pn.state.notifications.error("Cannot save YAML with errors.")
             return
 
