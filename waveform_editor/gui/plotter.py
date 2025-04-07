@@ -13,6 +13,10 @@ class WaveformPlotter(Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         self.yaml_parser = YamlParser()
+        self.dynamic_map = hv.DynamicMap(
+            self.update_plot,
+            streams=[self.param.plotted_waveforms],
+        )
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
@@ -79,7 +83,4 @@ class WaveformPlotter(Viewer):
         return empty_overlay
 
     def __panel__(self):
-        return hv.DynamicMap(
-            self.update_plot,
-            streams=[self.param.plotted_waveforms],
-        )
+        return self.dynamic_map
