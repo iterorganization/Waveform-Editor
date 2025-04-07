@@ -47,9 +47,9 @@ class WaveformEditor:
         Args:
             event: Event containing the code editor value input.
         """
-        value = event.new
+        editor_text = event.new
         yaml_parser = YamlParser()
-        self.waveform = yaml_parser.parse_waveforms(value)
+        self.waveform = yaml_parser.parse_waveforms(editor_text)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
@@ -80,7 +80,6 @@ class WaveformEditor:
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
         by self.path."""
-        # TODO: Perhaps only allow saving in there are warnings?
         if self.yaml_alert.visible or self.error_alert.visible:
             pn.state.notifications.error("Cannot save YAML with errors.")
             return
