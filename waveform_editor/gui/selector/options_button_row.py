@@ -43,8 +43,6 @@ class OptionsButtonRow(Viewer):
             is_visible=False,
             on_click=self._add_new_waveform,
         )
-        self.new_waveform_button.on_click(self._on_add_waveform_button_click)
-        self.new_waveform_panel.button.on_click(self._add_new_waveform)
 
         # 'Remove new waveform' button
         self.remove_waveform_button = pn.widgets.ButtonIcon(
@@ -52,8 +50,8 @@ class OptionsButtonRow(Viewer):
             size="20px",
             active_icon="check",
             description="Remove selected waveforms in this group",
+            on_click=self._remove_waveforms,
         )
-        self.remove_waveform_button.on_click(self._remove_waveforms)
 
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
@@ -89,8 +87,7 @@ class OptionsButtonRow(Viewer):
         """Remove all selected waveforms in this CheckButtonGroup."""
         selected_waveforms = self.check_buttons.value.copy()
         for waveform_name in selected_waveforms:
-            self.selector.yaml_map.pop(waveform_name)
-            self._remove_entry_from_yaml(waveform_name)
+            self.selector.config.remove_waveform(waveform_name)
             self.check_buttons.options.remove(waveform_name)
         self.check_buttons.value = []
         self.check_buttons.param.trigger("options")
