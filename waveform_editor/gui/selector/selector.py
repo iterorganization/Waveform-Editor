@@ -32,6 +32,9 @@ class WaveformSelector(Viewer):
     def on_tab_change(self, event):
         """Change selection behavior, depending on which tab is selected."""
         self.deselect_all()
+        # event.new will be the index of the opened tab. In this case, we enable the
+        # edit waveforms selection logic if the 'Edit Waveforms' tab (at index 1) is
+        # selected
         if event.new == 1:
             self.edit_waveforms_enabled = True
         else:
