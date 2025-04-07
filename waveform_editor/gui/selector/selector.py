@@ -7,6 +7,9 @@ from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
+    def __init__(self):
+        self.ui_selector = None
+
     def create_waveform_selector_ui(self, config, plotter, editor):
         """Creates a UI for the selector sidebar, containing accordions for each
         group in the config, option buttons, and CheckButtonGroups for the lists of

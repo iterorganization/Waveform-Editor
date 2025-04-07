@@ -58,6 +58,7 @@ class WaveformEditorGui:
             self.file_download,
             pn.pane.Markdown("## Select Waveform Editor YAML File", margin=0),
             self.file_input,
+            self.selector,
         )
         self.template.sidebar.append(self.sidebar_column)
 
@@ -85,10 +86,7 @@ class WaveformEditorGui:
         self.selector.create_waveform_selector_ui(
             self.config, self.plotter, self.editor
         )
-        if len(self.sidebar_column) == 3:
-            self.sidebar_column.append(self.selector)
-        else:
-            self.sidebar_column[3] = self.selector
+        self.sidebar_column[3] = self.selector
 
         if self.file_input.filename:
             new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")
