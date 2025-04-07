@@ -1,6 +1,7 @@
 import panel as pn
 from panel.viewable import Viewer
 
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.text_input_form import TextInputForm
 from waveform_editor.yaml_parser import YamlParser
 
@@ -50,7 +51,11 @@ class OptionsButtonRow(Viewer):
             size="20px",
             active_icon="check",
             description="Remove selected waveforms in this group",
-            on_click=self._remove_waveforms,
+            on_click=self._show_confirm_modal,
+        )
+        self.confirm_modal = ConfirmModal(
+            message="Are you sure you want to delete the selected waveform(s)?",
+            on_confirm=self._remove_waveforms,
         )
 
         # 'Add new group' button
@@ -76,14 +81,23 @@ class OptionsButtonRow(Viewer):
             self.deselect_all_button,
         )
         self.panel = pn.Column(
-            option_buttons, self.new_waveform_panel, self.new_group_panel
+            option_buttons,
+            self.new_waveform_panel.get(),
+            self.new_group_panel.get(),
+            self.confirm_modal.get(),
         )
 
         if not self.check_buttons.options:
             self.select_all_button.visible = False
             self.deselect_all_button.visible = False
 
-    def _remove_waveforms(self, event):
+    def _show_confirm_modal(self, event):
+        if not self.check_buttons.value:
+            pn.state.notifications.error("No waveforms selected for removal.")
+            return
+        self.confirm_modal.open()
+
+    def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""
         selected_waveforms = self.check_buttons.value.copy()
         for waveform_name in selected_waveforms:
