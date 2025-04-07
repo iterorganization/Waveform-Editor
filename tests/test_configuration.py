@@ -101,6 +101,23 @@ def test_replace_waveform(config):
         config.replace_waveform(waveform3)
 
 
+def test_remove_waveform(config):
+    """Test if waveforms are removed correctly from configuration."""
+
+    waveform1 = Waveform(name="waveform/1")
+    config.add_waveform(waveform1, ["ec_launchers", "beams", "steering_angles"])
+
+    assert "waveform/1" in config.waveform_map
+    assert config["waveform/1"] == waveform1
+    config.remove_waveform("waveform/1")
+    assert "waveform/1" not in config.waveform_map
+    with pytest.raises(KeyError):
+        assert config["waveform/1"] == waveform1
+
+    with pytest.raises(ValueError):
+        config.remove_waveform("waveform/1")
+
+
 def test_get_item(config):
     """Test if __getitem__ returns the correct waveform."""
 
