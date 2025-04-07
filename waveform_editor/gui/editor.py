@@ -13,12 +13,9 @@ class WaveformEditor(Viewer):
         self.waveform = None
 
         # Code editor UI
-        self.error_alert = pn.pane.Alert(
-            visible=False,
-        )
+        self.error_alert = pn.pane.Alert(visible=False)
         self.code_editor = pn.widgets.CodeEditor(
-            sizing_mode="stretch_both",
-            language="yaml",
+            sizing_mode="stretch_both", language="yaml"
         )
         self.code_editor.param.watch(self.on_value_change, "value")
         self.set_default()
