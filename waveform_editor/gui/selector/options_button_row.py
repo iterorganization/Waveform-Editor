@@ -89,22 +89,18 @@ class OptionsButtonRow(Viewer):
         """Add the new waveform to CheckButtonGroup and update the
         WaveformConfiguration."""
         name = self.new_waveform_panel.input.value
-        if name in self.selector.config.waveform_map:
-            pn.state.notifications.error(f"Waveform {name!r} already exists!")
-            return
-        # TODO: Perhaps we should allow this, and distinguish between groups and
-        # waveforms in another way
-        if "/" not in name:
-            pn.state.notifications.error("The name of a waveform should contain '/'.")
-            return
-
-        self.check_buttons.options.append(name)
 
         # Add empty waveform to YAML
         yaml_parser = YamlParser()
         new_waveform = yaml_parser.parse_waveforms(f"{name}: [{{}}]")
-        self.selector.config.add_waveform(new_waveform, self.path)
+        # TODO:this try-except block can be replaced with a global error handler later
+        try:
+            self.selector.config.add_waveform(new_waveform, self.path)
+        except ValueError as e:
+            pn.state.notifications.error(str(e))
+            return
 
+        self.check_buttons.options.append(name)
         self.check_buttons.param.trigger("options")
 
         self.select_all_button.visible = True
@@ -128,7 +124,12 @@ class OptionsButtonRow(Viewer):
             return
 
         # Create new group in configuration
-        new_group = self.selector.config.add_group(name, self.path)
+        try:
+            new_group = self.selector.config.add_group(name, self.path)
+        except ValueError:
+            pn.state.notifications.error(f"{name!r} already exists in current group.")
+            return
+
         new_path = self.path + [name]
         new_group_ui = self.selector.create_group_ui(new_group, new_path)
 
