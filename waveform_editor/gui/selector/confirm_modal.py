@@ -37,14 +37,14 @@ class ConfirmModal(Viewer):
         self.modal.close = True
 
     def _handle_yes(self, event):
+        self.close()
         if self.on_confirm:
             self.on_confirm()
-        self.close()
 
     def _handle_no(self, event):
+        self.close()
         if self.on_cancel:
             self.on_cancel()
-        self.close()
 
     def __panel__(self):
         return self.modal
