@@ -63,9 +63,7 @@ class WaveformSelector(Viewer):
             orientation="vertical",
             stylesheets=["button {text-align: left!important;}"],
         )
-        check_buttons.param.watch(
-            lambda event: self.on_select(event, check_buttons), "value"
-        )
+        check_buttons.param.watch(self.on_select, "value")
 
         # Create row of options for each group
         button_row = OptionsButtonRow(self, check_buttons, path)
@@ -87,13 +85,12 @@ class WaveformSelector(Viewer):
 
         return parent_container
 
-    def on_select(self, event, check_buttons):
+    def on_select(self, event):
         """Handles the selection and deselection of waveforms in the check button
         group.
 
         Args:
             event: list containing the new selection.
-            check_buttons: The CheckButtonGroup object the selection was called on.
         """
         new_selection = event.new
         old_selection = event.old
