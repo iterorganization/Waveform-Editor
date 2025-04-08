@@ -98,8 +98,17 @@ class OptionsButtonRow(Viewer):
         )
 
         if not self.check_buttons.options:
-            self.select_all_button.visible = False
-            self.deselect_all_button.visible = False
+            self._show_filled_options(False)
+
+    def _show_filled_options(self, show_options):
+        """Whether to show the selection and waveform removal button.
+
+        Args:
+            show_options: flag to show options.
+        """
+        self.select_all_button.visible = show_options
+        self.remove_waveform_button.visible = show_options
+        self.deselect_all_button.visible = show_options
 
     def _show_remove_waveform_modal(self, event):
         if not self.check_buttons.value:
@@ -119,6 +128,10 @@ class OptionsButtonRow(Viewer):
             self.check_buttons.options.remove(waveform_name)
         self.check_buttons.value = []
         self.check_buttons.param.trigger("options")
+
+        # Remove options if there are no waveforms
+        if len(self.check_buttons.options) == 0:
+            self._show_filled_options(False)
 
     def _show_remove_group_modal(self, event):
         self.confirmation_modal.update_message(
@@ -168,8 +181,7 @@ class OptionsButtonRow(Viewer):
         self.check_buttons.options.append(name)
         self.check_buttons.param.trigger("options")
 
-        self.select_all_button.visible = True
-        self.deselect_all_button.visible = True
+        self._show_filled_options(True)
         self.new_waveform_panel.is_visible(False)
         self.new_waveform_panel.clear_input()
 
