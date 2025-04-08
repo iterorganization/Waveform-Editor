@@ -119,7 +119,7 @@ def test_remove_waveform(config):
 
 
 def test_remove_group(config):
-    """Test if waveforms are removed correctly from configuration."""
+    """Test if groups are removed correctly from configuration."""
 
     waveform1 = Waveform(name="waveform/1")
     waveform2 = Waveform(name="waveform/2")
@@ -148,6 +148,16 @@ def test_remove_group(config):
 
     assert not config["ec_launchers"].groups
     assert not config.waveform_map
+
+
+def test_remove_root_group(config):
+    """Test if root group is removed correctly from configuration."""
+
+    waveform1 = Waveform(name="waveform/1")
+    config.add_waveform(waveform1, ["ec_launchers", "beams", "steering_angles"])
+    config.remove_group(["ec_launchers"])
+    with pytest.raises(KeyError):
+        config["ec_launchers"]
 
 
 def test_get_item(config):

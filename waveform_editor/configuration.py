@@ -99,10 +99,10 @@ class WaveformConfiguration:
         Args:
             path: A list representing the path to the group to be removed.
         """
-        parent_group = self.traverse(path[:-1])
+        parent_group = self if len(path) == 1 else self.traverse(path[:-1])
         group_name_to_remove = path[-1]
 
-        group_to_remove = parent_group.groups[group_name_to_remove]
+        group_to_remove = parent_group[group_name_to_remove]
         for waveform_name in group_to_remove.waveforms:
             self.waveform_map.pop(waveform_name, None)
 

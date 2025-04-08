@@ -21,7 +21,7 @@ class WaveformSelector(Viewer):
         """
         self.selected = {}
         self.ui_selector.objects = [
-            self.create_group_ui(group, [group.name])
+            self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
         ]
 
@@ -36,7 +36,7 @@ class WaveformSelector(Viewer):
         else:
             self.edit_waveforms_enabled = False
 
-    def create_group_ui(self, group, path):
+    def create_group_ui(self, group, path, parent_accordion=None):
         """Recursively create a Panel UI structure from the YAML.
 
         Args:
@@ -45,12 +45,17 @@ class WaveformSelector(Viewer):
         """
 
         # Build UI of each group recursively
-        inner_groups_ui = []
-        for inner_group in group.groups.values():
-            new_path = path + [inner_group.name]
-            inner_groups_ui.append(
-                (inner_group.name, self.create_group_ui(inner_group, new_path))
-            )
+        if group.groups:
+            inner_groups_ui = []
+            accordion = pn.Accordion()
+            for inner_group in group.groups.values():
+                new_path = path + [inner_group.name]
+                inner_groups_ui.append(
+                    self.create_group_ui(
+                        inner_group, new_path, parent_accordion=accordion
+                    )
+                )
+            accordion.objects = inner_groups_ui
 
         # List of waveforms to select
         waveforms = list(group.waveforms.keys())
@@ -75,13 +80,13 @@ class WaveformSelector(Viewer):
 
         # Create accordion to store the inner groups UI objects into
         if group.groups:
-            accordion = pn.Accordion(*inner_groups_ui)
             ui_content.append(accordion)
 
         parent_container = pn.Column(
             *ui_content, sizing_mode="stretch_width", name=group.name
         )
         button_row.parent_ui = parent_container
+        button_row.parent_accordion = parent_accordion
 
         return parent_container
 
