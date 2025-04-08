@@ -88,10 +88,10 @@ class WaveformConfiguration:
         """
         if name not in self.waveform_map:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
-        else:
-            group = self.waveform_map[name]
-            self.waveform_map.pop(name)
-            group.waveforms.pop(name)
+
+        group = self.waveform_map[name]
+        self.waveform_map.pop(name)
+        group.waveforms.pop(name)
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.

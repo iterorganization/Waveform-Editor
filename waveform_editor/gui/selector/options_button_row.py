@@ -54,10 +54,6 @@ class OptionsButtonRow(Viewer):
             description="Remove selected waveforms in this group",
             on_click=self._show_remove_waveform_modal,
         )
-        self.remove_waveform_modal = ConfirmModal(
-            message="Are you sure you want to delete the selected waveform(s)?",
-            on_confirm=self._remove_waveforms,
-        )
 
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
@@ -81,11 +77,9 @@ class OptionsButtonRow(Viewer):
             description="Remove this group",
             on_click=self._show_remove_group_modal,
         )
-        # TODO: have a single modal and change message
-        self.remove_group_modal = ConfirmModal(
-            message="Are you sure you want to delete this group?",
-            on_confirm=self._remove_group,
-        )
+
+        # Confirmation message on deletion of waveforms/groups
+        self.confirmation_modal = ConfirmModal()
 
         # Combine all into a button row
         option_buttons = pn.Row(
@@ -100,8 +94,7 @@ class OptionsButtonRow(Viewer):
             option_buttons,
             self.new_waveform_panel,
             self.new_group_panel,
-            self.remove_waveform_modal,
-            self.remove_group_modal,
+            self.confirmation_modal,
         )
 
         if not self.check_buttons.options:
@@ -112,7 +105,11 @@ class OptionsButtonRow(Viewer):
         if not self.check_buttons.value:
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.remove_waveform_modal.open()
+        self.confirmation_modal.update_message(
+            "Are you sure you want to delete the selected waveform(s)?"
+        )
+        self.confirmation_modal.on_confirm = self._remove_waveforms
+        self.confirmation_modal.open()
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""
@@ -124,7 +121,11 @@ class OptionsButtonRow(Viewer):
         self.check_buttons.param.trigger("options")
 
     def _show_remove_group_modal(self, event):
-        self.remove_group_modal.open()
+        self.confirmation_modal.update_message(
+            "Are you sure you want to delete this group?"
+        )
+        self.confirmation_modal.on_confirm = self._remove_group
+        self.confirmation_modal.open()
 
     def _remove_group(self):
         """Remove the group."""

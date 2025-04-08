@@ -4,8 +4,7 @@ from panel_modal import Modal
 
 
 class ConfirmModal(Viewer):
-    def __init__(self, message, on_confirm=None, on_cancel=None):
-        self.message = message
+    def __init__(self, message="", on_confirm=None, on_cancel=None):
         self.on_confirm = on_confirm
         self.on_cancel = on_cancel
 
@@ -15,10 +14,10 @@ class ConfirmModal(Viewer):
         self.no_button = pn.widgets.Button(
             name="No", button_type="primary", on_click=self._handle_no
         )
+        self.message = pn.pane.Markdown(message)
 
-        # Modal content
         content = pn.Column(
-            pn.pane.Markdown(self.message),
+            self.message,
             pn.Row(self.yes_button, self.no_button),
         )
 
@@ -27,6 +26,9 @@ class ConfirmModal(Viewer):
             open=False,
             show_close_button=False,
         )
+
+    def update_message(self, message):
+        self.message.object = message
 
     def open(self):
         self.modal.open = True
