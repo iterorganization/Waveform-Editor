@@ -39,6 +39,10 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
+    def __init__(self):
+        self.load_yaml_error = ""
+        self.parse_errors = []
+
     def load_yaml(self, yaml_str):
         groups = {}
         waveform_map = {}
@@ -65,8 +69,7 @@ class YamlParser:
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
         except yaml.YAMLError as e:
-            # TODO: global YAML errors should be shown in an error notification in UI
-            print(f"The YAML could not be parsed.\n{e}")
+            self.load_yaml_error = e
             return None
 
     def _recursive_load(self, data_dict, group_name, waveform_map):
@@ -87,6 +90,7 @@ class YamlParser:
                         f"Invalid waveform name '{key}': "
                         "Waveform names must contain '/'."
                     )
+                # TODO: with this we lose formatting/comments
                 waveform = self.parse_waveforms(yaml.dump({key: value}))
                 current_group.waveforms[key] = waveform
                 waveform_map[key] = current_group
@@ -99,7 +103,6 @@ class YamlParser:
         Args:
             yaml_str: YAML content as a string.
         """
-        self.has_yaml_error = False
         try:
             loader = LineNumberYamlLoader
             # Parse scientific notation as a float, instead of a string. For
@@ -140,9 +143,5 @@ class YamlParser:
             )
             return waveform
         except yaml.YAMLError as e:
-            self._handle_yaml_error(e)
+            self.parse_errors.append(e)
             return Waveform()
-
-    def _handle_yaml_error(self, error):
-        # TODO: YAML errors must be displayed in the code editor UI
-        self.has_yaml_error = True
