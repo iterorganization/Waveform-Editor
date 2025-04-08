@@ -1,6 +1,7 @@
 import panel as pn
 from panel.viewable import Viewer
 
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 
 
@@ -12,6 +13,7 @@ class WaveformSelector(Viewer):
         self.plotter = plotter
         self.editor = editor
         self.edit_waveforms_enabled = False
+        self.modal = ConfirmModal()
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
 
     def create_waveform_selector_ui(self):
@@ -71,7 +73,7 @@ class WaveformSelector(Viewer):
         check_buttons.param.watch(self.on_select, "value")
 
         # Create row of options for each group
-        button_row = OptionsButtonRow(self, check_buttons, path)
+        button_row = OptionsButtonRow(self, check_buttons, path, self.modal)
 
         # Add buttons, waveform list and groups to UI content list
         ui_content = []
@@ -184,4 +186,4 @@ class WaveformSelector(Viewer):
 
     def __panel__(self):
         """Returns the waveform selector UI component."""
-        return self.ui_selector
+        return pn.Column(self.ui_selector, self.modal)
