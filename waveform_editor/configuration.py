@@ -93,6 +93,25 @@ class WaveformConfiguration:
             self.waveform_map.pop(name)
             group.waveforms.pop(name)
 
+    def remove_group(self, path):
+        """Removes a group, and all the groups/waveforms in it.
+
+        Args:
+            path: A list representing the path to the group to be removed.
+        """
+        parent_group = self.traverse(path[:-1])
+        group_name_to_remove = path[-1]
+
+        group_to_remove = parent_group.groups[group_name_to_remove]
+        for waveform_name in group_to_remove.waveforms:
+            self.waveform_map.pop(waveform_name, None)
+
+        # Convert to list to prevent changing size during iteration
+        for child_group_name in list(group_to_remove.groups):
+            self.remove_group(path + [child_group_name])
+
+        del parent_group.groups[group_name_to_remove]
+
     def add_group(self, name, path):
         """Adds a new waveform group at the specified path.
 

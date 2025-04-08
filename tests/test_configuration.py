@@ -118,6 +118,38 @@ def test_remove_waveform(config):
         config.remove_waveform("waveform/1")
 
 
+def test_remove_group(config):
+    """Test if waveforms are removed correctly from configuration."""
+
+    waveform1 = Waveform(name="waveform/1")
+    waveform2 = Waveform(name="waveform/2")
+    waveform3 = Waveform(name="waveform/3")
+
+    config.add_waveform(waveform1, ["ec_launchers", "beams", "steering_angles"])
+    config.add_waveform(waveform2, ["ec_launchers", "beams", "phase_angles"])
+    config.add_waveform(waveform3, ["ec_launchers", "beams"])
+
+    assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
+    assert config["ec_launchers"]["beams"]["phase_angles"]["waveform/2"] == waveform2
+
+    config.remove_group(["ec_launchers", "beams", "steering_angles"])
+    with pytest.raises(KeyError):
+        config["ec_launchers"]["beams"]["steering_angles"]
+    with pytest.raises(KeyError):
+        config["waveform/1"]
+
+    config.remove_group(["ec_launchers", "beams"])
+    with pytest.raises(KeyError):
+        config["ec_launchers"]["beams"]
+    with pytest.raises(KeyError):
+        config["waveform/2"]
+    with pytest.raises(KeyError):
+        config["waveform/3"]
+
+    assert not config["ec_launchers"].groups
+    assert not config.waveform_map
+
+
 def test_get_item(config):
     """Test if __getitem__ returns the correct waveform."""
 
