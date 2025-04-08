@@ -12,8 +12,8 @@ from waveform_editor.gui.selector.selector import WaveformSelector
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
 # back to plotly later, or improve performance with bokeh
-pn.extension("modal")
 hv.extension("bokeh")
+pn.extension("modal")
 pn.extension(notifications=True)
 pn.extension("codeeditor")
 

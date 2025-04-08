@@ -1,7 +1,6 @@
 import panel as pn
 from panel.viewable import Viewer
 
-from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.text_input_form import TextInputForm
 from waveform_editor.yaml_parser import YamlParser
 
@@ -89,9 +88,7 @@ class OptionsButtonRow(Viewer):
             self.remove_group_button,
         )
         self.panel = pn.Column(
-            option_buttons,
-            self.new_waveform_panel,
-            self.new_group_panel,
+            option_buttons, self.new_waveform_panel, self.new_group_panel
         )
 
         if not self.check_buttons.options:

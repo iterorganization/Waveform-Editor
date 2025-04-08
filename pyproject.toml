@@ -19,7 +19,6 @@ dependencies = [
     "scipy",
     # "imas-python",
     "panel",
-    "panel-modal",
     "pygments",
     "plotly",
     "holoviews",
