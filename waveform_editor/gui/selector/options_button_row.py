@@ -143,6 +143,10 @@ class OptionsButtonRow(Viewer):
             if self.path[-1] == column.name:
                 self.parent_accordion.pop(idx)
                 break
+        # TODO: This prevents deleted waveforms from remaining in the plotter.
+        # It would be nicer to have the selected waveforms which are not in the deleted
+        # group to stay selected.
+        self.main_gui.selector.deselect_all()
 
     def _deselect_all(self, event):
         """Deselect all waveforms in this CheckButtonGroup."""
