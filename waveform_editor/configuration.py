@@ -1,3 +1,8 @@
+import io
+
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
+
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -110,12 +115,20 @@ class WaveformConfiguration:
             current = current[path_part]
         return current
 
-    def to_yaml(self):
-        # TODO: write converter implementation that keeps the raw string in output.
-        # Ensure that comments are not removed, and formatting of tendencies
-        # is preserved.
-        self.print()
-        raise NotImplementedError
+    def dump(self):
+        """Convert the configuration to a YAML string."""
+        yaml = YAML()
+        data = self._to_dict()
+        stream = io.StringIO()
+        yaml.dump(data, stream)
+        return stream.getvalue()
+
+    def _to_dict(self):
+        """Return the configuration as a nested CommentedMap."""
+        result = CommentedMap()
+        for group_name, group in self.groups.items():
+            result[group_name] = group.to_dict()
+        return result
 
     def print(self, indent=0):
         """Prints the waveform configuration as a hierarchical tree.

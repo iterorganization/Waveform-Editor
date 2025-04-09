@@ -105,7 +105,7 @@ class WaveformEditorGui:
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""
-        yaml_str = self.config.to_yaml()
+        yaml_str = self.config.dump()
         return io.BytesIO(yaml_str.encode("utf-8"))
 
     def serve(self):

@@ -1,3 +1,7 @@
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
+
+
 class WaveformGroup:
     def __init__(self, name):
         self.name = name
@@ -12,6 +16,17 @@ class WaveformGroup:
             if key in self.groups:
                 return self.groups[key]
         raise KeyError(f"'{key}' not found in groups or waveforms")
+
+    def to_dict(self):
+        result = CommentedMap()
+        yaml = YAML()
+        if self.groups:
+            for group_name, group in self.groups.items():
+                result[group_name] = group.to_dict()
+        if self.waveforms:
+            for waveform in self.waveforms.values():
+                result[waveform.name] = yaml.load(waveform.yaml_str)[waveform.name]
+        return result
 
     def print(self, indent=0):
         """Prints the group as a hierarchical tree.
