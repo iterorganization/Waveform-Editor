@@ -13,9 +13,7 @@ from waveform_editor.gui.selector.selector import WaveformSelector
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
 # back to plotly later, or improve performance with bokeh
 hv.extension("bokeh")
-pn.extension("modal")
-pn.extension(notifications=True)
-pn.extension("codeeditor")
+pn.extension("modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
