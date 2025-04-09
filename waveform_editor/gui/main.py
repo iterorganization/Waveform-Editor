@@ -7,14 +7,14 @@ import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.plotter import WaveformPlotter
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 
 # TODO: bokeh is used since there are issues with the plotting when deselecting using
 # plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
 # back to plotly later, or improve performance with bokeh
 hv.extension("bokeh")
-pn.extension(notifications=True)
-pn.extension("codeeditor")
+pn.extension("modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
@@ -37,9 +37,10 @@ class WaveformEditorGui:
         )
 
         # Add tabs to switch from viewer to editor
+        self.modal = ConfirmModal()
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
-        self.selector = WaveformSelector(self.config, self.plotter, self.editor)
+        self.selector = WaveformSelector(self)
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter)),
@@ -62,6 +63,7 @@ class WaveformEditorGui:
             self.sidebar_text,
             self.file_input,
             self.selector,
+            self.modal,
         )
         self.template.sidebar.append(self.sidebar_column)
 
@@ -72,6 +74,7 @@ class WaveformEditorGui:
             event: The event object containing the uploaded file data.
         """
 
+        self.plotter.plotted_waveforms = []
         yaml_content = event.new.decode("utf-8")
         self.config.load_yaml(yaml_content)
 

@@ -6,9 +6,10 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow(Viewer):
-    def __init__(self, selector, check_buttons, path):
-        self.selector = selector
+    def __init__(self, main_gui, check_buttons, path):
+        self.main_gui = main_gui
         self.parent_ui = None
+        self.parent_accordion = None
         self.check_buttons = check_buttons
         self.path = path
 
@@ -44,6 +45,15 @@ class OptionsButtonRow(Viewer):
             on_click=self._add_new_waveform,
         )
 
+        # 'Remove waveform' button
+        self.remove_waveform_button = pn.widgets.ButtonIcon(
+            icon="minus",
+            size="20px",
+            active_icon="check",
+            description="Remove selected waveforms in this group",
+            on_click=self._show_remove_waveform_modal,
+        )
+
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
             icon="library-plus",
@@ -58,20 +68,85 @@ class OptionsButtonRow(Viewer):
             on_click=self._add_new_group,
         )
 
+        # 'Remove group' button
+        self.remove_group_button = pn.widgets.ButtonIcon(
+            icon="trash",
+            size="20px",
+            active_icon="trash-filled",
+            description="Remove this group",
+            on_click=self._show_remove_group_modal,
+        )
+
         # Combine all into a button row
         option_buttons = pn.Row(
             self.new_waveform_button,
+            self.remove_waveform_button,
             self.new_group_button,
             self.select_all_button,
             self.deselect_all_button,
+            self.remove_group_button,
         )
         self.panel = pn.Column(
             option_buttons, self.new_waveform_panel, self.new_group_panel
         )
 
         if not self.check_buttons.options:
-            self.select_all_button.visible = False
-            self.deselect_all_button.visible = False
+            self._show_filled_options(False)
+
+    def _show_filled_options(self, show_options):
+        """Whether to show the selection and waveform removal button.
+
+        Args:
+            show_options: flag to show options.
+        """
+        self.select_all_button.visible = show_options
+        self.remove_waveform_button.visible = show_options
+        self.deselect_all_button.visible = show_options
+
+    def _show_remove_waveform_modal(self, event):
+        if not self.check_buttons.value:
+            pn.state.notifications.error("No waveforms selected for removal.")
+            return
+        self.main_gui.modal.show(
+            "Are you sure you want to delete the selected waveform(s) from the "
+            f"**{self.parent_ui.name}** group?",
+            on_confirm=self._remove_waveforms,
+        )
+
+    def _remove_waveforms(self):
+        """Remove all selected waveforms in this CheckButtonGroup."""
+        selected_waveforms = self.check_buttons.value.copy()
+        for waveform_name in selected_waveforms:
+            self.main_gui.selector.config.remove_waveform(waveform_name)
+            self.check_buttons.options.remove(waveform_name)
+        self.check_buttons.value = []
+        self.check_buttons.param.trigger("options")
+
+        # Remove options if there are no waveforms
+        if len(self.check_buttons.options) == 0:
+            self._show_filled_options(False)
+
+    def _show_remove_group_modal(self, event):
+        self.main_gui.modal.show(
+            "Are you sure you want to delete the selected waveform(s) from the "
+            f"**{self.parent_ui.name}** group?",
+            on_confirm=self._remove_group,
+        )
+
+    def _remove_group(self):
+        """Remove the group."""
+
+        self.main_gui.selector.config.remove_group(self.path)
+
+        # Remove group from UI
+        for idx, column in enumerate(self.parent_accordion):
+            if self.path[-1] == column.name:
+                self.parent_accordion.pop(idx)
+                break
+        # TODO: This prevents deleted waveforms from remaining in the plotter.
+        # It would be nicer to have the selected waveforms which are not in the deleted
+        # group to stay selected.
+        self.main_gui.selector.deselect_all()
 
     def _deselect_all(self, event):
         """Deselect all waveforms in this CheckButtonGroup."""
@@ -95,7 +170,7 @@ class OptionsButtonRow(Viewer):
         new_waveform = yaml_parser.parse_waveforms(f"{name}: [{{}}]")
         # TODO:this try-except block can be replaced with a global error handler later
         try:
-            self.selector.config.add_waveform(new_waveform, self.path)
+            self.main_gui.selector.config.add_waveform(new_waveform, self.path)
         except ValueError as e:
             pn.state.notifications.error(str(e))
             return
@@ -103,8 +178,7 @@ class OptionsButtonRow(Viewer):
         self.check_buttons.options.append(name)
         self.check_buttons.param.trigger("options")
 
-        self.select_all_button.visible = True
-        self.deselect_all_button.visible = True
+        self._show_filled_options(True)
         self.new_waveform_panel.is_visible(False)
         self.new_waveform_panel.clear_input()
 
@@ -125,13 +199,12 @@ class OptionsButtonRow(Viewer):
 
         # Create new group in configuration
         try:
-            new_group = self.selector.config.add_group(name, self.path)
+            new_group = self.main_gui.selector.config.add_group(name, self.path)
         except ValueError:
             pn.state.notifications.error(f"{name!r} already exists in current group.")
             return
 
         new_path = self.path + [name]
-        new_group_ui = self.selector.create_group_ui(new_group, new_path)
 
         # Check if there exists an accordion already at this level
         existing_accordion = None
@@ -140,6 +213,13 @@ class OptionsButtonRow(Viewer):
                 existing_accordion = obj
                 break
 
+        if not existing_accordion:
+            new_accordion = pn.Accordion()
+
+        parent_accordion = existing_accordion if existing_accordion else new_accordion
+        new_group_ui = self.main_gui.selector.create_group_ui(
+            new_group, new_path, parent_accordion=parent_accordion
+        )
         # Update UI with new group
         if existing_accordion:
             if name in existing_accordion._names:
@@ -148,7 +228,7 @@ class OptionsButtonRow(Viewer):
 
             existing_accordion.append((name, new_group_ui))
         else:
-            new_accordion = pn.Accordion((name, new_group_ui))
+            new_accordion.objects = [new_group_ui]
             self.parent_ui.append(new_accordion)
 
         self.new_group_panel.is_visible(False)

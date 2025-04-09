@@ -7,10 +7,11 @@ from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    def __init__(self, config, plotter, editor):
-        self.config = config
-        self.plotter = plotter
-        self.editor = editor
+    def __init__(self, main_gui):
+        self.main_gui = main_gui
+        self.config = self.main_gui.config
+        self.plotter = self.main_gui.plotter
+        self.editor = self.main_gui.editor
         self.edit_waveforms_enabled = False
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
 
@@ -21,7 +22,7 @@ class WaveformSelector(Viewer):
         """
         self.selected = {}
         self.ui_selector.objects = [
-            self.create_group_ui(group, [group.name])
+            self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
         ]
 
@@ -36,21 +37,13 @@ class WaveformSelector(Viewer):
         else:
             self.edit_waveforms_enabled = False
 
-    def create_group_ui(self, group, path):
+    def create_group_ui(self, group, path, parent_accordion=None):
         """Recursively create a Panel UI structure from the YAML.
 
         Args:
             group: The group to add the new group to.
             path: The path of the nested groups in the YAML data, as a list of strings.
         """
-
-        # Build UI of each group recursively
-        inner_groups_ui = []
-        for inner_group in group.groups.values():
-            new_path = path + [inner_group.name]
-            inner_groups_ui.append(
-                (inner_group.name, self.create_group_ui(inner_group, new_path))
-            )
 
         # List of waveforms to select
         waveforms = list(group.waveforms.keys())
@@ -63,12 +56,10 @@ class WaveformSelector(Viewer):
             orientation="vertical",
             stylesheets=["button {text-align: left!important;}"],
         )
-        check_buttons.param.watch(
-            lambda event: self.on_select(event, check_buttons), "value"
-        )
+        check_buttons.param.watch(self.on_select, "value")
 
         # Create row of options for each group
-        button_row = OptionsButtonRow(self, check_buttons, path)
+        button_row = OptionsButtonRow(self.main_gui, check_buttons, path)
 
         # Add buttons, waveform list and groups to UI content list
         ui_content = []
@@ -77,23 +68,32 @@ class WaveformSelector(Viewer):
 
         # Create accordion to store the inner groups UI objects into
         if group.groups:
-            accordion = pn.Accordion(*inner_groups_ui)
+            inner_groups_ui = []
+            accordion = pn.Accordion()
+            for inner_group in group.groups.values():
+                new_path = path + [inner_group.name]
+                inner_groups_ui.append(
+                    self.create_group_ui(
+                        inner_group, new_path, parent_accordion=accordion
+                    )
+                )
+            accordion.objects = inner_groups_ui
             ui_content.append(accordion)
 
         parent_container = pn.Column(
             *ui_content, sizing_mode="stretch_width", name=group.name
         )
         button_row.parent_ui = parent_container
+        button_row.parent_accordion = parent_accordion
 
         return parent_container
 
-    def on_select(self, event, check_buttons):
+    def on_select(self, event):
         """Handles the selection and deselection of waveforms in the check button
         group.
 
         Args:
             event: list containing the new selection.
-            check_buttons: The CheckButtonGroup object the selection was called on.
         """
         new_selection = event.new
         old_selection = event.old
@@ -140,7 +140,7 @@ class WaveformSelector(Viewer):
         """
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
-            self.selected.pop(key, None)
+            del self.selected[key]
 
         for key, value in newly_selected.items():
             self.selected[key] = value
@@ -173,7 +173,7 @@ class WaveformSelector(Viewer):
                 widget.value = [exclude]
             else:
                 widget.value = []
-        else:
+        elif isinstance(widget, (pn.Column, pn.Accordion)):
             for child in widget:
                 # Skip select/deselect buttons row
                 if isinstance(widget, pn.Row):

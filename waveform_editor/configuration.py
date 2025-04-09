@@ -80,6 +80,41 @@ class WaveformConfiguration:
             group = self.waveform_map[waveform.name]
             group.waveforms[waveform.name] = waveform
 
+    def remove_waveform(self, name):
+        """Removes an existing waveform.
+
+        Args:
+            name: The name of the waveform to be removed.
+        """
+        if name not in self.waveform_map:
+            raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
+
+        group = self.waveform_map[name]
+        del self.waveform_map[name]
+        del group.waveforms[name]
+
+    def remove_group(self, path):
+        """Removes a group, and all the groups/waveforms in it.
+
+        Args:
+            path: A list representing the path to the group to be removed.
+        """
+        parent_group = self if len(path) == 1 else self.traverse(path[:-1])
+        group = parent_group.groups.pop(path[-1])
+        self._recursive_remove_waveforms(group)
+
+    def _recursive_remove_waveforms(self, group):
+        """Recursively remove all waveforms from a group and its nested subgroups from
+        the waveform_map.
+
+        Args:
+            group: The group to remove the waveforms from.
+        """
+        for waveform in group.waveforms:
+            del self.waveform_map[waveform]
+        for subgroup in group.groups.values():
+            self._recursive_remove_waveforms(subgroup)
+
     def add_group(self, name, path):
         """Adds a new waveform group at the specified path.
 
