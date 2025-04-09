@@ -1,7 +1,14 @@
+from textwrap import dedent
+
 import pytest
 
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.tendencies.constant import ConstantTendency
+from waveform_editor.tendencies.linear import LinearTendency
+from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.waveform import Waveform
+from waveform_editor.yaml_parser import YamlParser
 
 
 @pytest.fixture
@@ -108,3 +115,79 @@ def test_get_item(config):
     waveform1 = Waveform(name="waveform/1")
     config.add_waveform(waveform1, path)
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
+
+
+def test_dump():
+    """Check if YAML dump contains all waveforms in configuration."""
+
+    yaml_str = """
+    ec_launchers:
+      beams:
+        power_launched:
+          ec_launchers/beam(0)/power_launched: 
+          - {to: 8.33e5, duration: 20} 
+          - {type: constant, duration: 20}
+          - {type: smooth, duration: 25, to: 0}"""
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+
+    new_waveform1_str = """
+    ec_launchers/beam(1)/quantity:
+    - {type: sine, amplitude: 3}
+    - {type: smooth, to: 0}
+    """
+    new_waveform2_str = "ec_launchers/beam(2)/quantity: 3"
+
+    # add new waveforms
+    yaml_parser = YamlParser()
+    waveform1 = yaml_parser.parse_waveforms(new_waveform1_str)
+    waveform2 = yaml_parser.parse_waveforms(new_waveform2_str)
+    config.add_waveform(waveform1, ["ec_launchers", "beams"])
+    config.add_waveform(waveform2, ["ec_launchers", "beams"])
+    dump = config.dump()
+
+    new_config = WaveformConfiguration()
+    new_config.load_yaml(dump)
+    old_waveform = new_config["ec_launchers/beam(0)/power_launched"]
+    new_waveform1 = new_config["ec_launchers/beam(1)/quantity"]
+    new_waveform2 = new_config["ec_launchers/beam(2)/quantity"]
+
+    assert len(new_waveform1.tendencies) == 2
+    assert isinstance(new_waveform1.tendencies[0], SineWaveTendency)
+    assert new_waveform1.tendencies[0].user_amplitude == 3
+    assert isinstance(new_waveform1.tendencies[1], SmoothTendency)
+    assert new_waveform1.tendencies[1].user_to == 0
+
+    assert len(new_waveform2.tendencies) == 1
+    assert isinstance(new_waveform2.tendencies[0], ConstantTendency)
+    assert new_waveform2.tendencies[0].user_value == 3
+
+    assert len(old_waveform.tendencies) == 3
+    assert isinstance(old_waveform.tendencies[0], LinearTendency)
+    assert old_waveform.tendencies[0].user_to == 8.33e5
+    assert old_waveform.tendencies[0].user_duration == 20
+    assert isinstance(old_waveform.tendencies[1], ConstantTendency)
+    assert old_waveform.tendencies[1].user_duration == 20
+    assert isinstance(old_waveform.tendencies[2], SmoothTendency)
+    assert old_waveform.tendencies[2].user_to == 0
+    assert old_waveform.tendencies[2].user_duration == 25
+    new_dump = new_config.dump()
+    assert new_dump == dump
+
+
+def test_dump_comments():
+    """Check if comments for waveforms are preserved."""
+
+    yaml_str = dedent("""
+    ec_launchers:
+      beams:
+        power_launched:
+          ec_launchers/beam(0)/power_launched: # comment1
+          - {to: 8.33e5, duration: 20} # comment2
+          - {type: constant, duration: 20}
+          # comment3
+          - {duration: 25, to: 0}""")
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    dumped_yaml = config.dump()
+    assert yaml_str.strip() == dumped_yaml.strip()

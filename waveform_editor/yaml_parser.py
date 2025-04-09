@@ -45,11 +45,13 @@ class YamlParser:
         self.load_yaml_error = ""
         self.parse_errors = []
 
+        self.yaml = YAML()
+
     def load_yaml(self, yaml_str):
         groups = {}
         waveform_map = {}
         try:
-            yaml_data = YAML().load(yaml_str)
+            yaml_data = self.yaml.load(yaml_str)
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 
@@ -103,7 +105,7 @@ class YamlParser:
 
     def generate_yaml_str(self, key, value):
         stream = StringIO()
-        YAML().dump({key: value}, stream)
+        self.yaml.dump({key: value}, stream)
         return stream.getvalue()
 
     def parse_waveforms(self, yaml_str):
