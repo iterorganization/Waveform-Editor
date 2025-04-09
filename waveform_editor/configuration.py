@@ -90,8 +90,8 @@ class WaveformConfiguration:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
 
         group = self.waveform_map[name]
-        self.waveform_map.pop(name)
-        group.waveforms.pop(name)
+        del self.waveform_map[name]
+        del group.waveforms[name]
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -104,7 +104,7 @@ class WaveformConfiguration:
 
         group_to_remove = parent_group[group_name_to_remove]
         for waveform_name in group_to_remove.waveforms:
-            self.waveform_map.pop(waveform_name, None)
+            del self.waveform_map[waveform_name]
 
         # Convert to list to prevent changing size during iteration
         for child_group_name in list(group_to_remove.groups):

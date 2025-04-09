@@ -144,7 +144,7 @@ class WaveformSelector(Viewer):
         """
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
-            self.selected.pop(key, None)
+            del self.selected[key]
 
         for key, value in newly_selected.items():
             self.selected[key] = value
