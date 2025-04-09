@@ -46,19 +46,6 @@ class WaveformSelector(Viewer):
             path: The path of the nested groups in the YAML data, as a list of strings.
         """
 
-        # Build UI of each group recursively
-        if group.groups:
-            inner_groups_ui = []
-            accordion = pn.Accordion()
-            for inner_group in group.groups.values():
-                new_path = path + [inner_group.name]
-                inner_groups_ui.append(
-                    self.create_group_ui(
-                        inner_group, new_path, parent_accordion=accordion
-                    )
-                )
-            accordion.objects = inner_groups_ui
-
         # List of waveforms to select
         waveforms = list(group.waveforms.keys())
         check_buttons = pn.widgets.CheckButtonGroup(
@@ -82,6 +69,16 @@ class WaveformSelector(Viewer):
 
         # Create accordion to store the inner groups UI objects into
         if group.groups:
+            inner_groups_ui = []
+            accordion = pn.Accordion()
+            for inner_group in group.groups.values():
+                new_path = path + [inner_group.name]
+                inner_groups_ui.append(
+                    self.create_group_ui(
+                        inner_group, new_path, parent_accordion=accordion
+                    )
+                )
+            accordion.objects = inner_groups_ui
             ui_content.append(accordion)
 
         parent_container = pn.Column(
