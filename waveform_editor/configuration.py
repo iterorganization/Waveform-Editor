@@ -100,17 +100,20 @@ class WaveformConfiguration:
             path: A list representing the path to the group to be removed.
         """
         parent_group = self if len(path) == 1 else self.traverse(path[:-1])
-        group_name_to_remove = path[-1]
+        group = parent_group.groups.pop(path[-1])
+        self._recursive_remove_waveforms(group)
 
-        group_to_remove = parent_group[group_name_to_remove]
-        for waveform_name in group_to_remove.waveforms:
-            del self.waveform_map[waveform_name]
+    def _recursive_remove_waveforms(self, group):
+        """Recursively remove all waveforms from a group and its nested subgroups from
+        the waveform_map.
 
-        # Convert to list to prevent changing size during iteration
-        for child_group_name in list(group_to_remove.groups):
-            self.remove_group(path + [child_group_name])
-
-        del parent_group.groups[group_name_to_remove]
+        Args:
+            group: The group to remove the waveforms from.
+        """
+        for waveform in group.waveforms:
+            del self.waveform_map[waveform]
+        for subgroup in group.groups.values():
+            self._recursive_remove_waveforms(subgroup)
 
     def add_group(self, name, path):
         """Adds a new waveform group at the specified path.
