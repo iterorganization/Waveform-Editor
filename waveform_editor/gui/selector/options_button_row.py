@@ -6,13 +6,12 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow(Viewer):
-    def __init__(self, selector, check_buttons, path, modal):
-        self.selector = selector
+    def __init__(self, main_gui, check_buttons, path):
+        self.main_gui = main_gui
         self.parent_ui = None
         self.parent_accordion = None
         self.check_buttons = check_buttons
         self.path = path
-        self.modal = modal
 
         # 'Select all' Button
         self.select_all_button = pn.widgets.ButtonIcon(
@@ -108,17 +107,18 @@ class OptionsButtonRow(Viewer):
         if not self.check_buttons.value:
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.modal.update_message(
-            "Are you sure you want to delete the selected waveform(s)?"
+        self.main_gui.modal.update_message(
+            "Are you sure you want to delete the selected waveform(s) from the "
+            f"**{self.parent_ui.name}** group?"
         )
-        self.modal.on_confirm = self._remove_waveforms
-        self.modal.open()
+        self.main_gui.modal.on_confirm = self._remove_waveforms
+        self.main_gui.modal.open()
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""
         selected_waveforms = self.check_buttons.value.copy()
         for waveform_name in selected_waveforms:
-            self.selector.config.remove_waveform(waveform_name)
+            self.main_gui.selector.config.remove_waveform(waveform_name)
             self.check_buttons.options.remove(waveform_name)
         self.check_buttons.value = []
         self.check_buttons.param.trigger("options")
@@ -128,14 +128,16 @@ class OptionsButtonRow(Viewer):
             self._show_filled_options(False)
 
     def _show_remove_group_modal(self, event):
-        self.modal.update_message("Are you sure you want to delete this group?")
-        self.modal.on_confirm = self._remove_group
-        self.modal.open()
+        self.main_gui.modal.update_message(
+            f"Are you sure you want to delete this group: **{self.parent_ui.name}**?"
+        )
+        self.main_gui.modal.on_confirm = self._remove_group
+        self.main_gui.modal.open()
 
     def _remove_group(self):
         """Remove the group."""
 
-        self.selector.config.remove_group(self.path)
+        self.main_gui.selector.config.remove_group(self.path)
 
         # Remove group from UI
         for idx, column in enumerate(self.parent_accordion):
@@ -165,7 +167,7 @@ class OptionsButtonRow(Viewer):
         new_waveform = yaml_parser.parse_waveforms(f"{name}: [{{}}]")
         # TODO:this try-except block can be replaced with a global error handler later
         try:
-            self.selector.config.add_waveform(new_waveform, self.path)
+            self.main_gui.selector.config.add_waveform(new_waveform, self.path)
         except ValueError as e:
             pn.state.notifications.error(str(e))
             return
@@ -194,7 +196,7 @@ class OptionsButtonRow(Viewer):
 
         # Create new group in configuration
         try:
-            new_group = self.selector.config.add_group(name, self.path)
+            new_group = self.main_gui.selector.config.add_group(name, self.path)
         except ValueError:
             pn.state.notifications.error(f"{name!r} already exists in current group.")
             return
@@ -212,7 +214,7 @@ class OptionsButtonRow(Viewer):
             new_accordion = pn.Accordion()
 
         parent_accordion = existing_accordion if existing_accordion else new_accordion
-        new_group_ui = self.selector.create_group_ui(
+        new_group_ui = self.main_gui.selector.create_group_ui(
             new_group, new_path, parent_accordion=parent_accordion
         )
         # Update UI with new group
