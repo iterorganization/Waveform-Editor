@@ -1,41 +1,9 @@
-import re
+from io import StringIO
 
-import yaml
+from ruamel.yaml import YAML
 
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
-
-
-class LineNumberYamlLoader(yaml.SafeLoader):
-    def _check_for_duplicates(self, node, deep):
-        seen = set()
-
-        for key_node, _ in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if key in seen:
-                # Mock a problem mark so we can pass the line number of the error
-                problem_mark = yaml.Mark(
-                    "<duplicate>", 0, node.start_mark.line, 0, 0, 0
-                )
-                raise yaml.MarkedYAMLError(
-                    problem=f"Found duplicate entry {key!r}.",
-                    problem_mark=problem_mark,
-                )
-            seen.add(key)
-
-    def construct_mapping(self, node, deep=False):
-        # The line numbers must be extracted to be able to display the error messages
-        mapping = super().construct_mapping(node, deep)
-
-        # Prepend "user_" to all keys
-        mapping = {f"user_{key}": value for key, value in mapping.items()}
-        mapping["line_number"] = node.start_mark.line
-
-        # Check if all entries of the duplicate mapping are unique, as the yaml
-        # SafeLoader silently ignores duplicate keys
-        self._check_for_duplicates(node, deep)
-
-        return mapping
 
 
 class YamlParser:
@@ -47,7 +15,7 @@ class YamlParser:
         groups = {}
         waveform_map = {}
         try:
-            yaml_data = yaml.safe_load(yaml_str)
+            yaml_data = YAML().load(yaml_str)
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 
@@ -68,7 +36,7 @@ class YamlParser:
                 )
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
-        except yaml.YAMLError as e:
+        except Exception as e:
             self.load_yaml_error = e
             return None
 
@@ -90,58 +58,32 @@ class YamlParser:
                         f"Invalid waveform name '{key}': "
                         "Waveform names must contain '/'."
                     )
-                # TODO: with this we lose formatting/comments
-                waveform = self.parse_waveforms(yaml.dump({key: value}))
+                waveform = self.parse_waveforms(key, value)
                 current_group.waveforms[key] = waveform
                 waveform_map[key] = current_group
 
         return current_group
 
-    def parse_waveforms(self, yaml_str):
-        """Loads a YAML structure from a string and stores its tendencies into a list.
+    def parse_waveforms(self, key, value):
+        """Loads a waveform from a YAML string, preserving comments and structure.
 
         Args:
-            yaml_str: YAML content as a string.
+            key: The key (name) of the waveform.
+            value: The YAML content as a value for the waveform.
         """
         try:
-            loader = LineNumberYamlLoader
-            # Parse scientific notation as a float, instead of a string. For
-            # more information see: https://stackoverflow.com/a/30462009/8196245
-            loader.add_implicit_resolver(
-                "tag:yaml.org,2002:float",
-                re.compile(
-                    """^(?:
-                     [-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
-                    |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
-                    |\\.[0-9_]+(?:[eE][-+][0-9]+)?
-                    |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*
-                    |[-+]?\\.(?:inf|Inf|INF)
-                    |\\.(?:nan|NaN|NAN))$""",
-                    re.X,
-                ),
-                list("-+0123456789."),
+            # Get raw YAML string
+            stream = StringIO()
+            YAML().dump({key: value}, stream)
+            yaml_str = stream.getvalue()
+
+            return Waveform(
+                waveform=value,
+                yaml_str=yaml_str,
+                line_number=0,
+                name=key,
             )
-            waveform_yaml = yaml.load(yaml_str, Loader=loader)
 
-            if not isinstance(waveform_yaml, dict):
-                raise yaml.YAMLError(
-                    f"Expected a dictionary but got {type(waveform_yaml).__name__!r}"
-                )
-
-            # Find first key in the yaml that starts with "user_"
-            for waveform_key in waveform_yaml:
-                if waveform_key.startswith("user_"):
-                    break
-            else:
-                raise RuntimeError("Missing key")
-
-            name = waveform_key.removeprefix("user_")
-            waveform = waveform_yaml[waveform_key]
-            line_number = waveform_yaml.get("line_number", 0)
-            waveform = Waveform(
-                waveform=waveform, yaml_str=yaml_str, line_number=line_number, name=name
-            )
-            return waveform
-        except yaml.YAMLError as e:
+        except Exception as e:
             self.parse_errors.append(e)
             return Waveform()
