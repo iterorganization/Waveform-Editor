@@ -6,9 +6,9 @@ class ConfirmModal(Viewer):
     """Modal panel containing confirmation message, and options to proceed or cancel
     with the action."""
 
-    def __init__(self, message="", on_confirm=None, on_cancel=None):
-        self.on_confirm = on_confirm
-        self.on_cancel = on_cancel
+    def __init__(self):
+        self.on_confirm = None
+        self.on_cancel = None
 
         self.yes_button = pn.widgets.Button(
             name="Yes", button_type="danger", on_click=self._handle_yes
@@ -16,7 +16,7 @@ class ConfirmModal(Viewer):
         self.no_button = pn.widgets.Button(
             name="No", button_type="primary", on_click=self._handle_no
         )
-        self.message = pn.pane.Markdown(message)
+        self.message = pn.pane.Markdown("")
 
         content = pn.Column(
             self.message,
@@ -27,22 +27,19 @@ class ConfirmModal(Viewer):
             content, open=False, show_close_button=False, background_close=False
         )
 
-    def update_message(self, message):
+    def show(self, message, *, on_confirm=None, on_cancel=None):
         self.message.object = message
-
-    def open(self):
+        self.on_confirm = on_confirm
+        self.on_cancel = on_cancel
         self.modal.show()
 
-    def close(self):
-        self.modal.hide()
-
     def _handle_yes(self, event):
-        self.close()
+        self.modal.hide()
         if self.on_confirm:
             self.on_confirm()
 
     def _handle_no(self, event):
-        self.close()
+        self.modal.hide()
         if self.on_cancel:
             self.on_cancel()
 

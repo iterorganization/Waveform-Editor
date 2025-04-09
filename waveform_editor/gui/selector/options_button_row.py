@@ -107,12 +107,11 @@ class OptionsButtonRow(Viewer):
         if not self.check_buttons.value:
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.main_gui.modal.update_message(
+        self.main_gui.modal.show(
             "Are you sure you want to delete the selected waveform(s) from the "
-            f"**{self.parent_ui.name}** group?"
+            f"**{self.parent_ui.name}** group?",
+            on_confirm=self._remove_waveforms,
         )
-        self.main_gui.modal.on_confirm = self._remove_waveforms
-        self.main_gui.modal.open()
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""
@@ -128,11 +127,11 @@ class OptionsButtonRow(Viewer):
             self._show_filled_options(False)
 
     def _show_remove_group_modal(self, event):
-        self.main_gui.modal.update_message(
-            f"Are you sure you want to delete this group: **{self.parent_ui.name}**?"
+        self.main_gui.modal.show(
+            "Are you sure you want to delete the selected waveform(s) from the "
+            f"**{self.parent_ui.name}** group?",
+            on_confirm=self._remove_group,
         )
-        self.main_gui.modal.on_confirm = self._remove_group
-        self.main_gui.modal.open()
 
     def _remove_group(self):
         """Remove the group."""
