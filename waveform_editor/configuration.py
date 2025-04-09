@@ -118,16 +118,16 @@ class WaveformConfiguration:
     def dump(self):
         """Convert the configuration to a YAML string."""
         yaml = YAML()
-        data = self._to_dict()
+        data = self._to_commented_map()
         stream = io.StringIO()
         yaml.dump(data, stream)
         return stream.getvalue()
 
-    def _to_dict(self):
+    def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
         result = CommentedMap()
         for group_name, group in self.groups.items():
-            result[group_name] = group.to_dict()
+            result[group_name] = group.to_commented_map()
         return result
 
     def print(self, indent=0):

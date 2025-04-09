@@ -17,12 +17,12 @@ class WaveformGroup:
                 return self.groups[key]
         raise KeyError(f"'{key}' not found in groups or waveforms")
 
-    def to_dict(self):
+    def to_commented_map(self):
         result = CommentedMap()
         yaml = YAML()
         if self.groups:
             for group_name, group in self.groups.items():
-                result[group_name] = group.to_dict()
+                result[group_name] = group.to_commented_map()
         if self.waveforms:
             for waveform in self.waveforms.values():
                 result[waveform.name] = yaml.load(waveform.yaml_str)[waveform.name]
