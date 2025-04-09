@@ -1,8 +1,11 @@
+import logging
 import re
 from io import StringIO
 
 import yaml
 from ruamel.yaml import YAML
+
+logger = logging.getLogger(__name__)
 
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
@@ -73,7 +76,7 @@ class YamlParser:
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
         except Exception as e:
-            print(e)
+            logger.warning("Got unexpected error: %s", e, exc_info=e)
             self.load_yaml_error = e
             return None
 
