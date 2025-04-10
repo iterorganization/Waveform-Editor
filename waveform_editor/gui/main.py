@@ -71,7 +71,7 @@ class WaveformEditorGui:
             event: The event object containing the uploaded file data.
         """
 
-        self.plotter.plotted_waveforms = []
+        self.plotter.plotted_waveforms = {}
         yaml_content = event.new.decode("utf-8")
         self.config.load_yaml(yaml_content)
 

@@ -9,7 +9,7 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformPlotter(Viewer):
     """Class to handle dynamic waveform plotting."""
 
-    plotted_waveforms = param.List(default=[])
+    plotted_waveforms = param.Dict(default={})
 
     def __init__(self, width=1200, height=600, **params):
         super().__init__(**params)
@@ -77,9 +77,10 @@ class WaveformPlotter(Viewer):
 
         if not self.plotted_waveforms:
             self.plot_layout[0] = empty_overlay
+            return
 
         curves = []
-        for waveform in self.plotted_waveforms:
+        for waveform in self.plotted_waveforms.values():
             plot = self.plot_tendencies(waveform, waveform.name)
             curves.append(plot)
 

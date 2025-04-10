@@ -20,7 +20,6 @@ class WaveformSelector(Viewer):
         group in the config, option buttons, and CheckButtonGroups for the lists of
         waveforms.
         """
-        self.selected = {}
         self.ui_selector.objects = [
             self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
@@ -104,16 +103,14 @@ class WaveformSelector(Viewer):
         }
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
-            del self.selected[key]
+            del self.plotter.plotted_waveforms[key]
 
         for key, value in newly_selected.items():
-            self.selected[key] = value
+            self.plotter.plotted_waveforms[key] = value
 
-        # Decide on selection logic, based on which tab is selected
         if self.edit_waveforms_enabled:
             self.select_in_editor(newly_selected)
-
-        self.plotter.plotted_waveforms = list(self.selected.values())
+        self.plotter.param.trigger("plotted_waveforms")
 
     def select_in_editor(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
@@ -129,7 +126,7 @@ class WaveformSelector(Viewer):
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
             self.editor.code_editor.value = waveform.yaml_str
-        if not self.selected:
+        if not self.plotter.plotted_waveforms:
             self.editor.set_default()
 
     def deselect_all(self, exclude=None):

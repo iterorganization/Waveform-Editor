@@ -60,7 +60,7 @@ class WaveformEditor(Viewer):
 
         # Only update plot when there are no YAML errors
         if not yaml_parser.parse_errors:
-            self.plotter.plotted_waveforms = [self.waveform]
+            self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
 
     def set_default(self):
         """Set code editor value to default."""
