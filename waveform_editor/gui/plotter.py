@@ -11,20 +11,13 @@ class WaveformPlotter(Viewer):
 
     plotted_waveforms = param.Dict(default={})
 
-    def __init__(self, width=1200, height=600, **params):
+    def __init__(self, **params):
         super().__init__(**params)
-        self.width = width
-        self.height = height
         self.yaml_parser = YamlParser()
+        self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
+        self.plot_layout = pn.Column(self.pane)
         self.param.watch(self.update_plot, "plotted_waveforms")
-        self.plot_layout = pn.Column(
-            hv.Overlay([hv.Curve([])]).opts(
-                title="",
-                show_legend=True,
-                width=self.width,
-                height=self.height,
-            )
-        )
+        self.update_plot(None)
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
@@ -60,7 +53,7 @@ class WaveformPlotter(Viewer):
     def update_plot(self, event):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
-        Overlay object, which is stored into the plot_layout panel column.
+        Overlay object, and update the plot pane.
         """
         curves = [
             self.plot_tendencies(waveform, waveform.name)
@@ -70,12 +63,11 @@ class WaveformPlotter(Viewer):
             # show an empty curve when there are no waveforms
             curves.append(hv.Curve([]))
 
-        self.plot_layout[0] = hv.Overlay(curves).opts(
+        overlay = hv.Overlay(curves).opts(
             title="",
             show_legend=True,
-            width=self.width,
-            height=self.height,
         )
+        self.pane.object = overlay
 
     def __panel__(self):
         return self.plot_layout
