@@ -1,4 +1,5 @@
 import holoviews as hv
+import panel as pn
 import param
 from panel.viewable import Viewer
 
@@ -10,12 +11,19 @@ class WaveformPlotter(Viewer):
 
     plotted_waveforms = param.List(default=[])
 
-    def __init__(self, **params):
+    def __init__(self, width=1200, height=600, **params):
         super().__init__(**params)
+        self.width = width
+        self.height = height
         self.yaml_parser = YamlParser()
-        self.dynamic_map = hv.DynamicMap(
-            self.update_plot,
-            streams=[self.param.plotted_waveforms],
+        self.param.watch(self.update_plot, "plotted_waveforms")
+        self.plot_layout = pn.Column(
+            hv.Overlay([hv.Curve([])]).opts(
+                title="",
+                show_legend=True,
+                width=self.width,
+                height=self.height,
+            )
         )
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
@@ -49,7 +57,7 @@ class WaveformPlotter(Viewer):
 
         return line
 
-    def update_plot(self, plotted_waveforms, width=1200, height=600):
+    def update_plot(self, event):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object.
@@ -63,24 +71,24 @@ class WaveformPlotter(Viewer):
         empty_overlay = hv.Overlay([hv.Curve([])]).opts(
             title="",
             show_legend=True,
-            width=width,
-            height=height,
+            width=self.width,
+            height=self.height,
         )
 
-        if not plotted_waveforms:
-            return empty_overlay
+        if not self.plotted_waveforms:
+            self.plot_layout[0] = empty_overlay
 
         curves = []
-        for waveform in plotted_waveforms:
+        for waveform in self.plotted_waveforms:
             plot = self.plot_tendencies(waveform, waveform.name)
             curves.append(plot)
 
         if curves:
-            return hv.Overlay(curves).opts(
-                title="", show_legend=True, width=width, height=height
+            self.plot_layout[0] = hv.Overlay(curves).opts(
+                title="", show_legend=True, width=self.width, height=self.height
             )
-
-        return empty_overlay
+        else:
+            self.plot_layout[0] = empty_overlay
 
     def __panel__(self):
-        return self.dynamic_map
+        return self.plot_layout
