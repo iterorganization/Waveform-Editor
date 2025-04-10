@@ -1,9 +1,14 @@
+import logging
 import re
+from io import StringIO
 
 import yaml
+from ruamel.yaml import YAML
 
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
+
+logger = logging.getLogger(__name__)
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
@@ -43,11 +48,13 @@ class YamlParser:
         self.load_yaml_error = ""
         self.parse_errors = []
 
+        self.yaml = YAML()
+
     def load_yaml(self, yaml_str):
         groups = {}
         waveform_map = {}
         try:
-            yaml_data = yaml.safe_load(yaml_str)
+            yaml_data = self.yaml.load(yaml_str)
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 
@@ -68,7 +75,8 @@ class YamlParser:
                 )
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
-        except yaml.YAMLError as e:
+        except Exception as e:
+            logger.warning("Got unexpected error: %s", e, exc_info=e)
             self.load_yaml_error = e
             return None
 
@@ -82,6 +90,7 @@ class YamlParser:
                     raise ValueError(
                         f"Invalid group '{key}': Group names may not contain '/'."
                     )
+
                 nested_group = self._recursive_load(value, key, waveform_map)
                 current_group.groups[key] = nested_group
             else:
@@ -90,12 +99,17 @@ class YamlParser:
                         f"Invalid waveform name '{key}': "
                         "Waveform names must contain '/'."
                     )
-                # TODO: with this we lose formatting/comments
-                waveform = self.parse_waveforms(yaml.dump({key: value}))
+                yaml_str = self.generate_yaml_str(key, value)
+                waveform = self.parse_waveforms(yaml_str)
                 current_group.waveforms[key] = waveform
                 waveform_map[key] = current_group
 
         return current_group
+
+    def generate_yaml_str(self, key, value):
+        stream = StringIO()
+        self.yaml.dump({key: value}, stream)
+        return stream.getvalue()
 
     def parse_waveforms(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
