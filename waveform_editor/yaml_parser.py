@@ -5,10 +5,10 @@ from io import StringIO
 import yaml
 from ruamel.yaml import YAML
 
-logger = logging.getLogger(__name__)
-
 from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
+
+logger = logging.getLogger(__name__)
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
