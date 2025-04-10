@@ -156,7 +156,8 @@ class OptionsButtonRow(Viewer):
 
     def _select_all(self, event):
         """Select all waveforms in this CheckButtonGroup."""
-        self.check_buttons.value = self.check_buttons.options
+        # Convert to list to ensure the check_button.value watcher is triggered
+        self.check_buttons.value = list(self.check_buttons.options)
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""
