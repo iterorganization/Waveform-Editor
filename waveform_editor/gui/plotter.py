@@ -60,36 +60,22 @@ class WaveformPlotter(Viewer):
     def update_plot(self, event):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
-        Overlay object.
-
-        Args:
-            plotted_waveforms: list containing waveforms to be plotted.
-
-        Returns:
-            An Holoviews overlay containing the curves
+        Overlay object, which is stored into the plot_layout panel column.
         """
-        empty_overlay = hv.Overlay([hv.Curve([])]).opts(
+        curves = [
+            self.plot_tendencies(waveform, waveform.name)
+            for waveform in self.plotted_waveforms.values()
+        ]
+        if not curves:
+            # show an empty curve when there are no waveforms
+            curves.append(hv.Curve([]))
+
+        self.plot_layout[0] = hv.Overlay(curves).opts(
             title="",
             show_legend=True,
             width=self.width,
             height=self.height,
         )
-
-        if not self.plotted_waveforms:
-            self.plot_layout[0] = empty_overlay
-            return
-
-        curves = []
-        for waveform in self.plotted_waveforms.values():
-            plot = self.plot_tendencies(waveform, waveform.name)
-            curves.append(plot)
-
-        if curves:
-            self.plot_layout[0] = hv.Overlay(curves).opts(
-                title="", show_legend=True, width=self.width, height=self.height
-            )
-        else:
-            self.plot_layout[0] = empty_overlay
 
     def __panel__(self):
         return self.plot_layout
