@@ -2,6 +2,7 @@ import logging
 import re
 
 import imas
+from imas.ids_struct_array import IDSStructArray
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class ConfigurationExporter:
         with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
                 ids = imas.IDSFactory().new(ids_name)
-                # TODO: currently only homogeneous IDSs are supported
+                # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
                 )
@@ -40,8 +41,9 @@ class ConfigurationExporter:
         ids_map = {}
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
-            splitted_path = waveform.name.split("/")
-            ids = splitted_path[0]
+            split_path = waveform.name.split("/")
+            # Here we assume the first word of the waveform to contain the IDS name
+            ids = split_path[0]
             if ids not in ids_map:
                 ids_map[ids] = []
             ids_map[ids].append(waveform)
@@ -54,40 +56,51 @@ class ConfigurationExporter:
             ids: The IDS to populate with waveform data.
             waveforms: A list of waveform objects to be filled into the IDS.
         """
+        self.flt_0d_map = {}
+        # During the resizing of IDS nodes, data may be lost so first ensure all nodes
+        # have the appropriate length to store the waveforms
         for waveform in waveforms:
             path = "/".join(waveform.name.split("/")[1:])
             self._ensure_path_exists(ids, path)
 
         for waveform in waveforms:
-            path = "/".join(waveform.name.split("/")[1:])
             _, self.values = waveform.get_value(self.times)
-            if "(:)" in path:
+            path = "/".join(waveform.name.split("/")[1:])
+            if path in self.flt_0d_map:
                 self._fill_flt_0d(ids, path)
             else:
                 self._fill_flt_1d(ids, path)
 
-    def _fill_flt_0d(self, ids, path):
-        """Fill a FLT_0D IDS quantity in an IDS.
-
-        It is assumed that the time dependent AoS is provided in the path using `(:)`,
-        for example:
-
-        `equilibrium/time_slice(:)/boundary/elongation`
-
-        Arguments:
-            ids: The IDS to fill.
-            path: The path to the FLT_0D quantity to fill.
+    def _fill_flt_0d(self, ids, full_path):
         """
-        aos_path, remaining_path = path.split("(:)")
-        aos_path = aos_path.strip("/")
-        remaining_path = remaining_path.strip("/")
-        aos = ids[aos_path]
+        Fills a FLT_0D quantity in an IDS using time-dependent values.
 
-        for i in range(len(self.times)):
-            if aos[i][remaining_path].data_type == "FLT_0D":
-                aos[i][remaining_path] = self.values[i]
+        The base time path is stored in `self.flt_0d_map`. For each time step,
+        the method constructs the full path with the appropriate time index and
+        fills the corresponding FLT_0D value.
+
+        Example:
+            For full_path = "equilibrium/time_slice/boundary/elongation",
+            the method fills for each time in self.times:
+                - equilibrium/time_slice(1)/boundary/elongation
+                - equilibrium/time_slice(2)/boundary/elongation
+                - ...
+
+        Args:
+            ids: The IDS object to fill.
+            full_path: The full path to the FLT_0D quantity.
+        """
+
+        time_path = self.flt_0d_map[full_path]
+        paths = [
+            full_path.replace(time_path, f"{time_path}({i + 1})")
+            for i in range(len(self.times))
+        ]
+        for i, path in enumerate(paths):
+            if ids[path].data_type == "FLT_0D":
+                ids[path] = self.values[i]
             else:
-                raise NotImplementedError("Should be float 0d")
+                raise ValueError(f"{ids[path].metadata.name} should be FLT_0D")
 
     def _fill_flt_1d(self, ids, path):
         """Fill a FLT_1D IDS quantity in an IDS.
@@ -116,31 +129,25 @@ class ConfigurationExporter:
         quantity to be filled exists. Note that data may be lost during the resizing
         of a quantity.
 
-
         Examples:
 
         - ec_launchers/beam(123)/power_launched
           This will ensure ec_launchers.beam has a length of at least 123. Note, 1-based
           indexing is used in the URI.
 
-        - equilibrium/time_slice(:)/boundary/elongation
-          When '(:)' is encountered, it is assumed that this AoS should be the length of
-          the exported time array, i.e. len(equilibrium.time_slice) == len(self.times)
+        - equilibrium/time_slice/global_quantities/ip
+          When the time coordinate is another AoS, this AoS is resized to ensure they
+          can contain the exported time array, e.g.
+          len(equilibrium.time_slice) == len(self.times)
 
         Args:
             ids: The IDS to export to.
             path: The path of the IDS quantity to export to.
         """
-        path = path.strip("/")
-        path_parts = path.split("/")
+        path_list = path.split("/")
         current = ids
-        for part in path_parts:
-            if "(:)" in part:
-                current = current[part.split("(")[0]]
-                current.resize(len(self.times))
-                current = current[0]
-
-            elif "(" in part:
+        for part in path_list:
+            if "(" in part:
                 match = re.search(r"\((\d+)\)", part)
                 index = int(match.group(1))
                 current = current[part.split("(")[0]]
@@ -152,4 +159,17 @@ class ConfigurationExporter:
                 # Revert to 0-based indexing
                 current = current[index - 1]
             else:
+                # Ensure AoS have a non-zero length
+                if isinstance(current, IDSStructArray) and len(current) == 0:
+                    current.resize(1)
+                    current = current[0]
                 current = current[part]
+
+        # If the quantity stores its time in another node, e.g. equilibrium/time_slice
+        # Ensure that the length of this node matches the number of time steps
+        time_path = current.metadata.path_doc
+        if "itime" in time_path:
+            time_path = time_path.split("(itime)")[0]
+            ids[time_path].resize(len(self.times))
+            # Map full path to coordinate time path
+            self.flt_0d_map[path] = time_path

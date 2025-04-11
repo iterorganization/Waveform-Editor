@@ -6,11 +6,11 @@ from waveform_editor.exporter import ConfigurationExporter
 
 
 def test_to_ids(tmp_path):
-    """Check if FLT_1D is filled correctly."""
+    """Check if to_ids fills the correct quantities."""
 
     yaml_str = """
     equilibrium:
-      equilibrium/time_slice(:)/global_quantities/ip:
+      equilibrium/time_slice/global_quantities/ip:
       - {from: 2, to: 3, duration: 0.5} 
       - {from: 3, to: 1, duration: 0.5} 
     ec_launchers:
