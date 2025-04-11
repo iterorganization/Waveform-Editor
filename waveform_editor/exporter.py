@@ -55,20 +55,16 @@ class ConfigurationExporter:
             waveforms: A list of waveform objects to be filled into the IDS.
         """
         for waveform in waveforms:
-            path = self._get_waveform_path(waveform)
+            path = "/".join(waveform.name.split("/")[1:])
             self._ensure_path_exists(ids, path)
 
         for waveform in waveforms:
-            path = self._get_waveform_path(waveform)
+            path = "/".join(waveform.name.split("/")[1:])
             _, self.values = waveform.get_value(self.times)
             if "(:)" in path:
                 self._fill_flt_0d(ids, path)
             else:
                 self._fill_flt_1d(ids, path)
-
-    def _get_waveform_path(self, waveform):
-        """Helper method to extract path from waveform name."""
-        return "/".join(waveform.name.split("/")[1:])
 
     def _fill_flt_0d(self, ids, path):
         """Fill a FLT_0D IDS quantity in an IDS.
@@ -76,7 +72,7 @@ class ConfigurationExporter:
         It is assumed that the time dependent AoS is provided in the path using `(:)`,
         for example:
 
-        imas:hdf5?path=./test_equilibrium#equilibrium/time_slice(:)/boundary/elongation
+        `equilibrium/time_slice(:)/boundary/elongation`
 
         Arguments:
             ids: The IDS to fill.
@@ -123,11 +119,11 @@ class ConfigurationExporter:
 
         Examples:
 
-        - imas:hdf5?path=./testdb#ec_launchers/beam(123)/power_launched
+        - ec_launchers/beam(123)/power_launched
           This will ensure ec_launchers.beam has a length of at least 123. Note, 1-based
           indexing is used in the URI.
 
-        - imas:hdf5?path=./testdb#equilibrium/time_slice(:)/boundary/elongation
+        - equilibrium/time_slice(:)/boundary/elongation
           When '(:)' is encountered, it is assumed that this AoS should be the length of
           the exported time array, i.e. len(equilibrium.time_slice) == len(self.times)
 
