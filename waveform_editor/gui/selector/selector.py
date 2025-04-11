@@ -20,7 +20,6 @@ class WaveformSelector(Viewer):
         group in the config, option buttons, and CheckButtonGroups for the lists of
         waveforms.
         """
-        self.selected = {}
         self.ui_selector.objects = [
             self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
@@ -102,14 +101,15 @@ class WaveformSelector(Viewer):
         newly_selected = {
             key: self.config[key] for key in new_selection if key not in old_selection
         }
+        deselected = [key for key in old_selection if key not in new_selection]
+        for key in deselected:
+            del self.plotter.plotted_waveforms[key]
 
-        # Decide on selection logic, based on which tab is selected
+        for key, value in newly_selected.items():
+            self.plotter.plotted_waveforms[key] = value
+
         if self.edit_waveforms_enabled:
             self.select_in_editor(newly_selected)
-        else:
-            self.select_in_viewer(newly_selected, new_selection, old_selection)
-
-        self.plotter.plotted_waveforms = list(self.selected.values())
         self.plotter.param.trigger("plotted_waveforms")
 
     def select_in_editor(self, newly_selected):
@@ -126,24 +126,8 @@ class WaveformSelector(Viewer):
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
             self.editor.code_editor.value = waveform.yaml_str
-        else:
+        if not self.plotter.plotted_waveforms:
             self.editor.set_default()
-
-    def select_in_viewer(self, newly_selected, new_selection, old_selection):
-        """Allow for multiple waveforms to be selected. If a waveform is deselected,
-        remove it from the selection dictionary.
-
-        Args:
-            newly_selected: The newly selected waveform.
-            new_selection: All selected waveforms.
-            old_selection: The previously selected waveforms.
-        """
-        deselected = [key for key in old_selection if key not in new_selection]
-        for key in deselected:
-            del self.selected[key]
-
-        for key, value in newly_selected.items():
-            self.selected[key] = value
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroups. A waveform name can be
@@ -152,13 +136,7 @@ class WaveformSelector(Viewer):
         Args:
             exclude: The name of a waveform to exclude from deselection.
         """
-        if exclude:
-            self.selected = {exclude: self.config[exclude]}
-        else:
-            self.selected = {}
-
         self._deselect_checkbuttons(self.ui_selector, exclude)
-        self.plotter.plotted_waveforms = list(self.selected.values())
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup

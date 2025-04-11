@@ -121,6 +121,7 @@ class OptionsButtonRow(Viewer):
             self.check_buttons.options.remove(waveform_name)
         self.check_buttons.value = []
         self.check_buttons.param.trigger("options")
+        self.main_gui.plotter.param.trigger("plotted_waveforms")
 
         # Remove options if there are no waveforms
         if len(self.check_buttons.options) == 0:
@@ -136,6 +137,10 @@ class OptionsButtonRow(Viewer):
     def _remove_group(self):
         """Remove the group."""
 
+        # TODO: This prevents deleted waveforms from remaining in the plotter.
+        # It would be nicer to have the selected waveforms which are not in the deleted
+        # group to stay selected.
+        self.main_gui.selector.deselect_all()
         self.main_gui.selector.config.remove_group(self.path)
 
         # Remove group from UI
@@ -143,10 +148,7 @@ class OptionsButtonRow(Viewer):
             if self.path[-1] == column.name:
                 self.parent_accordion.pop(idx)
                 break
-        # TODO: This prevents deleted waveforms from remaining in the plotter.
-        # It would be nicer to have the selected waveforms which are not in the deleted
-        # group to stay selected.
-        self.main_gui.selector.deselect_all()
+        self.main_gui.plotter.param.trigger("plotted_waveforms")
 
     def _deselect_all(self, event):
         """Deselect all waveforms in this CheckButtonGroup."""
@@ -154,7 +156,8 @@ class OptionsButtonRow(Viewer):
 
     def _select_all(self, event):
         """Select all waveforms in this CheckButtonGroup."""
-        self.check_buttons.value = self.check_buttons.options
+        # Convert to list to ensure the check_button.value watcher is triggered
+        self.check_buttons.value = list(self.check_buttons.options)
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""

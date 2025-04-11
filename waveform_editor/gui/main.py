@@ -10,11 +10,8 @@ from waveform_editor.gui.plotter import WaveformPlotter
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 
-# TODO: bokeh is used since there are issues with the plotting when deselecting using
-# plotly. Bokeh seems quite a bit slower than plotly, so it might be worth switching
-# back to plotly later, or improve performance with bokeh
-hv.extension("bokeh")
-pn.extension("modal", "codeeditor", notifications=True)
+hv.extension("plotly")
+pn.extension("plotly", "modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
@@ -74,7 +71,7 @@ class WaveformEditorGui:
             event: The event object containing the uploaded file data.
         """
 
-        self.plotter.plotted_waveforms = []
+        self.plotter.plotted_waveforms = {}
         yaml_content = event.new.decode("utf-8")
         self.config.load_yaml(yaml_content)
 

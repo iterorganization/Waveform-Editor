@@ -1,4 +1,5 @@
 import holoviews as hv
+import panel as pn
 import param
 from panel.viewable import Viewer
 
@@ -8,15 +9,15 @@ from waveform_editor.yaml_parser import YamlParser
 class WaveformPlotter(Viewer):
     """Class to handle dynamic waveform plotting."""
 
-    plotted_waveforms = param.List(default=[])
+    plotted_waveforms = param.Dict(default={})
 
     def __init__(self, **params):
         super().__init__(**params)
         self.yaml_parser = YamlParser()
-        self.dynamic_map = hv.DynamicMap(
-            self.update_plot,
-            streams=[self.param.plotted_waveforms],
-        )
+        self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
+        self.plot_layout = pn.Column(self.pane)
+        self.param.watch(self.update_plot, "plotted_waveforms")
+        self.update_plot(None)
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
         """
@@ -49,38 +50,24 @@ class WaveformPlotter(Viewer):
 
         return line
 
-    def update_plot(self, plotted_waveforms, width=1200, height=600):
+    def update_plot(self, event):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
-        Overlay object.
-
-        Args:
-            plotted_waveforms: list containing waveforms to be plotted.
-
-        Returns:
-            An Holoviews overlay containing the curves
+        Overlay object, and update the plot pane.
         """
-        empty_overlay = hv.Overlay([hv.Curve([])]).opts(
+        curves = [
+            self.plot_tendencies(waveform, waveform.name)
+            for waveform in self.plotted_waveforms.values()
+        ]
+        if not curves:
+            # show an empty curve when there are no waveforms
+            curves.append(hv.Curve([]))
+
+        overlay = hv.Overlay(curves).opts(
             title="",
             show_legend=True,
-            width=width,
-            height=height,
         )
-
-        if not plotted_waveforms:
-            return empty_overlay
-
-        curves = []
-        for waveform in plotted_waveforms:
-            plot = self.plot_tendencies(waveform, waveform.name)
-            curves.append(plot)
-
-        if curves:
-            return hv.Overlay(curves).opts(
-                title="", show_legend=True, width=width, height=height
-            )
-
-        return empty_overlay
+        self.pane.object = overlay
 
     def __panel__(self):
-        return self.dynamic_map
+        return self.plot_layout
