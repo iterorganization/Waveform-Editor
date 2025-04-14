@@ -17,7 +17,7 @@ dependencies = [
     "click",
     "matplotlib",
     "scipy",
-    "imas-python[netcdf] @ git+https://github.com/iterorganization/IMAS-Python.git",
+    "imas-python[netcdf]",
     "panel",
     "pygments",
     "plotly",
