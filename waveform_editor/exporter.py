@@ -5,6 +5,7 @@ import imas
 from imas.ids_struct_array import IDSStructArray
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
@@ -23,7 +24,12 @@ class ConfigurationExporter:
         ids_map = self._get_ids_map()
         with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
-                ids = imas.IDSFactory().new(ids_name)
+                logger.info(f"Filling {ids_name}...")
+                try:
+                    ids = entry.factory.new(ids_name)
+                except imas.exception.IDSNameError:
+                    logger.error(f"{ids_name} IDS does not exist.")
+                    return
                 # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
@@ -44,9 +50,7 @@ class ConfigurationExporter:
             split_path = waveform.name.split("/")
             # Here we assume the first word of the waveform to contain the IDS name
             ids = split_path[0]
-            if ids not in ids_map:
-                ids_map[ids] = []
-            ids_map[ids].append(waveform)
+            ids_map.setdefault(ids, []).append(waveform)
         return ids_map
 
     def _fill_waveforms(self, ids, waveforms):
@@ -61,9 +65,16 @@ class ConfigurationExporter:
         # have the appropriate length to store the waveforms
         for waveform in waveforms:
             path = "/".join(waveform.name.split("/")[1:])
-            self._ensure_path_exists(ids, path)
+            try:
+                self._ensure_path_exists(ids, path)
+            except AttributeError:
+                logger.error(
+                    f"{path!r} path does not exist in {ids.metadata.name!r} IDS."
+                )
+                return
 
         for waveform in waveforms:
+            logger.info(f"Filling {waveform.name}...")
             _, self.values = waveform.get_value(self.times)
             path = "/".join(waveform.name.split("/")[1:])
             if path in self.flt_0d_map:
@@ -117,7 +128,8 @@ class ConfigurationExporter:
                 raise NotImplementedError(f"Structure {struct_ref} is not implemented.")
         else:
             if (
-                "time" not in str(ids[path].metadata.coordinate1)
+                not hasattr(ids[path].metadata, "coordinate1")
+                or "time" not in str(ids[path].metadata.coordinate1)
                 or ids[path].metadata.ndim != 1
             ):
                 raise ValueError(f"{ids[path]} is not a 1D time-dependent quantity.")
