@@ -90,8 +90,21 @@ class OptionsButtonRow(Viewer):
             option_buttons, self.new_waveform_panel, self.new_group_panel
         )
 
-        if not self.check_buttons.options:
+        if self.check_buttons and not self.check_buttons.options:
             self._show_filled_options(False)
+
+    def is_visible(self, is_visible):
+        """Set visibility of the option buttons.
+
+        Args:
+            is_visible: Whether to show all or no option buttons.
+        """
+        self.new_waveform_button.visible = is_visible
+        self.remove_waveform_button.visible = is_visible
+        self.new_group_button.visible = is_visible
+        self.select_all_button.visible = is_visible
+        self.deselect_all_button.visible = is_visible
+        self.remove_group_button.visible = is_visible
 
     def _show_filled_options(self, show_options):
         """Whether to show the selection and waveform removal button.
@@ -209,30 +222,28 @@ class OptionsButtonRow(Viewer):
 
         new_path = self.path + [name]
 
-        # Check if there exists an accordion already at this level
-        existing_accordion = None
-        for obj in self.parent_ui.objects:
-            if isinstance(obj, pn.Accordion):
-                existing_accordion = obj
-                break
+        # Determine the parent accordion
+        if isinstance(self.parent_ui, pn.Accordion):
+            parent_accordion = self.parent_ui
+        else:
+            parent_accordion = None
+            for obj in self.parent_ui.objects:
+                if isinstance(obj, pn.Accordion):
+                    parent_accordion = obj
+                    break
 
-        if not existing_accordion:
-            new_accordion = pn.Accordion()
+            if parent_accordion is None:
+                parent_accordion = pn.Accordion()
+                self.parent_ui.append(parent_accordion)
 
-        parent_accordion = existing_accordion if existing_accordion else new_accordion
+        if name in parent_accordion._names:
+            pn.state.notifications.error(f"A group named '{name}' already exists.")
+            return
+
         new_group_ui = self.main_gui.selector.create_group_ui(
             new_group, new_path, parent_accordion=parent_accordion
         )
-        # Update UI with new group
-        if existing_accordion:
-            if name in existing_accordion._names:
-                pn.state.notifications.error(f"A group named '{name}' already exists.")
-                return
-
-            existing_accordion.append((name, new_group_ui))
-        else:
-            new_accordion.objects = [new_group_ui]
-            self.parent_ui.append(new_accordion)
+        parent_accordion.append((name, new_group_ui))
 
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()

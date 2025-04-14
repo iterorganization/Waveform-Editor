@@ -9,6 +9,7 @@ from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.plotter import WaveformPlotter
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
+from waveform_editor.gui.start_up import StartUpPrompt
 
 hv.extension("plotly")
 pn.extension("plotly", "modal", "codeeditor", notifications=True)
@@ -18,9 +19,6 @@ class WaveformEditorGui:
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         self.config = WaveformConfiguration()
-
-        self.file_input = pn.widgets.FileInput(accept=".yaml")
-        self.file_input.param.watch(self.load_yaml, "value")
 
         # TODO: The file download button is a placeholder for the actual saving
         # behavior, which should be implemented later
@@ -32,7 +30,6 @@ class WaveformEditorGui:
             auto=True,
             visible=False,
         )
-
         # Add tabs to switch from viewer to editor
         self.modal = ConfirmModal()
         self.plotter = WaveformPlotter()
@@ -50,15 +47,12 @@ class WaveformEditorGui:
             main=self.tabs,
             sidebar_width=400,
         )
-        self.sidebar_text = pn.pane.Markdown(
-            "## Select Waveform Editor YAML File", margin=0
-        )
+        self.start_up = StartUpPrompt(self)
 
         # Append to sidebar to make the content of the sidebar dynamic
         self.sidebar_column = pn.Column(
+            self.start_up,
             self.file_download,
-            self.sidebar_text,
-            self.file_input,
             self.selector,
             self.modal,
         )
@@ -87,8 +81,10 @@ class WaveformEditorGui:
         # Create tree structure in sidebar based on waveform groups in YAML
         self.selector.create_waveform_selector_ui()
 
-        if self.file_input.filename:
-            new_filename = self.file_input.filename.replace(".yaml", "-new.yaml")
+        if self.start_up.file_input.filename:
+            new_filename = self.start_up.file_input.filename.replace(
+                ".yaml", "-new.yaml"
+            )
             self.file_download.filename = new_filename
 
     def make_ui_visible(self, is_visible):
@@ -100,7 +96,7 @@ class WaveformEditorGui:
         """
         self.tabs.visible = is_visible
         self.file_download.visible = is_visible
-        self.sidebar_text.visible = not is_visible
+        self.start_up.is_visible(not is_visible)
         self.selector.ui_selector.visible = is_visible
 
     def save_yaml(self):

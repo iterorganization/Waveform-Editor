@@ -14,12 +14,17 @@ class WaveformSelector(Viewer):
         self.editor = self.main_gui.editor
         self.edit_waveforms_enabled = False
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
+        self.root_button_row = OptionsButtonRow(self.main_gui, None, [])
+        self.root_button_row.is_visible(False)
+        self.root_button_row.parent_ui = self.ui_selector
+        self.root_button_row.parent_accordion = self.ui_selector
 
     def create_waveform_selector_ui(self):
         """Creates a UI for the selector sidebar, containing accordions for each
         group in the config, option buttons, and CheckButtonGroups for the lists of
         waveforms.
         """
+        self.root_button_row.new_group_button.visible = True
         self.ui_selector.objects = [
             self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
@@ -160,4 +165,4 @@ class WaveformSelector(Viewer):
 
     def __panel__(self):
         """Returns the waveform selector UI component."""
-        return self.ui_selector
+        return pn.Column(self.root_button_row, self.ui_selector)
