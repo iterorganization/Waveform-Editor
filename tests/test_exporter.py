@@ -27,10 +27,10 @@ def test_to_ids(tmp_path):
     times = np.array([0, 0.5, 1])
     exporter = ConfigurationExporter(config, times)
     file_path = f"{tmp_path}/test.nc"
-    exporter.to_ids(file_path)
+    exporter.to_ids(file_path, dd_version="4.0.0")
 
-    # FLT_1D
-    with imas.DBEntry(file_path, "r") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        # FLT_1D
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
         assert np.all(ids.beam[0].phase.angle == 1e-3)
@@ -38,8 +38,7 @@ def test_to_ids(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 3)
         assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
 
-    # FLT_0D
-    with imas.DBEntry(file_path, "r") as dbentry:
+        # FLT_0D
         ids = dbentry.get("equilibrium", autoconvert=False)
         assert np.all(ids.time == times)
         assert ids.time_slice[0].global_quantities.ip == 2
