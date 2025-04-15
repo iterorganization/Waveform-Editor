@@ -96,7 +96,7 @@ class WaveformEditorGui:
         """
         self.tabs.visible = is_visible
         self.file_download.visible = is_visible
-        self.start_up.is_visible(not is_visible)
+        self.start_up.visible = not is_visible
         self.selector.ui_selector.visible = is_visible
 
     def save_yaml(self):

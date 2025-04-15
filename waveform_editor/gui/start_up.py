@@ -1,10 +1,16 @@
 import panel as pn
+import param
 from panel.viewable import Viewer
 
 
 class StartUpPrompt(Viewer):
     """Panel containing a start-up prompt for loading YAML or starting from a new
     yaml file."""
+
+    visible = param.Boolean(
+        default=True,
+        doc="The visibility of the start-up prompt.",
+    )
 
     def __init__(self, main_gui):
         super().__init__()
@@ -28,6 +34,7 @@ class StartUpPrompt(Viewer):
             self.new_yaml_text,
             self.new_yaml_button,
         )
+        self.param.watch(self.is_visible, "visible")
 
     def _start_new(self, event):
         """Sets up the GUI to start from a new, empty yaml."""
@@ -36,16 +43,12 @@ class StartUpPrompt(Viewer):
         self.main_gui.make_ui_visible(True)
         self.main_gui.selector.create_waveform_selector_ui()
 
-    def is_visible(self, is_visible):
-        """Sets visibility of the start-up prompt.
-
-        Args:
-            is_visible: Whether to show the start-up prompt.
-        """
-        self.sidebar_text.visible = is_visible
-        self.file_input.visible = is_visible
-        self.new_yaml_text.visible = is_visible
-        self.new_yaml_button.visible = is_visible
+    def is_visible(self, event):
+        """Sets visibility of the start-up prompt."""
+        self.sidebar_text.visible = self.visible
+        self.file_input.visible = self.visible
+        self.new_yaml_text.visible = self.visible
+        self.new_yaml_button.visible = self.visible
 
     def __panel__(self):
         return self.panel
