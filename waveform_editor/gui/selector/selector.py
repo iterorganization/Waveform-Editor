@@ -59,14 +59,6 @@ class WaveformSelector(Viewer):
         )
         check_buttons.param.watch(self.on_select, "value")
 
-        # Create row of options for each group
-        button_row = OptionsButtonRow(self.main_gui, check_buttons, path)
-
-        # Add buttons, waveform list and groups to UI content list
-        ui_content = []
-        ui_content.append(button_row)
-        ui_content.append(check_buttons)
-
         # Create accordion to store the inner groups UI objects into
         if group.groups:
             inner_groups_ui = []
@@ -79,13 +71,19 @@ class WaveformSelector(Viewer):
                     )
                 )
             accordion.objects = inner_groups_ui
-            ui_content.append(accordion)
 
-        parent_container = pn.Column(
-            *ui_content, sizing_mode="stretch_width", name=group.name
+        parent_container = pn.Column(sizing_mode="stretch_width", name=group.name)
+
+        # Create row of options for each group
+        button_row = OptionsButtonRow(
+            self.main_gui, check_buttons, path, parent_container, parent_accordion
         )
-        button_row.parent_ui = parent_container
-        button_row.parent_accordion = parent_accordion
+
+        # Add buttons, waveform list and groups to UI column
+        ui_content = [button_row, check_buttons]
+        if group.groups:
+            ui_content.append(accordion)
+        parent_container.objects = ui_content
 
         return parent_container
 
@@ -142,10 +140,9 @@ class WaveformSelector(Viewer):
 
     def _create_root_button_row(self):
         """Creates a options button row at the root level of the selector groups."""
-        self.root_button_row = OptionsButtonRow(self.main_gui, None, [])
-        self.root_button_row.visible = False
-        self.root_button_row.parent_ui = self.ui_selector
-        self.root_button_row.parent_accordion = self.ui_selector
+        self.root_button_row = OptionsButtonRow(
+            self.main_gui, None, [], self.ui_selector, self.ui_selector, visible=False
+        )
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup

@@ -12,11 +12,19 @@ class OptionsButtonRow(Viewer):
         doc="The visibility of the option button row.",
     )
 
-    def __init__(self, main_gui, check_buttons, path):
+    def __init__(
+        self,
+        main_gui,
+        check_buttons,
+        path,
+        parent_ui,
+        parent_accordion,
+        visible=True,
+    ):
         super().__init__()
         self.main_gui = main_gui
-        self.parent_ui = None
-        self.parent_accordion = None
+        self.parent_ui = parent_ui
+        self.parent_accordion = parent_accordion
         self.check_buttons = check_buttons
         self.path = path
 
@@ -100,6 +108,7 @@ class OptionsButtonRow(Viewer):
         if self.check_buttons and not self.check_buttons.options:
             self._show_filled_options(False)
         self.param.watch(self.is_visible, "visible")
+        self.visible = visible
 
     def is_visible(self, event):
         """Set the visibility of the option buttons."""
