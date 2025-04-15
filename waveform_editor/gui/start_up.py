@@ -38,17 +38,14 @@ class StartUpPrompt(Viewer):
 
     def _create_new(self, event):
         """Sets up the GUI to start from a new, empty yaml."""
-        self.is_visible(False)
+        self.visible = False
         self.main_gui.file_download.filename = "new.yaml"
         self.main_gui.make_ui_visible(True)
         self.main_gui.selector.create_waveform_selector_ui()
 
     def is_visible(self, event):
         """Sets visibility of the start-up prompt."""
-        self.selection_text.visible = self.visible
-        self.file_input.visible = self.visible
-        self.or_text.visible = self.visible
-        self.create_new_yaml_button.visible = self.visible
+        self.panel.visible = self.visible
 
     def __panel__(self):
         return self.panel
