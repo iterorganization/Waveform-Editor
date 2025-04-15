@@ -15,7 +15,7 @@ class WaveformSelector(Viewer):
         self.edit_waveforms_enabled = False
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
         self.root_button_row = OptionsButtonRow(self.main_gui, None, [])
-        self.root_button_row.is_visible(False)
+        self.root_button_row.visible = False
         self.root_button_row.parent_ui = self.ui_selector
         self.root_button_row.parent_accordion = self.ui_selector
 

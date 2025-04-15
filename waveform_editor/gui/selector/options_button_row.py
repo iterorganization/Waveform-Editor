@@ -1,4 +1,5 @@
 import panel as pn
+import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.text_input_form import TextInputForm
@@ -6,7 +7,13 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow(Viewer):
+    visible = param.Boolean(
+        default=True,
+        doc="The visibility of the option button row.",
+    )
+
     def __init__(self, main_gui, check_buttons, path):
+        super().__init__()
         self.main_gui = main_gui
         self.parent_ui = None
         self.parent_accordion = None
@@ -92,19 +99,16 @@ class OptionsButtonRow(Viewer):
 
         if self.check_buttons and not self.check_buttons.options:
             self._show_filled_options(False)
+        self.param.watch(self.is_visible, "visible")
 
-    def is_visible(self, is_visible):
-        """Set visibility of the option buttons.
-
-        Args:
-            is_visible: Whether to show all or no option buttons.
-        """
-        self.new_waveform_button.visible = is_visible
-        self.remove_waveform_button.visible = is_visible
-        self.new_group_button.visible = is_visible
-        self.select_all_button.visible = is_visible
-        self.deselect_all_button.visible = is_visible
-        self.remove_group_button.visible = is_visible
+    def is_visible(self, event):
+        """Set the visibility of the option buttons."""
+        self.new_waveform_button.visible = self.visible
+        self.remove_waveform_button.visible = self.visible
+        self.new_group_button.visible = self.visible
+        self.select_all_button.visible = self.visible
+        self.deselect_all_button.visible = self.visible
+        self.remove_group_button.visible = self.visible
 
     def _show_filled_options(self, show_options):
         """Whether to show the selection and waveform removal button.
