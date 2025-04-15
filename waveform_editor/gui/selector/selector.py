@@ -14,10 +14,7 @@ class WaveformSelector(Viewer):
         self.editor = self.main_gui.editor
         self.edit_waveforms_enabled = False
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
-        self.root_button_row = OptionsButtonRow(self.main_gui, None, [])
-        self.root_button_row.visible = False
-        self.root_button_row.parent_ui = self.ui_selector
-        self.root_button_row.parent_accordion = self.ui_selector
+        self._create_root_button_row()
 
     def create_waveform_selector_ui(self):
         """Creates a UI for the selector sidebar, containing accordions for each
@@ -142,6 +139,13 @@ class WaveformSelector(Viewer):
             exclude: The name of a waveform to exclude from deselection.
         """
         self._deselect_checkbuttons(self.ui_selector, exclude)
+
+    def _create_root_button_row(self):
+        """Creates a options button row at the root level of the selector groups."""
+        self.root_button_row = OptionsButtonRow(self.main_gui, None, [])
+        self.root_button_row.visible = False
+        self.root_button_row.parent_ui = self.ui_selector
+        self.root_button_row.parent_accordion = self.ui_selector
 
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
