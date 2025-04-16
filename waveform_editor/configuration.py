@@ -130,6 +130,11 @@ class WaveformConfiguration:
         Returns:
             The newly created waveform group.
         """
+        if "/" in name:
+            raise ValueError("Group name may not contain '/'.")
+        if not name:
+            raise ValueError("Group name may not be empty.")
+
         group = self.traverse(path).groups if path else self.groups
 
         if name in group:

@@ -218,19 +218,12 @@ class OptionsButtonRow(Viewer):
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
         name = self.new_group_panel.input.value
-        if name == "":
-            pn.state.notifications.error("Group name may not be empty.")
-            return
-
-        if "/" in name:
-            pn.state.notifications.error("Groups may not contain '/'.")
-            return
 
         # Create new group in configuration
         try:
             new_group = self.main_gui.selector.config.add_group(name, self.path)
-        except ValueError:
-            pn.state.notifications.error(f"{name!r} already exists in current group.")
+        except ValueError as e:
+            pn.state.notifications.error(str(e))
             return
 
         new_path = self.path + [name]
