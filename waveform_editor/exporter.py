@@ -157,6 +157,9 @@ class ConfigurationExporter:
             path: The path of the IDS quantity to export to.
         """
         path_list = path.split("/")
+        # TODO: Allow for slicing or all existing AoS,
+        # e.g. slicing: ec_launchers/beam(1:24)/power_launched
+        # e.g. all: ec_launchers/beam(:)/frequency
         current = ids
         for part in path_list:
             if "(" in part:
