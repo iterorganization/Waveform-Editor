@@ -153,8 +153,8 @@ class OptionsButtonRow(Viewer):
 
     def _show_remove_group_modal(self, event):
         self.main_gui.modal.show(
-            f"""Are you sure you want to delete the **{self.path[-1]}** group?  
-        This will also remove all waveforms and subgroups in this group!""",
+            f"Are you sure you want to delete the **{self.path[-1]}** group?  \n"
+            "This will also remove all waveforms and subgroups in this group!",
             on_confirm=self._remove_group,
         )
 
@@ -226,7 +226,7 @@ class OptionsButtonRow(Viewer):
 
         # Create new group in UI
         new_path = self.path + [name]
-        existing_accordion = self._get_existing_accordion()
+        existing_accordion = self._get_accordion()
         new_group_ui = self.main_gui.selector.create_group_ui(
             new_group, new_path, parent_accordion=existing_accordion
         )
@@ -235,7 +235,7 @@ class OptionsButtonRow(Viewer):
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()
 
-    def _get_existing_accordion(self):
+    def _get_accordion(self):
         """
         Returns an existing Accordion at the current path or creates one if absent.
         """
@@ -251,8 +251,7 @@ class OptionsButtonRow(Viewer):
                 if not existing_accordion:
                     existing_accordion = pn.Accordion()
                     column.append(existing_accordion)
-                break
-        return existing_accordion
+                return existing_accordion
 
     def __panel__(self):
         """Returns the panel UI element."""
