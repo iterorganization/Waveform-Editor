@@ -9,6 +9,9 @@ def test_to_ids(tmp_path):
     """Check if to_ids fills the correct quantities."""
 
     yaml_str = """
+    core_sources:
+      core_sources/source(5)/global_quantities/total_ion_power:
+      - {from: 0, to: 2} 
     equilibrium:
       equilibrium/time_slice/global_quantities/ip:
       - {from: 2, to: 3, duration: 0.5} 
@@ -41,6 +44,15 @@ def test_to_ids(tmp_path):
         # FLT_0D
         ids = dbentry.get("equilibrium", autoconvert=False)
         assert np.all(ids.time == times)
+        assert len(ids.time_slice) == len(times)
         assert ids.time_slice[0].global_quantities.ip == 2
         assert ids.time_slice[1].global_quantities.ip == 3
         assert ids.time_slice[2].global_quantities.ip == 1
+
+        ids = dbentry.get("core_sources", autoconvert=False)
+        assert np.all(ids.time == times)
+        assert len(ids.source) == 5
+        assert len(ids.source[4].global_quantities) == len(times)
+        assert ids.source[4].global_quantities[0].total_ion_power == 0
+        assert ids.source[4].global_quantities[1].total_ion_power == 1
+        assert ids.source[4].global_quantities[2].total_ion_power == 2

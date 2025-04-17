@@ -182,9 +182,37 @@ class ConfigurationExporter:
 
         # If the quantity stores its time in another node, e.g. equilibrium/time_slice
         # Ensure that the length of this node matches the number of time steps
-        time_path = current.metadata.path_doc
-        if "itime" in time_path:
-            time_path = time_path.split("(itime)")[0]
+        path_doc = current.metadata.path_doc
+        if "itime" in path_doc:
+            time_path = self._resolve_time_resolved_path(path, path_doc)
             ids[time_path].resize(len(self.times))
-            # Map full path to coordinate time path
             self.flt_0d_map[path] = time_path
+
+    def _resolve_time_resolved_path(self, path, path_doc):
+        """Returns the portion of the real path up to the time-resolved node,
+        based on where '(itime)' appears in 'path_doc'.
+
+        Args:
+            path: path string with actual indices.
+            path_doc: Abstract path string with symbolic indices like (itime).
+
+        Returns:
+            str: Real path up to the time-resolved structure.
+
+        Example:
+              path: 'source(4)/global_quantities/total_ion_power'
+              path_doc: 'source(i1)/global_quantities(itime)/total_ion_power'
+        will return:
+              'source(4)/global_quantities'
+        """
+        real_parts = path.split("/")
+        time_parts = path_doc.split("/")
+
+        resolved_parts = []
+
+        for r_part, t_part in zip(real_parts, time_parts):
+            resolved_parts.append(r_part)
+            if "(itime)" in t_part:
+                break
+
+        return "/".join(resolved_parts)
