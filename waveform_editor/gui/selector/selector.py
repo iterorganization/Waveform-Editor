@@ -76,7 +76,7 @@ class WaveformSelector(Viewer):
 
         # Create row of options for each group
         button_row = OptionsButtonRow(
-            self.main_gui, check_buttons, path, parent_container, parent_accordion
+            self.main_gui, check_buttons, path, parent_accordion
         )
 
         # Add buttons, waveform list and groups to UI column
@@ -141,7 +141,7 @@ class WaveformSelector(Viewer):
     def _create_root_button_row(self):
         """Creates a options button row at the root level of the selector groups."""
         self.root_button_row = OptionsButtonRow(
-            self.main_gui, None, [], self.ui_selector, self.ui_selector, visible=False
+            self.main_gui, None, [], self.ui_selector, visible=False
         )
 
     def _deselect_checkbuttons(self, widget, exclude):
