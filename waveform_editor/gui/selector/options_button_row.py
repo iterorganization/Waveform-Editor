@@ -17,7 +17,7 @@ class OptionsButtonRow(Viewer):
         main_gui,
         check_buttons,
         path,
-        parent_accordion,
+        parent_accordion=None,
         visible=True,
     ):
         super().__init__()
@@ -239,6 +239,9 @@ class OptionsButtonRow(Viewer):
         """
         Returns an existing Accordion at the current path or creates one if absent.
         """
+        if self.parent_accordion is None:
+            return self.main_gui.selector.ui_selector
+
         for column in self.parent_accordion:
             if column.name == self.path[-1]:
                 existing_accordion = None
