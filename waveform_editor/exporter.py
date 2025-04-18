@@ -1,7 +1,7 @@
 import logging
-import re
 
 import imas
+from imas.ids_path import IDSPath
 from imas.ids_struct_array import IDSStructArray
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class ConfigurationExporter:
         # AoSs to their final size in a single step, avoiding repeated resizing.
         for waveform in reversed(waveforms):
             logger.info(f"Filling {waveform.name}...")
-            path = "/".join(waveform.name.split("/")[1:])
+            path = IDSPath("/".join(waveform.name.split("/")[1:]))
             self._ensure_path_exists(ids, path)
             _, self.values = waveform.get_value(self.times)
             if path in self.flt_0d_map:
@@ -150,29 +150,21 @@ class ConfigurationExporter:
             ids: The IDS to export to.
             path: The path of the IDS quantity to export to.
         """
-        path_list = path.split("/")
-        # TODO: Allow for slicing or all existing AoS,
-        # e.g. slicing: ec_launchers/beam(1:24)/power_launched
-        # e.g. all: ec_launchers/beam(:)/frequency
         current = ids
-        for part in path_list:
-            if "(" in part:
-                match = re.search(r"\((\d+)\)", part)
-                index = int(match.group(1))
-                current = current[part.split("(")[0]]
-
-                # We use 1-based indexing in the URI
-                if len(current) < index:
-                    current.resize(index, keep=True)
-
-                # Revert to 0-based indexing
-                current = current[index - 1]
-            else:
-                # Ensure AoS have a non-zero length
-                if isinstance(current, IDSStructArray) and len(current) == 0:
-                    current.resize(1)
-                    current = current[0]
-                current = current[part]
+        for part, index in path.items():
+            current = current[part]
+            if index is not None:
+                # TODO: Allow for slicing or all existing AoS,
+                # e.g. slicing: ec_launchers/beam(1:24)/power_launched
+                # e.g. all: ec_launchers/beam(:)/frequency
+                if isinstance(index, slice):
+                    raise NotImplementedError("Slices are not yet implemented")
+                if len(current) <= index:
+                    current.resize(index + 1, keep=True)
+                current = current[index]
+            if isinstance(current, IDSStructArray) and len(current) == 0:
+                current.resize(1)
+                current = current[0]
 
         # If the quantity stores its time in another node, e.g. equilibrium/time_slice
         # Ensure that the length of this node matches the number of time steps
