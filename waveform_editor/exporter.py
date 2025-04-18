@@ -69,13 +69,13 @@ class ConfigurationExporter:
             logger.info(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             self._ensure_path_exists(ids, path)
-            _, self.values = waveform.get_value(self.times)
+            _, values = waveform.get_value(self.times)
             if path in self.flt_0d_map:
-                self._fill_flt_0d(ids, path)
+                self._fill_flt_0d(ids, path, values)
             else:
-                self._fill_flt_1d(ids[path])
+                self._fill_flt_1d(ids[path], values)
 
-    def _fill_flt_0d(self, ids, path):
+    def _fill_flt_0d(self, ids, path, values):
         """
         Fills a FLT_0D quantity in an IDS using time-dependent values.
 
@@ -93,6 +93,7 @@ class ConfigurationExporter:
         Args:
             ids: The IDS object to fill.
             path: The full path to the FLT_0D quantity.
+            values: The values to store in the IDS quantity.
         """
 
         # Fetch path to time dependent quantity
@@ -108,9 +109,9 @@ class ConfigurationExporter:
                     current = current[index]
             if not current.data_type == "FLT_0D":
                 raise ValueError(f"{current} is not a 0D time-dependent quantity.")
-            current.value = self.values[i]
+            current.value = values[i]
 
-    def _fill_flt_1d(self, quantity):
+    def _fill_flt_1d(self, quantity, values):
         """Fill a FLT_1D IDS quantity in an IDS.
 
         Arguments:
@@ -119,7 +120,7 @@ class ConfigurationExporter:
         if hasattr(quantity.metadata, "structure_reference"):
             struct_ref = quantity.metadata.structure_reference
             if struct_ref == "signal_flt_1d":
-                quantity.data = self.values
+                quantity.data = values
             else:
                 raise NotImplementedError(
                     f"Exporting structure {struct_ref} is not implemented."
@@ -130,7 +131,7 @@ class ConfigurationExporter:
                 or not quantity.data_type == "FLT_1D"
             ):
                 raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
-            quantity = self.values
+            quantity.value = values
 
     def _ensure_path_exists(self, ids, path, part_idx=0):
         """
@@ -152,6 +153,7 @@ class ConfigurationExporter:
         Args:
             ids: The IDS to export to.
             path: The path of the IDS quantity to export to.
+            values: The values to store in the IDS quantity.
             part_idx: index of current path part.
         """
         if part_idx >= len(path.parts):
