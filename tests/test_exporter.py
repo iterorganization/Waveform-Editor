@@ -56,3 +56,23 @@ def test_to_ids(tmp_path):
         assert ids.source[4].global_quantities[0].total_ion_power == 0
         assert ids.source[4].global_quantities[1].total_ion_power == 1
         assert ids.source[4].global_quantities[2].total_ion_power == 2
+
+
+def test_to_ids_python_notation(tmp_path):
+    """Check if to_ids fills correctly using 0-based indexing."""
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam[2]/phase/angle: 5
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    times = np.array([0, 0.5, 1])
+    exporter = ConfigurationExporter(config, times)
+    file_path = f"{tmp_path}/test.nc"
+    exporter.to_ids(file_path, dd_version="4.0.0")
+
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.all(ids.time == times)
+        assert np.all(ids.beam[2].phase.angle == 5)
+        assert len(ids.beam) == 3

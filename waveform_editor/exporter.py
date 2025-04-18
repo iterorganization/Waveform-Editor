@@ -2,7 +2,6 @@ import logging
 
 import imas
 from imas.ids_path import IDSPath
-from imas.ids_struct_array import IDSStructArray
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -74,9 +73,9 @@ class ConfigurationExporter:
             if path in self.flt_0d_map:
                 self._fill_flt_0d(ids, path)
             else:
-                self._fill_flt_1d(ids, path)
+                self._fill_flt_1d(ids[path])
 
-    def _fill_flt_0d(self, ids, full_path):
+    def _fill_flt_0d(self, ids, path):
         """
         Fills a FLT_0D quantity in an IDS using time-dependent values.
 
@@ -93,41 +92,45 @@ class ConfigurationExporter:
 
         Args:
             ids: The IDS object to fill.
-            full_path: The full path to the FLT_0D quantity.
+            path: The full path to the FLT_0D quantity.
         """
 
-        time_path = self.flt_0d_map[full_path]
-        paths = [
-            full_path.replace(time_path, f"{time_path}({i + 1})")
-            for i in range(len(self.times))
-        ]
-        for i, path in enumerate(paths):
-            if ids[path].data_type == "FLT_0D":
-                ids[path] = self.values[i]
-            else:
-                raise ValueError(f"{ids[path].metadata.name} should be FLT_0D")
+        # Fetch path to time dependent quantity
+        time_path = self.flt_0d_map[path]
+        len_time_path = len(time_path.parts)
 
-    def _fill_flt_1d(self, ids, path):
+        for i in range(len(self.times)):
+            current = ids[time_path][i]
+            # Traverse the remaining parts from the full path
+            for part, index in list(path.items())[len_time_path:]:
+                current = current[part]
+                if index is not None:
+                    current = current[index]
+            if not current.data_type == "FLT_0D":
+                raise ValueError(f"{current} is not a 0D time-dependent quantity.")
+            current.value = self.values[i]
+
+    def _fill_flt_1d(self, quantity):
         """Fill a FLT_1D IDS quantity in an IDS.
 
         Arguments:
-            ids: The IDS to fill.
-            path: The path to the FLT_1D quantity to fill.
+            quantity: The IDS quantity to fill.
         """
-        if hasattr(ids[path].metadata, "structure_reference"):
-            struct_ref = ids[path].metadata.structure_reference
+        if hasattr(quantity.metadata, "structure_reference"):
+            struct_ref = quantity.metadata.structure_reference
             if struct_ref == "signal_flt_1d":
-                ids[path].data = self.values
+                quantity.data = self.values
             else:
-                raise NotImplementedError(f"Structure {struct_ref} is not implemented.")
+                raise NotImplementedError(
+                    f"Exporting structure {struct_ref} is not implemented."
+                )
         else:
             if (
-                not hasattr(ids[path].metadata, "coordinate1")
-                or "time" not in str(ids[path].metadata.coordinate1)
-                or ids[path].metadata.ndim != 1
+                not quantity.metadata.coordinate1.is_time_coordinate
+                or not quantity.data_type == "FLT_1D"
             ):
-                raise ValueError(f"{ids[path]} is not a 1D time-dependent quantity.")
-            ids[path] = self.values
+                raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
+            quantity = self.values
 
     def _ensure_path_exists(self, ids, path):
         """
@@ -162,43 +165,11 @@ class ConfigurationExporter:
                 if len(current) <= index:
                     current.resize(index + 1, keep=True)
                 current = current[index]
-            if isinstance(current, IDSStructArray) and len(current) == 0:
-                current.resize(1)
+            elif (
+                hasattr(current.metadata, "coordinate1")
+                and current.metadata.coordinate1.is_time_coordinate
+                and part != path.parts[-1]
+            ):
+                current.resize(len(self.times), keep=True)
+                self.flt_0d_map[path] = IDSPath(current._path)
                 current = current[0]
-
-        # If the quantity stores its time in another node, e.g. equilibrium/time_slice
-        # Ensure that the length of this node matches the number of time steps
-        path_doc = current.metadata.path_doc
-        if "itime" in path_doc:
-            time_path = self._resolve_time_resolved_path(path, path_doc)
-            ids[time_path].resize(len(self.times), keep=True)
-            self.flt_0d_map[path] = time_path
-
-    def _resolve_time_resolved_path(self, path, path_doc):
-        """Returns the portion of the real path up to the time-resolved node,
-        based on where '(itime)' appears in 'path_doc'.
-
-        Args:
-            path: path string with actual indices.
-            path_doc: Abstract path string with symbolic indices like (itime).
-
-        Returns:
-            str: Real path up to the time-resolved structure.
-
-        Example:
-              path: 'source(4)/global_quantities/total_ion_power'
-              path_doc: 'source(i1)/global_quantities(itime)/total_ion_power'
-        will return:
-              'source(4)/global_quantities'
-        """
-        real_parts = path.split("/")
-        time_parts = path_doc.split("/")
-
-        resolved_parts = []
-
-        for r_part, t_part in zip(real_parts, time_parts):
-            resolved_parts.append(r_part)
-            if "(itime)" in t_part:
-                break
-
-        return "/".join(resolved_parts)
