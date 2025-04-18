@@ -1,6 +1,8 @@
 from typing import Optional
 
+import imas
 import numpy as np
+from imas.ids_path import IDSPath
 
 from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -39,6 +41,7 @@ class Waveform:
         line_number=0,
         is_repeated=False,
         name="waveform",
+        dd_version=None,
     ):
         self.yaml_str = yaml_str
         self.tendencies = []
@@ -46,6 +49,8 @@ class Waveform:
         self.line_number = line_number
         self.annotations = Annotations()
         self.is_repeated = is_repeated
+        self.dd_version = dd_version
+        self.metadata = self.get_metadata()
         if waveform is not None:
             if isinstance(waveform, list):
                 self._process_waveform(waveform)
@@ -87,6 +92,23 @@ class Waveform:
             numpy array containing the derivatives
         """
         return self._evaluate_tendencies(time, eval_derivatives=True)
+
+    def get_metadata(self):
+        """Parses the name of the waveform and returns the IDS metadata for this
+        waveform. The name must be formatted as follows: ``<IDS-Name>/<IDS-path>``
+
+        For example: ``ec_launchers/beam(2)/phase/angle``
+
+        Returns:
+            The metadata of the IDS node, or None if it could not find it.
+        """
+        try:
+            ids_name, path = self.name.split("/", 1)
+            dd_path = IDSPath(path)
+            ids = imas.IDSFactory(version=self.dd_version).new(ids_name)
+            return dd_path.goto_metadata(ids.metadata)
+        except (imas.exception.IDSNameError, ValueError):
+            return None
 
     def _evaluate_tendencies(self, time, eval_derivatives=False):
         """Evaluates the values (or derivatives) of the tendencies at the provided
