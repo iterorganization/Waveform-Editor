@@ -22,12 +22,9 @@ def test_to_ids(tmp_path):
         ec_launchers/beam(4)/power_launched:
         - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
     """
-    config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
-    times = np.array([0, 0.5, 1])
-    exporter = ConfigurationExporter(config, times)
     file_path = f"{tmp_path}/test.nc"
-    exporter.to_ids(file_path, dd_version="4.0.0")
+    times = np.array([0, 0.5, 1])
+    _export_ids(file_path, yaml_str, times)
 
     with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
         # FLT_1D
@@ -54,12 +51,9 @@ def test_to_ids_python_notation(tmp_path):
     ec_launchers:
       ec_launchers/beam[2]/phase/angle: 5
     """
-    config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
-    times = np.array([0, 0.5, 1])
-    exporter = ConfigurationExporter(config, times)
     file_path = f"{tmp_path}/test.nc"
-    exporter.to_ids(file_path, dd_version="4.0.0")
+    times = np.array([0, 0.5, 1])
+    _export_ids(file_path, yaml_str, times)
 
     with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers", autoconvert=False)
@@ -81,12 +75,9 @@ def test_to_ids_aos(tmp_path):
       core_sources/source(5)/global_quantities/total_ion_power:
       - {from: 0, to: 2} 
     """
-    config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
-    times = np.array([0, 0.5, 1])
-    exporter = ConfigurationExporter(config, times)
     file_path = f"{tmp_path}/test.nc"
-    exporter.to_ids(file_path, dd_version="4.0.0")
+    times = np.array([0, 0.5, 1])
+    _export_ids(file_path, yaml_str, times)
 
     with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("edge_profiles", autoconvert=False)
@@ -107,3 +98,11 @@ def test_to_ids_aos(tmp_path):
         assert ids.source[4].global_quantities[0].total_ion_power == 0
         assert ids.source[4].global_quantities[1].total_ion_power == 1
         assert ids.source[4].global_quantities[2].total_ion_power == 2
+
+
+def _export_ids(file_path, yaml_str, times):
+    """Load the yaml string into a waveform config and export to an IDS."""
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    exporter = ConfigurationExporter(config, times)
+    exporter.to_ids(file_path, dd_version="4.0.0")
