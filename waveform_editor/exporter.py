@@ -132,11 +132,11 @@ class ConfigurationExporter:
                 raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
             quantity = self.values
 
-    def _ensure_path_exists(self, ids, path):
+    def _ensure_path_exists(self, ids, path, part_idx=0):
         """
-        Traverses a given path and modifies the AoS in the IDS to ensure the IDS
-        quantity to be filled exists. Note that data may be lost during the resizing
-        of a quantity.
+        Recursively ensures that the full IDS path exists, resizing AoS as needed.
+        Handles time-dependent paths by creating the full substructure for all time
+        slices.
 
         Examples:
 
@@ -152,24 +152,33 @@ class ConfigurationExporter:
         Args:
             ids: The IDS to export to.
             path: The path of the IDS quantity to export to.
+            part_idx: index of current path part.
         """
-        current = ids
-        for part, index in path.items():
-            current = current[part]
-            if index is not None:
-                # TODO: Allow for slicing or all existing AoS,
-                # e.g. slicing: ec_launchers/beam(1:24)/power_launched
-                # e.g. all: ec_launchers/beam(:)/frequency
-                if isinstance(index, slice):
-                    raise NotImplementedError("Slices are not yet implemented")
-                if len(current) <= index:
-                    current.resize(index + 1, keep=True)
-                current = current[index]
-            elif (
-                hasattr(current.metadata, "coordinate1")
-                and current.metadata.coordinate1.is_time_coordinate
-                and part != path.parts[-1]
-            ):
-                current.resize(len(self.times), keep=True)
-                self.flt_0d_map[path] = IDSPath(current._path)
-                current = current[0]
+        if part_idx >= len(path.parts):
+            return
+
+        part = path.parts[part_idx]
+        index = path.indices[part_idx]
+        current = ids[part]
+
+        if index is not None:
+            # TODO: Allow for slicing or all existing AoS,
+            # e.g. slicing: ec_launchers/beam(1:24)/power_launched
+            # e.g. all: ec_launchers/beam(:)/frequency
+            if isinstance(index, slice):
+                raise NotImplementedError("Slices are not yet implemented")
+            if len(current) <= index:
+                current.resize(index + 1, keep=True)
+            self._ensure_path_exists(current[index], path, part_idx + 1)
+        elif (
+            hasattr(current.metadata, "coordinate1")
+            and current.metadata.coordinate1.is_time_coordinate
+            and part != path.parts[-1]
+        ):
+            current.resize(len(self.times), keep=True)
+            self.flt_0d_map[path] = IDSPath(current._path)
+
+            for i in range(len(self.times)):
+                self._ensure_path_exists(current[i], path, part_idx + 1)
+        else:
+            self._ensure_path_exists(current, path, part_idx + 1)
