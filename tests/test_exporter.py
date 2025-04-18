@@ -45,6 +45,35 @@ def test_to_ids(tmp_path):
         assert ids.time_slice[2].global_quantities.ip == 1
 
 
+def test_to_ids_inverted(tmp_path):
+    """Check if to_ids fills the correct quantities, if the indices are in decreasing
+    order."""
+
+    yaml_str = """
+    ec_launchers:
+      power_launched:
+        ec_launchers/beam(4)/power_launched:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+      phase_angles:
+        ec_launchers/beam(3)/phase/angle: 3
+        ec_launchers/beam(2)/phase/angle: 2
+        ec_launchers/beam(1)/phase/angle: 1e-3
+    """
+    file_path = f"{tmp_path}/test.nc"
+    times = np.array([0, 0.5, 1])
+    _export_ids(file_path, yaml_str, times)
+
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        # FLT_1D
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.all(ids.time == times)
+        assert len(ids.beam) == 4
+        assert np.all(ids.beam[0].phase.angle == 1e-3)
+        assert np.all(ids.beam[1].phase.angle == 2)
+        assert np.all(ids.beam[2].phase.angle == 3)
+        assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
+
+
 def test_to_ids_python_notation(tmp_path):
     """Check if to_ids fills correctly using 0-based indexing."""
     yaml_str = """
