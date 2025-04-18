@@ -25,11 +25,7 @@ class ConfigurationExporter:
         with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
                 logger.info(f"Filling {ids_name}...")
-                try:
-                    ids = entry.factory.new(ids_name)
-                except imas.exception.IDSNameError:
-                    logger.error(f"{ids_name} IDS does not exist.")
-                    return
+                ids = entry.factory.new(ids_name)
                 # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
@@ -37,6 +33,7 @@ class ConfigurationExporter:
                 ids.time = self.times
                 self._fill_waveforms(ids, waveforms)
                 entry.put(ids)
+        logger.info(f"Successfully exported waveform configuration to {uri}.")
 
     def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
@@ -47,6 +44,11 @@ class ConfigurationExporter:
         ids_map = {}
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
+            if not waveform.metadata:
+                logger.warning(
+                    f"{waveform.name} does not exist in IDS, so it is not exported."
+                )
+                continue
             split_path = waveform.name.split("/")
             # Here we assume the first word of the waveform to contain the IDS name
             ids = split_path[0]
@@ -61,22 +63,14 @@ class ConfigurationExporter:
             waveforms: A list of waveform objects to be filled into the IDS.
         """
         self.flt_0d_map = {}
-        # During the resizing of IDS nodes, data may be lost so first ensure all nodes
-        # have the appropriate length to store the waveforms
-        for waveform in waveforms:
-            path = "/".join(waveform.name.split("/")[1:])
-            try:
-                self._ensure_path_exists(ids, path)
-            except AttributeError:
-                logger.error(
-                    f"{path!r} path does not exist in {ids.metadata.name!r} IDS."
-                )
-                return
-
-        for waveform in waveforms:
+        # We iterate through the waveforms in reverse order because they are typically
+        # ordered with increasing indices. By processing them in reverse, we can resize
+        # AoSs to their final size in a single step, avoiding repeated resizing.
+        for waveform in reversed(waveforms):
             logger.info(f"Filling {waveform.name}...")
-            _, self.values = waveform.get_value(self.times)
             path = "/".join(waveform.name.split("/")[1:])
+            self._ensure_path_exists(ids, path)
+            _, self.values = waveform.get_value(self.times)
             if path in self.flt_0d_map:
                 self._fill_flt_0d(ids, path)
             else:
@@ -169,7 +163,7 @@ class ConfigurationExporter:
 
                 # We use 1-based indexing in the URI
                 if len(current) < index:
-                    current.resize(index)
+                    current.resize(index, keep=True)
 
                 # Revert to 0-based indexing
                 current = current[index - 1]
@@ -185,7 +179,7 @@ class ConfigurationExporter:
         path_doc = current.metadata.path_doc
         if "itime" in path_doc:
             time_path = self._resolve_time_resolved_path(path, path_doc)
-            ids[time_path].resize(len(self.times))
+            ids[time_path].resize(len(self.times), keep=True)
             self.flt_0d_map[path] = time_path
 
     def _resolve_time_resolved_path(self, path, path_doc):
