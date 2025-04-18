@@ -1,4 +1,5 @@
 import panel as pn
+import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.text_input_form import TextInputForm
@@ -6,10 +7,22 @@ from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow(Viewer):
-    def __init__(self, main_gui, check_buttons, path):
+    visible = param.Boolean(
+        default=True,
+        doc="The visibility of the option button row.",
+    )
+
+    def __init__(
+        self,
+        main_gui,
+        check_buttons,
+        path,
+        parent_accordion=None,
+        visible=True,
+    ):
+        super().__init__()
         self.main_gui = main_gui
-        self.parent_ui = None
-        self.parent_accordion = None
+        self.parent_accordion = parent_accordion
         self.check_buttons = check_buttons
         self.path = path
 
@@ -90,8 +103,19 @@ class OptionsButtonRow(Viewer):
             option_buttons, self.new_waveform_panel, self.new_group_panel
         )
 
-        if not self.check_buttons.options:
+        if self.check_buttons and not self.check_buttons.options:
             self._show_filled_options(False)
+        self.param.watch(self.is_visible, "visible")
+        self.visible = visible
+
+    def is_visible(self, event):
+        """Set the visibility of the option buttons."""
+        self.new_waveform_button.visible = self.visible
+        self.remove_waveform_button.visible = self.visible
+        self.new_group_button.visible = self.visible
+        self.select_all_button.visible = self.visible
+        self.deselect_all_button.visible = self.visible
+        self.remove_group_button.visible = self.visible
 
     def _show_filled_options(self, show_options):
         """Whether to show the selection and waveform removal button.
@@ -109,7 +133,7 @@ class OptionsButtonRow(Viewer):
             return
         self.main_gui.modal.show(
             "Are you sure you want to delete the selected waveform(s) from the "
-            f"**{self.parent_ui.name}** group?",
+            f"**{self.path[-1]}** group?",
             on_confirm=self._remove_waveforms,
         )
 
@@ -129,8 +153,8 @@ class OptionsButtonRow(Viewer):
 
     def _show_remove_group_modal(self, event):
         self.main_gui.modal.show(
-            "Are you sure you want to delete the selected waveform(s) from the "
-            f"**{self.parent_ui.name}** group?",
+            f"Are you sure you want to delete the **{self.path[-1]}** group?  \n"
+            "This will also remove all waveforms and subgroups in this group!",
             on_confirm=self._remove_group,
         )
 
@@ -192,50 +216,42 @@ class OptionsButtonRow(Viewer):
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
         name = self.new_group_panel.input.value
-        if name == "":
-            pn.state.notifications.error("Group name may not be empty.")
-            return
-
-        if "/" in name:
-            pn.state.notifications.error("Groups may not contain '/'.")
-            return
 
         # Create new group in configuration
         try:
             new_group = self.main_gui.selector.config.add_group(name, self.path)
-        except ValueError:
-            pn.state.notifications.error(f"{name!r} already exists in current group.")
+        except ValueError as e:
+            pn.state.notifications.error(str(e))
             return
 
+        # Create new group in UI
         new_path = self.path + [name]
-
-        # Check if there exists an accordion already at this level
-        existing_accordion = None
-        for obj in self.parent_ui.objects:
-            if isinstance(obj, pn.Accordion):
-                existing_accordion = obj
-                break
-
-        if not existing_accordion:
-            new_accordion = pn.Accordion()
-
-        parent_accordion = existing_accordion if existing_accordion else new_accordion
+        existing_accordion = self._get_accordion()
         new_group_ui = self.main_gui.selector.create_group_ui(
-            new_group, new_path, parent_accordion=parent_accordion
+            new_group, new_path, parent_accordion=existing_accordion
         )
-        # Update UI with new group
-        if existing_accordion:
-            if name in existing_accordion._names:
-                pn.state.notifications.error(f"A group named '{name}' already exists.")
-                return
-
-            existing_accordion.append((name, new_group_ui))
-        else:
-            new_accordion.objects = [new_group_ui]
-            self.parent_ui.append(new_accordion)
+        existing_accordion.append((name, new_group_ui))
 
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()
+
+    def _get_accordion(self):
+        """
+        Returns an existing Accordion at the current path or creates one if absent.
+        """
+        if self.parent_accordion is None:
+            return self.main_gui.selector.ui_selector
+
+        for column in self.parent_accordion:
+            if column.name == self.path[-1]:
+                existing_accordion = None
+                for obj in column.objects:
+                    if isinstance(obj, pn.Accordion):
+                        existing_accordion = obj
+                if not existing_accordion:
+                    existing_accordion = pn.Accordion()
+                    column.append(existing_accordion)
+                return existing_accordion
 
     def __panel__(self):
         """Returns the panel UI element."""
