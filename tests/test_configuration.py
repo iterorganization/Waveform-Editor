@@ -250,3 +250,17 @@ def test_dump_comments():
     config.load_yaml(yaml_str)
     dumped_yaml = config.dump()
     assert yaml_str.strip() == dumped_yaml.strip()
+
+
+def test_load_yaml_duplicate():
+    """Check if configuration fails to load if there are duplicate entries."""
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(2)/phase/angle: 1.23
+      ec_launchers/beam(2)/phase/angle: 1.23
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    assert config.load_error
+    assert not config.groups
+    assert not config.waveform_map

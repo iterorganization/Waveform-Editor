@@ -44,10 +44,10 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self):
+    def __init__(self, dd_version=None):
         self.load_yaml_error = ""
         self.parse_errors = []
-
+        self.dd_version = dd_version
         self.yaml = YAML()
 
     def load_yaml(self, yaml_str):
@@ -153,7 +153,11 @@ class YamlParser:
             waveform = waveform_yaml[waveform_key]
             line_number = waveform_yaml.get("line_number", 0)
             waveform = Waveform(
-                waveform=waveform, yaml_str=yaml_str, line_number=line_number, name=name
+                waveform=waveform,
+                yaml_str=yaml_str,
+                line_number=line_number,
+                name=name,
+                dd_version=self.dd_version,
             )
             return waveform
         except yaml.YAMLError as e:
