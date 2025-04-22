@@ -1,8 +1,6 @@
 import panel as pn
 from panel.viewable import Viewer
 
-from waveform_editor.yaml_parser import YamlParser
-
 
 class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
@@ -37,15 +35,16 @@ class WaveformEditor(Viewer):
             event: Event containing the code editor value input.
         """
         editor_text = event.new
-        yaml_parser = YamlParser()
-        self.waveform = yaml_parser.parse_waveforms(editor_text)
+        self.waveform = self.config.parse_waveform(editor_text)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
 
-        if yaml_parser.parse_errors:
+        # TODO: Check if parsing errors are not accidentally stored in yaml parser obj
+        if self.config.parser.parse_errors:
             self.error_alert.object = (
-                f"### The YAML did not parse correctly\n{yaml_parser.parse_errors[0]}"
+                "### The YAML did not parse correctly\n  "
+                f"{self.config.parser.parse_errors[0]}"
             )
             self.error_alert.alert_type = "danger"
             self.error_alert.visible = True
@@ -59,7 +58,7 @@ class WaveformEditor(Viewer):
             self.error_alert.visible = False
 
         # Only update plot when there are no YAML errors
-        if not yaml_parser.parse_errors:
+        if not self.config.parser.parse_errors:
             self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
 
     def set_default(self):

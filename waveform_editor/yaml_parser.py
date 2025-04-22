@@ -45,11 +45,11 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 class YamlParser:
     def __init__(self):
-        self.load_yaml_error = ""
-        self.parse_errors = []
         self.yaml = YAML()
+        self.clear_errors()
 
     def get_globals(self, yaml_str):
+        self.clear_errors()
         try:
             yaml_data = self.yaml.load(yaml_str)
             globals = yaml_data.get("globals")
@@ -60,8 +60,7 @@ class YamlParser:
             return None
 
     def load_yaml(self, yaml_str, *, dd_version=None):
-        self.load_yaml_error = ""
-        self.parse_errors = []
+        self.clear_errors()
         groups = {}
         waveform_map = {}
         try:
@@ -176,3 +175,7 @@ class YamlParser:
         except yaml.YAMLError as e:
             self.parse_errors.append(e)
             return Waveform()
+
+    def clear_errors(self):
+        self.load_yaml_error = ""
+        self.parse_errors = []
