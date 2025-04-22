@@ -9,23 +9,33 @@ logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
-    def __init__(self, config, times):
-        self.config = config
+    def __init__(self, times):
         self.times = times
 
-    def to_ids(self, uri, dd_version=None):
+    def to_ids(self, uri, waveform_map, dd_version=None, machine_description=None):
         """Export the waveforms in the configuration to IDSs.
 
         Args:
             uri: URI to the data entry.
+            waveform_map: The waveform map of a WaveformConfiguration.
             dd_version: The data dictionary version to export to. If None, IMAS's
                 default version will be used.
+            machine_description: The machine description to copy and export the YAML to.
         """
-        ids_map = self._get_ids_map()
+        ids_map = self._get_ids_map(waveform_map)
+
         with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
                 logger.info(f"Filling {ids_name}...")
-                ids = entry.factory.new(ids_name)
+
+                # Copy machine description if provided, otherwise start from empty IDS
+                if machine_description:
+                    with imas.DBEntry(
+                        machine_description, "r", dd_version=dd_version
+                    ) as entry_md:
+                        ids = entry_md.get(ids_name)
+                else:
+                    ids = entry.factory.new(ids_name)
                 # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
@@ -35,14 +45,17 @@ class ConfigurationExporter:
                 entry.put(ids)
         logger.info(f"Successfully exported waveform configuration to {uri}.")
 
-    def _get_ids_map(self):
+    def _get_ids_map(self, waveform_map):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
+
+        Args:
+            waveform_map: The waveform map of a WaveformConfiguration.
 
         Returns:
             A dictionary mapping IDS names to lists of waveform objects.
         """
         ids_map = {}
-        for name, group in self.config.waveform_map.items():
+        for name, group in waveform_map.items():
             waveform = group[name]
             if not waveform.metadata:
                 logger.warning(

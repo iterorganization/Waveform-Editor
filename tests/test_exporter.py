@@ -143,6 +143,39 @@ def test_to_ids_aos(tmp_path):
         assert ids.source[4].global_quantities[2].total_ion_power == 2
 
 
+def test_export_with_md(tmp_path):
+    """Test export if machine description is provided."""
+    # Create dummy machine description
+    md_uri = f"{tmp_path}/md.nc"
+    with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as md_dbentry:
+        md = md_dbentry.factory.new("ec_launchers")
+        md.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
+        md.beam.resize(3)
+        md.beam[0].name = "beam0"
+        md.beam[1].name = "beam1"
+        md.beam[2].name = "beam2"
+        md_dbentry.put(md)
+
+    yaml_str = f"""
+    globals:
+      dd_version: 4.0.0
+      machine_description: {tmp_path}/md.nc
+    ec_launchers:
+      ec_launchers/beam(2)/phase/angle: 1
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    uri = f"{tmp_path}/test_db.nc"
+    config.export(np.array([0, 0.5, 1.0]), uri=uri)
+    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers")
+        assert len(ids.beam) == 3
+        assert ids.beam[0].name == "beam0"
+        assert ids.beam[1].name == "beam1"
+        assert ids.beam[2].name == "beam2"
+        assert np.all(ids.beam[1].phase.angle == 1)
+
+
 def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
     config = WaveformConfiguration()
