@@ -49,6 +49,15 @@ class YamlParser:
         self.clear_errors()
 
     def get_globals(self, yaml_str):
+        """Parse the provided YAML string and extract the 'globals' section.
+
+        Args:
+            yaml_str: A string containing YAML-formatted content.
+
+        Returns:
+            The 'globals' dictionary from the YAML content if present,
+            otherwise None.
+        """
         self.clear_errors()
         try:
             yaml_data = self.yaml.load(yaml_str)
@@ -60,6 +69,15 @@ class YamlParser:
             return None
 
     def load_yaml(self, yaml_str, *, dd_version=None):
+        """Parses a YAML string and builds waveform groups and a waveform map.
+
+        Args:
+            yaml_str: The YAML string to load YAML for.
+            dd_version: Data dictionary version to create waveform for. Default version
+                will be used if None.
+        Returns:
+            A dictionary containing 'groups' and 'waveform_map', or None on error.
+        """
         self.clear_errors()
         groups = {}
         waveform_map = {}
@@ -91,6 +109,22 @@ class YamlParser:
             return None
 
     def _recursive_load(self, data_dict, group_name, waveform_map, *, dd_version=None):
+        """Recursively builds a hierarchy of WaveformGroup objects from a nested
+        dictionary.
+
+        Groups are represented by dictionaries without '/' in their keys.
+        Waveforms are key-value pairs where keys contain '/'.
+
+        Args:
+            data_dict: Input data containing waveform groups and waveforms.
+            group_name: Name of the current group.
+            waveform_map: Maps waveform names to their corresponding groups.
+            dd_version: Data dictionary version to create waveform for. Default version
+                will be used if None.
+
+        Returns:
+            The populated waveform group.
+        """
         current_group = WaveformGroup(group_name)
 
         for key, value in data_dict.items():
@@ -119,6 +153,12 @@ class YamlParser:
         return current_group
 
     def generate_yaml_str(self, key, value):
+        """Generate YAML string for a key-value pair, ensuring comments are retained.
+
+        Args:
+            key: Key of the yaml string.
+            value: Corresponding value for the key.
+        """
         stream = StringIO()
         self.yaml.dump({key: value}, stream)
         return stream.getvalue()
@@ -128,6 +168,8 @@ class YamlParser:
 
         Args:
             yaml_str: YAML content as a string.
+            dd_version: Data dictionary version to create waveform for. Default version
+                will be used if None.
         """
         try:
             loader = LineNumberYamlLoader
@@ -177,5 +219,6 @@ class YamlParser:
             return Waveform()
 
     def clear_errors(self):
+        """Clear the YAML loading and waveform parsing errors."""
         self.load_yaml_error = ""
         self.parse_errors = []

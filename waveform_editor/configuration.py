@@ -167,7 +167,15 @@ class WaveformConfiguration:
         return stream.getvalue()
 
     def export(self, times, *, uri=None, mode="ids"):
+        """Export the configuration using the specified mode.
+
+        Args:
+            times: Numpy array containing the times to interpolate the waveforms onto.
+            uri: Required in 'ids' mode, specifies the URI to store the export.
+            mode: The export mode to use. Currently, only 'ids' mode is supported.
+        """
         exporter = ConfigurationExporter(self, times)
+        # TODO: add support for export to CSV, PNG and XML
         if mode == "ids":
             if not uri:
                 raise ValueError("An URI must be provided to export to an IDS.")
