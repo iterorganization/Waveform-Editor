@@ -44,13 +44,24 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self, dd_version=None):
+    def __init__(self):
         self.load_yaml_error = ""
         self.parse_errors = []
-        self.dd_version = dd_version
         self.yaml = YAML()
 
-    def load_yaml(self, yaml_str):
+    def get_globals(self, yaml_str):
+        try:
+            yaml_data = self.yaml.load(yaml_str)
+            globals = yaml_data.get("globals")
+            return globals
+        except Exception as e:
+            logger.warning("Got unexpected error: %s", e, exc_info=e)
+            self.load_yaml_error = e
+            return None
+
+    def load_yaml(self, yaml_str, *, dd_version=None):
+        self.load_yaml_error = ""
+        self.parse_errors = []
         groups = {}
         waveform_map = {}
         try:
@@ -71,7 +82,7 @@ class YamlParser:
                     raise ValueError("Waveforms must belong to a group.")
 
                 root_group = self._recursive_load(
-                    group_content, group_name, waveform_map
+                    group_content, group_name, waveform_map, dd_version=dd_version
                 )
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
@@ -80,7 +91,7 @@ class YamlParser:
             self.load_yaml_error = e
             return None
 
-    def _recursive_load(self, data_dict, group_name, waveform_map):
+    def _recursive_load(self, data_dict, group_name, waveform_map, *, dd_version=None):
         current_group = WaveformGroup(group_name)
 
         for key, value in data_dict.items():
@@ -91,7 +102,9 @@ class YamlParser:
                         f"Invalid group '{key}': Group names may not contain '/'."
                     )
 
-                nested_group = self._recursive_load(value, key, waveform_map)
+                nested_group = self._recursive_load(
+                    value, key, waveform_map, dd_version=dd_version
+                )
                 current_group.groups[key] = nested_group
             else:
                 if "/" not in key:
@@ -100,7 +113,7 @@ class YamlParser:
                         "Waveform names must contain '/'."
                     )
                 yaml_str = self.generate_yaml_str(key, value)
-                waveform = self.parse_waveforms(yaml_str)
+                waveform = self.parse_waveforms(yaml_str, dd_version=dd_version)
                 current_group.waveforms[key] = waveform
                 waveform_map[key] = current_group
 
@@ -111,7 +124,7 @@ class YamlParser:
         self.yaml.dump({key: value}, stream)
         return stream.getvalue()
 
-    def parse_waveforms(self, yaml_str):
+    def parse_waveforms(self, yaml_str, *, dd_version=None):
         """Loads a YAML structure from a string and stores its tendencies into a list.
 
         Args:
@@ -157,7 +170,7 @@ class YamlParser:
                 yaml_str=yaml_str,
                 line_number=line_number,
                 name=name,
-                dd_version=self.dd_version,
+                dd_version=dd_version,
             )
             return waveform
         except yaml.YAMLError as e:

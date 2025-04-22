@@ -3,6 +3,7 @@ import io
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from waveform_editor.exporter import ConfigurationExporter
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -14,6 +15,8 @@ class WaveformConfiguration:
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
         # of waveforms
         self.waveform_map = {}
+        self.dd_version = None
+        self.machine_description = None
         self.load_error = ""
 
     def __getitem__(self, key):
@@ -42,8 +45,12 @@ class WaveformConfiguration:
             yaml_str: The YAML string containing waveform configuration data.
         """
         parser = YamlParser()
+        globals = parser.get_globals(yaml_str)
+        if globals:
+            self.dd_version = globals.get("dd_version")
+            self.machine_description = globals.get("machine_description")
         self.load_error = ""
-        parsed_data = parser.load_yaml(yaml_str)
+        parsed_data = parser.load_yaml(yaml_str, dd_version=self.dd_version)
 
         if parsed_data is None:
             self.load_error = parser.load_yaml_error
@@ -157,6 +164,15 @@ class WaveformConfiguration:
         stream = io.StringIO()
         yaml.dump(data, stream)
         return stream.getvalue()
+
+    def export(self, times, *, uri=None, mode="ids"):
+        exporter = ConfigurationExporter(self, times)
+        if mode == "ids":
+            if not uri:
+                raise ValueError("An URI must be provided to export to an IDS.")
+            exporter.to_ids(uri, dd_version=self.dd_version)
+        else:
+            NotImplemented(f"Export mode {mode} is not available.")
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
