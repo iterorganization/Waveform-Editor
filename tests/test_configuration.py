@@ -264,3 +264,26 @@ def test_load_yaml_duplicate():
     assert config.load_error
     assert not config.groups
     assert not config.waveform_map
+
+
+def test_load_yaml_globals():
+    """Check if global variables are loaded from YAML."""
+    yaml_str = """
+    globals:
+      dd_version: 3.42.0
+      machine_description: imas:hdf5?path=testdb
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1e-3
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    assert config.dd_version == "3.42.0"
+    assert config.machine_description == "imas:hdf5?path=testdb"
+
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1e-3
+    """
+    config.load_yaml(yaml_str)
+    assert not config.dd_version
+    assert not config.machine_description

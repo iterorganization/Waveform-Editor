@@ -40,7 +40,6 @@ class WaveformEditor(Viewer):
 
         self.code_editor.annotations = list(annotations)
 
-        # TODO: Check if parsing errors are not accidentally stored in yaml parser obj
         if self.config.parser.parse_errors:
             self.error_alert.object = (
                 "### The YAML did not parse correctly\n  "
