@@ -2,6 +2,7 @@ import logging
 
 import imas
 from imas.ids_path import IDSPath
+from imas.ids_structure import IDSStructure
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -117,21 +118,19 @@ class ConfigurationExporter:
         Arguments:
             quantity: The IDS quantity to fill.
         """
-        if hasattr(quantity.metadata, "structure_reference"):
-            struct_ref = quantity.metadata.structure_reference
-            if struct_ref == "signal_flt_1d":
-                quantity.data = values
-            else:
-                raise NotImplementedError(
-                    f"Exporting structure {struct_ref} is not implemented."
-                )
-        else:
-            if (
-                not quantity.metadata.coordinate1.is_time_coordinate
-                or not quantity.data_type == "FLT_1D"
-            ):
-                raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
-            quantity.value = values
+        if isinstance(quantity, IDSStructure) and hasattr(quantity, "data"):
+            raise ValueError(
+                f"Cannot export to '{quantity._path}' because it is an IDSStructure.\n"
+                f"Did you mean to export to '{quantity._path}/data' instead?"
+            )
+
+        if (
+            not quantity.metadata.coordinate1.is_time_coordinate
+            or not quantity.data_type == "FLT_1D"
+        ):
+            raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
+
+        quantity.value = values
 
     def _ensure_path_exists(self, ids, path, part_idx=0):
         """
