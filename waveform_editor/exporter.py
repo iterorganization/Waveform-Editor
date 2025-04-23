@@ -1,6 +1,7 @@
 import logging
 
 import imas
+import numpy as np
 from imas.ids_path import IDSPath
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,6 @@ class ConfigurationExporter:
             logger.info(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             _, values = waveform.get_value(self.times)
-            self.flt_0d_cntr = 0
             self._fill_node_recursively(ids, path, values)
 
     def _fill_node_recursively(self, ids_node, path, values, *, part_idx=0):
@@ -113,27 +113,23 @@ class ConfigurationExporter:
 
             for i in range(len(self.times)):
                 self._fill_node_recursively(
-                    current[i], path, values, part_idx=part_idx + 1
+                    current[i], path, values[i], part_idx=part_idx + 1
                 )
         else:
             self._fill_node_recursively(current, path, values, part_idx=part_idx + 1)
 
     def _fill_values(self, ids_node, path, values):
         if not hasattr(ids_node, "data_type"):
-            raise ValueError(f"Waveform {path} is not a 'FLT_0D' or 'FLT_1d'.")
+            raise ValueError(f"Waveform {path} is not a 'FLT_0D' or 'FLT_1D'.")
 
         if ids_node.data_type == "FLT_1D":
             ids_node.value = values
         elif ids_node.data_type == "FLT_0D":
-            # TODO: not sure if this works as expected, we assume order of occurence?
-            if self.flt_0d_cntr == len(values):
-                self.flt_0d_cntr = 0
-            ids_node.value = values[self.flt_0d_cntr]
-            self.flt_0d_cntr += 1
+            if not np.isscalar(values):
+                raise ValueError(f"Expected scalar value for {path}, got: {values}")
+            ids_node.value = values
         else:
-            raise ValueError(
-                f"{path} has an unsupported data_type: {ids_node.data_type}."
-            )
+            raise ValueError(f"{path} has unsupported data_type: {ids_node.data_type}.")
 
     def _traverse_slice(self, current, slice, path, part_idx, values):
         if slice.start is None and slice.stop is None:
