@@ -46,10 +46,8 @@ class WaveformConfiguration:
             yaml_str: The YAML string containing waveform configuration data.
         """
         globals = self.parser.get_globals(yaml_str)
-        self.dd_version = globals.get("dd_version") if globals else None
-        self.machine_description = (
-            globals.get("machine_description") if globals else None
-        )
+        self.dd_version = globals.get("dd_version")
+        self.machine_description = globals.get("machine_description")
         self.load_error = ""
         parsed_data = self.parser.load_yaml(yaml_str, dd_version=self.dd_version)
 

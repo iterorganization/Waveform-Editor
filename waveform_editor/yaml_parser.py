@@ -61,12 +61,12 @@ class YamlParser:
         self.clear_errors()
         try:
             yaml_data = self.yaml.load(yaml_str)
-            globals = yaml_data.get("globals")
+            globals = yaml_data.get("globals", {})
             return globals
         except Exception as e:
             logger.warning("Got unexpected error: %s", e, exc_info=e)
             self.load_yaml_error = e
-            return None
+            return {}
 
     def load_yaml(self, yaml_str, *, dd_version=None):
         """Parses a YAML string and builds waveform groups and a waveform map.
