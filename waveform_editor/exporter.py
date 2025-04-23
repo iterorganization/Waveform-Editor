@@ -125,8 +125,10 @@ class ConfigurationExporter:
         if ids_node.data_type == "FLT_1D":
             ids_node.value = values
         elif ids_node.data_type == "FLT_0D":
-            ids_node.value = values[self.flt_0d_cntr]
             # TODO: not sure if this works as expected, we assume order of occurence?
+            if self.flt_0d_cntr == len(values):
+                self.flt_0d_cntr = 0
+            ids_node.value = values[self.flt_0d_cntr]
             self.flt_0d_cntr += 1
         else:
             raise ValueError(
@@ -134,11 +136,14 @@ class ConfigurationExporter:
             )
 
     def _traverse_slice(self, current, slice, path, part_idx, values):
-        start = slice.start if slice.start is not None else 0
-        stop = slice.stop if slice.stop is not None else start + 1
+        if slice.start is None and slice.stop is None:
+            start = 0
+            stop = len(current) or 1
+        else:
+            start = slice.start if slice.start is not None else 0
+            stop = slice.stop if slice.stop is not None else start + 1
 
         max_index = max(start, stop - 1)
-
         if len(current) <= max_index:
             current.resize(max_index + 1, keep=True)
 
