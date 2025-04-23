@@ -87,7 +87,50 @@ class ConfigurationExporter:
             if path in self.flt_0d_map:
                 self._fill_flt_0d(ids, path, values)
             else:
-                self._fill_flt_1d(ids[path], values)
+                quantities = self._resolve_flt_1d_targets(ids, path)
+                self._fill_flt_1d(quantities, values)
+
+    def _resolve_flt_1d_targets(self, ids, path):
+        """
+        Resolves an IDSPath (with possible slices) to a flat list of FLT_1D quantities.
+
+        Args:
+            ids: The IDS root object.
+            path: An IDSPath instance with potential slices.
+
+        Returns:
+            A single IDS quantity or a flat list of FLT_1D quantities.
+        """
+
+        def _resolve(current, parts, indices, level=0):
+            if level >= len(parts):
+                return current
+
+            part = parts[level]
+            index = indices[level]
+            current = current[part]
+
+            if index is None:
+                return _resolve(current, parts, indices, level + 1)
+
+            if isinstance(index, slice):
+                resolved = []
+                start = index.start or 0
+                stop = index.stop or len(current)
+                step = index.step or 1
+                for i in range(start, stop, step):
+                    result = _resolve(current[i], parts, indices, level + 1)
+                    if isinstance(result, list):
+                        resolved.extend(result)
+                    else:
+                        resolved.append(result)
+                return resolved
+            else:
+                return _resolve(current[index], parts, indices, level + 1)
+
+        result = _resolve(ids, path.parts, path.indices)
+
+        return result if isinstance(result, list) else [result]
 
     def _fill_flt_0d(self, ids, path, values):
         """
@@ -125,25 +168,26 @@ class ConfigurationExporter:
                 raise ValueError(f"{current} is not a 0D time-dependent quantity.")
             current.value = values[i]
 
-    def _fill_flt_1d(self, quantity, values):
+    def _fill_flt_1d(self, quantities, values):
         """Fill a FLT_1D IDS quantity in an IDS.
 
         Arguments:
-            quantity: The IDS quantity to fill.
+            quantities: A list of IDS quantities to fill.
         """
-        if isinstance(quantity, IDSStructure) and hasattr(quantity, "data"):
-            raise ValueError(
-                f"Cannot export to '{quantity._path}' because it is an IDSStructure.\n"
-                f"Did you mean to export to '{quantity._path}/data' instead?"
-            )
+        for quantity in quantities:
+            if isinstance(quantity, IDSStructure) and hasattr(quantity, "data"):
+                raise ValueError(
+                    f"Cannot export to '{quantity._path}' because it is an "
+                    f"IDSStructure. Did you mean to export to '{quantity._path}/data'?"
+                )
 
-        if (
-            not quantity.metadata.coordinate1.is_time_coordinate
-            or not quantity.data_type == "FLT_1D"
-        ):
-            raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
+            if (
+                not quantity.metadata.coordinate1.is_time_coordinate
+                or not quantity.data_type == "FLT_1D"
+            ):
+                raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
 
-        quantity.value = values
+            quantity.value = values
 
     def _ensure_path_exists(self, ids, path, part_idx=0):
         """
@@ -176,14 +220,12 @@ class ConfigurationExporter:
         current = ids[part]
 
         if index is not None:
-            # TODO: Allow for slicing or all existing AoS,
-            # e.g. slicing: ec_launchers/beam(1:24)/power_launched
-            # e.g. all: ec_launchers/beam(:)/frequency
             if isinstance(index, slice):
-                raise NotImplementedError("Slices are not yet implemented")
-            if len(current) <= index:
-                current.resize(index + 1, keep=True)
-            self._ensure_path_exists(current[index], path, part_idx + 1)
+                self._resize_slice(current, index, path, part_idx)
+            else:
+                if len(current) <= index:
+                    current.resize(index + 1, keep=True)
+                self._ensure_path_exists(current[index], path, part_idx + 1)
         elif (
             hasattr(current.metadata, "coordinate1")
             and current.metadata.coordinate1.is_time_coordinate
@@ -196,3 +238,16 @@ class ConfigurationExporter:
                 self._ensure_path_exists(current[i], path, part_idx + 1)
         else:
             self._ensure_path_exists(current, path, part_idx + 1)
+
+    def _resize_slice(self, current, index, path, part_idx):
+        start = index.start if index.start is not None else 0
+        step = index.step if index.step is not None else 1
+        stop = index.stop if index.stop is not None else start + 1
+
+        max_index = max(start, stop - 1)
+
+        if len(current) <= max_index:
+            current.resize(max_index + 1, keep=True)
+
+        for i in range(start, stop, step):
+            self._ensure_path_exists(current[i], path, part_idx + 1)
