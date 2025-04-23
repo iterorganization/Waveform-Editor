@@ -141,8 +141,7 @@ class ConfigurationExporter:
             stop = len(current) or 1
         else:
             start = slice.start if slice.start is not None else 0
-            stop = slice.stop if slice.stop is not None else start + 1
-
+            stop = slice.stop if slice.stop is not None else len(current) or start + 1
         max_index = max(start, stop - 1)
         if len(current) <= max_index:
             current.resize(max_index + 1, keep=True)
