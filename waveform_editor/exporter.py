@@ -239,15 +239,14 @@ class ConfigurationExporter:
         else:
             self._ensure_path_exists(current, path, part_idx + 1)
 
-    def _resize_slice(self, current, index, path, part_idx):
-        start = index.start if index.start is not None else 0
-        step = index.step if index.step is not None else 1
-        stop = index.stop if index.stop is not None else start + 1
+    def _resize_slice(self, current, slice, path, part_idx):
+        start = slice.start if slice.start is not None else 0
+        stop = slice.stop if slice.stop is not None else start + 1
 
         max_index = max(start, stop - 1)
 
         if len(current) <= max_index:
             current.resize(max_index + 1, keep=True)
 
-        for i in range(start, stop, step):
+        for i in range(start, stop):
             self._ensure_path_exists(current[i], path, part_idx + 1)

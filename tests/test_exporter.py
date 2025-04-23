@@ -328,6 +328,26 @@ def test_export_half_slice_md_backward(tmp_path):
         assert not ids.beam[3].phase.angle
 
 
+def test_export_multiple_slices(tmp_path):
+    yaml_str = """
+    edge_profiles:
+      interferometer/channel(2:3)/wavelength(:4)/phase_corrected/data: 15
+    """
+    uri = f"{tmp_path}/test_db.nc"
+    times = np.array([0, 0.5, 1.0])
+    _export_ids(uri, yaml_str, times)
+    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("interferometer", autoconvert=False)
+        channels = ids.channel
+        assert len(channels) == 3
+        assert not channels[0].has_value
+        assert len(channels[1].wavelength) == 4
+        assert len(channels[2].wavelength) == 4
+        for i in range(4):
+            assert np.all(channels[1].wavelength[i].phase_corrected.data == 15)
+            assert np.all(channels[2].wavelength[i].phase_corrected.data == 15)
+
+
 def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
     config = WaveformConfiguration()
