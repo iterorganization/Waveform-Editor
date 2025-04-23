@@ -348,6 +348,182 @@ def test_export_multiple_slices_flt_1d(tmp_path):
             assert np.all(channels[2].wavelength[i].phase_corrected.data == 15)
 
 
+# def test_export_full_slice_flt_0d(tmp_path):
+#     yaml_str = """
+#     edge_profiles:
+#       edge_profiles/profiles_1d/ion[:]/z_ion: 5
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     times = np.array([0, 0.5, 1.0])
+#     _export_ids(uri, yaml_str, times)
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("edge_profiles")
+#         assert len(ids.profiles_1d) == len(times)
+#         for i in range(len(times)):
+#             assert len(ids.profiles_1d[i].ion) == 1
+#             assert np.all(ids.profiles_1d[i].ion[0].z_ion == 5)
+
+
+#
+#
+# def test_export_full_slice_md_flt_0d(tmp_path):
+#     yaml_str = f"""
+#     globals:
+#       dd_version: 4.0.0
+#       machine_description: {create_md(tmp_path)}
+#     ec_launchers:
+#       ec_launchers/beam(:)/phase/angle: 123
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 4
+#         assert ids.beam[0].name == "beam0"
+#         assert ids.beam[1].name == "beam1"
+#         assert ids.beam[2].name == "beam2"
+#         assert ids.beam[3].name == "beam3"
+#         assert np.all(ids.beam[0].phase.angle == 123)
+#         assert np.all(ids.beam[1].phase.angle == 123)
+#         assert np.all(ids.beam[2].phase.angle == 123)
+#         assert np.all(ids.beam[3].phase.angle == 123)
+#
+#
+# def test_export_slice_flt_0d(tmp_path):
+#     yaml_str = """
+#     ec_launchers:
+#       ec_launchers/beam(2:3)/phase/angle: 111
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 3
+#         assert not ids.beam[0].phase.angle
+#         assert np.all(ids.beam[1].phase.angle == 111)
+#         assert np.all(ids.beam[2].phase.angle == 111)
+#
+#
+# def test_export_slice_md_flt_0d(tmp_path):
+#     yaml_str = f"""
+#     globals:
+#       dd_version: 4.0.0
+#       machine_description: {create_md(tmp_path)}
+#     ec_launchers:
+#       ec_launchers/beam(2:3)/phase/angle: 123
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 4
+#         assert ids.beam[0].name == "beam0"
+#         assert ids.beam[1].name == "beam1"
+#         assert ids.beam[2].name == "beam2"
+#         assert ids.beam[3].name == "beam3"
+#         assert not ids.beam[0].phase.angle
+#         assert np.all(ids.beam[1].phase.angle == 123)
+#         assert np.all(ids.beam[2].phase.angle == 123)
+#         assert not ids.beam[3].phase.angle
+#
+#
+# def test_export_half_slice_forward_flt_0d(tmp_path):
+#     yaml_str = """
+#     ec_launchers:
+#       ec_launchers/beam(3:)/phase/angle: 111
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 3
+#         assert not ids.beam[0].phase.angle
+#         assert not ids.beam[1].phase.angle
+#         assert np.all(ids.beam[2].phase.angle == 111)
+#
+#
+# def test_export_half_slice_backward_flt_0d(tmp_path):
+#     yaml_str = """
+#     ec_launchers:
+#       ec_launchers/beam(:3)/phase/angle: 111
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 3
+#         assert np.all(ids.beam[0].phase.angle == 111)
+#         assert np.all(ids.beam[1].phase.angle == 111)
+#         assert np.all(ids.beam[2].phase.angle == 111)
+#
+#
+# def test_export_half_slice_md_forward_flt_0d(tmp_path):
+#     """Load the yaml string into a waveform config and export to an IDS."""
+#     yaml_str = f"""
+#     globals:
+#       dd_version: 4.0.0
+#       machine_description: {create_md(tmp_path)}
+#     ec_launchers:
+#       ec_launchers/beam(2:)/phase/angle: 123
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 4
+#         assert ids.beam[0].name == "beam0"
+#         assert ids.beam[1].name == "beam1"
+#         assert ids.beam[2].name == "beam2"
+#         assert ids.beam[3].name == "beam3"
+#         assert not ids.beam[0].phase.angle
+#         assert np.all(ids.beam[1].phase.angle == 123)
+#         assert np.all(ids.beam[2].phase.angle == 123)
+#         assert np.all(ids.beam[3].phase.angle == 123)
+#
+#
+# def test_export_half_slice_md_backward_flt_0d(tmp_path):
+#     yaml_str = f"""
+#     globals:
+#       dd_version: 4.0.0
+#       machine_description: {create_md(tmp_path)}
+#     ec_launchers:
+#       ec_launchers/beam(:2)/phase/angle: 123
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("ec_launchers")
+#         assert len(ids.beam) == 4
+#         assert ids.beam[0].name == "beam0"
+#         assert ids.beam[1].name == "beam1"
+#         assert ids.beam[2].name == "beam2"
+#         assert ids.beam[3].name == "beam3"
+#         assert np.all(ids.beam[0].phase.angle == 123)
+#         assert np.all(ids.beam[1].phase.angle == 123)
+#         assert not ids.beam[2].phase.angle
+#         assert not ids.beam[3].phase.angle
+#
+#
+# def test_export_multiple_slices_flt_0d(tmp_path):
+#     yaml_str = """
+#     edge_profiles:
+#       interferometer/channel(2:3)/wavelength(:4)/phase_corrected/data: 15
+#     """
+#     uri = f"{tmp_path}/test_db.nc"
+#     times = np.array([0, 0.5, 1.0])
+#     _export_ids(uri, yaml_str, times)
+#     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+#         ids = dbentry.get("interferometer", autoconvert=False)
+#         channels = ids.channel
+#         assert len(channels) == 3
+#         assert not channels[0].has_value
+#         assert len(channels[1].wavelength) == 4
+#         assert len(channels[2].wavelength) == 4
+#         for i in range(4):
+#             assert np.all(channels[1].wavelength[i].phase_corrected.data == 15)
+#             assert np.all(channels[2].wavelength[i].phase_corrected.data == 15)
+
+
 def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
     config = WaveformConfiguration()
