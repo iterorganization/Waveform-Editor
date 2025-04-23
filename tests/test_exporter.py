@@ -3,7 +3,20 @@ import numpy as np
 import pytest
 
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.exporter import ConfigurationExporter
+
+
+def create_md(path):
+    md_uri = f"{path}/md.nc"
+    with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as md_dbentry:
+        md = md_dbentry.factory.new("ec_launchers")
+        md.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
+        md.beam.resize(4)
+        md.beam[0].name = "beam0"
+        md.beam[1].name = "beam1"
+        md.beam[2].name = "beam2"
+        md.beam[3].name = "beam3"
+        md_dbentry.put(md)
+    return md_uri
 
 
 def test_to_ids(tmp_path):
@@ -145,21 +158,11 @@ def test_to_ids_aos(tmp_path):
 
 def test_export_with_md(tmp_path):
     """Test export if machine description is provided."""
-    # Create dummy machine description
-    md_uri = f"{tmp_path}/md.nc"
-    with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as md_dbentry:
-        md = md_dbentry.factory.new("ec_launchers")
-        md.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
-        md.beam.resize(3)
-        md.beam[0].name = "beam0"
-        md.beam[1].name = "beam1"
-        md.beam[2].name = "beam2"
-        md_dbentry.put(md)
-
+    md_uri = create_md(tmp_path)
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {tmp_path}/md.nc
+      machine_description: {md_uri}
     ec_launchers:
       ec_launchers/beam(2)/phase/angle: 1
     """
@@ -169,10 +172,11 @@ def test_export_with_md(tmp_path):
     config.export(np.array([0, 0.5, 1.0]), uri=uri)
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
-        assert len(ids.beam) == 3
+        assert len(ids.beam) == 4
         assert ids.beam[0].name == "beam0"
         assert ids.beam[1].name == "beam1"
         assert ids.beam[2].name == "beam2"
+        assert ids.beam[3].name == "beam3"
         assert np.all(ids.beam[1].phase.angle == 1)
 
 
@@ -180,5 +184,6 @@ def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
+    config.dd_version = "4.0.0"
     exporter = ConfigurationExporter(config, times)
-    exporter.to_ids(file_path, dd_version="4.0.0")
+    exporter.to_ids(file_path)
