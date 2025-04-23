@@ -177,7 +177,7 @@ def test_export_with_md(tmp_path):
         assert np.all(ids.beam[1].phase.angle == 1)
 
 
-def test_export_full_slice(tmp_path):
+def test_export_full_slice_flt_1d(tmp_path):
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(:)/phase/angle: 111
@@ -190,7 +190,7 @@ def test_export_full_slice(tmp_path):
         assert np.all(ids.beam[0].phase.angle == 111)
 
 
-def test_export_full_slice_md(tmp_path):
+def test_export_full_slice_md_flt_1d(tmp_path):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
@@ -213,7 +213,7 @@ def test_export_full_slice_md(tmp_path):
         assert np.all(ids.beam[3].phase.angle == 123)
 
 
-def test_export_slice(tmp_path):
+def test_export_slice_flt_1d(tmp_path):
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(2:3)/phase/angle: 111
@@ -228,7 +228,7 @@ def test_export_slice(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 111)
 
 
-def test_export_slice_md(tmp_path):
+def test_export_slice_md_flt_1d(tmp_path):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
@@ -251,7 +251,7 @@ def test_export_slice_md(tmp_path):
         assert not ids.beam[3].phase.angle
 
 
-def test_export_half_slice_forward(tmp_path):
+def test_export_half_slice_forward_flt_1d(tmp_path):
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(3:)/phase/angle: 111
@@ -266,7 +266,7 @@ def test_export_half_slice_forward(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 111)
 
 
-def test_export_half_slice_backward(tmp_path):
+def test_export_half_slice_backward_flt_1d(tmp_path):
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(:3)/phase/angle: 111
@@ -281,7 +281,7 @@ def test_export_half_slice_backward(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 111)
 
 
-def test_export_half_slice_md_forward(tmp_path):
+def test_export_half_slice_md_forward_flt_1d(tmp_path):
     """Load the yaml string into a waveform config and export to an IDS."""
     yaml_str = f"""
     globals:
@@ -305,7 +305,7 @@ def test_export_half_slice_md_forward(tmp_path):
         assert np.all(ids.beam[3].phase.angle == 123)
 
 
-def test_export_half_slice_md_backward(tmp_path):
+def test_export_half_slice_md_backward_flt_1d(tmp_path):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
@@ -328,9 +328,9 @@ def test_export_half_slice_md_backward(tmp_path):
         assert not ids.beam[3].phase.angle
 
 
-def test_export_multiple_slices(tmp_path):
+def test_export_multiple_slices_flt_1d(tmp_path):
     yaml_str = """
-    edge_profiles:
+    interferometer:
       interferometer/channel(2:3)/wavelength(:4)/phase_corrected/data: 15
     """
     uri = f"{tmp_path}/test_db.nc"

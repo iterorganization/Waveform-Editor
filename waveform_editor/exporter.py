@@ -102,35 +102,35 @@ class ConfigurationExporter:
             A single IDS quantity or a flat list of FLT_1D quantities.
         """
 
-        def _resolve(current, parts, indices, level=0):
-            if level >= len(parts):
-                return current
-
-            part = parts[level]
-            index = indices[level]
-            current = current[part]
-
-            if index is None:
-                return _resolve(current, parts, indices, level + 1)
-
-            if isinstance(index, slice):
-                resolved = []
-                start = index.start or 0
-                stop = index.stop or len(current)
-                step = index.step or 1
-                for i in range(start, stop, step):
-                    result = _resolve(current[i], parts, indices, level + 1)
-                    if isinstance(result, list):
-                        resolved.extend(result)
-                    else:
-                        resolved.append(result)
-                return resolved
-            else:
-                return _resolve(current[index], parts, indices, level + 1)
-
-        result = _resolve(ids, path.parts, path.indices)
-
+        result = self._resolve_recursively(ids, path.parts, path.indices)
         return result if isinstance(result, list) else [result]
+
+    def _resolve_recursively(self, current, parts, indices, level=0):
+        if level >= len(parts):
+            return current
+
+        part = parts[level]
+        index = indices[level]
+        current = current[part]
+
+        if index is None:
+            return self._resolve_recursively(current, parts, indices, level + 1)
+
+        if isinstance(index, slice):
+            resolved = []
+            start = index.start or 0
+            stop = index.stop or len(current)
+            for i in range(start, stop):
+                result = self._resolve_recursively(
+                    current[i], parts, indices, level + 1
+                )
+                if isinstance(result, list):
+                    resolved.extend(result)
+                else:
+                    resolved.append(result)
+            return resolved
+        else:
+            return self._resolve_recursively(current[index], parts, indices, level + 1)
 
     def _fill_flt_0d(self, ids, path, values):
         """
