@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.exporter import ConfigurationExporter
 
 
 def create_ec_launchers_md(path):
@@ -583,6 +584,7 @@ def test_export_multiple_slices_flt_0d(tmp_path):
 
 def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
+    exporter = ConfigurationExporter(times)
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
     config.dd_version = "4.0.0"
