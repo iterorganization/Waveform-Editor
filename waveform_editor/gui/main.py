@@ -73,7 +73,7 @@ class WaveformEditorGui:
 
         self.plotter.plotted_waveforms = {}
         yaml_content = event.new.decode("utf-8")
-        self.config.load_yaml(yaml_content)
+        self.config.parser.load_yaml(yaml_content)
 
         if self.config.load_error:
             pn.state.notifications.error(

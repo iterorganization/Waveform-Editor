@@ -189,7 +189,7 @@ def test_dump():
           - {type: smooth, duration: 25, to: 0}"""
     config = WaveformConfiguration()
     config.dd_version = "4.0.0"
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
 
     new_waveform1_str = """
     ec_launchers/beam(1)/quantity:
@@ -207,7 +207,7 @@ def test_dump():
     dump = config.dump()
 
     new_config = WaveformConfiguration()
-    new_config.load_yaml(dump)
+    new_config.parser.load_yaml(dump)
     old_waveform = new_config["ec_launchers/beam(0)/power_launched"]
     new_waveform1 = new_config["ec_launchers/beam(1)/quantity"]
     new_waveform2 = new_config["ec_launchers/beam(2)/quantity"]
@@ -248,7 +248,7 @@ def test_dump_comments():
           # comment3
           - {duration: 25, to: 0}""")
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     dumped_yaml = config.dump()
     assert yaml_str.strip() == dumped_yaml.strip()
 
@@ -261,7 +261,7 @@ def test_load_yaml_duplicate():
       ec_launchers/beam(2)/phase/angle: 1.23
     """
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     assert config.load_error
     assert not config.groups
     assert not config.waveform_map
@@ -277,7 +277,7 @@ def test_load_yaml_globals():
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     assert config.dd_version == "3.42.0"
     assert config.machine_description == "imas:hdf5?path=testdb"
 
@@ -285,6 +285,6 @@ def test_load_yaml_globals():
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     assert not config.dd_version
     assert not config.machine_description

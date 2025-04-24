@@ -38,14 +38,6 @@ class WaveformConfiguration:
                 return self.groups[key]
             raise KeyError(f"{key!r} not found in groups")
 
-    def load_yaml(self, yaml_str):
-        """Loads waveform configuration from a YAML string.
-
-        Args:
-            yaml_str: The YAML string containing waveform configuration data.
-        """
-        self.parser.load_yaml(yaml_str)
-
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.
 
