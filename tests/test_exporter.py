@@ -587,5 +587,5 @@ def _export_ids(file_path, yaml_str, times):
     config = WaveformConfiguration()
     config.dd_version = "4.0.0"
     config.parser.load_yaml(yaml_str)
-    exporter = ConfigurationExporter(times, config)
+    exporter = ConfigurationExporter(config, times)
     exporter.to_ids(file_path)

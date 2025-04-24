@@ -9,16 +9,15 @@ logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
-    def __init__(self, times, configuration):
+    def __init__(self, config, times):
+        self.config = config
         self.times = times
-        self.config = configuration
 
     def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.
 
         Args:
             uri: URI to the data entry.
-            config: The WaveformConfiguration to export to IDSs.
         """
         ids_map = self._get_ids_map(self.config.waveform_map)
 
