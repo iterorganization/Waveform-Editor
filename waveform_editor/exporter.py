@@ -9,29 +9,29 @@ logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
-    def __init__(self, times):
+    def __init__(self, times, configuration):
         self.times = times
+        self.config = configuration
 
-    def to_ids(self, uri, waveform_map, dd_version=None, machine_description=None):
+    def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.
 
         Args:
             uri: URI to the data entry.
-            waveform_map: The waveform map of a WaveformConfiguration.
-            dd_version: The data dictionary version to export to. If None, IMAS's
-                default version will be used.
-            machine_description: The machine description to copy and export the YAML to.
+            config: The WaveformConfiguration to export to IDSs.
         """
-        ids_map = self._get_ids_map(waveform_map)
+        ids_map = self._get_ids_map(self.config.waveform_map)
 
-        with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
+        with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
                 logger.info(f"Filling {ids_name}...")
 
                 # Copy machine description if provided, otherwise start from empty IDS
-                if machine_description:
+                if self.config.machine_description:
                     with imas.DBEntry(
-                        machine_description, "r", dd_version=dd_version
+                        self.config.machine_description,
+                        "r",
+                        dd_version=self.config.dd_version,
                     ) as entry_md:
                         ids = entry_md.get(ids_name)
                 else:
