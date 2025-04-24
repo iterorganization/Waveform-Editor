@@ -40,8 +40,8 @@ def test_to_ids(tmp_path):
     yaml_str = """
     equilibrium:
       equilibrium/time_slice/global_quantities/ip:
-      - {from: 2, to: 3, duration: 0.5} 
-      - {from: 3, to: 1, duration: 0.5} 
+      - {from: 2, to: 3, duration: 0.5}
+      - {from: 3, to: 1, duration: 0.5}
     ec_launchers:
       phase_angles:
         ec_launchers/beam(1)/phase/angle/data: 1e-3
@@ -144,7 +144,7 @@ def test_to_ids_aos(tmp_path):
     core_sources:
       # time dependent AoS after other AoS
       core_sources/source(5)/global_quantities/total_ion_power:
-      - {from: 0, to: 2} 
+      - {from: 0, to: 2}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -387,7 +387,7 @@ def test_export_full_slice_md_flt_0d(tmp_path):
       dd_version: 4.0.0
       machine_description: {create_core_sources_md(tmp_path)}
     core_sources:
-      core_sources/source(:)/global_quantities/power: 
+      core_sources/source(:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -560,6 +560,22 @@ def test_export_multiple_slices_flt_0d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
+    _assert_distributions_ids(uri)
+
+
+def test_export_multiple_slices_flt_0d_python_notation(tmp_path):
+    yaml_str = """
+    distributions:
+      distributions/distribution[1:3]/global_quantities/collisions/ion[2:]/state[:5]/z_max:
+      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    """
+    uri = f"{tmp_path}/test_db.nc"
+    times = np.array([0, 0.5, 1.0])
+    _export_ids(uri, yaml_str, times)
+    _assert_distributions_ids(uri)
+
+
+def _assert_distributions_ids(uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("distributions", autoconvert=False)
         distributions = ids.distribution
