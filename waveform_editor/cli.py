@@ -1,6 +1,7 @@
 import csv
 import logging
 import sys
+from pathlib import Path
 
 import click
 import numpy as np
@@ -59,8 +60,8 @@ def print_version():
 @cli.command("export-ids")
 @click.argument("yaml", type=str)
 @click.argument("uri", type=str)
-@click.argument("times_file", type=click.Path(exists=True))
-def export_ids(yaml, uri, times_file):
+@click.argument("times", type=click.Path(exists=True))
+def export_ids(yaml, uri, times):
     """Export waveform data to an IDS.
 
     \b
@@ -72,15 +73,45 @@ def export_ids(yaml, uri, times_file):
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
+    config = load_config(yaml)
+    times = load_times_file(times)
+    exporter = ConfigurationExporter(config, times)
+    exporter.to_ids(uri)
+
+
+@cli.command("export-png")
+@click.argument("yaml", type=click.Path(exists=True))
+@click.argument("output_dir", type=click.Path(exists=False))
+@click.option("--times", type=click.Path(exists=True))
+def export_png(yaml, output_dir, times):
+    """Export waveform data to a PNG file.
+    \b
+    Arguments:
+      yaml: Path to the waveform YAML file.
+      output_dir: Path to output directory where the PNG files will be saved.
+    \b
+    Options:
+      --times: CSV file containing a custom time array.
+
+    Note: The csv containing the time values should be formatted as a single row,
+    delimited by commas, For example: `1,2,3,4,5`.
+    """
+    if times is not None:
+        times = load_times_file(times)
+    config = load_config(yaml)
+    exporter = ConfigurationExporter(config, times=times)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    exporter.to_png(output_path)
+
+
+def load_config(yaml):
     with open(yaml) as file:
         yaml_str = file.read()
 
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
-
-    times = load_times_file(times_file)
-    exporter = ConfigurationExporter(config, times)
-    exporter.to_ids(uri)
+    return config
 
 
 def load_times_file(times_file):
@@ -100,11 +131,10 @@ def load_times_file(times_file):
         return np.array(time_array)
 
     except Exception as e:
-        click.secho(
-            "Invalid time array file, ensure the times CSV contains a comma-separated "
-            f"single row of time values.\nFor example: 1,2,3,4\nError: {e}",
-            fg="red",
-        )
+        raise click.ClickException(
+            "Invalid time array file. Ensure the times CSV contains a single row of "
+            f"comma-separated values.\nFor example: 1,2,3,4\n\nDetails: {e}"
+        ) from e
 
 
 if __name__ == "__main__":
