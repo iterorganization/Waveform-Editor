@@ -19,7 +19,7 @@ class ConfigurationExporter:
         Args:
             uri: URI to the data entry.
         """
-        ids_map = self._get_ids_map(self.config.waveform_map)
+        ids_map = self._get_ids_map()
 
         with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
@@ -44,17 +44,14 @@ class ConfigurationExporter:
                 entry.put(ids)
         logger.info(f"Successfully exported waveform configuration to {uri}.")
 
-    def _get_ids_map(self, waveform_map):
+    def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
-
-        Args:
-            waveform_map: The waveform map of a WaveformConfiguration.
 
         Returns:
             A dictionary mapping IDS names to lists of waveform objects.
         """
         ids_map = {}
-        for name, group in waveform_map.items():
+        for name, group in self.config.waveform_map.items():
             waveform = group[name]
             if not waveform.metadata:
                 logger.warning(
