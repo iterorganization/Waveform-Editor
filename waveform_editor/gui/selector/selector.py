@@ -14,12 +14,14 @@ class WaveformSelector(Viewer):
         self.editor = self.main_gui.editor
         self.edit_waveforms_enabled = False
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
+        self._create_root_button_row()
 
     def create_waveform_selector_ui(self):
         """Creates a UI for the selector sidebar, containing accordions for each
         group in the config, option buttons, and CheckButtonGroups for the lists of
         waveforms.
         """
+        self.root_button_row.new_group_button.visible = True
         self.ui_selector.objects = [
             self.create_group_ui(group, [group.name], parent_accordion=self.ui_selector)
             for group in self.config.groups.values()
@@ -57,14 +59,6 @@ class WaveformSelector(Viewer):
         )
         check_buttons.param.watch(self.on_select, "value")
 
-        # Create row of options for each group
-        button_row = OptionsButtonRow(self.main_gui, check_buttons, path)
-
-        # Add buttons, waveform list and groups to UI content list
-        ui_content = []
-        ui_content.append(button_row)
-        ui_content.append(check_buttons)
-
         # Create accordion to store the inner groups UI objects into
         if group.groups:
             inner_groups_ui = []
@@ -77,13 +71,19 @@ class WaveformSelector(Viewer):
                     )
                 )
             accordion.objects = inner_groups_ui
-            ui_content.append(accordion)
 
-        parent_container = pn.Column(
-            *ui_content, sizing_mode="stretch_width", name=group.name
+        parent_container = pn.Column(sizing_mode="stretch_width", name=group.name)
+
+        # Create row of options for each group
+        button_row = OptionsButtonRow(
+            self.main_gui, check_buttons, path, parent_accordion=parent_accordion
         )
-        button_row.parent_ui = parent_container
-        button_row.parent_accordion = parent_accordion
+
+        # Add buttons, waveform list and groups to UI column
+        ui_content = [button_row, check_buttons]
+        if group.groups:
+            ui_content.append(accordion)
+        parent_container.objects = ui_content
 
         return parent_container
 
@@ -138,6 +138,10 @@ class WaveformSelector(Viewer):
         """
         self._deselect_checkbuttons(self.ui_selector, exclude)
 
+    def _create_root_button_row(self):
+        """Creates a options button row at the root level of the selector groups."""
+        self.root_button_row = OptionsButtonRow(self.main_gui, None, [], visible=False)
+
     def _deselect_checkbuttons(self, widget, exclude):
         """Helper function to recursively find and deselect all CheckButtonGroup
         widgets.
@@ -160,4 +164,4 @@ class WaveformSelector(Viewer):
 
     def __panel__(self):
         """Returns the waveform selector UI component."""
-        return self.ui_selector
+        return pn.Column(self.root_button_row, self.ui_selector)

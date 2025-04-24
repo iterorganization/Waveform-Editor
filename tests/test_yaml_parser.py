@@ -12,14 +12,22 @@ from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.yaml_parser import YamlParser
 
 
-def test_yaml_parser():
-    """Test loading a yaml file as a string."""
-    # Valid YAML
+@pytest.fixture
+def config():
     config = WaveformConfiguration()
     config.dd_version = "4.0.0"
+    return config
+
+
+@pytest.fixture
+def yaml_parser(config):
+    return config.parser
+
+
+def test_yaml_parser(yaml_parser):
+    """Test loading a yaml file as a string."""
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser(config)
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert_tendencies_correct(waveform.tendencies)
     assert not waveform.annotations
@@ -28,7 +36,6 @@ def test_yaml_parser():
     # Invalid configuration
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser(config)
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert waveform.annotations
     assert not yaml_parser.parse_errors
@@ -36,7 +43,6 @@ def test_yaml_parser():
     # Invalid YAML
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser(config)
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert not waveform.tendencies
     assert yaml_parser.parse_errors
@@ -97,7 +103,7 @@ def assert_tendencies_correct(tendencies):
     assert tendencies[6].to == approx(0)
 
 
-def test_scientific_notation():
+def test_scientific_notation(yaml_parser):
     """Test if scientific notation is parsed correctly."""
     waveforms = {
         "waveform:\n- {type: linear, to: 1.5e5}": 1.5e5,
@@ -116,22 +122,16 @@ def test_scientific_notation():
         "waveform:\n- {type: linear, to: -1E+5}": -1e5,
         "waveform:\n- {type: linear, to: -1.5e-5}": -1.5e-5,
     }
-    config = WaveformConfiguration()
-    config.dd_version = "4.0.0"
-    yaml_parser = YamlParser(config)
 
     for waveform, expected_value in waveforms.items():
         waveform = yaml_parser.parse_waveform(waveform)
         assert waveform.tendencies[0].to == expected_value
 
 
-def test_constant_shorthand_notation():
+def test_constant_shorthand_notation(yaml_parser):
     """Test if shorthand notation is parsed correctly."""
 
     waveforms = {"waveform: 5": 5, "waveform: 1.23": 1.23}
-    config = WaveformConfiguration()
-    config.dd_version = "4.0.0"
-    yaml_parser = YamlParser(config)
 
     for waveform, expected_value in waveforms.items():
         waveform = yaml_parser.parse_waveform(waveform)
@@ -142,7 +142,7 @@ def test_constant_shorthand_notation():
         assert not yaml_parser.parse_errors
 
 
-def test_load_yaml():
+def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
     yaml_str = """
     ec_launchers:
@@ -160,8 +160,6 @@ def test_load_yaml():
       dd_version: 3.42.0
       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
     """
-    config = WaveformConfiguration()
-    config.dd_version = "4.0.0"
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
     root_group = config.groups["ec_launchers"]
