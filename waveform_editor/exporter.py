@@ -84,25 +84,32 @@ class ConfigurationExporter:
             _, values = waveform.get_value(self.times)
             self._fill_node_recursively(ids, path, values)
 
-    def _fill_node_recursively(self, ids_node, path, values, *, part_idx=0):
-        if part_idx >= len(path.parts):
+    def _fill_node_recursively(self, ids_node, path, values):
+        if len(path.parts) == 0:
             self._fill_values(ids_node, path, values)
             return
 
-        self._traverse_node(ids_node, path, part_idx, values)
+        self._traverse_node(ids_node, path, values)
 
-    def _traverse_node(self, ids_node, path, part_idx, values):
-        part = path.parts[part_idx]
-        index = path.indices[part_idx]
+    def _traverse_path(self, path):
+        if len(path.parts) == 1:
+            return IDSPath("")
+        return IDSPath(str(path).split("/", 1)[1])
+
+    def _traverse_node(self, ids_node, path, values):
+        part = path.parts[0]
+        index = path.indices[0]
         current = ids_node[part]
         if index is not None:
             if isinstance(index, slice):
-                self._traverse_slice(current, index, path, part_idx, values)
+                self._traverse_slice(current, index, path, values)
             else:
                 if len(current) <= index:
                     current.resize(index + 1, keep=True)
                 self._fill_node_recursively(
-                    current[index], path, values, part_idx=part_idx + 1
+                    current[index],
+                    self._traverse_path(path),
+                    values,
                 )
         elif (
             hasattr(current.metadata, "coordinate1")
@@ -113,10 +120,10 @@ class ConfigurationExporter:
 
             for i in range(len(self.times)):
                 self._fill_node_recursively(
-                    current[i], path, values[i], part_idx=part_idx + 1
+                    current[i], self._traverse_path(path), values[i]
                 )
         else:
-            self._fill_node_recursively(current, path, values, part_idx=part_idx + 1)
+            self._fill_node_recursively(current, self._traverse_path(path), values)
 
     def _fill_values(self, ids_node, path, values):
         if not hasattr(ids_node, "data_type"):
@@ -131,7 +138,7 @@ class ConfigurationExporter:
         else:
             raise ValueError(f"{path} has unsupported data_type: {ids_node.data_type}.")
 
-    def _traverse_slice(self, current, slice, path, part_idx, values):
+    def _traverse_slice(self, current, slice, path, values):
         if slice.start is None and slice.stop is None:
             start = 0
             stop = len(current) or 1
@@ -143,4 +150,4 @@ class ConfigurationExporter:
             current.resize(max_index + 1, keep=True)
 
         for i in range(start, stop):
-            self._fill_node_recursively(current[i], path, values, part_idx=part_idx + 1)
+            self._fill_node_recursively(current[i], self._traverse_path(path), values)
