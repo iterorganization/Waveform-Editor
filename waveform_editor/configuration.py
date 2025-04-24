@@ -44,17 +44,18 @@ class WaveformConfiguration:
         Args:
             yaml_str: The YAML string containing waveform configuration data.
         """
-        globals = self.parser.get_globals(yaml_str)
-        self.dd_version = globals.get("dd_version")
-        self.machine_description = globals.get("machine_description")
         self.load_error = ""
-        parsed_data = self.parser.load_yaml(yaml_str, dd_version=self.dd_version)
+        parsed_data = self.parser.load_yaml(yaml_str)
 
         if parsed_data is None:
             self.load_error = self.parser.load_yaml_error
+            self.groups = self.waveform_map = {}
+            self.dd_version = self.machine_description = None
         else:
             self.groups = parsed_data["groups"]
             self.waveform_map = parsed_data["waveform_map"]
+            self.dd_version = parsed_data["dd_version"]
+            self.machine_description = parsed_data["machine_description"]
 
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.

@@ -152,7 +152,7 @@ def test_load_yaml():
           ec_launchers/beam(2)/phase/angle: 2e3
           ec_launchers/beam(3)/phase/angle: 3.5
     globals:
-      DD_version: 3.42.0
+      dd_version: 3.42.0
       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
     """
     parser = YamlParser()
@@ -177,3 +177,43 @@ def test_load_yaml():
         root_group["asdf"]
     with pytest.raises(KeyError):
         root_group["beams"]["asdf/asdf"]
+
+
+def test_load_yaml_globals():
+    """Test if globals contain the correct dd version."""
+    yaml_str = """
+    globals:
+      dd_version: 3.42.0
+      machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+    """
+    parser = YamlParser()
+    parsed_yaml = parser.load_yaml(yaml_str)
+    assert not parsed_yaml["groups"]
+    assert not parsed_yaml["waveform_map"]
+    assert parsed_yaml["dd_version"] == "3.42.0"
+    assert (
+        parsed_yaml["machine_description"]
+        == "imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204"
+    )
+    parsed_yaml = parser.load_yaml(yaml_str, dd_version="4.0.0")
+    assert parsed_yaml["dd_version"] == "4.0.0"
+    assert (
+        parsed_yaml["machine_description"]
+        == "imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204"
+    )
+    yaml_str = """
+    globals:
+      machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
+    """
+    parsed_yaml = parser.load_yaml(yaml_str, dd_version="4.0.0")
+    assert parsed_yaml["dd_version"] == "4.0.0"
+    assert (
+        parsed_yaml["machine_description"]
+        == "imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204"
+    )
+    parsed_yaml = parser.load_yaml(yaml_str)
+    assert parsed_yaml["dd_version"] is None
+    assert (
+        parsed_yaml["machine_description"]
+        == "imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204"
+    )

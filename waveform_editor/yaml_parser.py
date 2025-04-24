@@ -48,33 +48,14 @@ class YamlParser:
         self.yaml = YAML()
         self.clear_errors()
 
-    def get_globals(self, yaml_str):
-        """Parse the provided YAML string and extract the 'globals' section.
-
-        Args:
-            yaml_str: A string containing YAML-formatted content.
-
-        Returns:
-            The 'globals' dictionary from the YAML content if present,
-            otherwise None.
-        """
-        self.clear_errors()
-        try:
-            yaml_data = self.yaml.load(yaml_str)
-            globals = yaml_data.get("globals", {})
-            return globals
-        except Exception as e:
-            logger.warning("Got unexpected error: %s", e, exc_info=e)
-            self.load_yaml_error = e
-            return {}
-
     def load_yaml(self, yaml_str, *, dd_version=None):
         """Parses a YAML string and builds waveform groups and a waveform map.
 
         Args:
             yaml_str: The YAML string to load YAML for.
-            dd_version: Data dictionary version to create waveform for. Default version
-                will be used if None.
+            dd_version: Data dictionary version to create waveforms for. Overrides the
+                DD version specified in the YAML, if present. If neither is provided,
+                the default version will be used.
         Returns:
             A dictionary containing 'groups' and 'waveform_map', or None on error.
         """
@@ -83,6 +64,16 @@ class YamlParser:
         waveform_map = {}
         try:
             yaml_data = self.yaml.load(yaml_str)
+            globals = yaml_data.get("globals", {})
+            dd_version_yaml = globals.get("dd_version")
+            if dd_version and dd_version_yaml:
+                logger.warning(
+                    f"The Data Dictionary version in the YAML (v{dd_version_yaml}) is "
+                    f"overridden, v{dd_version} is used instead."
+                )
+            elif dd_version_yaml:
+                dd_version = dd_version_yaml
+            machine_description = globals.get("machine_description")
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 
@@ -102,7 +93,12 @@ class YamlParser:
                     group_content, group_name, waveform_map, dd_version
                 )
                 groups[group_name] = root_group
-            return {"groups": groups, "waveform_map": waveform_map}
+            return {
+                "groups": groups,
+                "waveform_map": waveform_map,
+                "dd_version": dd_version,
+                "machine_description": machine_description,
+            }
         except Exception as e:
             logger.warning("Got unexpected error: %s", e, exc_info=e)
             self.load_yaml_error = e
@@ -119,7 +115,7 @@ class YamlParser:
             data_dict: Input data containing waveform groups and waveforms.
             group_name: Name of the current group.
             waveform_map: Maps waveform names to their corresponding groups.
-            dd_version: Data dictionary version to create waveform for. Default version
+            dd_version: Data dictionary version to create waveforms for. Default version
                 will be used if None.
 
         Returns:
