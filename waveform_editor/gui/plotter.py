@@ -3,8 +3,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.yaml_parser import YamlParser
-
 
 class WaveformPlotter(Viewer):
     """Class to handle dynamic waveform plotting."""
@@ -13,7 +11,6 @@ class WaveformPlotter(Viewer):
 
     def __init__(self, **params):
         super().__init__(**params)
-        self.yaml_parser = YamlParser()
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
         self.plot_layout = pn.Column(self.pane)
         self.param.watch(self.update_plot, "plotted_waveforms")

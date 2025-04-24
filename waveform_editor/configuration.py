@@ -14,7 +14,10 @@ class WaveformConfiguration:
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
         # of waveforms
         self.waveform_map = {}
+        self.dd_version = None
+        self.machine_description = None
         self.load_error = ""
+        self.parser = YamlParser(self)
 
     def __getitem__(self, key):
         """Retrieves a waveform group by name.
@@ -34,22 +37,6 @@ class WaveformConfiguration:
             if key in self.groups:
                 return self.groups[key]
             raise KeyError(f"{key!r} not found in groups")
-
-    def load_yaml(self, yaml_str):
-        """Loads waveform configuration from a YAML string.
-
-        Args:
-            yaml_str: The YAML string containing waveform configuration data.
-        """
-        parser = YamlParser()
-        self.load_error = ""
-        parsed_data = parser.load_yaml(yaml_str)
-
-        if parsed_data is None:
-            self.load_error = parser.load_yaml_error
-        else:
-            self.groups = parsed_data["groups"]
-            self.waveform_map = parsed_data["waveform_map"]
 
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.
@@ -163,6 +150,18 @@ class WaveformConfiguration:
         yaml.dump(data, stream)
         return stream.getvalue()
 
+    def parse_waveform(self, yaml_str):
+        """Parse a YAML waveform string and return a waveform object.
+
+        Args:
+            yaml_str: The YAML string to parse.
+
+        Returns:
+            The parsed waveform object.
+        """
+        self.parser.parse_errors = []
+        return self.parser.parse_waveform(yaml_str)
+
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
         result = CommentedMap()
@@ -179,3 +178,11 @@ class WaveformConfiguration:
         for group_name, group in self.groups.items():
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
+
+    def clear(self):
+        """Clears the data stored in the configuration."""
+        self.groups = {}
+        self.waveform_map = {}
+        self.dd_version = None
+        self.machine_description = None
+        self.load_error = ""

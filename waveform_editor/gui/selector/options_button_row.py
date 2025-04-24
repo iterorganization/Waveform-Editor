@@ -3,7 +3,6 @@ import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.text_input_form import TextInputForm
-from waveform_editor.yaml_parser import YamlParser
 
 
 class OptionsButtonRow(Viewer):
@@ -193,8 +192,7 @@ class OptionsButtonRow(Viewer):
         name = self.new_waveform_panel.input.value
 
         # Add empty waveform to YAML
-        yaml_parser = YamlParser()
-        new_waveform = yaml_parser.parse_waveforms(f"{name}: [{{}}]")
+        new_waveform = self.main_gui.config.parse_waveform(f"{name}: [{{}}]")
         # TODO:this try-except block can be replaced with a global error handler later
         try:
             self.main_gui.selector.config.add_waveform(new_waveform, self.path)

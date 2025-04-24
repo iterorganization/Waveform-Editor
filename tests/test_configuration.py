@@ -188,7 +188,8 @@ def test_dump():
           - {type: constant, duration: 20}
           - {type: smooth, duration: 25, to: 0}"""
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.dd_version = "4.0.0"
+    config.parser.load_yaml(yaml_str)
 
     new_waveform1_str = """
     ec_launchers/beam(1)/quantity:
@@ -198,15 +199,15 @@ def test_dump():
     new_waveform2_str = "ec_launchers/beam(2)/quantity: 3"
 
     # add new waveforms
-    yaml_parser = YamlParser()
-    waveform1 = yaml_parser.parse_waveforms(new_waveform1_str)
-    waveform2 = yaml_parser.parse_waveforms(new_waveform2_str)
+    yaml_parser = YamlParser(config)
+    waveform1 = yaml_parser.parse_waveform(new_waveform1_str)
+    waveform2 = yaml_parser.parse_waveform(new_waveform2_str)
     config.add_waveform(waveform1, ["ec_launchers", "beams"])
     config.add_waveform(waveform2, ["ec_launchers", "beams"])
     dump = config.dump()
 
     new_config = WaveformConfiguration()
-    new_config.load_yaml(dump)
+    new_config.parser.load_yaml(dump)
     old_waveform = new_config["ec_launchers/beam(0)/power_launched"]
     new_waveform1 = new_config["ec_launchers/beam(1)/quantity"]
     new_waveform2 = new_config["ec_launchers/beam(2)/quantity"]
@@ -247,7 +248,7 @@ def test_dump_comments():
           # comment3
           - {duration: 25, to: 0}""")
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     dumped_yaml = config.dump()
     assert yaml_str.strip() == dumped_yaml.strip()
 
@@ -260,7 +261,30 @@ def test_load_yaml_duplicate():
       ec_launchers/beam(2)/phase/angle: 1.23
     """
     config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+    config.parser.load_yaml(yaml_str)
     assert config.load_error
     assert not config.groups
     assert not config.waveform_map
+
+
+def test_load_yaml_globals():
+    """Check if global variables are loaded from YAML."""
+    yaml_str = """
+    globals:
+      dd_version: 3.42.0
+      machine_description: imas:hdf5?path=testdb
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1e-3
+    """
+    config = WaveformConfiguration()
+    config.parser.load_yaml(yaml_str)
+    assert config.dd_version == "3.42.0"
+    assert config.machine_description == "imas:hdf5?path=testdb"
+
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1e-3
+    """
+    config.parser.load_yaml(yaml_str)
+    assert not config.dd_version
+    assert not config.machine_description

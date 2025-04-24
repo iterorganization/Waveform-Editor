@@ -1,6 +1,7 @@
 import pytest
 from pytest import approx
 
+from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -11,13 +12,23 @@ from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.yaml_parser import YamlParser
 
 
-def test_yaml_parser():
+@pytest.fixture
+def config():
+    config = WaveformConfiguration()
+    config.dd_version = "4.0.0"
+    return config
+
+
+@pytest.fixture
+def yaml_parser(config):
+    return config.parser
+
+
+def test_yaml_parser(yaml_parser):
     """Test loading a yaml file as a string."""
-    # Valid YAML
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file)
     assert_tendencies_correct(waveform.tendencies)
     assert not waveform.annotations
     assert not yaml_parser.parse_errors
@@ -25,16 +36,14 @@ def test_yaml_parser():
     # Invalid configuration
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file)
     assert waveform.annotations
     assert not yaml_parser.parse_errors
 
     # Invalid YAML
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
-    yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file)
     assert not waveform.tendencies
     assert yaml_parser.parse_errors
 
@@ -94,7 +103,7 @@ def assert_tendencies_correct(tendencies):
     assert tendencies[6].to == approx(0)
 
 
-def test_scientific_notation():
+def test_scientific_notation(yaml_parser):
     """Test if scientific notation is parsed correctly."""
     waveforms = {
         "waveform:\n- {type: linear, to: 1.5e5}": 1.5e5,
@@ -114,21 +123,18 @@ def test_scientific_notation():
         "waveform:\n- {type: linear, to: -1.5e-5}": -1.5e-5,
     }
 
-    yaml_parser = YamlParser()
-
     for waveform, expected_value in waveforms.items():
-        waveform = yaml_parser.parse_waveforms(waveform)
+        waveform = yaml_parser.parse_waveform(waveform)
         assert waveform.tendencies[0].to == expected_value
 
 
-def test_constant_shorthand_notation():
+def test_constant_shorthand_notation(yaml_parser):
     """Test if shorthand notation is parsed correctly."""
 
     waveforms = {"waveform: 5": 5, "waveform: 1.23": 1.23}
-    yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        waveform = yaml_parser.parse_waveforms(waveform)
+        waveform = yaml_parser.parse_waveform(waveform)
         assert len(waveform.tendencies) == 1
         assert isinstance(waveform.tendencies[0], ConstantTendency)
         assert waveform.tendencies[0].value == expected_value
@@ -136,7 +142,7 @@ def test_constant_shorthand_notation():
         assert not yaml_parser.parse_errors
 
 
-def test_load_yaml():
+def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
     yaml_str = """
     ec_launchers:
@@ -151,12 +157,12 @@ def test_load_yaml():
           ec_launchers/beam(2)/phase/angle: 2e3
           ec_launchers/beam(3)/phase/angle: 3.5
     globals:
-      DD_version: 3.42.0
+      dd_version: 3.42.0
       machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
     """
-    parser = YamlParser()
-    parsed_yaml = parser.load_yaml(yaml_str)
-    root_group = parsed_yaml["groups"]["ec_launchers"]
+    parser = YamlParser(config)
+    parser.load_yaml(yaml_str)
+    root_group = config.groups["ec_launchers"]
     power_launched_waveform = root_group["beams"]["power_launched"][
         "ec_launchers/beam(:)/power_launched"
     ]
@@ -176,3 +182,39 @@ def test_load_yaml():
         root_group["asdf"]
     with pytest.raises(KeyError):
         root_group["beams"]["asdf/asdf"]
+
+
+def test_load_yaml_globals():
+    """Test if globals contain the correct dd version."""
+    yaml_str = """
+    globals:
+      dd_version: 3.42.0
+      machine_description: imas:hdf5?path=test_md
+    """
+    config = WaveformConfiguration()
+    parser = YamlParser(config)
+    parser.load_yaml(yaml_str)
+    assert not config.groups
+    assert not config.waveform_map
+    assert config.dd_version == "3.42.0"
+    assert config.machine_description == "imas:hdf5?path=test_md"
+
+    yaml_str = """
+    globals:
+      machine_description: imas:hdf5?path=test_md
+    """
+    parser.load_yaml(yaml_str)
+    assert not config.groups
+    assert not config.waveform_map
+    assert config.dd_version is None
+    assert config.machine_description == "imas:hdf5?path=test_md"
+
+    yaml_str = """
+    globals:
+      dd_version: 4.0.0
+    """
+    parser.load_yaml(yaml_str)
+    assert not config.groups
+    assert not config.waveform_map
+    assert config.dd_version == "4.0.0"
+    assert config.machine_description is None
