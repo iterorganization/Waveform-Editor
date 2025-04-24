@@ -13,11 +13,12 @@ from waveform_editor.yaml_parser import YamlParser
 
 def test_yaml_parser():
     """Test loading a yaml file as a string."""
+    dd_version = "4.0.0"
     # Valid YAML
     with open("tests/tendencies/test_yaml/test.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file, dd_version)
     assert_tendencies_correct(waveform.tendencies)
     assert not waveform.annotations
     assert not yaml_parser.parse_errors
@@ -26,7 +27,7 @@ def test_yaml_parser():
     with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file, dd_version)
     assert waveform.annotations
     assert not yaml_parser.parse_errors
 
@@ -34,7 +35,7 @@ def test_yaml_parser():
     with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
     yaml_parser = YamlParser()
-    waveform = yaml_parser.parse_waveforms(yaml_file)
+    waveform = yaml_parser.parse_waveform(yaml_file, dd_version)
     assert not waveform.tendencies
     assert yaml_parser.parse_errors
 
@@ -117,7 +118,7 @@ def test_scientific_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        waveform = yaml_parser.parse_waveforms(waveform)
+        waveform = yaml_parser.parse_waveform(waveform, "4.0.0")
         assert waveform.tendencies[0].to == expected_value
 
 
@@ -128,7 +129,7 @@ def test_constant_shorthand_notation():
     yaml_parser = YamlParser()
 
     for waveform, expected_value in waveforms.items():
-        waveform = yaml_parser.parse_waveforms(waveform)
+        waveform = yaml_parser.parse_waveform(waveform, "4.0.0")
         assert len(waveform.tendencies) == 1
         assert isinstance(waveform.tendencies[0], ConstantTendency)
         assert waveform.tendencies[0].value == expected_value

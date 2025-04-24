@@ -99,7 +99,7 @@ class YamlParser:
                     raise ValueError("Waveforms must belong to a group.")
 
                 root_group = self._recursive_load(
-                    group_content, group_name, waveform_map, dd_version=dd_version
+                    group_content, group_name, waveform_map, dd_version
                 )
                 groups[group_name] = root_group
             return {"groups": groups, "waveform_map": waveform_map}
@@ -108,7 +108,7 @@ class YamlParser:
             self.load_yaml_error = e
             return None
 
-    def _recursive_load(self, data_dict, group_name, waveform_map, *, dd_version=None):
+    def _recursive_load(self, data_dict, group_name, waveform_map, dd_version):
         """Recursively builds a hierarchy of WaveformGroup objects from a nested
         dictionary.
 
@@ -136,7 +136,7 @@ class YamlParser:
                     )
 
                 nested_group = self._recursive_load(
-                    value, key, waveform_map, dd_version=dd_version
+                    value, key, waveform_map, dd_version
                 )
                 current_group.groups[key] = nested_group
             else:
@@ -146,7 +146,7 @@ class YamlParser:
                         "Waveform names must contain '/'."
                     )
                 yaml_str = self.generate_yaml_str(key, value)
-                waveform = self.parse_waveforms(yaml_str, dd_version=dd_version)
+                waveform = self.parse_waveform(yaml_str, dd_version)
                 current_group.waveforms[key] = waveform
                 waveform_map[key] = current_group
 
@@ -163,7 +163,7 @@ class YamlParser:
         self.yaml.dump({key: value}, stream)
         return stream.getvalue()
 
-    def parse_waveforms(self, yaml_str, *, dd_version=None):
+    def parse_waveform(self, yaml_str, dd_version):
         """Loads a YAML structure from a string and stores its tendencies into a list.
 
         Args:

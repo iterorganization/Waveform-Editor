@@ -199,8 +199,8 @@ def test_dump():
 
     # add new waveforms
     yaml_parser = YamlParser()
-    waveform1 = yaml_parser.parse_waveforms(new_waveform1_str)
-    waveform2 = yaml_parser.parse_waveforms(new_waveform2_str)
+    waveform1 = yaml_parser.parse_waveform(new_waveform1_str, "4.0.0")
+    waveform2 = yaml_parser.parse_waveform(new_waveform2_str, "4.0.0")
     config.add_waveform(waveform1, ["ec_launchers", "beams"])
     config.add_waveform(waveform2, ["ec_launchers", "beams"])
     dump = config.dump()

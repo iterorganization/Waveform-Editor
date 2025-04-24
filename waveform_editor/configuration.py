@@ -173,7 +173,7 @@ class WaveformConfiguration:
             The parsed waveform object.
         """
         self.parser.clear_errors()
-        return self.parser.parse_waveforms(yaml_str, dd_version=self.dd_version)
+        return self.parser.parse_waveform(yaml_str, self.dd_version)
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
