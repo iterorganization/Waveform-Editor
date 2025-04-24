@@ -3,7 +3,6 @@ import io
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from waveform_editor.exporter import ConfigurationExporter
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -163,23 +162,6 @@ class WaveformConfiguration:
         stream = io.StringIO()
         yaml.dump(data, stream)
         return stream.getvalue()
-
-    def export(self, times, *, uri=None, mode="ids"):
-        """Export the configuration using the specified mode.
-
-        Args:
-            times: Numpy array containing the times to interpolate the waveforms onto.
-            uri: Required in 'ids' mode, specifies the URI to store the export.
-            mode: The export mode to use. Currently, only 'ids' mode is supported.
-        """
-        exporter = ConfigurationExporter(self, times)
-        # TODO: add support for export to CSV, PNG and XML
-        if mode == "ids":
-            if not uri:
-                raise ValueError("An URI must be provided to export to an IDS.")
-            exporter.to_ids(uri, dd_version=self.dd_version)
-        else:
-            NotImplemented(f"Export mode {mode} is not available.")
 
     def parse_waveform(self, yaml_str):
         """Parse a YAML waveform string and return a waveform object.
