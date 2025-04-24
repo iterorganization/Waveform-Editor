@@ -188,6 +188,7 @@ def test_dump():
           - {type: constant, duration: 20}
           - {type: smooth, duration: 25, to: 0}"""
     config = WaveformConfiguration()
+    config.dd_version = "4.0.0"
     config.load_yaml(yaml_str)
 
     new_waveform1_str = """
@@ -198,9 +199,9 @@ def test_dump():
     new_waveform2_str = "ec_launchers/beam(2)/quantity: 3"
 
     # add new waveforms
-    yaml_parser = YamlParser()
-    waveform1 = yaml_parser.parse_waveform(new_waveform1_str, "4.0.0")
-    waveform2 = yaml_parser.parse_waveform(new_waveform2_str, "4.0.0")
+    yaml_parser = YamlParser(config)
+    waveform1 = yaml_parser.parse_waveform(new_waveform1_str)
+    waveform2 = yaml_parser.parse_waveform(new_waveform2_str)
     config.add_waveform(waveform1, ["ec_launchers", "beams"])
     config.add_waveform(waveform2, ["ec_launchers", "beams"])
     dump = config.dump()

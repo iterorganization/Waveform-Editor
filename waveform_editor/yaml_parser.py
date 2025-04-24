@@ -44,36 +44,26 @@ class LineNumberYamlLoader(yaml.SafeLoader):
 
 
 class YamlParser:
-    def __init__(self):
+    def __init__(self, config):
         self.yaml = YAML()
-        self.clear_errors()
+        self.config = config
+        self.parse_errors = []
 
-    def load_yaml(self, yaml_str, *, dd_version=None):
+    def load_yaml(self, yaml_str):
         """Parses a YAML string and builds waveform groups and a waveform map.
 
         Args:
             yaml_str: The YAML string to load YAML for.
-            dd_version: Data dictionary version to create waveforms for. Overrides the
-                DD version specified in the YAML, if present. If neither is provided,
-                the default version will be used.
         Returns:
             A dictionary containing 'groups' and 'waveform_map', or None on error.
         """
-        self.clear_errors()
-        groups = {}
-        waveform_map = {}
+        self.parse_errors = []
+        self.config.clear()
         try:
             yaml_data = self.yaml.load(yaml_str)
             globals = yaml_data.get("globals", {})
-            dd_version_yaml = globals.get("dd_version")
-            if dd_version and dd_version_yaml:
-                logger.warning(
-                    f"The Data Dictionary version in the YAML (v{dd_version_yaml}) is "
-                    f"overridden, v{dd_version} is used instead."
-                )
-            elif dd_version_yaml:
-                dd_version = dd_version_yaml
-            machine_description = globals.get("machine_description")
+            self.config.dd_version = globals.get("dd_version")
+            self.config.machine_description = globals.get("machine_description")
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 
@@ -89,22 +79,14 @@ class YamlParser:
                 if not isinstance(group_content, dict):
                     raise ValueError("Waveforms must belong to a group.")
 
-                root_group = self._recursive_load(
-                    group_content, group_name, waveform_map, dd_version
-                )
-                groups[group_name] = root_group
-            return {
-                "groups": groups,
-                "waveform_map": waveform_map,
-                "dd_version": dd_version,
-                "machine_description": machine_description,
-            }
+                root_group = self._recursive_load(group_content, group_name)
+                self.config.groups[group_name] = root_group
         except Exception as e:
+            self.config.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
-            self.load_yaml_error = e
-            return None
+            self.config.load_error = str(e)
 
-    def _recursive_load(self, data_dict, group_name, waveform_map, dd_version):
+    def _recursive_load(self, data_dict, group_name):
         """Recursively builds a hierarchy of WaveformGroup objects from a nested
         dictionary.
 
@@ -114,9 +96,6 @@ class YamlParser:
         Args:
             data_dict: Input data containing waveform groups and waveforms.
             group_name: Name of the current group.
-            waveform_map: Maps waveform names to their corresponding groups.
-            dd_version: Data dictionary version to create waveforms for. Default version
-                will be used if None.
 
         Returns:
             The populated waveform group.
@@ -131,9 +110,7 @@ class YamlParser:
                         f"Invalid group '{key}': Group names may not contain '/'."
                     )
 
-                nested_group = self._recursive_load(
-                    value, key, waveform_map, dd_version
-                )
+                nested_group = self._recursive_load(value, key)
                 current_group.groups[key] = nested_group
             else:
                 if "/" not in key:
@@ -142,9 +119,9 @@ class YamlParser:
                         "Waveform names must contain '/'."
                     )
                 yaml_str = self.generate_yaml_str(key, value)
-                waveform = self.parse_waveform(yaml_str, dd_version)
+                waveform = self.parse_waveform(yaml_str)
                 current_group.waveforms[key] = waveform
-                waveform_map[key] = current_group
+                self.config.waveform_map[key] = current_group
 
         return current_group
 
@@ -159,7 +136,7 @@ class YamlParser:
         self.yaml.dump({key: value}, stream)
         return stream.getvalue()
 
-    def parse_waveform(self, yaml_str, dd_version):
+    def parse_waveform(self, yaml_str):
         """Loads a YAML structure from a string and stores its tendencies into a list.
 
         Args:
@@ -207,14 +184,9 @@ class YamlParser:
                 yaml_str=yaml_str,
                 line_number=line_number,
                 name=name,
-                dd_version=dd_version,
+                dd_version=self.config.dd_version,
             )
             return waveform
         except yaml.YAMLError as e:
             self.parse_errors.append(e)
             return Waveform()
-
-    def clear_errors(self):
-        """Clear the YAML loading and waveform parsing errors."""
-        self.load_yaml_error = ""
-        self.parse_errors = []

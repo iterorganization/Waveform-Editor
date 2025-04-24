@@ -17,7 +17,7 @@ class WaveformConfiguration:
         self.dd_version = None
         self.machine_description = None
         self.load_error = ""
-        self.parser = YamlParser()
+        self.parser = YamlParser(self)
 
     def __getitem__(self, key):
         """Retrieves a waveform group by name.
@@ -44,18 +44,7 @@ class WaveformConfiguration:
         Args:
             yaml_str: The YAML string containing waveform configuration data.
         """
-        self.load_error = ""
-        parsed_data = self.parser.load_yaml(yaml_str)
-
-        if parsed_data is None:
-            self.load_error = self.parser.load_yaml_error
-            self.groups = self.waveform_map = {}
-            self.dd_version = self.machine_description = None
-        else:
-            self.groups = parsed_data["groups"]
-            self.waveform_map = parsed_data["waveform_map"]
-            self.dd_version = parsed_data["dd_version"]
-            self.machine_description = parsed_data["machine_description"]
+        self.parser.load_yaml(yaml_str)
 
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.
@@ -173,8 +162,8 @@ class WaveformConfiguration:
         Returns:
             The parsed waveform object.
         """
-        self.parser.clear_errors()
-        return self.parser.parse_waveform(yaml_str, self.dd_version)
+        self.parser.parse_errors = []
+        return self.parser.parse_waveform(yaml_str)
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
@@ -192,3 +181,11 @@ class WaveformConfiguration:
         for group_name, group in self.groups.items():
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
+
+    def clear(self):
+        """Clears the data stored in the configuration."""
+        self.groups = {}
+        self.waveform_map = {}
+        self.dd_version = None
+        self.machine_description = None
+        self.load_error = ""
