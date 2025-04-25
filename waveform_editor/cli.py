@@ -57,31 +57,51 @@ def print_version():
     console.Console().print(grid)
 
 
+def parse_linspace(ctx, param, value):
+    """Parse linspace string into a tuple."""
+    if not value:
+        return None
+    try:
+        start_str, stop_str, num_str = value.split(",")
+        return float(start_str), float(stop_str), int(num_str)
+    except Exception as e:
+        raise click.BadParameter(
+            "Must be in the format: start,stop,num (e.g. 0,5,6)"
+        ) from e
+
+
 @cli.command("export-ids")
-@click.argument("yaml", type=str)
+@click.argument("yaml", type=click.Path(exists=True))
 @click.argument("uri", type=str)
-@click.argument("times", type=click.Path(exists=True))
-def export_ids(yaml, uri, times):
+@click.option("--csv", type=click.Path(exists=False))
+@click.option("--linspace", callback=parse_linspace)
+def export_ids(yaml, uri, csv, linspace):
     """Export waveform data to an IDS.
 
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
       uri: URI of the output Data Entry.
-      times: CSV file containing a custom time array.
+    \b
+    Options:
+      csv: CSV file containing a custom time array.
+      linspace: linspace containing start, stop and num values, e.g. 0,3,4
 
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    exporter = create_exporter(yaml, times)
+    if not csv and not linspace:
+        raise click.UsageError("Either --csv or --linspace must be provided")
+    exporter = create_exporter(yaml, csv, linspace)
     exporter.to_ids(uri)
 
 
 @cli.command("export-png")
 @click.argument("yaml", type=click.Path(exists=True))
 @click.argument("output_dir", type=click.Path(exists=False))
-@click.option("--times", type=click.Path(exists=True))
-def export_png(yaml, output_dir, times):
+@click.option("--csv", type=click.Path(exists=False))
+@click.option("--linspace", callback=parse_linspace)
+def export_png(yaml, output_dir, csv, linspace):
     """Export waveform data to a PNG file.
     \b
     Arguments:
@@ -89,12 +109,13 @@ def export_png(yaml, output_dir, times):
       output_dir: Path to output directory where the PNG files will be saved.
     \b
     Options:
-      --times: CSV file containing a custom time array.
+      csv: CSV file containing a custom time array.
+      linspace: linspace containing start, stop and num values, e.g. 0,3,4
 
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    exporter = create_exporter(yaml, times)
+    exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     exporter.to_png(output_path)
@@ -103,60 +124,76 @@ def export_png(yaml, output_dir, times):
 @cli.command("export-csv")
 @click.argument("yaml", type=click.Path(exists=True))
 @click.argument("output_dir", type=click.Path(exists=False))
-@click.argument("times", type=click.Path(exists=True))
-def export_csv(yaml, output_dir, times):
+@click.option("--csv", type=click.Path(exists=False))
+@click.option("--linspace", callback=parse_linspace)
+def export_csv(yaml, output_dir, csv, linspace):
     """Export waveform data to a CSV file.
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
       uri: URI of the output Data Entry.
-      times: CSV file containing a custom time array.
+    \b
+    Options:
+      csv: CSV file containing a custom time array.
+      linspace: linspace containing start, stop and num values, e.g. 0,3,4
 
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    # TODO: allow linspace times
-    exporter = create_exporter(yaml, times)
+    if not csv and not linspace:
+        raise click.UsageError("Either --csv or --linspace must be provided")
+    exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_dir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     exporter.to_csv(output_path)
 
 
-def create_exporter(yaml, times):
+def create_exporter(yaml, csv, linspace):
     """Read a YAML file from disk, load it into a WaveformConfiguration and create a
     ConfigurationExporter using the given times.
 
     Args:
         yaml: The YAML file to load into a configuration.
-        times: CSV file containing the times to export to.
+        csv: CSV file containing time values.
+        linspace: Tuple containing the start, stop and number of the linspace.
 
     Returns:
         The ConfigurationExporter of the loaded YAML file.
     """
+    if csv and linspace:
+        raise click.UsageError("Cannot provide both --csv and --linspace.")
+    elif csv:
+        times = load_csv_file(csv)
+    elif linspace:
+        start = linspace[0]
+        stop = linspace[1]
+        num = linspace[2]
+        times = np.linspace(start, stop, num)
+    else:
+        times = None
     with open(yaml) as file:
         yaml_str = file.read()
 
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
-    times = load_times_file(times)
     exporter = ConfigurationExporter(config, times)
     return exporter
 
 
-def load_times_file(times_file):
+def load_csv_file(csv_file):
     """Parse the CSV file containing time values.
 
     Args:
-        times_file: CSV file containing a single row of time values.
+        csv_file: CSV file containing a single row of time values.
 
     Returns:
         Numpy array containing the times to export.
     """
-    if not times_file:
+    if not csv_file:
         return None
     try:
-        with open(times_file, newline="") as csvfile:
-            reader = csv.reader(csvfile)
+        with open(csv_file, newline="") as file:
+            reader = csv.reader(file)
             rows = list(reader)
 
             if len(rows) != 1:
