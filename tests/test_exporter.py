@@ -6,8 +6,9 @@ from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
 
 
-def create_ec_launchers_md(path):
-    md_uri = f"{path}/md.nc"
+@pytest.fixture
+def ec_launchers_md_uri(tmp_path):
+    md_uri = f"{tmp_path}/md.nc"
     with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as dbentry:
         ec = dbentry.factory.new("ec_launchers")
         ec.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
@@ -20,8 +21,9 @@ def create_ec_launchers_md(path):
     return md_uri
 
 
-def create_core_sources_md(path):
-    md_uri = f"{path}/md.nc"
+@pytest.fixture
+def core_sources_md_uri(tmp_path):
+    md_uri = f"{tmp_path}/md.nc"
     with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as dbentry:
         cs = dbentry.factory.new("core_sources")
         cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
@@ -171,12 +173,12 @@ def test_to_ids_aos(tmp_path):
         assert ids.source[4].global_quantities[2].total_ion_power == 2
 
 
-def test_export_with_md(tmp_path):
+def test_export_with_md(tmp_path, ec_launchers_md_uri):
     """Test export if machine description is provided."""
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_ec_launchers_md(tmp_path)}
+      machine_description: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2)/phase/angle: 1
     """
@@ -205,11 +207,11 @@ def test_export_full_slice_flt_1d(tmp_path):
         assert np.all(ids.beam[0].phase.angle == 111)
 
 
-def test_export_full_slice_md_flt_1d(tmp_path):
+def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_ec_launchers_md(tmp_path)}
+      machine_description: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(:)/phase/angle: 123
     """
@@ -243,11 +245,11 @@ def test_export_slice_flt_1d(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 111)
 
 
-def test_export_slice_md_flt_1d(tmp_path):
+def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_ec_launchers_md(tmp_path)}
+      machine_description: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2:3)/phase/angle: 123
     """
@@ -296,12 +298,12 @@ def test_export_half_slice_backward_flt_1d(tmp_path):
         assert np.all(ids.beam[2].phase.angle == 111)
 
 
-def test_export_half_slice_md_forward_flt_1d(tmp_path):
+def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     """Load the yaml string into a waveform config and export to an IDS."""
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_ec_launchers_md(tmp_path)}
+      machine_description: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2:)/phase/angle: 123
     """
@@ -320,11 +322,11 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path):
         assert np.all(ids.beam[3].phase.angle == 123)
 
 
-def test_export_half_slice_md_backward_flt_1d(tmp_path):
+def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_ec_launchers_md(tmp_path)}
+      machine_description: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(:2)/phase/angle: 123
     """
@@ -381,11 +383,11 @@ def test_export_full_slice_flt_0d(tmp_path):
         assert ids.source[0].global_quantities[2].power == 3
 
 
-def test_export_full_slice_md_flt_0d(tmp_path):
+def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_core_sources_md(tmp_path)}
+      machine_description: {core_sources_md_uri}
     core_sources:
       core_sources/source(:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -427,11 +429,11 @@ def test_export_slice_flt_0d(tmp_path):
             assert ids.source[i].global_quantities[2].power == 3
 
 
-def test_export_slice_md_flt_0d(tmp_path):
+def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_core_sources_md(tmp_path)}
+      machine_description: {core_sources_md_uri}
     core_sources:
       core_sources/source(2:3)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -496,11 +498,11 @@ def test_export_half_slice_backward_flt_0d(tmp_path):
             assert ids.source[i].global_quantities[2].power == 3
 
 
-def test_export_half_slice_md_forward_flt_0d(tmp_path):
+def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_core_sources_md(tmp_path)}
+      machine_description: {core_sources_md_uri}
     core_sources:
       core_sources/source(2:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -523,11 +525,11 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path):
             assert ids.source[i].global_quantities[2].power == 3
 
 
-def test_export_half_slice_md_backward_flt_0d(tmp_path):
+def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {create_core_sources_md(tmp_path)}
+      machine_description: {core_sources_md_uri}
     core_sources:
       core_sources/source(:2)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
