@@ -21,6 +21,13 @@ def ec_launchers_md_uri(tmp_path):
     return md_uri
 
 
+def assert_ec_launchers_md(ec):
+    assert ec.beam[0].name == "beam0"
+    assert ec.beam[1].name == "beam1"
+    assert ec.beam[2].name == "beam2"
+    assert ec.beam[3].name == "beam3"
+
+
 @pytest.fixture
 def core_sources_md_uri(tmp_path):
     md_uri = f"{tmp_path}/md.nc"
@@ -34,6 +41,13 @@ def core_sources_md_uri(tmp_path):
         cs.source[3].identifier = "lh"
         dbentry.put(cs)
     return md_uri
+
+
+def assert_core_sources_md(cs):
+    assert cs.source[0].identifier.name == "total"
+    assert cs.source[1].identifier.name == "nbi"
+    assert cs.source[2].identifier.name == "ec"
+    assert cs.source[3].identifier.name == "lh"
 
 
 def test_to_ids(tmp_path):
@@ -187,10 +201,7 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
-        assert ids.beam[0].name == "beam0"
-        assert ids.beam[1].name == "beam1"
-        assert ids.beam[2].name == "beam2"
-        assert ids.beam[3].name == "beam3"
+        assert_ec_launchers_md(ids)
         assert np.all(ids.beam[1].phase.angle == 1)
 
 
@@ -220,14 +231,9 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
-        assert ids.beam[0].name == "beam0"
-        assert ids.beam[1].name == "beam1"
-        assert ids.beam[2].name == "beam2"
-        assert ids.beam[3].name == "beam3"
-        assert np.all(ids.beam[0].phase.angle == 123)
-        assert np.all(ids.beam[1].phase.angle == 123)
-        assert np.all(ids.beam[2].phase.angle == 123)
-        assert np.all(ids.beam[3].phase.angle == 123)
+        assert_ec_launchers_md(ids)
+        for i in range(0, 4):
+            assert np.all(ids.beam[i].phase.angle == 123)
 
 
 def test_export_slice_flt_1d(tmp_path):
@@ -258,10 +264,7 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
-        assert ids.beam[0].name == "beam0"
-        assert ids.beam[1].name == "beam1"
-        assert ids.beam[2].name == "beam2"
-        assert ids.beam[3].name == "beam3"
+        assert_ec_launchers_md(ids)
         assert not ids.beam[0].phase.angle
         assert np.all(ids.beam[1].phase.angle == 123)
         assert np.all(ids.beam[2].phase.angle == 123)
@@ -293,9 +296,8 @@ def test_export_half_slice_backward_flt_1d(tmp_path):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
-        assert np.all(ids.beam[0].phase.angle == 111)
-        assert np.all(ids.beam[1].phase.angle == 111)
-        assert np.all(ids.beam[2].phase.angle == 111)
+        for i in range(0, 3):
+            assert np.all(ids.beam[i].phase.angle == 111)
 
 
 def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -312,14 +314,10 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
-        assert ids.beam[0].name == "beam0"
-        assert ids.beam[1].name == "beam1"
-        assert ids.beam[2].name == "beam2"
-        assert ids.beam[3].name == "beam3"
+        assert_ec_launchers_md(ids)
         assert not ids.beam[0].phase.angle
-        assert np.all(ids.beam[1].phase.angle == 123)
-        assert np.all(ids.beam[2].phase.angle == 123)
-        assert np.all(ids.beam[3].phase.angle == 123)
+        for i in range(1, 4):
+            assert np.all(ids.beam[i].phase.angle == 123)
 
 
 def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -335,10 +333,7 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
-        assert ids.beam[0].name == "beam0"
-        assert ids.beam[1].name == "beam1"
-        assert ids.beam[2].name == "beam2"
-        assert ids.beam[3].name == "beam3"
+        assert_ec_launchers_md(ids)
         assert np.all(ids.beam[0].phase.angle == 123)
         assert np.all(ids.beam[1].phase.angle == 123)
         assert not ids.beam[2].phase.angle
@@ -378,9 +373,8 @@ def test_export_full_slice_flt_0d(tmp_path):
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 1
         assert len(ids.source[0].global_quantities) == len(times)
-        assert ids.source[0].global_quantities[0].power == 1
-        assert ids.source[0].global_quantities[1].power == 2
-        assert ids.source[0].global_quantities[2].power == 3
+        for i in range(0, 3):
+            assert ids.source[0].global_quantities[i].power == i + 1
 
 
 def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
@@ -398,15 +392,11 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
-        assert ids.source[0].identifier.name == "total"
-        assert ids.source[1].identifier.name == "nbi"
-        assert ids.source[2].identifier.name == "ec"
-        assert ids.source[3].identifier.name == "lh"
+        assert_core_sources_md(ids)
         for i in range(4):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
 
 
 def test_export_slice_flt_0d(tmp_path):
@@ -424,9 +414,8 @@ def test_export_slice_flt_0d(tmp_path):
         assert not ids.source[0].has_value
         for i in range(1, 3):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
 
 
 def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
@@ -445,17 +434,13 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
-        assert ids.source[0].identifier.name == "total"
-        assert ids.source[1].identifier.name == "nbi"
-        assert ids.source[2].identifier.name == "ec"
-        assert ids.source[3].identifier.name == "lh"
+        assert_core_sources_md(ids)
 
         assert not ids.source[0].global_quantities
         for i in range(1, 3):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
         assert not ids.source[3].global_quantities
 
 
@@ -474,9 +459,8 @@ def test_export_half_slice_forward_flt_0d(tmp_path):
         assert not ids.source[0].has_value
         assert not ids.source[1].has_value
         assert len(ids.source[2].global_quantities) == len(times)
-        assert ids.source[2].global_quantities[0].power == 1
-        assert ids.source[2].global_quantities[1].power == 2
-        assert ids.source[2].global_quantities[2].power == 3
+        for j in range(3):
+            assert ids.source[2].global_quantities[j].power == j + 1
 
 
 def test_export_half_slice_backward_flt_0d(tmp_path):
@@ -493,9 +477,8 @@ def test_export_half_slice_backward_flt_0d(tmp_path):
         assert len(ids.source) == 3
         for i in range(3):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
 
 
 def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
@@ -513,16 +496,12 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
-        assert ids.source[0].identifier.name == "total"
-        assert ids.source[1].identifier.name == "nbi"
-        assert ids.source[2].identifier.name == "ec"
-        assert ids.source[3].identifier.name == "lh"
+        assert_core_sources_md(ids)
         assert not ids.source[0].global_quantities
         for i in range(1, 4):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
 
 
 def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
@@ -540,15 +519,11 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
-        assert ids.source[0].identifier.name == "total"
-        assert ids.source[1].identifier.name == "nbi"
-        assert ids.source[2].identifier.name == "ec"
-        assert ids.source[3].identifier.name == "lh"
+        assert_core_sources_md(ids)
         for i in range(2):
             assert len(ids.source[i].global_quantities) == len(times)
-            assert ids.source[i].global_quantities[0].power == 1
-            assert ids.source[i].global_quantities[1].power == 2
-            assert ids.source[i].global_quantities[2].power == 3
+            for j in range(3):
+                assert ids.source[i].global_quantities[j].power == j + 1
         assert not ids.source[2].global_quantities
         assert not ids.source[3].global_quantities
 
