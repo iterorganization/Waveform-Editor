@@ -187,7 +187,7 @@ def load_csv_file(csv_file):
         csv_file: CSV file containing a single row of time values.
 
     Returns:
-        Numpy array containing the times to export.
+        Numpy array containing the times to export or None if no csv_file is given.
     """
     if not csv_file:
         return None
