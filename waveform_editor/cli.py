@@ -99,10 +99,33 @@ def export_png(yaml, output_dir, times):
     if times is not None:
         times = load_times_file(times)
     config = load_config(yaml)
-    exporter = ConfigurationExporter(config, times=times)
+    exporter = ConfigurationExporter(config, times)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     exporter.to_png(output_path)
+
+
+@cli.command("export-csv")
+@click.argument("yaml", type=click.Path(exists=True))
+@click.argument("output_dir", type=click.Path(exists=False))
+@click.argument("times", type=click.Path(exists=True))
+def export_csv(yaml, output_dir, times):
+    """Export waveform data to a CSV file.
+    \b
+    Arguments:
+      yaml: Path to the waveform YAML file.
+      uri: URI of the output Data Entry.
+      times: CSV file containing a custom time array.
+
+    Note: The csv containing the time values should be formatted as a single row,
+    delimited by commas, For example: `1,2,3,4,5`.
+    """
+    config = load_config(yaml)
+    times = load_times_file(times)
+    exporter = ConfigurationExporter(config, times)
+    output_path = Path(output_dir)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    exporter.to_csv(output_path)
 
 
 def load_config(yaml):

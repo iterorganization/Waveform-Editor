@@ -1,6 +1,7 @@
 import logging
 
 import imas
+import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 from imas.ids_structure import IDSStructure
@@ -13,6 +14,9 @@ class ConfigurationExporter:
     def __init__(self, config, times):
         self.config = config
         self.times = times
+        # TODO: I don't think we can assume seconds here, this should be pulled from
+        # the DD
+        self.times_label = "Time [s]"
 
     def to_ids(self, uri, dd_version=None):
         """Export the waveforms in the configuration to IDSs.
@@ -36,18 +40,15 @@ class ConfigurationExporter:
                 entry.put(ids)
         logger.info(f"Successfully exported waveform configuration to {uri}.")
 
-    def to_png(self, file_path):
+    def to_png(self, dir_path):
         """Export the waveform to a PNG.
         Args:
-            file_path: The file path and name to store the PNG to.
+            file_path: The directory path to store the PNGs into.
         """
 
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
             times, values = waveform.get_value(self.times)
-            # TODO: I don't think we can assume seconds here, this should be pulled from
-            # the DD
-            xlabel = "Time [s]"
             ylabel = (
                 f"Value [{waveform.metadata.units}]"
                 if waveform.metadata
@@ -56,12 +57,35 @@ class ConfigurationExporter:
             fig = go.Figure(data=go.Scatter(x=times, y=values, mode="lines"))
             fig.update_layout(
                 title=waveform.name,
-                xaxis_title=xlabel,
+                xaxis_title=self.times_label,
                 yaxis_title=ylabel,
             )
             logger.info(f"Writing to PNG: {name}...")
-            output_path = file_path / name.replace("/", "_")
+            output_path = dir_path / name.replace("/", "_")
             fig.write_image(output_path.with_suffix(".png"), format="png")
+
+    def to_csv(self, file_path):
+        """Export the waveform to a CSV.
+
+        Args:
+            file_path: The file path to store the CSV to.
+        """
+
+        data = {"time": self.times}
+
+        for name, group in self.config.waveform_map.items():
+            logger.info(f"Collecting data for {name}...")
+            waveform = group[name]
+            _, values = waveform.get_value(self.times)
+            if len(values) != len(self.times):
+                logger.warning(
+                    f"{name} does not match the number of times, and is not exported."
+                )
+                continue
+            data[name] = values
+
+        df = pd.DataFrame(data)
+        df.to_csv(file_path, index=False)
 
     def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.

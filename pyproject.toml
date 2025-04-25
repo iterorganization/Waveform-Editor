@@ -14,6 +14,7 @@ classifiers = [
 license = {file = "LICENSE.txt"}
 dependencies = [
     "numpy",
+    "pandas",
     "click",
     "matplotlib",
     "scipy",
