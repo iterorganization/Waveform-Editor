@@ -49,16 +49,14 @@ class ConfigurationExporter:
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
             times, values = waveform.get_value(self.times)
-            ylabel = (
-                f"Value [{waveform.metadata.units}]"
-                if waveform.metadata
-                else "Value [a.u.]"
-            )
+            ylabel = f"Value [{waveform.units}]"
             fig = go.Figure(data=go.Scatter(x=times, y=values, mode="lines"))
             fig.update_layout(
                 title=waveform.name,
                 xaxis_title=self.times_label,
                 yaxis_title=ylabel,
+                xaxis=dict(exponentformat="e", showexponent="all"),
+                yaxis=dict(exponentformat="e", showexponent="all"),
             )
             logger.info(f"Writing to PNG: {name}...")
             output_path = dir_path / name.replace("/", "_")
