@@ -30,9 +30,9 @@ class ConfigurationExporter:
                     with imas.DBEntry(
                         self.config.machine_description,
                         "r",
-                        dd_version=self.config.dd_version,
                     ) as entry_md:
-                        ids = entry_md.get(ids_name)
+                        orig_ids = entry_md.get(ids_name, autoconvert=False)
+                        ids = imas.convert_ids(orig_ids, self.config.dd_version)
                 else:
                     ids = entry.factory.new(ids_name)
                 # TODO: currently only IDSs with homogeneous time mode are supported
