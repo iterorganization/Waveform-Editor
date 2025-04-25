@@ -73,9 +73,7 @@ def export_ids(yaml, uri, times):
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    config = load_config(yaml)
-    times = load_times_file(times)
-    exporter = ConfigurationExporter(config, times)
+    exporter = create_exporter(yaml, times)
     exporter.to_ids(uri)
 
 
@@ -96,10 +94,7 @@ def export_png(yaml, output_dir, times):
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    if times is not None:
-        times = load_times_file(times)
-    config = load_config(yaml)
-    exporter = ConfigurationExporter(config, times)
+    exporter = create_exporter(yaml, times)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     exporter.to_png(output_path)
@@ -120,24 +115,45 @@ def export_csv(yaml, output_dir, times):
     Note: The csv containing the time values should be formatted as a single row,
     delimited by commas, For example: `1,2,3,4,5`.
     """
-    config = load_config(yaml)
-    times = load_times_file(times)
-    exporter = ConfigurationExporter(config, times)
+    # TODO: allow linspace times
+    exporter = create_exporter(yaml, times)
     output_path = Path(output_dir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     exporter.to_csv(output_path)
 
 
-def load_config(yaml):
+def create_exporter(yaml, times):
+    """Read a YAML file from disk, load it into a WaveformConfiguration and create a
+    ConfigurationExporter using the given times.
+
+    Args:
+        yaml: The YAML file to load into a configuration.
+        times: CSV file containing the times to export to.
+
+    Returns:
+        The ConfigurationExporter of the loaded YAML file.
+    """
     with open(yaml) as file:
         yaml_str = file.read()
 
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
-    return config
+    times = load_times_file(times)
+    exporter = ConfigurationExporter(config, times)
+    return exporter
 
 
 def load_times_file(times_file):
+    """Parse the CSV file containing time values.
+
+    Args:
+        times_file: CSV file containing a single row of time values.
+
+    Returns:
+        Numpy array containing the times to export.
+    """
+    if not times_file:
+        return None
     try:
         with open(times_file, newline="") as csvfile:
             reader = csv.reader(csvfile)

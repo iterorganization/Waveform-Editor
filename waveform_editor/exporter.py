@@ -41,9 +41,10 @@ class ConfigurationExporter:
         logger.info(f"Successfully exported waveform configuration to {uri}.")
 
     def to_png(self, dir_path):
-        """Export the waveform to a PNG.
+        """Export the waveforms to PNGs.
+
         Args:
-            file_path: The directory path to store the PNGs into.
+            dir_path: The directory path to store the PNGs into.
         """
 
         for name, group in self.config.waveform_map.items():
@@ -58,9 +59,10 @@ class ConfigurationExporter:
                 xaxis=dict(exponentformat="e", showexponent="all"),
                 yaxis=dict(exponentformat="e", showexponent="all"),
             )
-            logger.info(f"Writing to PNG: {name}...")
             output_path = dir_path / name.replace("/", "_")
-            fig.write_image(output_path.with_suffix(".png"), format="png")
+            png_file = output_path.with_suffix(".png")
+            logger.info(f"Writing PNG: {png_file}...")
+            fig.write_image(png_file, format="png")
 
     def to_csv(self, file_path):
         """Export the waveform to a CSV.
