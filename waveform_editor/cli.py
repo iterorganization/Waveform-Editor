@@ -208,7 +208,7 @@ def load_csv_file(csv_file):
 
     except Exception as e:
         raise click.ClickException(
-            "Invalid time array file. Ensure the times CSV contains a single row of "
+            "Invalid csv file. Ensure the times CSV contains a single row of "
             f"comma-separated values.\nFor example: 1,2,3,4\n\nDetails: {e}"
         ) from e
 
