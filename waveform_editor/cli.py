@@ -117,7 +117,6 @@ def export_png(yaml, output_dir, csv, linspace):
     """
     exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
     exporter.to_png(output_path)
 
 
@@ -144,7 +143,6 @@ def export_csv(yaml, output_dir, csv, linspace):
         raise click.UsageError("Either --csv or --linspace must be provided")
     exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_dir)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     exporter.to_csv(output_path)
 
 
