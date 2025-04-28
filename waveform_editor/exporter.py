@@ -30,11 +30,9 @@ class ConfigurationExporter:
                 logger.debug(f"Filling {ids_name}...")
 
                 # Copy machine description if provided, otherwise start from empty IDS
-                if self.config.machine_description:
-                    with imas.DBEntry(
-                        self.config.machine_description,
-                        "r",
-                    ) as entry_md:
+                md = self.config.machine_description.get(ids_name)
+                if md:
+                    with imas.DBEntry(md, "r") as entry_md:
                         orig_ids = entry_md.get(ids_name, autoconvert=False)
                         ids = imas.convert_ids(orig_ids, self.config.dd_version)
                 else:

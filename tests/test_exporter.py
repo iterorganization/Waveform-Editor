@@ -179,7 +179,8 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {ec_launchers_md_uri}
+      machine_description: 
+        ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2)/phase/angle: 1
     """
@@ -209,7 +210,8 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {ec_launchers_md_uri}
+      machine_description: 
+        ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(:)/phase/angle: 123
     """
@@ -242,7 +244,8 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {ec_launchers_md_uri}
+      machine_description: 
+        ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2:3)/phase/angle: 123
     """
@@ -292,7 +295,8 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {ec_launchers_md_uri}
+      machine_description: 
+        ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(2:)/phase/angle: 123
     """
@@ -311,7 +315,8 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {ec_launchers_md_uri}
+      machine_description: 
+        ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
       ec_launchers/beam(:2)/phase/angle: 123
     """
@@ -372,7 +377,8 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {core_sources_md_uri}
+      machine_description: 
+        core_sources: {core_sources_md_uri}
     core_sources:
       core_sources/source(:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -413,7 +419,8 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {core_sources_md_uri}
+      machine_description: 
+        core_sources: {core_sources_md_uri}
     core_sources:
       core_sources/source(2:3)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -476,7 +483,8 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {core_sources_md_uri}
+      machine_description: 
+        core_sources: {core_sources_md_uri}
     core_sources:
       core_sources/source(2:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
@@ -499,7 +507,8 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: {core_sources_md_uri}
+      machine_description: 
+        core_sources: {core_sources_md_uri}
     core_sources:
       core_sources/source(:2)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
