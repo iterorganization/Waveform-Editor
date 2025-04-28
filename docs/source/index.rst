@@ -8,6 +8,12 @@ Manual
 ------
 
 .. toctree::
+   :caption: Usage
+   :maxdepth: 2
+
+   tendencies
+
+.. toctree::
    :caption: API docs
    :maxdepth: 1
 
