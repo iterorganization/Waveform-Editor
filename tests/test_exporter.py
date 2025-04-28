@@ -60,9 +60,9 @@ def test_to_ids(tmp_path):
       - {from: 3, to: 1, duration: 0.5}
     ec_launchers:
       phase_angles:
-        ec_launchers/beam(1)/phase/angle/data: 1e-3
-        ec_launchers/beam(2)/phase/angle/data: 2
-        ec_launchers/beam(3)/phase/angle/data: 3
+        ec_launchers/beam(1)/phase/angle: 1e-3
+        ec_launchers/beam(2)/phase/angle: 2
+        ec_launchers/beam(3)/phase/angle: 3
       power_launched:
         ec_launchers/beam(4)/power_launched/data:
         - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
@@ -76,9 +76,9 @@ def test_to_ids(tmp_path):
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
         assert len(ids.beam) == 4
-        assert np.all(ids.beam[0].phase.angle == 1e-3)
-        assert np.all(ids.beam[1].phase.angle == 2)
-        assert np.all(ids.beam[2].phase.angle == 3)
+        assert np.array_equal(ids.beam[0].phase.angle, [1e-3] * 3)
+        assert np.array_equal(ids.beam[1].phase.angle, [2] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [3] * 3)
         assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
 
         # FLT_0D
@@ -100,9 +100,9 @@ def test_to_ids_inverted(tmp_path):
         ec_launchers/beam(4)/power_launched/data:
         - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
       phase_angles:
-        ec_launchers/beam(3)/phase/angle/data: 3
-        ec_launchers/beam(2)/phase/angle/data: 2
-        ec_launchers/beam(1)/phase/angle/data: 1e-3
+        ec_launchers/beam(3)/phase/angle: 3
+        ec_launchers/beam(2)/phase/angle: 2
+        ec_launchers/beam(1)/phase/angle: 1e-3
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -113,9 +113,9 @@ def test_to_ids_inverted(tmp_path):
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
         assert len(ids.beam) == 4
-        assert np.all(ids.beam[0].phase.angle == 1e-3)
-        assert np.all(ids.beam[1].phase.angle == 2)
-        assert np.all(ids.beam[2].phase.angle == 3)
+        assert np.array_equal(ids.beam[0].phase.angle, [1e-3] * 3)
+        assert np.array_equal(ids.beam[1].phase.angle, [2] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [3] * 3)
         assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
 
 
@@ -145,7 +145,7 @@ def test_to_ids_python_notation(tmp_path):
     with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
-        assert np.all(ids.beam[2].phase.angle == 5)
+        assert np.array_equal(ids.beam[2].phase.angle, [5] * 3)
         assert len(ids.beam) == 3
 
 
@@ -202,7 +202,7 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
-        assert np.all(ids.beam[1].phase.angle == 1)
+        assert np.array_equal(ids.beam[1].phase.angle, [1] * 3)
 
 
 def test_export_full_slice_flt_1d(tmp_path):
@@ -215,7 +215,7 @@ def test_export_full_slice_flt_1d(tmp_path):
     with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 1
-        assert np.all(ids.beam[0].phase.angle == 111)
+        assert np.array_equal(ids.beam[0].phase.angle, [111] * 3)
 
 
 def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -233,7 +233,7 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
         for i in range(0, 4):
-            assert np.all(ids.beam[i].phase.angle == 123)
+            assert np.array_equal(ids.beam[i].phase.angle, [123] * 3)
 
 
 def test_export_slice_flt_1d(tmp_path):
@@ -247,8 +247,8 @@ def test_export_slice_flt_1d(tmp_path):
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
         assert not ids.beam[0].phase.angle
-        assert np.all(ids.beam[1].phase.angle == 111)
-        assert np.all(ids.beam[2].phase.angle == 111)
+        assert np.array_equal(ids.beam[1].phase.angle, [111] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [111] * 3)
 
 
 def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -266,8 +266,8 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
         assert not ids.beam[0].phase.angle
-        assert np.all(ids.beam[1].phase.angle == 123)
-        assert np.all(ids.beam[2].phase.angle == 123)
+        assert np.array_equal(ids.beam[1].phase.angle, [123] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [123] * 3)
         assert not ids.beam[3].phase.angle
 
 
@@ -283,7 +283,7 @@ def test_export_half_slice_forward_flt_1d(tmp_path):
         assert len(ids.beam) == 3
         assert not ids.beam[0].phase.angle
         assert not ids.beam[1].phase.angle
-        assert np.all(ids.beam[2].phase.angle == 111)
+        assert np.array_equal(ids.beam[2].phase.angle, [111] * 3)
 
 
 def test_export_half_slice_backward_flt_1d(tmp_path):
@@ -297,7 +297,7 @@ def test_export_half_slice_backward_flt_1d(tmp_path):
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
         for i in range(0, 3):
-            assert np.all(ids.beam[i].phase.angle == 111)
+            assert np.array_equal(ids.beam[i].phase.angle, [111] * 3)
 
 
 def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -317,7 +317,7 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
         assert_ec_launchers_md(ids)
         assert not ids.beam[0].phase.angle
         for i in range(1, 4):
-            assert np.all(ids.beam[i].phase.angle == 123)
+            assert np.array_equal(ids.beam[i].phase.angle, [123] * 3)
 
 
 def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
@@ -334,8 +334,8 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
-        assert np.all(ids.beam[0].phase.angle == 123)
-        assert np.all(ids.beam[1].phase.angle == 123)
+        assert np.array_equal(ids.beam[0].phase.angle, [123] * 3)
+        assert np.array_equal(ids.beam[1].phase.angle, [123] * 3)
         assert not ids.beam[2].phase.angle
         assert not ids.beam[3].phase.angle
 
@@ -356,8 +356,12 @@ def test_export_multiple_slices_flt_1d(tmp_path):
         assert len(channels[1].wavelength) == 4
         assert len(channels[2].wavelength) == 4
         for i in range(4):
-            assert np.all(channels[1].wavelength[i].phase_corrected.data == 15)
-            assert np.all(channels[2].wavelength[i].phase_corrected.data == 15)
+            assert np.array_equal(
+                channels[1].wavelength[i].phase_corrected.data, [15] * 3
+            )
+            assert np.array_equal(
+                channels[2].wavelength[i].phase_corrected.data, [15] * 3
+            )
 
 
 def test_export_full_slice_flt_0d(tmp_path):
@@ -573,6 +577,37 @@ def _assert_distributions_ids(uri):
                         .z_max
                         == j + 1
                     )
+
+
+def test_export_ordering(tmp_path):
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(:)/phase/angle: 111
+      ec_launchers/beam(4)/power_launched/data:
+      - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+    """
+    uri = f"{tmp_path}/test_db.nc"
+    _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+    _assert_ordering(uri)
+
+    yaml_str2 = """
+    ec_launchers:
+      ec_launchers/beam(4)/power_launched/data:
+      - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+      ec_launchers/beam(:)/phase/angle: 111
+    """
+    uri2 = f"{tmp_path}/test_db2.nc"
+    _export_ids(uri2, yaml_str2, np.array([0, 0.5, 1.0]))
+    _assert_ordering(uri2)
+
+
+def _assert_ordering(uri):
+    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers")
+        assert len(ids.beam) == 4
+        for i in range(0, 4):
+            assert np.array_equal(ids.beam[i].phase.angle, [111] * 3)
+        assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
 
 
 def _export_ids(file_path, yaml_str, times):
