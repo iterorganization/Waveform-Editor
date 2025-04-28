@@ -70,19 +70,46 @@ class ConfigurationExporter:
             ids: The IDS to populate with waveform data.
             waveforms: A list of waveform objects to be filled into the IDS.
         """
+        # Ensure get_value is only called once per waveform
+        values_per_waveform = []
+
         # We iterate through the waveforms in reverse order because they are typically
         # ordered with increasing indices. By processing them in reverse, we can resize
         # AoSs to their final size in a single step, avoiding repeated resizing.
         for waveform in reversed(waveforms):
-            logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             _, values = waveform.get_value(self.times)
+            values_per_waveform.append((path, values))
+            self._fill_nodes_recursively(ids, path, values, fill=False)
+
+        # NOTE: We perform two passes:
+        # - The first pass (above) resizes the necessary nodes without filling values.
+        # - The second pass (below) actually fills the nodes with their values.
+        #
+        # This two-pass process ensures correct handling of the following example, where
+        # 'beam(:)/phase/angle' is processed before 'beam(4)/power_launched/data'.
+        # Here, phase/angle should be filled for all 4 beams.
+        # However, certain niche cases involving multiple slices for different waveforms
+        # might still not be handled correctly.
+        for i, waveform in enumerate(waveforms):
+            path, values = values_per_waveform[i]
+            logger.debug(f"Filling {waveform.name}...")
             self._fill_nodes_recursively(ids, path, values)
 
-    def _fill_nodes_recursively(self, node, path, values, path_index=0):
+    def _fill_nodes_recursively(self, node, path, values, path_index=0, fill=True):
+        """Recursively fills nodes in the IDS based on the provided path and values.
+
+        Args:
+            node: The current IDS node.
+            path: The path to the node, as an IDSPath object.
+            values: The values to fill into the IDS node.
+            path_index: The current index of the path we are processing.
+            fill: Whether to fill the node with values.
+        """
         next_index = path_index + 1
         if path_index == len(path.parts):
-            node.value = values
+            if fill:
+                node.value = values
             return
         part = path.parts[path_index]
         index = path.indices[path_index]
@@ -110,6 +137,15 @@ class ConfigurationExporter:
             self._fill_nodes_recursively(node[index], path, values, next_index)
 
     def _resize_slice(self, ids_node, slice):
+        """Resizes slice and returns the start/stop values of the slice
+
+        Args:
+            ids_node: The current IDS node to slice.
+            slice: The slice for the IDS node.
+
+        Returns:
+            Tuple containing the start and stop values of the slice.
+        """
         if slice.start is None and slice.stop is None:
             start = 0
             stop = len(ids_node) or 1
