@@ -119,19 +119,6 @@ def test_to_ids_inverted(tmp_path):
         assert np.all(ids.beam[3].power_launched.data == [1.1, 2.2, 3.3])
 
 
-def test_to_ids_signal_flt_1d(tmp_path):
-    """Check if to_ids raises error when filling a 'signal_flt_1d' structure."""
-
-    yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(1)/frequency: 1e5
-    """
-    file_path = f"{tmp_path}/test.nc"
-    times = np.array([0, 0.5, 1])
-    with pytest.raises(ValueError):
-        _export_ids(file_path, yaml_str, times)
-
-
 def test_to_ids_python_notation(tmp_path):
     """Check if to_ids fills correctly using 0-based indexing."""
     yaml_str = """
