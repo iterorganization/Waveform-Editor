@@ -50,6 +50,7 @@ class Waveform:
         self.annotations = Annotations()
         self.is_repeated = is_repeated
         self.metadata = self.get_metadata(dd_version)
+        self.units = self.metadata.units if self.metadata else "a.u."
         if waveform is not None:
             if isinstance(waveform, list):
                 self._process_waveform(waveform)

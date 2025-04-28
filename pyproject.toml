@@ -14,6 +14,7 @@ classifiers = [
 license = {file = "LICENSE.txt"}
 dependencies = [
     "numpy",
+    "pandas",
     "click",
     "matplotlib",
     "scipy",
@@ -22,7 +23,8 @@ dependencies = [
     "pygments",
     "plotly",
     "holoviews",
-    "ruamel.yaml"
+    "ruamel.yaml",
+    "kaleido" # required for exporting PNG to disk
 ]
 dynamic = ["version"]
 
@@ -55,6 +57,9 @@ homepage = "https://github.com/iterorganization/Waveform-Editor"
 where = ["."]
 include = ["waveform_editor*"]
 
+[project.scripts]
+waveform-editor = "waveform_editor.cli:cli"
+
 [tool.setuptools_scm]
 # version_file = "waveform_editor/_version.py"
 
@@ -85,4 +90,10 @@ select = [
     "SIM",
     # isort
     "I",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # filter deprecation warning mentioned in https://github.com/plotly/Kaleido/issues/194
+    "ignore:setDaemon\\(\\) is deprecated, set the daemon attribute instead:DeprecationWarning"
 ]
