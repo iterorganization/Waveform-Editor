@@ -1,6 +1,9 @@
 import logging
+from pathlib import Path
 
 import imas
+import pandas as pd
+import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 
 logger = logging.getLogger(__name__)
@@ -11,6 +14,8 @@ class ConfigurationExporter:
     def __init__(self, config, times):
         self.config = config
         self.times = times
+        # We assume that all DD times are in seconds
+        self.times_label = "Time [s]"
 
     def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.
@@ -22,7 +27,7 @@ class ConfigurationExporter:
 
         with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
-                logger.info(f"Filling {ids_name}...")
+                logger.debug(f"Filling {ids_name}...")
 
                 # Copy machine description if provided, otherwise start from empty IDS
                 if self.config.machine_description:
@@ -42,6 +47,57 @@ class ConfigurationExporter:
                 self._fill_waveforms(ids, waveforms)
                 entry.put(ids)
         logger.info(f"Successfully exported waveform configuration to {uri}.")
+
+    def to_png(self, dir_path):
+        """Export the waveforms to PNGs.
+
+        Args:
+            dir_path: The directory path to store the PNGs into.
+        """
+
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
+        for name, group in self.config.waveform_map.items():
+            waveform = group[name]
+            times, values = waveform.get_value(self.times)
+            ylabel = f"Value [{waveform.units}]"
+            fig = go.Figure(data=go.Scatter(x=times, y=values, mode="lines"))
+            fig.update_layout(
+                title=waveform.name,
+                xaxis_title=self.times_label,
+                yaxis_title=ylabel,
+                xaxis=dict(exponentformat="e", showexponent="all"),
+                yaxis=dict(exponentformat="e", showexponent="all"),
+            )
+            output_path = dir_path / name.replace("/", "_")
+            png_file = output_path.with_suffix(".png")
+            logger.debug(f"Writing PNG: {png_file}...")
+            fig.write_image(png_file, format="png")
+        logger.info(f"Successfully exported waveform configuration PNGs to {dir_path}.")
+
+    def to_csv(self, file_path):
+        """Export the waveform to a CSV.
+
+        Args:
+            file_path: The file path to store the CSV to.
+        """
+
+        data = {"time": self.times}
+
+        for name, group in self.config.waveform_map.items():
+            logger.debug(f"Collecting data for {name}...")
+            waveform = group[name]
+            _, values = waveform.get_value(self.times)
+            if len(values) != len(self.times):
+                logger.warning(
+                    f"{name} does not match the number of times, and is not exported."
+                )
+                continue
+            data[name] = values
+
+        df = pd.DataFrame(data)
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(file_path, index=False)
+        logger.info(f"Successfully exported waveform configuration to {file_path}.")
 
     def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
@@ -77,6 +133,7 @@ class ConfigurationExporter:
         # ordered with increasing indices. By processing them in reverse, we can resize
         # AoSs to their final size in a single step, avoiding repeated resizing.
         for waveform in reversed(waveforms):
+            logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             _, values = waveform.get_value(self.times)
             values_per_waveform.append((path, values))
