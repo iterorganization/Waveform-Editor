@@ -5,8 +5,7 @@ from pathlib import Path
 
 import click
 import numpy as np
-from rich import box, console, traceback
-from rich.table import Table
+from rich import console, traceback
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
@@ -45,16 +44,7 @@ def cli(version):
 
 def print_version():
     """Print version information of the waveform editor."""
-    cons = console.Console()
-    grid = Table(
-        title="waveform editor version info", show_header=False, title_style="bold"
-    )
-    grid.box = box.HORIZONTALS
-    if cons.size.width > 120:
-        grid.width = 120
-    grid.add_row("waveform editor version:", waveform_editor.__version__)
-    grid.add_section()
-    console.Console().print(grid)
+    click.echo(f"Waveform editor version: {waveform_editor.__version__}")
 
 
 def parse_linspace(ctx, param, value):

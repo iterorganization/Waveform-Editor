@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import imas
 import pandas as pd
@@ -14,8 +15,7 @@ class ConfigurationExporter:
     def __init__(self, config, times):
         self.config = config
         self.times = times
-        # TODO: I don't think we can assume seconds here, this should be pulled from
-        # the DD
+        # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
 
     def to_ids(self, uri, dd_version=None):
@@ -29,7 +29,7 @@ class ConfigurationExporter:
         ids_map = self._get_ids_map()
         with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
-                logger.info(f"Filling {ids_name}...")
+                logger.debug(f"Filling {ids_name}...")
                 ids = entry.factory.new(ids_name)
                 # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
@@ -47,6 +47,7 @@ class ConfigurationExporter:
             dir_path: The directory path to store the PNGs into.
         """
 
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
             times, values = waveform.get_value(self.times)
@@ -61,8 +62,9 @@ class ConfigurationExporter:
             )
             output_path = dir_path / name.replace("/", "_")
             png_file = output_path.with_suffix(".png")
-            logger.info(f"Writing PNG: {png_file}...")
+            logger.debug(f"Writing PNG: {png_file}...")
             fig.write_image(png_file, format="png")
+        logger.info(f"Successfully exported waveform configuration PNGs to {dir_path}.")
 
     def to_csv(self, file_path):
         """Export the waveform to a CSV.
@@ -74,7 +76,7 @@ class ConfigurationExporter:
         data = {"time": self.times}
 
         for name, group in self.config.waveform_map.items():
-            logger.info(f"Collecting data for {name}...")
+            logger.debug(f"Collecting data for {name}...")
             waveform = group[name]
             _, values = waveform.get_value(self.times)
             if len(values) != len(self.times):
@@ -85,7 +87,9 @@ class ConfigurationExporter:
             data[name] = values
 
         df = pd.DataFrame(data)
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(file_path, index=False)
+        logger.info(f"Successfully exported waveform configuration to {file_path}.")
 
     def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
@@ -119,7 +123,7 @@ class ConfigurationExporter:
         # ordered with increasing indices. By processing them in reverse, we can resize
         # AoSs to their final size in a single step, avoiding repeated resizing.
         for waveform in reversed(waveforms):
-            logger.info(f"Filling {waveform.name}...")
+            logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             self._ensure_path_exists(ids, path)
             _, values = waveform.get_value(self.times)

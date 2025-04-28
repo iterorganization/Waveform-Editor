@@ -6,8 +6,6 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-# Assuming your script is named 'cli.py' in the waveform_editor package root
-# Adjust the import if your file structure is different
 from waveform_editor import cli as waveform_cli
 
 
@@ -142,6 +140,23 @@ def test_export_csv(runner, tmp_path, test_yaml_file, test_csv_file):
     assert output_csv.exists()
 
 
+def test_export_csv_nested(runner, tmp_path, test_yaml_file, test_csv_file):
+    csv_path, _ = test_csv_file
+    output_csv = tmp_path / "subdir" / "subdir2" / "test.csv"
+    result = runner.invoke(
+        waveform_cli.cli,
+        [
+            "export-csv",
+            str(test_yaml_file),
+            str(output_csv),
+            "--csv",
+            str(csv_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert output_csv.exists()
+
+
 def test_export_png(runner, tmp_path, test_yaml_file):
     result = runner.invoke(
         waveform_cli.cli,
@@ -157,6 +172,24 @@ def test_export_png(runner, tmp_path, test_yaml_file):
     assert (tmp_path / "ec_launchers_beam(2)_phase_angle.png").exists()
     assert (tmp_path / "ec_launchers_beam(3)_phase_angle.png").exists()
     assert (tmp_path / "ec_launchers_beam(4)_power_launched_data.png").exists()
+
+
+def test_export_png_nested(runner, tmp_path, test_yaml_file):
+    full_path = tmp_path / "subdir" / "subdir2"
+    result = runner.invoke(
+        waveform_cli.cli,
+        [
+            "export-png",
+            str(test_yaml_file),
+            str(full_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert tmp_path.exists()
+    assert (full_path / "ec_launchers_beam(1)_phase_angle.png").exists()
+    assert (full_path / "ec_launchers_beam(2)_phase_angle.png").exists()
+    assert (full_path / "ec_launchers_beam(3)_phase_angle.png").exists()
+    assert (full_path / "ec_launchers_beam(4)_power_launched_data.png").exists()
 
 
 def test_export_ids(runner, tmp_path, test_yaml_file):
