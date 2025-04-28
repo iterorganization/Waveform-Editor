@@ -146,8 +146,6 @@ class YamlParser:
 
         Args:
             yaml_str: YAML content as a string.
-            dd_version: Data dictionary version to create waveform for. Default version
-                will be used if None.
         """
         try:
             loader = LineNumberYamlLoader
