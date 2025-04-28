@@ -128,8 +128,8 @@ class ConfigurationExporter:
         values_per_waveform = []
 
         # We iterate through the waveforms in reverse order because they are typically
-        # ordered with increasing indices. By processing them in reverse, we can resize
-        # AoSs to their final size in a single step, avoiding repeated resizing.
+        # ordered with increasing indices. By processing them in reverse, we avoid
+        # unnecessary repeated resizing.
         for waveform in reversed(waveforms):
             logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
@@ -146,8 +146,7 @@ class ConfigurationExporter:
         # Here, phase/angle should be filled for all 4 beams.
         # However, certain niche cases involving multiple slices for different waveforms
         # might still not be handled correctly.
-        for i, waveform in enumerate(waveforms):
-            path, values = values_per_waveform[i]
+        for waveform, (path, values) in zip(waveforms, values_per_waveform):
             logger.debug(f"Filling {waveform.name}...")
             self._fill_nodes_recursively(ids, path, values)
 
@@ -161,7 +160,6 @@ class ConfigurationExporter:
             path_index: The current index of the path we are processing.
             fill: Whether to fill the node with values.
         """
-        next_index = path_index + 1
         if path_index == len(path.parts):
             if fill:
                 node.value = values
@@ -170,12 +168,9 @@ class ConfigurationExporter:
         index = path.indices[path_index]
 
         node = node[part]
+        next_index = path_index + 1
         if index is None:
-            if (
-                hasattr(node.metadata, "coordinate1")
-                and node.metadata.coordinate1.is_time_coordinate
-                and part != path.parts[-1]
-            ):
+            if node.metadata.type.is_dynamic and part != path.parts[-1]:
                 if len(node) != len(values):
                     node.resize(len(values), keep=True)
                 for item, value in zip(node, values):
