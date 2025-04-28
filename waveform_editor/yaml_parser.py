@@ -63,7 +63,12 @@ class YamlParser:
             yaml_data = self.yaml.load(yaml_str)
             globals = yaml_data.get("globals", {})
             self.config.dd_version = globals.get("dd_version")
-            self.config.machine_description = globals.get("machine_description")
+            md_dict = globals.get("machine_description", {})
+            if not isinstance(md_dict, dict):
+                raise ValueError("The machine description must be a dictionary")
+
+            self.config.machine_description = md_dict
+
             if not isinstance(yaml_data, dict):
                 raise ValueError("Input yaml_data must be a dictionary.")
 

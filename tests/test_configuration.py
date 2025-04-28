@@ -272,14 +272,15 @@ def test_load_yaml_globals():
     yaml_str = """
     globals:
       dd_version: 3.42.0
-      machine_description: imas:hdf5?path=testdb
+      machine_description: 
+        ec_launchers: imas:hdf5?path=testdb
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config = WaveformConfiguration()
     config.parser.load_yaml(yaml_str)
     assert config.dd_version == "3.42.0"
-    assert config.machine_description == "imas:hdf5?path=testdb"
+    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
 
     yaml_str = """
     ec_launchers:

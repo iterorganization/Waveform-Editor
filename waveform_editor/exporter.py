@@ -5,7 +5,6 @@ import imas
 import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
-from imas.ids_structure import IDSStructure
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -18,19 +17,26 @@ class ConfigurationExporter:
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
 
-    def to_ids(self, uri, dd_version=None):
+    def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.
 
         Args:
             uri: URI to the data entry.
-            dd_version: The data dictionary version to export to. If None, IMAS's
-                default version will be used.
         """
         ids_map = self._get_ids_map()
-        with imas.DBEntry(uri, "x", dd_version=dd_version) as entry:
+
+        with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
                 logger.debug(f"Filling {ids_name}...")
-                ids = entry.factory.new(ids_name)
+
+                # Copy machine description if provided, otherwise start from empty IDS
+                md = self.config.machine_description.get(ids_name)
+                if md:
+                    with imas.DBEntry(md, "r") as entry_md:
+                        orig_ids = entry_md.get(ids_name, autoconvert=False)
+                        ids = imas.convert_ids(orig_ids, self.config.dd_version)
+                else:
+                    ids = entry.factory.new(ids_name)
                 # TODO: currently only IDSs with homogeneous time mode are supported
                 ids.ids_properties.homogeneous_time = (
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
@@ -118,124 +124,85 @@ class ConfigurationExporter:
             ids: The IDS to populate with waveform data.
             waveforms: A list of waveform objects to be filled into the IDS.
         """
-        self.flt_0d_map = {}
+        # Ensure get_value is only called once per waveform
+        values_per_waveform = []
+
         # We iterate through the waveforms in reverse order because they are typically
-        # ordered with increasing indices. By processing them in reverse, we can resize
-        # AoSs to their final size in a single step, avoiding repeated resizing.
+        # ordered with increasing indices. By processing them in reverse, we avoid
+        # unnecessary repeated resizing.
         for waveform in reversed(waveforms):
             logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
-            self._ensure_path_exists(ids, path)
             _, values = waveform.get_value(self.times)
-            if path in self.flt_0d_map:
-                self._fill_flt_0d(ids, path, values)
-            else:
-                self._fill_flt_1d(ids[path], values)
+            values_per_waveform.append((path, values))
+            self._fill_nodes_recursively(ids, path, values, fill=False)
 
-    def _fill_flt_0d(self, ids, path, values):
-        """
-        Fills a FLT_0D quantity in an IDS using time-dependent values.
+        # NOTE: We perform two passes:
+        # - The first pass (above) resizes the necessary nodes without filling values.
+        # - The second pass (below) actually fills the nodes with their values.
+        #
+        # This two-pass process ensures correct handling of the following example, where
+        # 'beam(:)/phase/angle' is processed before 'beam(4)/power_launched/data'.
+        # Here, phase/angle should be filled for all 4 beams.
+        # However, certain niche cases involving multiple slices for different waveforms
+        # might still not be handled correctly.
+        for waveform, (path, values) in zip(waveforms, values_per_waveform):
+            logger.debug(f"Filling {waveform.name}...")
+            self._fill_nodes_recursively(ids, path, values)
 
-        The base time path is stored in `self.flt_0d_map`. For each time step,
-        the method constructs the full path with the appropriate time index and
-        fills the corresponding FLT_0D value.
-
-        Example:
-            For full_path = "equilibrium/time_slice/boundary/elongation",
-            the method fills for each time in self.times:
-                - equilibrium/time_slice(1)/boundary/elongation
-                - equilibrium/time_slice(2)/boundary/elongation
-                - ...
-
-        Args:
-            ids: The IDS object to fill.
-            path: The full path to the FLT_0D quantity.
-            values: The values to store in the IDS quantity.
-        """
-
-        # Fetch path to time dependent quantity
-        time_path = self.flt_0d_map[path]
-        len_time_path = len(time_path.parts)
-
-        for i in range(len(self.times)):
-            current = ids[time_path][i]
-            # Traverse the remaining parts from the full path
-            for part, index in list(path.items())[len_time_path:]:
-                current = current[part]
-                if index is not None:
-                    current = current[index]
-            if not current.data_type == "FLT_0D":
-                raise ValueError(f"{current} is not a 0D time-dependent quantity.")
-            current.value = values[i]
-
-    def _fill_flt_1d(self, quantity, values):
-        """Fill a FLT_1D IDS quantity in an IDS.
-
-        Arguments:
-            quantity: The IDS quantity to fill.
-        """
-        if isinstance(quantity, IDSStructure) and hasattr(quantity, "data"):
-            raise ValueError(
-                f"Cannot export to '{quantity._path}' because it is an IDSStructure.\n"
-                f"Did you mean to export to '{quantity._path}/data' instead?"
-            )
-
-        if (
-            not quantity.metadata.coordinate1.is_time_coordinate
-            or not quantity.data_type == "FLT_1D"
-        ):
-            raise ValueError(f"{quantity} is not a 1D time-dependent quantity.")
-
-        quantity.value = values
-
-    def _ensure_path_exists(self, ids, path, part_idx=0):
-        """
-        Recursively ensures that the full IDS path exists, resizing AoS as needed.
-        Handles time-dependent paths by creating the full substructure for all time
-        slices.
-
-        Examples:
-
-        - ec_launchers/beam(123)/power_launched
-          This will ensure ec_launchers.beam has a length of at least 123. Note, 1-based
-          indexing is used in the URI.
-
-        - equilibrium/time_slice/global_quantities/ip
-          When the time coordinate is another AoS, this AoS is resized to ensure they
-          can contain the exported time array, e.g.
-          len(equilibrium.time_slice) == len(self.times)
+    def _fill_nodes_recursively(self, node, path, values, path_index=0, fill=True):
+        """Recursively fills nodes in the IDS based on the provided path and values.
 
         Args:
-            ids: The IDS to export to.
-            path: The path of the IDS quantity to export to.
-            values: The values to store in the IDS quantity.
-            part_idx: index of current path part.
+            node: The current IDS node.
+            path: The path to the node, as an IDSPath object.
+            values: The values to fill into the IDS node.
+            path_index: The current index of the path we are processing.
+            fill: Whether to fill the node with values.
         """
-        if part_idx >= len(path.parts):
+        if path_index == len(path.parts):
+            if fill:
+                node.value = values
             return
+        part = path.parts[path_index]
+        index = path.indices[path_index]
 
-        part = path.parts[part_idx]
-        index = path.indices[part_idx]
-        current = ids[part]
-
-        if index is not None:
-            # TODO: Allow for slicing or all existing AoS,
-            # e.g. slicing: ec_launchers/beam(1:24)/power_launched
-            # e.g. all: ec_launchers/beam(:)/frequency
-            if isinstance(index, slice):
-                raise NotImplementedError("Slices are not yet implemented")
-            if len(current) <= index:
-                current.resize(index + 1, keep=True)
-            self._ensure_path_exists(current[index], path, part_idx + 1)
-        elif (
-            hasattr(current.metadata, "coordinate1")
-            and current.metadata.coordinate1.is_time_coordinate
-            and part != path.parts[-1]
-        ):
-            current.resize(len(self.times), keep=True)
-            self.flt_0d_map[path] = IDSPath(current._path)
-
-            for i in range(len(self.times)):
-                self._ensure_path_exists(current[i], path, part_idx + 1)
+        node = node[part]
+        next_index = path_index + 1
+        if index is None:
+            if node.metadata.type.is_dynamic and part != path.parts[-1]:
+                if len(node) != len(values):
+                    node.resize(len(values), keep=True)
+                for item, value in zip(node, values):
+                    self._fill_nodes_recursively(item, path, value, next_index)
+            else:
+                self._fill_nodes_recursively(node, path, values, next_index)
+        elif isinstance(index, slice):
+            start, stop = self._resize_slice(node, index)
+            for i in range(start, stop):
+                self._fill_nodes_recursively(node[i], path, values, next_index)
         else:
-            self._ensure_path_exists(current, path, part_idx + 1)
+            if len(node) <= index:
+                node.resize(index + 1, keep=True)
+            self._fill_nodes_recursively(node[index], path, values, next_index)
+
+    def _resize_slice(self, ids_node, slice):
+        """Resizes slice and returns the start/stop values of the slice
+
+        Args:
+            ids_node: The current IDS node to slice.
+            slice: The slice for the IDS node.
+
+        Returns:
+            Tuple containing the start and stop values of the slice.
+        """
+        if slice.start is None and slice.stop is None:
+            start = 0
+            stop = len(ids_node) or 1
+        else:
+            start = slice.start if slice.start is not None else 0
+            stop = slice.stop if slice.stop is not None else len(ids_node) or start + 1
+        max_index = max(start, stop - 1)
+        if len(ids_node) <= max_index:
+            ids_node.resize(max_index + 1, keep=True)
+        return start, stop

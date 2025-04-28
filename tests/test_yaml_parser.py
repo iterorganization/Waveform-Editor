@@ -158,7 +158,6 @@ def test_load_yaml(config):
           ec_launchers/beam(3)/phase/angle: 3.5
     globals:
       dd_version: 3.42.0
-      machine_description: imas:hdf5?path=/work/imas/shared/imasdb/ITER_MD/3/120000/1204
     """
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
@@ -189,7 +188,9 @@ def test_load_yaml_globals():
     yaml_str = """
     globals:
       dd_version: 3.42.0
-      machine_description: imas:hdf5?path=test_md
+      machine_description: 
+        ec_launchers: imas:hdf5?path=test_md
+        equilibrium: imas:hdf5?path=test_md2
     """
     config = WaveformConfiguration()
     parser = YamlParser(config)
@@ -197,17 +198,34 @@ def test_load_yaml_globals():
     assert not config.groups
     assert not config.waveform_map
     assert config.dd_version == "3.42.0"
-    assert config.machine_description == "imas:hdf5?path=test_md"
+    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    assert config.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert not config.load_error
+
+    yaml_str = """
+    globals:
+      machine_description: 
+        ec_launchers: imas:hdf5?path=test_md
+        equilibrium: imas:hdf5?path=test_md2
+    """
+    parser.load_yaml(yaml_str)
+    assert not config.groups
+    assert not config.waveform_map
+    assert config.dd_version is None
+    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    assert config.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert not config.load_error
 
     yaml_str = """
     globals:
       machine_description: imas:hdf5?path=test_md
     """
     parser.load_yaml(yaml_str)
+    assert config.load_error
     assert not config.groups
     assert not config.waveform_map
     assert config.dd_version is None
-    assert config.machine_description == "imas:hdf5?path=test_md"
+    assert not config.machine_description
 
     yaml_str = """
     globals:
@@ -217,4 +235,5 @@ def test_load_yaml_globals():
     assert not config.groups
     assert not config.waveform_map
     assert config.dd_version == "4.0.0"
-    assert config.machine_description is None
+    assert not config.machine_description
+    assert not config.load_error
