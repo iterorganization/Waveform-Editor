@@ -22,10 +22,9 @@ class Annotations(UserList):
         """Adds the error message to the list of annotations.
 
         Args:
-            annotations: The list of annotations the error message is added to.
             line_number: The line number at which the error occurs.
             error_msg: The error message the annotation should display.
-            error_type: Whether the annotation is a warning. If set to False, it is
+            is_warning: Whether the annotation is a warning. If set to False, it is
                 treated as an error.
         """
         error_type = "warning" if is_warning else "error"
