@@ -12,6 +12,7 @@ Manual
    :maxdepth: 2
 
    tendencies
+   cli
 
 .. toctree::
    :caption: API docs
