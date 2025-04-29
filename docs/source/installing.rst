@@ -11,6 +11,7 @@ Standard Installation
 
 .. warning:: Installing from PyPI is not yet supported currently. Please follow `Installation from Source (for Development)`_ below.
 
+.. TODO: Remove once project is added to PyPI
 .. The recommended way to install the Waveform Editor is pip installing from from PyPI. This will download and install the package along with all its required dependencies.
 ..
 .. .. code-block:: bash
