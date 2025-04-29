@@ -30,6 +30,7 @@ If you want to install the latest development version, you can install directly 
 
        git clone https://github.com/iterorganization/Waveform-Editor.git
        cd Waveform-Editor
+       git checkout develop
 
 2.  Install the package in editable mode:
 
@@ -56,8 +57,8 @@ You can also try launching the command-line interface help or the GUI:
    # Launch the GUI (requires a graphical environment)
    panel serve waveform_editor/gui/main.py --show
 
-Building Documentation Locally
-------------------------------
+Building Documentation
+----------------------
 
 If you need to build the documentation locally, you first need to install the optional documentation dependencies.
 

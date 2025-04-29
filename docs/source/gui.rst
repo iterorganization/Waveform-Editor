@@ -18,4 +18,4 @@ The GUI can be launched using:
 
    panel serve waveform_editor/gui/main.py --show
 
-TODO: The usage of the GUI will be written in detail once the GUI is in a further state.
+TODO: The usage of the GUI will be written in detail once the GUI is in a further state of development.
