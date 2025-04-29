@@ -1,4 +1,3 @@
-import csv
 import logging
 import sys
 from pathlib import Path
@@ -10,6 +9,7 @@ from rich import console, traceback
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,7 @@ def create_exporter(yaml, csv, linspace):
     if csv and linspace:
         raise click.UsageError("Cannot provide both --csv and --linspace.")
     elif csv:
-        times = load_csv_file(csv)
+        times = times_from_csv(csv)
     elif linspace:
         start = linspace[0]
         stop = linspace[1]
@@ -166,39 +166,6 @@ def create_exporter(yaml, csv, linspace):
     config.parser.load_yaml(yaml_str)
     exporter = ConfigurationExporter(config, times)
     return exporter
-
-
-def load_csv_file(csv_file):
-    """Parse the CSV file containing time values.
-
-    Args:
-        csv_file: CSV file containing a single row of time values.
-
-    Returns:
-        Numpy array containing the times to export or None if no csv_file is given.
-    """
-    if not csv_file:
-        return None
-    try:
-        with open(csv_file, newline="") as file:
-            reader = csv.reader(file)
-            rows = list(reader)
-
-            if len(rows) != 1:
-                raise ValueError(
-                    "File must contain exactly one row of comma-separated values."
-                )
-
-            # Parse the single row into floats
-            time_array = [float(value) for value in rows[0]]
-
-        return np.array(time_array)
-
-    except Exception as e:
-        raise click.ClickException(
-            "Invalid csv file. Ensure the times CSV contains a single row of "
-            f"comma-separated values.\nFor example: 1,2,3,4\n\nDetails: {e}"
-        ) from e
 
 
 if __name__ == "__main__":
