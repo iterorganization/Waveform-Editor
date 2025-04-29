@@ -2,19 +2,25 @@
 Waveform Editor manual
 ======================
 
-The Waveform Editor is a python tool to create and edit 1D waveforms (time-varying signals).
+The Waveform Editor is a Python tool for creating and managing 1D time-dependent data called waveforms. It utilizes a human-readable, text-based file format where waveforms are described using descriptive tendencies, such as sine waves or linear ramps. The Waveform Editor includes a GUI for interactive creation, editing, and organization of waveforms.
 
 Manual
 ------
 
 .. toctree::
+   :caption: Getting Started
+   :maxdepth: 2
+
+   installing
+
+.. toctree::
    :caption: Usage
    :maxdepth: 2
 
+   gui
+   cli
    tendencies
    yaml_format
-   cli
-   gui
 
 .. toctree::
    :caption: API docs
