@@ -12,6 +12,7 @@ Manual
    :maxdepth: 2
 
    tendencies
+   yaml_format
    cli
    gui
 
