@@ -13,6 +13,7 @@ Manual
 
    tendencies
    cli
+   gui
 
 .. toctree::
    :caption: API docs
