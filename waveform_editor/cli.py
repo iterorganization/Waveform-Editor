@@ -112,15 +112,15 @@ def export_png(yaml, output_dir, csv, linspace):
 
 @cli.command("export-csv")
 @click.argument("yaml", type=click.Path(exists=True))
-@click.argument("output_dir", type=click.Path(exists=False))
+@click.argument("output_csv", type=click.Path(exists=False))
 @click.option("--csv", type=click.Path(exists=False))
 @click.option("--linspace", callback=parse_linspace)
-def export_csv(yaml, output_dir, csv, linspace):
+def export_csv(yaml, output_csv, csv, linspace):
     """Export waveform data to a CSV file.
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
-      uri: URI of the output Data Entry.
+      output_csv: Path to output CSV file.
     \b
     Options:
       csv: CSV file containing a custom time array.
@@ -132,7 +132,7 @@ def export_csv(yaml, output_dir, csv, linspace):
     if not csv and not linspace:
         raise click.UsageError("Either --csv or --linspace must be provided")
     exporter = create_exporter(yaml, csv, linspace)
-    output_path = Path(output_dir)
+    output_path = Path(output_csv)
     exporter.to_csv(output_path)
 
 
