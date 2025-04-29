@@ -1,8 +1,8 @@
 .. _gui:
 
-==============================
-Graphical User Interface (GUI)
-==============================
+========================
+Graphical User Interface
+========================
 
 The Waveform Editor provides a Graphical User Interface (GUI), with which you can:
 
