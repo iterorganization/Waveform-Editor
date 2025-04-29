@@ -4,7 +4,11 @@
 Command-Line Interface
 ======================
 
+General Usage
+=============
+
 The Waveform Editor provides a command-line interface (CLI) tool, ``waveform-editor``, for exporting waveform configurations defined in YAML files to various formats.
+
 
 Getting Help
 ------------
