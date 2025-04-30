@@ -18,7 +18,7 @@ pip install .
 
 The GUI can be launched using:
 ```bash
-panel serve waveform_editor/gui/main.py --show
+waveform-editor gui 
 ```
 
 Or the CLI can be launched using:

@@ -16,6 +16,6 @@ The GUI can be launched using:
 
 .. code-block:: bash
 
-   panel serve waveform_editor/gui/main.py --show
+   waveform-editor gui
 
 TODO: The usage of the GUI will be written in detail once the GUI is in a further state of development.
