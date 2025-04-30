@@ -14,6 +14,8 @@ class WaveformPlotter(Viewer):
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
         self.plot_layout = pn.Column(self.pane)
         self.param.watch(self.update_plot, "plotted_waveforms")
+        self.has_legend = True
+        self.title = ""
         self.update_plot(None)
 
     def plot_tendencies(self, waveform, label, plot_time_points=False):
@@ -34,7 +36,7 @@ class WaveformPlotter(Viewer):
 
         # TODO: The y axis should show the units of the plotted waveform
         line = hv.Curve((times, values), "Time (s)", "Value", label=label).opts(
-            line_width=2, framewise=True, show_legend=True
+            line_width=2, framewise=True, show_legend=self.has_legend
         )
 
         if plot_time_points:
@@ -61,8 +63,8 @@ class WaveformPlotter(Viewer):
             curves.append(hv.Curve([]))
 
         overlay = hv.Overlay(curves).opts(
-            title="",
-            show_legend=True,
+            title=self.title,
+            show_legend=self.has_legend,
         )
         self.pane.object = overlay
 

@@ -1,8 +1,11 @@
+import io
 from typing import Optional
 
 import imas
 import numpy as np
 from imas.ids_path import IDSPath
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedSeq
 
 from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -43,7 +46,9 @@ class Waveform:
         name="waveform",
         dd_version=None,
     ):
-        self.yaml_str = yaml_str
+        self.yaml = YAML()
+        yaml_dict = self.yaml.load(yaml_str)
+        self.value = yaml_dict[name] if yaml_dict else None
         self.tendencies = []
         self.name = name
         self.line_number = line_number
@@ -271,6 +276,14 @@ class Waveform:
             self.annotations.add(line_number, error_msg)
             return True
         return False
+
+    def get_string_value(self):
+        if isinstance(self.value, CommentedSeq):
+            stream = io.StringIO()
+            self.yaml.dump(self.value, stream)
+            return stream.getvalue()
+        else:
+            return str(self.value)
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.
