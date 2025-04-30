@@ -2,6 +2,7 @@ import io
 
 import holoviews as hv
 import panel as pn
+from panel.viewable import Viewer
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
@@ -15,7 +16,7 @@ hv.extension("plotly")
 pn.extension("plotly", "modal", "codeeditor", notifications=True)
 
 
-class WaveformEditorGui:
+class WaveformEditorGui(Viewer):
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         self.config = WaveformConfiguration()
@@ -103,6 +104,9 @@ class WaveformEditorGui:
         """Generate and return the YAML file as a BytesIO object"""
         yaml_str = self.config.dump()
         return io.BytesIO(yaml_str.encode("utf-8"))
+
+    def __panel__(self):
+        return self.template
 
     def serve(self):
         """Serve the Panel app"""

@@ -5,11 +5,13 @@ from pathlib import Path
 
 import click
 import numpy as np
+import panel as pn
 from rich import console, traceback
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.gui.main import WaveformEditorGui
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,16 @@ def parse_linspace(ctx, param, value):
         raise click.BadParameter(
             "Must be in the format: start,stop,num (e.g. 0,5,6)"
         ) from e
+
+
+@cli.command("gui")
+def launch_gui():
+    """Launch the Waveform Editor GUI using Panel."""
+    try:
+        app = WaveformEditorGui()
+        pn.serve(app)
+    except Exception as e:
+        logger.error(f"Failed to launch GUI: {e}")
 
 
 @cli.command("export-ids")
