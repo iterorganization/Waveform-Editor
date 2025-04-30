@@ -32,7 +32,14 @@ If you want to install the latest development version, you can install directly 
        cd Waveform-Editor
        git checkout develop
 
-2.  Install the package in editable mode:
+2.  Create a virtual environment
+
+    .. code-block:: bash
+
+       python -m venv venv
+       source ./venv/bin/activate
+
+3.  Install the package in editable mode:
 
     .. code-block:: bash
 
