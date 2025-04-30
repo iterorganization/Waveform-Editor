@@ -11,14 +11,14 @@ Each tendency defines the behavior of the signal over a specific time interval. 
 Common Time Parameters
 ======================
 
-Most tendencies accept the following parameters to define their time interval. You must provide **at least two** of these three parameters. If only two are provided, the third is calculated automatically (``start + duration = end``). If all three are provided, they must be consistent.
+Most tendencies accept the following parameters to define their time interval. You can provide the following three parameters. If only two are provided, the third is calculated automatically (``start + duration = end``). If all three are provided, they must be consistent.
 
 *   ``start``: The absolute time at which the tendency begins. If omitted, it defaults to the ``end`` time of the previous tendency, or 0 if it's the first tendency.
 *   ``duration``: The length of time the tendency lasts. If omitted, it defaults to 1.0 second (unless ``start`` and ``end`` are given). Must be positive.
 *   ``end``: The absolute time at which the tendency ends. If omitted, it's calculated from ``start + duration``.
 
 .. note::
-    The ``PiecewiseLinearTendency`` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
+    The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
 
 Constant Tendency
 =================
@@ -27,7 +27,7 @@ Represents a constant value over the specified time interval.
 
 Parameters
 ----------
-*   ``value``: The constant value the signal holds during this tendency. If omitted, it defaults to the ``end_value`` of the previous tendency, or 0 if it's the first tendency.
+*   ``value``: The constant value the signal holds during this tendency. If omitted, it defaults to the last value of the previous tendency, or 0 if it's the first tendency.
 *   ``start``, ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`.
 
 .. image:: images/constant.png
@@ -43,12 +43,12 @@ Parameters
 Linear Tendency
 ===============
 
-Represents a linear change in value (increase or decrease) over the specified time interval. The line is defined by its start value, end value, and rate of change, related by ``to = from + rate * duration``. You must provide **at least two** of these parameters.
+Represents a linear change in value (increase or decrease) over the specified time interval. The line is defined by its start value, end value, and rate of change, related by ``to = from + rate * duration``.
 
 Parameters
 ----------
-*   ``from``: The value at the start of the tendency. If omitted, it defaults to the ``end_value`` of the previous tendency (or 0 if first tendency), unless ``to`` and ``rate`` are provided.
-*   ``to``: The value at the end of the tendency. If omitted, it defaults to the ``start_value`` of the *next* tendency if that value is explicitly set by the user, otherwise defaults to the calculated ``from`` value (implying a rate of 0), unless ``from`` and ``rate`` are provided.
+*   ``from``: The value at the start of the tendency. If omitted, it defaults to the last value of the previous tendency (or 0 if first tendency), unless ``to`` and ``rate`` are provided.
+*   ``to``: The value at the end of the tendency. If omitted, it defaults to the first value of the *next* tendency if that value is explicitly set by the user, otherwise defaults to the calculated ``from`` value (implying a rate of 0), unless ``from`` and ``rate`` are provided.
 *   ``rate``: The rate of change (slope) of the signal during this tendency. If omitted, it's calculated from ``from`` and ``to``.
 *   ``start``, ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`.
 
@@ -72,8 +72,8 @@ Represents a smooth transition between the end of the previous tendency and the 
 
 Parameters
 ----------
-*   ``from``: The value at the start of the tendency. If omitted, it defaults to the ``end_value`` of the previous tendency (or 0 if first tendency).
-*   ``to``: The value at the end of the tendency. If omitted, it defaults to the ``start_value`` of the *next* tendency if that value is explicitly set by the user, otherwise defaults to the calculated ``from`` value.
+*   ``from``: The value at the start of the tendency. If omitted, it defaults to the last value of the previous tendency (or 0 if first tendency).
+*   ``to``: The value at the end of the tendency. If omitted, it defaults to the first value of the *next* tendency if that value is explicitly set by the user, otherwise defaults to the calculated ``from`` value.
 *   ``start``, ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`.
 
 .. image:: images/smooth.png
@@ -89,7 +89,7 @@ Parameters
     - {type: linear, from: 5, to: 1, duration: 10}
 
 .. note::
-    The derivatives at the start and end are automatically determined by matching the ``end_derivative`` of the previous tendency and the ``start_derivative`` of the next tendency, respectively.
+    The start and end derivatives are automatically set to match those of adjacent tendencies.
 
 Repeat Tendency
 ===============
@@ -98,9 +98,9 @@ Repeats a defined sequence of inner tendencies (a sub-waveform) multiple times. 
 
 Parameters
 ----------
+*  ``waveform``: A list defining the sequence of tendencies to be repeated. This follows the same format as the main waveform definition. The start time of the first tendency *must* be 0.
 *   ``frequency``: The number of repetitions of the inner waveform per unit time. Must be positive.
 *   ``period``: The duration assigned to one full repetition of the inner waveform. Must be positive.
-*  ``waveform``: A list defining the sequence of tendencies to be repeated. This follows the same format as the main waveform definition. The start time of the first tendency *must* be 0.
 *   ``start``, ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`. These define the *total* interval over which the repetition occurs.
 
 
@@ -119,6 +119,7 @@ Parameters
       - {type: linear, from: 1, to: 2, duration: 3}
       - {type: smooth, duration: 5}
 
+.. _piecewise-linear-tendency:
 
 Piecewise Linear Tendency
 =========================
