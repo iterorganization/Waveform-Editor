@@ -2,7 +2,6 @@ import io
 
 import holoviews as hv
 import panel as pn
-from panel.viewable import Viewer
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
@@ -16,7 +15,7 @@ hv.extension("plotly")
 pn.extension("plotly", "modal", "codeeditor", notifications=True)
 
 
-class WaveformEditorGui(Viewer):
+class WaveformEditorGui:
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         self.config = WaveformConfiguration()
