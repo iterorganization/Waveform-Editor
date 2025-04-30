@@ -102,6 +102,8 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
         .. code-block:: yaml
 
           some_ids/data: [{}] # Represents a waveform that is always 0
+          # This is equal to:
+          some_ids/data: 0
 
     4.  **Reference:** TODO: add referenced/derived waveforms and link to that section here.
 
@@ -109,27 +111,27 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
 Slice Notation
 --------------
 
-Slice notation simplifies addressing ranges within Arrays of Structures (AoSs) in YAML configuration.
-
-**Indexing Styles:**
-
-*   **Fortran-style:** ``(start:end)`` - 1-based, inclusive. Example: ``(1:5)`` selects the first 5 elements.
-*   **Python-style:** ``[start:end]`` - 0-based, exclusive end. Example: ``[0:5]`` selects the first 5 elements.
+Slice notation simplifies addressing ranges within Arrays of Structures (AoSs) in YAML configuration. Slices use Fortran-style indexing, and therefore are: 1-based and inclusive. For example: ``(1:5)`` indicates the first 5 elements.
 
 **Available Slice Types:**
 
-*   **Full Slice:** ``(:)`` or ``[:]`` (all elements).
-*   **Range Slice:** ``(start:end)`` or ``[start:end]``.
-*   **Half Slices:** ``(start:)``, ``(:end)`` or ``[start:]``, ``[:end]``.
+*   **Full Slice:** ``(:)`` - All elements.
+*   **Range Slice:** ``(start:end)`` - All elements between ``start`` and ``end``.
+*   **Half Slices:** 
+
+    * ``(start:)`` - All elements starting at ``start``.
+    * ``(:end)`` - All elements upto and including ``end``.
 
 **Example Slices:**
+
+The following example will fill the ``power_launched`` IDS node in ``ec_launchers`` for beam 1, 2, and 3.
 
 .. code-block:: yaml
 
    ec_launchers/beam(1:3)/power_launched: 5.0
 
 
-Slicing can be applied at multiple nested levels.
+Slicing can be applied at multiple nested levels. For example, the following fills the ``phase_corrected/data`` node of the ``interferometer`` IDS, for the wavelengths 1 through 4, for channel 2 and 3.
 
 .. code-block:: yaml
 
