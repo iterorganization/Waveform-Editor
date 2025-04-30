@@ -6,7 +6,7 @@ import pytest
 from waveform_editor.util import times_from_csv
 
 
-def test_load_csv_file_valid(tmp_path):
+def test_times_from_csv_valid(tmp_path):
     """Test loading a valid CSV time file."""
 
     csv_file = tmp_path / "times.csv"
@@ -18,14 +18,14 @@ def test_load_csv_file_valid(tmp_path):
     np.testing.assert_array_equal(result, np.array(times))
 
 
-def test_load_csv_file_nonexistent(tmp_path):
+def test_times_from_csv_nonexistent(tmp_path):
     """Test loading a non-existent CSV file."""
     non_existent_path = tmp_path / "not_a_file.csv"
     with pytest.raises(FileNotFoundError):
         times_from_csv(non_existent_path)
 
 
-def test_load_csv_file_invalid_rows(tmp_path):
+def test_times_from_csv_invalid_rows(tmp_path):
     """Test loading a CSV file with incorrect number of rows."""
 
     csv_file = tmp_path / "invalid_times_rows.csv"
@@ -37,7 +37,7 @@ def test_load_csv_file_invalid_rows(tmp_path):
         times_from_csv(csv_file)
 
 
-def test_load_csv_file_invalid_format(tmp_path):
+def test_times_from_csv_invalid_format(tmp_path):
     """Test loading a CSV file with non-numeric values."""
 
     csv_file = tmp_path / "invalid_times_format.csv"
@@ -48,6 +48,6 @@ def test_load_csv_file_invalid_format(tmp_path):
         times_from_csv(csv_file)
 
 
-def test_load_csv_file_none():
-    """Test calling load_csv_file with None."""
+def test_times_from_csv_none():
+    """Test calling times_from_csv with None."""
     assert times_from_csv(None) is None

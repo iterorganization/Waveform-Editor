@@ -13,7 +13,7 @@ def times_from_csv(source, from_file_path=True):
             base64-encoded bytes.
 
     Returns:
-        Numpy array containing the times.
+        Numpy array containing the times or None if the source is None.
     """
     if source is None:
         return None

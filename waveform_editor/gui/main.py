@@ -41,8 +41,8 @@ class WaveformEditorGui:
             width=150,
             margin=(5, 5),
         )
-        self.export_dialog = ExportDialog(self)
-        self.export_button.on_click(self.export_dialog.open)
+        export_dialog = ExportDialog(self)
+        self.export_button.on_click(export_dialog.open)
 
         # Add tabs to switch from viewer to editor
         self.modal = ConfirmModal()
@@ -64,14 +64,14 @@ class WaveformEditorGui:
         self.start_up = StartUpPrompt(self)
 
         # Append to sidebar to make the content of the sidebar dynamic
-        self.sidebar_column = pn.Column(
+        sidebar_column = pn.Column(
             self.start_up,
             pn.Row(self.file_download, self.export_button),
             self.selector,
             self.modal,
-            self.export_dialog,
+            export_dialog,
         )
-        self.template.sidebar.append(self.sidebar_column)
+        self.template.sidebar.append(sidebar_column)
 
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.

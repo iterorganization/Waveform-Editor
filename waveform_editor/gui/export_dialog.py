@@ -35,10 +35,8 @@ class ExportDialog:
             options=["Linspace", "CSV File"],
             value="Linspace",
         )
-        self.input = pn.widgets.TextInput(
-            visible=(self.export_format.value == "IDS"),
-        )
-        self.output_option_box = pn.WidgetBox(
+        self.input = pn.widgets.TextInput()
+        output_option_box = pn.WidgetBox(
             pn.pane.Markdown("### 📤 Output type"),
             self.export_format,
             self.input,
@@ -58,30 +56,30 @@ class ExportDialog:
         self.linspace_row = pn.Row(
             self.linspace_start, self.linspace_stop, self.linspace_num
         )
-        self.time_options_box = pn.WidgetBox(
+        time_options_box = pn.WidgetBox(
             pn.pane.Markdown("### ⏱️ Time Options"),
             pn.Row(self.time_source, self.linspace_row, self.csv_file_input),
             sizing_mode="stretch_width",
             margin=(10, 5),
         )
 
-        self.export_button = pn.widgets.Button(name="Export", button_type="primary")
-        self.cancel_button = pn.widgets.Button(name="Cancel")
+        export_button = pn.widgets.Button(name="Export", button_type="primary")
+        cancel_button = pn.widgets.Button(name="Cancel")
 
-        self.layout = pn.Column(
+        layout = pn.Column(
             pn.pane.Markdown("## Export Configuration"),
-            self.output_option_box,
-            self.time_options_box,
-            pn.Row(self.export_button, self.cancel_button),
+            output_option_box,
+            time_options_box,
+            pn.Row(export_button, cancel_button),
             sizing_mode="stretch_width",
         )
-        self.modal = pn.Modal(self.layout, width=600, height=500)
+        self.modal = pn.Modal(layout, width=600, height=500)
 
         # Callbacks
         self.export_format.param.watch(self._update_ui, "value")
         self.time_source.param.watch(self._update_ui, "value")
-        self.export_button.on_click(self._handle_export)
-        self.cancel_button.on_click(self._close)
+        export_button.on_click(self._handle_export)
+        cancel_button.on_click(self._close)
 
     def _update_ui(self, event=None):
         """Update visibility of widgets based on selections."""
@@ -114,48 +112,39 @@ class ExportDialog:
         self.time_source.param.trigger("options")
 
     def _get_times(self):
-        """Parse inputs and return the time array or None on error."""
+        """Parse inputs and return the time array."""
         if self.time_source.value == "Linspace":
             return np.linspace(
                 self.linspace_start.value,
                 self.linspace_stop.value,
                 self.linspace_num.value,
             )
-
         elif self.time_source.value == "CSV File":
             if not self.csv_file_input.value:
-                pn.state.notifications.error(
-                    "Please select a CSV file for the time basis."
-                )
-                return None
+                raise ValueError("Please select a CSV file for the time basis.")
             try:
                 return times_from_csv(self.csv_file_input.value, from_file_path=False)
             except Exception as e:
-                pn.state.notifications.error(
-                    f"Invalid time CSV file.\n{e}",
-                )
-                return None
+                raise ValueError(f"Invalid time CSV file.\n{e}") from e
 
     def _handle_export(self, event):
         """Perform the export based on current settings."""
+        self._close()
+        input = self.input.value
+        notification = pn.state.notifications.info(
+            f"Exporting to {input}...", duration=0
+        )
         try:
             if self.time_source.value != "Default":
                 times = self._get_times()
-                if times is None:
-                    return
                 exporter = ConfigurationExporter(self.main_gui.config, times)
             else:
                 exporter = ConfigurationExporter(self.main_gui.config, None)
 
             export_type = self.export_format.value
-            input = self.input.value
             if not input:
                 pn.state.notifications.error("Please provide an output location.")
                 return
-            self._close()
-            notification = pn.state.notifications.info(
-                f"Exporting to {input}...", duration=0
-            )
 
             if export_type == "IDS":
                 exporter.to_ids(input)
@@ -164,11 +153,11 @@ class ExportDialog:
             elif export_type == "CSV":
                 exporter.to_csv(Path(input))
             pn.state.notifications.success("Succesfully exported configuration")
-            # Destroy exporting notification once exporting is finished
-            notification.destroy()
         except Exception as e:
             pn.state.notifications.error(f"Export failed!\n{e}")
-            notification.destroy()
+
+        # Destroy exporting notification once exporting is finished
+        notification.destroy()
 
     def open(self, event):
         """Open the export modal dialog."""
