@@ -16,7 +16,7 @@ class WaveformEditor(Viewer):
             sizing_mode="stretch_both", language="yaml"
         )
         self.code_editor.param.watch(self.on_value_change, "value")
-        self.set_default()
+        self.set_empty()
 
         save_button = pn.widgets.ButtonIcon(
             icon="device-floppy",
@@ -60,9 +60,11 @@ class WaveformEditor(Viewer):
         if not self.config.parser.parse_errors:
             self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
 
-    def set_default(self):
-        """Set code editor value to default."""
-        self.code_editor.value = "empty_waveform: {}"
+    def set_empty(self):
+        """Set code editor value to empty value in read-only mode."""
+        self.code_editor.value = "Select a waveform to edit"
+        self.code_editor.readonly = True
+        self.error_alert.visible = False
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined

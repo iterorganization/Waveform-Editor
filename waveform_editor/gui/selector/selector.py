@@ -126,8 +126,9 @@ class WaveformSelector(Viewer):
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
             self.editor.code_editor.value = waveform.yaml_str
+            self.editor.code_editor.readonly = False
         if not self.plotter.plotted_waveforms:
-            self.editor.set_default()
+            self.editor.set_empty()
 
     def deselect_all(self, exclude=None):
         """Deselect all options in all CheckButtonGroups. A waveform name can be
