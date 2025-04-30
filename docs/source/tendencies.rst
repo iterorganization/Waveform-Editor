@@ -40,6 +40,19 @@ Parameters
     example/waveform: 
     - {type: constant, value: 3, start: 3, duration: 10}
 
+If the ``value`` is not specified, it will be set to the last value of the previous tendency. For example:
+
+.. image:: images/constant_prev.png
+   :alt: Example plot of a Constant Tendency without a value
+   :width: 400px
+   :align: center
+
+.. code-block:: yaml
+
+    example/waveform: 
+    - {type: linear, to: 3, duration: 10}
+    - {type: constant, duration: 10}
+
 Linear Tendency
 ===============
 
@@ -62,8 +75,28 @@ Parameters
     example/waveform: 
     - {type: linear, from: 3, to: 8, duration: 10}
 
+If the ``from`` or ``to`` values are not specified, they will be taken from the adjacent tendencies. For example:
+
+.. image:: images/linear_adjacent.png
+   :alt: Example plot of a Linear Tendency, showing the use of adjacent tendencies for missing values
+   :width: 400px
+   :align: center
+
+.. code-block:: yaml
+
+    example/waveform: 
+    - {type: constant, value: 3, duration: 10}
+    - {type: linear, duration: 10}
+    - {type: constant, value: 10, duration: 10}
+
 .. warning::
-    Providing inconsistent ``from``, ``to``, and ``rate`` values (where ``from + rate * duration != to``) will result in an error.
+    Providing inconsistent ``from``, ``to``, and ``rate`` values (where ``from + rate * duration != to``) will result in an error. For example:
+
+    .. code-block:: yaml
+
+        example/waveform: 
+        - {type: linear, from: 3, to: 5, rate: 2, duration: 10}
+
 
 Smooth Tendency
 ===============
@@ -98,7 +131,7 @@ Repeats a defined sequence of inner tendencies (a sub-waveform) multiple times. 
 
 Parameters
 ----------
-*  ``waveform``: A list defining the sequence of tendencies to be repeated. This follows the same format as the main waveform definition. The start time of the first tendency *must* be 0.
+*   ``waveform``: A list defining the sequence of tendencies to be repeated. This follows the same format as the main waveform definition. The start time of the first tendency *must* be 0.
 *   ``frequency``: The number of repetitions of the inner waveform per unit time. Must be positive.
 *   ``period``: The duration assigned to one full repetition of the inner waveform. Must be positive.
 *   ``start``, ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`. These define the *total* interval over which the repetition occurs.
@@ -114,6 +147,24 @@ Parameters
     example/waveform: 
     - type: repeat
       duration: 30
+      waveform:
+      - {type: constant, value: 1, duration: 3}
+      - {type: linear, from: 1, to: 2, duration: 3}
+      - {type: smooth, duration: 5}
+
+If you want to keep the same repeated waveform as above, but would like to set the period of the repetition to be exactly 10 seconds, you can use the ``period`` or ``frequency`` parameter, for example:
+
+.. image:: images/repeat_period.png
+   :alt: Example plot of a Repeat Tendency with a set period
+   :width: 400px
+   :align: center
+
+.. code-block:: yaml
+
+    example/waveform: 
+    - type: repeat
+      duration: 30
+      period: 10
       waveform:
       - {type: constant, value: 1, duration: 3}
       - {type: linear, from: 1, to: 2, duration: 3}
