@@ -37,7 +37,14 @@ class WaveformEditor(Viewer):
         if not self.plotter.plotted_waveforms:
             return
         editor_text = event.new
+
+        if len(self.plotter.plotted_waveforms) != 1:
+            raise ValueError("The plotter may only have a single waveform selected.")
+
+        # Fetch name from selected waveform
         name = next(iter(self.plotter.plotted_waveforms))
+
+        # Merge code editor string with name into a single yaml string
         if editor_text.lstrip().startswith("- "):
             waveform_yaml = f"{name}:\n{editor_text}"
         else:
