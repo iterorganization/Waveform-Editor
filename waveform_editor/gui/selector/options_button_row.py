@@ -189,7 +189,7 @@ class OptionsButtonRow(Viewer):
     def _add_new_waveform(self, event):
         """Add the new waveform to CheckButtonGroup and update the
         WaveformConfiguration."""
-        name = self.new_waveform_panel.input.value
+        name = self.new_waveform_panel.input.value_input
 
         # Add empty waveform to YAML
         new_waveform = self.main_gui.config.parse_waveform(f"{name}: [{{}}]")
@@ -213,7 +213,7 @@ class OptionsButtonRow(Viewer):
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
-        name = self.new_group_panel.input.value
+        name = self.new_group_panel.input.value_input
 
         # Create new group in configuration
         try:
