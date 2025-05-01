@@ -21,6 +21,9 @@ class ExportDialog:
             main_gui: A reference to the main WaveformEditorGui instance.
         """
         self.main_gui = main_gui
+        self.progress = pn.indicators.Progress(
+            name="Progress", value=0, visible=False, margin=(15, 5)
+        )
 
         # Output Type
         export_formats = ["IDS", "CSV", "PNG"]
@@ -79,7 +82,7 @@ class ExportDialog:
             pn.pane.Markdown("## Export Configuration"),
             output_option_box,
             time_options_box,
-            pn.Row(self.export_button, cancel_button),
+            pn.Row(self.export_button, cancel_button, self.progress),
             sizing_mode="stretch_width",
         )
         self.modal = pn.Modal(layout, width=600, height=500)
@@ -155,17 +158,18 @@ class ExportDialog:
 
     def _handle_export(self, event):
         """Perform the export based on current settings."""
-        self._close()
+        self.progress.visible = True
         input = self.input.value_input
-        notification = pn.state.notifications.info(
-            f"Exporting to {input}...", duration=0
-        )
         try:
             if self.time_source.value != "Default":
                 times = self._get_times()
-                exporter = ConfigurationExporter(self.main_gui.config, times)
+                exporter = ConfigurationExporter(
+                    self.main_gui.config, times, progress=self.progress
+                )
             else:
-                exporter = ConfigurationExporter(self.main_gui.config, None)
+                exporter = ConfigurationExporter(
+                    self.main_gui.config, None, progress=self.progress
+                )
 
             export_type = self.export_format.value
             if not input:
@@ -182,8 +186,9 @@ class ExportDialog:
         except Exception as e:
             pn.state.notifications.error(f"Export failed!\n{e}")
 
-        # Destroy exporting notification once exporting is finished
-        notification.destroy()
+        self._close()
+        self.progress.value = 0
+        self.progress.visible = False
 
     def _validate_export_ready(self, *events):
         """Enable or disable export button based on input validation."""
