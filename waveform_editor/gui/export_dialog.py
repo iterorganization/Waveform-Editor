@@ -32,7 +32,7 @@ class ExportDialog:
         )
         self.time_source = pn.widgets.RadioBoxGroup(
             name="Time Basis",
-            options=["Linspace", "CSV File"],
+            options=["Linspace", "CSV File", "Manual"],
             value="Linspace",
         )
         self.input = pn.widgets.TextInput()
@@ -45,6 +45,9 @@ class ExportDialog:
         )
 
         # Time Options
+        self.time_manual_input = pn.widgets.TextInput(
+            name="Time Input", placeholder="e.g. 1,2,3,4,5"
+        )
         self.csv_file_input = pn.widgets.FileInput(
             name="Time CSV File", accept=".csv", visible=False
         )
@@ -58,7 +61,12 @@ class ExportDialog:
         )
         time_options_box = pn.WidgetBox(
             pn.pane.Markdown("### ⏱️ Time Options"),
-            pn.Row(self.time_source, self.linspace_row, self.csv_file_input),
+            pn.Row(
+                self.time_source,
+                self.linspace_row,
+                self.csv_file_input,
+                self.time_manual_input,
+            ),
             sizing_mode="stretch_width",
             margin=(10, 5),
         )
@@ -84,25 +92,35 @@ class ExportDialog:
     def _update_ui(self, event=None):
         """Update visibility of widgets based on selections."""
 
-        is_linspace = self.time_source.value == "Linspace"
-        self.linspace_row.visible = is_linspace
-        self.csv_file_input.visible = not is_linspace
-
         placeholders = {
             "IDS": "e.g. imas:hdf5?path=testdb",
             "PNG": "e.g. /path/to/export/pngs",
             "CSV": "e.g. /path/to/export/output.csv",
         }
         self.input.placeholder = placeholders[self.export_format.value]
+        value = self.time_source.value
+        options = self.time_source.options
+        if value == "Linspace":
+            self.linspace_row.visible = True
+            self.csv_file_input.visible = False
+            self.time_manual_input.visible = False
+        elif value == "CSV File":
+            self.linspace_row.visible = False
+            self.csv_file_input.visible = True
+            self.time_manual_input.visible = False
+        elif value == "Manual":
+            self.linspace_row.visible = False
+            self.csv_file_input.visible = False
+            self.time_manual_input.visible = True
 
         # Add Default option to PNG export
-        options = self.time_source.options
         if self.export_format.value == "PNG":
             if "Default" not in options:
                 options.append("Default")
             if self.time_source.value == "Default":
                 self.linspace_row.visible = False
                 self.csv_file_input.visible = False
+                self.time_manual_input.visible = False
         else:
             if "Default" in options:
                 options.remove("Default")
@@ -126,6 +144,8 @@ class ExportDialog:
                 return times_from_csv(self.csv_file_input.value, from_file_path=False)
             except Exception as e:
                 raise ValueError(f"Invalid time CSV file.\n{e}") from e
+        elif self.time_source.value == "Manual":
+            return np.fromstring(self.time_manual_input.value, sep=",")
 
     def _handle_export(self, event):
         """Perform the export based on current settings."""
