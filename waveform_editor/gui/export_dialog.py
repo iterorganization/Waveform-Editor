@@ -34,6 +34,7 @@ class ExportDialog:
             name="Time Basis",
             options=["Linspace", "CSV File", "Manual"],
             value="Linspace",
+            inline=True,
         )
         self.input = pn.widgets.TextInput()
         output_option_box = pn.WidgetBox(
@@ -61,12 +62,10 @@ class ExportDialog:
         )
         time_options_box = pn.WidgetBox(
             pn.pane.Markdown("### ⏱️ Time Options"),
-            pn.Row(
-                self.time_source,
-                self.linspace_row,
-                self.csv_file_input,
-                self.time_manual_input,
-            ),
+            self.time_source,
+            self.linspace_row,
+            self.csv_file_input,
+            self.time_manual_input,
             sizing_mode="stretch_width",
             margin=(10, 5),
         )
