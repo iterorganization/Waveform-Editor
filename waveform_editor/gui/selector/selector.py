@@ -1,6 +1,7 @@
 import panel as pn
 from panel.viewable import Viewer
 
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 
 
@@ -13,6 +14,7 @@ class WaveformSelector(Viewer):
         self.plotter = self.main_gui.plotter
         self.editor = self.main_gui.editor
         self.edit_waveforms_enabled = False
+        self.confirm_modal = ConfirmModal()
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
         self._create_root_button_row()
 
@@ -109,24 +111,36 @@ class WaveformSelector(Viewer):
             self.plotter.plotted_waveforms[key] = value
 
         if self.edit_waveforms_enabled:
-            self.select_in_editor(newly_selected)
+            self.select_in_editor(newly_selected, old_selection)
         self.plotter.param.trigger("plotted_waveforms")
 
-    def select_in_editor(self, newly_selected):
+    def select_in_editor(self, newly_selected, old_selection):
         """Only allow for a single waveform to be selected. All waveforms except for
         the newly selected waveform will be deselected.
 
         Args:
             newly_selected: The newly selected waveform.
+            old_selection: The previously selected waveform.
         """
         if newly_selected:
+            if (
+                self.editor.original_str
+                and self.editor.code_editor.value != self.editor.original_str
+            ):
+                msg = "Your edited waveform has not been saved, so your changed will be lost!\n  Are you sure you want to leave?"
+                self.confirm_modal.show(msg)
+
+                # if modal yes do: continue to newly_selected_key
+                # if modal no: the following:
+                self.deselect_all(exclude=old_selection[0])
+                return
+
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key)
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.editor.code_editor.value = waveform.yaml_str
-            self.editor.code_editor.readonly = False
+            self.editor.set_value(waveform.yaml_str)
         if not self.plotter.plotted_waveforms:
             self.editor.set_empty()
 
@@ -165,4 +179,4 @@ class WaveformSelector(Viewer):
 
     def __panel__(self):
         """Returns the waveform selector UI component."""
-        return pn.Column(self.root_button_row, self.ui_selector)
+        return pn.Column(self.root_button_row, self.ui_selector, self.confirm_modal)

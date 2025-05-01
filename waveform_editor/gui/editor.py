@@ -9,6 +9,7 @@ class WaveformEditor(Viewer):
         self.plotter = plotter
         self.config = config
         self.waveform = None
+        self.original_str = None
 
         # Code editor UI
         self.error_alert = pn.pane.Alert(visible=False)
@@ -65,6 +66,17 @@ class WaveformEditor(Viewer):
         self.code_editor.value = "Select a waveform to edit"
         self.code_editor.readonly = True
         self.error_alert.visible = False
+        self.original_str = None
+
+    def set_value(self, value):
+        """Set code editor value to the given value and disable read-only mode.
+
+        Args:
+            value: The value to set the code editor's value to.
+        """
+        self.code_editor.value = value
+        self.original_str = value
+        self.code_editor.readonly = False
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
