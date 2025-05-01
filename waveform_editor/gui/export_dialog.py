@@ -70,22 +70,29 @@ class ExportDialog:
             margin=(10, 5),
         )
 
-        export_button = pn.widgets.Button(name="Export", button_type="primary")
+        self.export_button = pn.widgets.Button(
+            name="Export", button_type="primary", disabled=True
+        )
         cancel_button = pn.widgets.Button(name="Cancel")
 
         layout = pn.Column(
             pn.pane.Markdown("## Export Configuration"),
             output_option_box,
             time_options_box,
-            pn.Row(export_button, cancel_button),
+            pn.Row(self.export_button, cancel_button),
             sizing_mode="stretch_width",
         )
         self.modal = pn.Modal(layout, width=600, height=500)
 
         # Callbacks
+        self.input.param.watch(self._validate_export_ready, "value_input")
+        self.time_manual_input.param.watch(self._validate_export_ready, "value_input")
+        self.csv_file_input.param.watch(self._validate_export_ready, "value")
+        self.time_source.param.watch(self._validate_export_ready, "value")
+        self.export_format.param.watch(self._validate_export_ready, "value")
         self.export_format.param.watch(self._update_ui, "value")
         self.time_source.param.watch(self._update_ui, "value")
-        export_button.on_click(self._handle_export)
+        self.export_button.on_click(self._handle_export)
         cancel_button.on_click(self._close)
 
     def _update_ui(self, event=None):
@@ -144,12 +151,12 @@ class ExportDialog:
             except Exception as e:
                 raise ValueError(f"Invalid time CSV file.\n{e}") from e
         elif self.time_source.value == "Manual":
-            return np.fromstring(self.time_manual_input.value, sep=",")
+            return self.time_array
 
     def _handle_export(self, event):
         """Perform the export based on current settings."""
         self._close()
-        input = self.input.value
+        input = self.input.value_input
         notification = pn.state.notifications.info(
             f"Exporting to {input}...", duration=0
         )
@@ -177,6 +184,23 @@ class ExportDialog:
 
         # Destroy exporting notification once exporting is finished
         notification.destroy()
+
+    def _validate_export_ready(self, *events):
+        """Enable or disable export button based on input validation."""
+        valid = bool(self.input.value_input.strip())
+
+        if self.time_source.value == "CSV File":
+            valid &= bool(self.csv_file_input.value)
+        elif self.time_source.value == "Manual":
+            try:
+                self.time_array = np.fromstring(
+                    self.time_manual_input.value_input, sep=","
+                )
+                valid &= self.time_array.size > 0
+            except Exception:
+                valid = False
+
+        self.export_button.disabled = not valid
 
     def open(self, event):
         """Open the export modal dialog."""
