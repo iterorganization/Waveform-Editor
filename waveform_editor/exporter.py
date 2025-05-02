@@ -166,7 +166,8 @@ class ConfigurationExporter:
         """Increment the progress bar"""
         if self.progress:
             self.current_progress += 1
-            self.progress.value = int(100 * self.current_progress / self.total_progress)
+            # Maximum is is 90%, the last 10% must be set after exporting
+            self.progress.value = int(90 * self.current_progress / self.total_progress)
 
     def _fill_nodes_recursively(self, node, path, values, path_index=0, fill=True):
         """Recursively fills nodes in the IDS based on the provided path and values.

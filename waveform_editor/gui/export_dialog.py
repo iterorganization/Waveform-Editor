@@ -172,6 +172,7 @@ class ExportDialog:
                 exporter.to_png(Path(input))
             elif export_type == CSV_EXPORT:
                 exporter.to_csv(Path(input))
+            self.progress.value = 100
             pn.state.notifications.success("Succesfully exported configuration")
         except Exception as e:
             pn.state.notifications.error(f"Export failed!\n{e}")
