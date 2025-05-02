@@ -97,6 +97,7 @@ class WaveformEditor(Viewer):
             )
 
     def has_changed(self):
+        """Return whether the code editor value was changed from its stored value"""
         return self.stored_string and self.code_editor.value != self.stored_string
 
     def __panel__(self):
