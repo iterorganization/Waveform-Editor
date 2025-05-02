@@ -16,6 +16,7 @@ class WaveformSelector(Viewer):
         self.edit_waveforms_enabled = False
         self.confirm_modal = ConfirmModal()
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
+        self.prev_selection = []
         self.ignore_tab_watcher = False
         self._create_root_button_row()
 
@@ -132,16 +133,16 @@ class WaveformSelector(Viewer):
             self.plotter.plotted_waveforms[key] = value
 
         if self.edit_waveforms_enabled:
-            self.select_in_editor(newly_selected, old_selection)
+            self.select_in_editor(newly_selected)
         self.plotter.param.trigger("plotted_waveforms")
+        self.prev_selection = new_selection
 
-    def select_in_editor(self, newly_selected, old_selection):
+    def select_in_editor(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
         the newly selected waveform will be deselected.
 
         Args:
             newly_selected: The newly selected waveform.
-            old_selection: The previously selected waveform.
         """
         if newly_selected and self.editor.has_changed():
             self.confirm_modal.show(
@@ -149,16 +150,16 @@ class WaveformSelector(Viewer):
                     "Your edited waveform has not been saved, so your changes will "
                     "be lost!\n  Are you sure you want to leave?"
                 ),
-                on_confirm=lambda: self.select(newly_selected),
-                on_cancel=lambda: self.cancel_select(old_selection),
+                on_confirm=lambda: self.apply_select_in_editor(newly_selected),
+                on_cancel=lambda: self.cancel_select_in_editor(self.old_selection),
             )
             return
-        self.select(newly_selected)
+        self.apply_select_in_editor(newly_selected)
 
-    def cancel_select(self, old_selection):
+    def cancel_select_in_editor(self, old_selection):
         self.deselect_all(exclude=old_selection[0])
 
-    def select(self, newly_selected):
+    def apply_select_in_editor(self, newly_selected):
         if newly_selected:
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key)
