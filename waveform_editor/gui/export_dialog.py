@@ -56,6 +56,7 @@ class ExportDialog:
             sizing_mode="stretch_width",
             margin=(10, 5),
         )
+        self.error_alert = pn.pane.Alert(alert_type="danger", visible=False)
 
         # Time Options
         self.time_manual_input = pn.widgets.TextInput(
@@ -91,10 +92,11 @@ class ExportDialog:
             pn.pane.Markdown("## Export Configuration"),
             output_option_box,
             time_options_box,
+            self.error_alert,
             pn.Row(self.export_button, cancel_button, self.progress),
             sizing_mode="stretch_width",
         )
-        self.modal = pn.Modal(layout, width=600, height=500)
+        self.modal = pn.Modal(layout)
 
         # Callbacks
         self.input.param.watch(self._validate_export_ready, "value_input")
@@ -154,6 +156,7 @@ class ExportDialog:
 
     def _handle_export(self, event):
         """Perform the export based on current settings."""
+        self.error_alert.visible = False
         self.progress.visible = True
         input = self.input.value_input
         try:
@@ -174,10 +177,11 @@ class ExportDialog:
                 exporter.to_csv(Path(input))
             self.progress.value = 100
             pn.state.notifications.success("Succesfully exported configuration")
+            self._close()
         except Exception as e:
-            pn.state.notifications.error(f"Export failed!\n{e}")
+            self.error_alert.visible = True
+            self.error_alert.object = f"### Export failed!\n{e}"
 
-        self._close()
         self.progress.value = 0
         self.progress.visible = False
 
