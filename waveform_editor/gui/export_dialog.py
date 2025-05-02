@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 LINSPACE = "Linspace"
 CSVFILE = "CSV File"
 MANUALINPUT = "Manual"
-IDS_OUTPUT = "IDS"
-CSV_OUTPUT = "CSV"
-PNG_OUTPUT = "PNG"
-PNG_DEFAULT = "Default"
+IDS_EXPORT = "IDS"
+CSV_EXPORT = "CSV"
+PNG_EXPORT = "PNG"
+DEFAULT = "Default"
 
 
 class ExportDialog:
@@ -35,7 +35,7 @@ class ExportDialog:
         )
 
         # Output Type
-        export_formats = [IDS_OUTPUT, CSV_OUTPUT, PNG_OUTPUT]
+        export_formats = [IDS_EXPORT, CSV_EXPORT, PNG_EXPORT]
         self.export_format = pn.widgets.RadioBoxGroup(
             name="Export Format",
             options=export_formats,
@@ -123,13 +123,13 @@ class ExportDialog:
         self.time_manual_input.visible = value == MANUALINPUT
 
         # Add Default option to PNG export
-        if self.export_format.value == PNG_OUTPUT:
-            if PNG_DEFAULT not in options:
-                options.append(PNG_DEFAULT)
+        if self.export_format.value == PNG_EXPORT:
+            if DEFAULT not in options:
+                options.append(DEFAULT)
         else:
-            if PNG_DEFAULT in options:
-                options.remove(PNG_DEFAULT)
-                if self.time_source.value == PNG_DEFAULT:
+            if DEFAULT in options:
+                options.remove(DEFAULT)
+                if self.time_source.value == DEFAULT:
                     self.time_source.value = self.time_source.options[0]
 
         self.time_source.param.trigger("options")
@@ -157,26 +157,20 @@ class ExportDialog:
         self.progress.visible = True
         input = self.input.value_input
         try:
-            if self.time_source.value != PNG_DEFAULT:
-                times = self._get_times()
-                exporter = ConfigurationExporter(
-                    self.main_gui.config, times, progress=self.progress
-                )
-            else:
-                exporter = ConfigurationExporter(
-                    self.main_gui.config, None, progress=self.progress
-                )
-
+            times = self._get_times() if self.time_source.value != DEFAULT else None
+            exporter = ConfigurationExporter(
+                self.main_gui.config, times, progress=self.progress
+            )
             export_type = self.export_format.value
             if not input:
                 pn.state.notifications.error("Please provide an output location.")
                 return
 
-            if export_type == IDS_OUTPUT:
+            if export_type == IDS_EXPORT:
                 exporter.to_ids(input)
-            elif export_type == PNG_OUTPUT:
+            elif export_type == PNG_EXPORT:
                 exporter.to_png(Path(input))
-            elif export_type == CSV_OUTPUT:
+            elif export_type == CSV_EXPORT:
                 exporter.to_csv(Path(input))
             pn.state.notifications.success("Succesfully exported configuration")
         except Exception as e:
