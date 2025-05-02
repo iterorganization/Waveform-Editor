@@ -9,7 +9,7 @@ class WaveformEditor(Viewer):
         self.plotter = plotter
         self.config = config
         self.waveform = None
-        self.original_str = None
+        self.stored_string = None
 
         # Code editor UI
         self.error_alert = pn.pane.Alert(visible=False)
@@ -64,9 +64,9 @@ class WaveformEditor(Viewer):
     def set_empty(self):
         """Set code editor value to empty value in read-only mode."""
         self.code_editor.value = "Select a waveform to edit"
-        self.code_editor.readonly = True
         self.error_alert.visible = False
-        self.original_str = None
+        self.code_editor.readonly = True
+        self.stored_string = None
 
     def set_value(self, value):
         """Set code editor value to the given value and disable read-only mode.
@@ -75,7 +75,7 @@ class WaveformEditor(Viewer):
             value: The value to set the code editor's value to.
         """
         self.code_editor.value = value
-        self.original_str = value
+        self.stored_string = value
         self.code_editor.readonly = False
 
     def save_waveform(self, event=None):
@@ -90,10 +90,14 @@ class WaveformEditor(Viewer):
             # TODO: Sometimes notifications seem to not be shown, even when this is
             # called, should be investigated
             pn.state.notifications.success("Succesfully saved waveform!")
+            self.stored_string = self.code_editor.value
         else:
             pn.state.notifications.error(
                 f"Error: `{self.waveform.name}` not found in YAML"
             )
+
+    def has_changed(self):
+        return self.stored_string and self.code_editor.value != self.stored_string
 
     def __panel__(self):
         """Return the editor panel UI."""

@@ -16,6 +16,7 @@ class WaveformSelector(Viewer):
         self.edit_waveforms_enabled = False
         self.confirm_modal = ConfirmModal()
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
+        self.ignore_tab_watcher = False
         self._create_root_button_row()
 
     def create_waveform_selector_ui(self):
@@ -31,14 +32,34 @@ class WaveformSelector(Viewer):
 
     def on_tab_change(self, event):
         """Change selection behavior, depending on which tab is selected."""
-        self.deselect_all()
-        # event.new will be the index of the opened tab. In this case, we enable the
+        if event.new == 0 and self.editor.has_changed():
+            self.confirm_modal.show(
+                (
+                    "Your edited waveform has not been saved, so your changes will "
+                    "be lost!\n  Are you sure you want to leave?"
+                ),
+                on_cancel=self.cancel_tab_change,
+                on_confirm=lambda: self.apply_tab_change(event.new),
+            )
+            return
+        if not self.ignore_tab_watcher:
+            self.apply_tab_change(event.new)
+
+    def apply_tab_change(self, tab_choice):
+        # tab_choice is the index of the opened tab. In this case, we enable the
         # edit waveforms selection logic if the 'Edit Waveforms' tab (at index 1) is
         # selected
-        if event.new == 1:
+        if tab_choice == 1:
             self.edit_waveforms_enabled = True
         else:
             self.edit_waveforms_enabled = False
+        self.deselect_all()
+
+    def cancel_tab_change(self):
+        # Ensure apply_tab_change is not called again through watcher
+        self.ignore_tab_watcher = True
+        self.main_gui.tabs.active = 1
+        self.ignore_tab_watcher = False
 
     def create_group_ui(self, group, path, parent_accordion=None):
         """Recursively create a Panel UI structure from the YAML.
@@ -122,19 +143,23 @@ class WaveformSelector(Viewer):
             newly_selected: The newly selected waveform.
             old_selection: The previously selected waveform.
         """
+        if newly_selected and self.editor.has_changed():
+            self.confirm_modal.show(
+                (
+                    "Your edited waveform has not been saved, so your changes will "
+                    "be lost!\n  Are you sure you want to leave?"
+                ),
+                on_confirm=lambda: self.select(newly_selected),
+                on_cancel=lambda: self.cancel_select(old_selection),
+            )
+            return
+        self.select(newly_selected)
+
+    def cancel_select(self, old_selection):
+        self.deselect_all(exclude=old_selection[0])
+
+    def select(self, newly_selected):
         if newly_selected:
-            if (
-                self.editor.original_str
-                and self.editor.code_editor.value != self.editor.original_str
-            ):
-                msg = "Your edited waveform has not been saved, so your changed will be lost!\n  Are you sure you want to leave?"
-                self.confirm_modal.show(msg)
-
-                # if modal yes do: continue to newly_selected_key
-                # if modal no: the following:
-                self.deselect_all(exclude=old_selection[0])
-                return
-
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key)
 
