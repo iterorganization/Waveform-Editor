@@ -10,6 +10,15 @@ from waveform_editor.util import times_from_csv
 logger = logging.getLogger(__name__)
 
 
+LINSPACE = "Linspace"
+CSVFILE = "CSV File"
+MANUALINPUT = "Manual"
+IDS_OUTPUT = "IDS"
+CSV_OUTPUT = "CSV"
+PNG_OUTPUT = "PNG"
+PNG_DEFAULT = "Default"
+
+
 class ExportDialog:
     """Handles the UI and logic for exporting waveform configurations."""
 
@@ -26,7 +35,7 @@ class ExportDialog:
         )
 
         # Output Type
-        export_formats = ["IDS", "CSV", "PNG"]
+        export_formats = [IDS_OUTPUT, CSV_OUTPUT, PNG_OUTPUT]
         self.export_format = pn.widgets.RadioBoxGroup(
             name="Export Format",
             options=export_formats,
@@ -35,8 +44,8 @@ class ExportDialog:
         )
         self.time_source = pn.widgets.RadioBoxGroup(
             name="Time Basis",
-            options=["Linspace", "CSV File", "Manual"],
-            value="Linspace",
+            options=[LINSPACE, CSVFILE, MANUALINPUT],
+            value=LINSPACE,
             inline=True,
         )
         self.input = pn.widgets.TextInput()
@@ -109,51 +118,42 @@ class ExportDialog:
         self.input.placeholder = placeholders[self.export_format.value]
         value = self.time_source.value
         options = self.time_source.options
-        if value == "Linspace":
-            self.linspace_row.visible = True
-            self.csv_file_input.visible = False
-            self.time_manual_input.visible = False
-        elif value == "CSV File":
-            self.linspace_row.visible = False
-            self.csv_file_input.visible = True
-            self.time_manual_input.visible = False
-        elif value == "Manual":
-            self.linspace_row.visible = False
-            self.csv_file_input.visible = False
-            self.time_manual_input.visible = True
+        self.linspace_row.visible = value == LINSPACE
+        self.csv_file_input.visible = value == CSVFILE
+        self.time_manual_input.visible = value == MANUALINPUT
 
         # Add Default option to PNG export
-        if self.export_format.value == "PNG":
-            if "Default" not in options:
-                options.append("Default")
-            if self.time_source.value == "Default":
+        if self.export_format.value == PNG_OUTPUT:
+            if PNG_DEFAULT not in options:
+                options.append(PNG_DEFAULT)
+            if self.time_source.value == PNG_DEFAULT:
                 self.linspace_row.visible = False
                 self.csv_file_input.visible = False
                 self.time_manual_input.visible = False
         else:
-            if "Default" in options:
-                options.remove("Default")
-                if self.time_source.value == "Default":
+            if PNG_DEFAULT in options:
+                options.remove(PNG_DEFAULT)
+                if self.time_source.value == PNG_DEFAULT:
                     self.time_source.value = self.time_source.options[0]
 
         self.time_source.param.trigger("options")
 
     def _get_times(self):
         """Parse inputs and return the time array."""
-        if self.time_source.value == "Linspace":
+        if self.time_source.value == LINSPACE:
             return np.linspace(
                 self.linspace_start.value,
                 self.linspace_stop.value,
                 self.linspace_num.value,
             )
-        elif self.time_source.value == "CSV File":
+        elif self.time_source.value == CSVFILE:
             if not self.csv_file_input.value:
                 raise ValueError("Please select a CSV file for the time basis.")
             try:
                 return times_from_csv(self.csv_file_input.value, from_file_path=False)
             except Exception as e:
                 raise ValueError(f"Invalid time CSV file.\n{e}") from e
-        elif self.time_source.value == "Manual":
+        elif self.time_source.value == MANUALINPUT:
             return self.time_array
 
     def _handle_export(self, event):
@@ -161,7 +161,7 @@ class ExportDialog:
         self.progress.visible = True
         input = self.input.value_input
         try:
-            if self.time_source.value != "Default":
+            if self.time_source.value != PNG_DEFAULT:
                 times = self._get_times()
                 exporter = ConfigurationExporter(
                     self.main_gui.config, times, progress=self.progress
@@ -176,11 +176,11 @@ class ExportDialog:
                 pn.state.notifications.error("Please provide an output location.")
                 return
 
-            if export_type == "IDS":
+            if export_type == IDS_OUTPUT:
                 exporter.to_ids(input)
-            elif export_type == "PNG":
+            elif export_type == PNG_OUTPUT:
                 exporter.to_png(Path(input))
-            elif export_type == "CSV":
+            elif export_type == CSV_OUTPUT:
                 exporter.to_csv(Path(input))
             pn.state.notifications.success("Succesfully exported configuration")
         except Exception as e:
@@ -194,9 +194,9 @@ class ExportDialog:
         """Enable or disable export button based on input validation."""
         valid = bool(self.input.value_input.strip())
 
-        if self.time_source.value == "CSV File":
+        if self.time_source.value == CSVFILE:
             valid &= bool(self.csv_file_input.value)
-        elif self.time_source.value == "Manual":
+        elif self.time_source.value == MANUALINPUT:
             try:
                 self.time_array = np.fromstring(
                     self.time_manual_input.value_input, sep=","
