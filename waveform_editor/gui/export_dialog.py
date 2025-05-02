@@ -126,10 +126,6 @@ class ExportDialog:
         if self.export_format.value == PNG_OUTPUT:
             if PNG_DEFAULT not in options:
                 options.append(PNG_DEFAULT)
-            if self.time_source.value == PNG_DEFAULT:
-                self.linspace_row.visible = False
-                self.csv_file_input.visible = False
-                self.time_manual_input.visible = False
         else:
             if PNG_DEFAULT in options:
                 options.remove(PNG_DEFAULT)
