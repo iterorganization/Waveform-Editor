@@ -139,7 +139,6 @@ class WaveformSelector(Viewer):
         if self.edit_waveforms_enabled:
             self.select_in_editor(newly_selected)
         self.plotter.param.trigger("plotted_waveforms")
-        self.prev_selection = new_selection
 
     def select_in_editor(self, newly_selected):
         """Prompts to confirm selection if there are unsaved changes; otherwise,
@@ -163,8 +162,7 @@ class WaveformSelector(Viewer):
 
     def cancel_select_in_editor(self):
         """Revert selection of new waveform in editing mode."""
-        print(self.prev_selection)
-        self.deselect_all(exclude=self.prev_selection[0])
+        self.deselect_all(exclude=self.prev_selection)
 
     def apply_select_in_editor(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
@@ -180,6 +178,9 @@ class WaveformSelector(Viewer):
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
             self.editor.set_value(waveform.yaml_str)
+            if len(newly_selected) != 1:
+                raise ValueError("Expected only a single new waveform to be selected.")
+            self.prev_selection = next(iter(newly_selected))
         if not self.plotter.plotted_waveforms:
             self.editor.set_empty()
 
