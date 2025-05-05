@@ -287,6 +287,10 @@ class Waveform:
             stream = io.StringIO()
             YAML().dump(self.yaml, stream)
             return stream.getvalue()
+        elif self.yaml is None:
+            raise ValueError(
+                f"Waveform '{self.name}' has not been assigned a valid YAML object."
+            )
         else:
             return str(self.yaml)
 
