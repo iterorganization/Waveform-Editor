@@ -41,11 +41,15 @@ class WaveformSelector(Viewer):
                     "   \n\n**Are you sure you want to continue?**"
                 ),
                 on_cancel=self.cancel_tab_change,
-                on_confirm=self.deselect_all,
+                on_confirm=self.apply_tab_change,
             )
             return
         if not self.ignore_tab_watcher:
-            self.deselect_all()
+            self.apply_tab_change()
+
+    def apply_tab_change(self):
+        self.deselect_all()
+        self.editor.set_empty()
 
     def cancel_tab_change(self):
         """Revert the selection Select the edit waveforms tab."""
@@ -119,6 +123,7 @@ class WaveformSelector(Viewer):
         newly_selected = {
             key: self.config[key] for key in new_selection if key not in old_selection
         }
+        deselected = [key for key in old_selection if key not in new_selection]
         if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
             if self.editor.has_changed():
                 self.confirm_modal.show(
@@ -127,17 +132,19 @@ class WaveformSelector(Viewer):
                         "Leaving now will discard any changes you made to this waveform."
                         "   \n\n**Are you sure you want to continue?**"
                     ),
-                    on_confirm=lambda: self.apply_select_in_editor(newly_selected),
+                    on_confirm=lambda: self.apply_select_in_editor(
+                        newly_selected, deselected
+                    ),
                     on_cancel=lambda: self.deselect_all(
                         include=self.prev_selection, ignore_watch=True
                     ),
                 )
-                self.plotter.param.trigger("plotted_waveforms")
                 return
-            else:
-                self.apply_select_in_editor(newly_selected)
+            self.apply_select_in_editor(newly_selected, deselected)
 
-        deselected = [key for key in old_selection if key not in new_selection]
+        self.update_plotter(newly_selected, deselected)
+
+    def update_plotter(self, newly_selected, deselected):
         for key in deselected:
             del self.plotter.plotted_waveforms[key]
 
@@ -146,7 +153,7 @@ class WaveformSelector(Viewer):
 
         self.plotter.param.trigger("plotted_waveforms")
 
-    def apply_select_in_editor(self, newly_selected):
+    def apply_select_in_editor(self, newly_selected, deselected):
         """Only allow for a single waveform to be selected. All waveforms except for
         the newly selected waveform will be deselected.
 
@@ -163,6 +170,7 @@ class WaveformSelector(Viewer):
             if len(newly_selected) != 1:
                 raise ValueError("Expected only a single new waveform to be selected.")
             self.prev_selection = next(iter(newly_selected))
+        self.update_plotter(newly_selected, deselected)
         if not self.plotter.plotted_waveforms:
             self.editor.set_empty()
 
