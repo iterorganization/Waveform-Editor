@@ -17,6 +17,7 @@ class WaveformSelector(Viewer):
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
         self.prev_selection = []
         self.ignore_tab_watcher = False
+        self.ignore_select_watcher = False
         self._create_root_button_row()
 
     def create_waveform_selector_ui(self):
@@ -109,6 +110,8 @@ class WaveformSelector(Viewer):
         Args:
             event: list containing the new selection.
         """
+        if self.ignore_select_watcher:
+            return
         new_selection = event.new
         old_selection = event.old
 
@@ -116,6 +119,24 @@ class WaveformSelector(Viewer):
         newly_selected = {
             key: self.config[key] for key in new_selection if key not in old_selection
         }
+        if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
+            if self.editor.has_changed():
+                self.confirm_modal.show(
+                    (
+                        "# **⚠️ Warning**  \nYou did not save your changes. "
+                        "Leaving now will discard any changes you made to this waveform."
+                        "   \n\n**Are you sure you want to continue?**"
+                    ),
+                    on_confirm=lambda: self.apply_select_in_editor(newly_selected),
+                    on_cancel=lambda: self.deselect_all(
+                        include=self.prev_selection, ignore_watch=True
+                    ),
+                )
+                self.plotter.param.trigger("plotted_waveforms")
+                return
+            else:
+                self.apply_select_in_editor(newly_selected)
+
         deselected = [key for key in old_selection if key not in new_selection]
         for key in deselected:
             del self.plotter.plotted_waveforms[key]
@@ -123,33 +144,7 @@ class WaveformSelector(Viewer):
         for key, value in newly_selected.items():
             self.plotter.plotted_waveforms[key] = value
 
-        if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
-            self.select_in_editor(newly_selected)
         self.plotter.param.trigger("plotted_waveforms")
-
-    def select_in_editor(self, newly_selected):
-        """Prompts to confirm selection if there are unsaved changes; otherwise,
-        selects new waveform directly.
-
-        Args:
-            newly_selected: The newly selected waveform.
-        """
-        if newly_selected and self.editor.has_changed():
-            self.confirm_modal.show(
-                (
-                    "# **⚠️ Warning**  \nYou did not save your changes. "
-                    "Leaving now will discard any changes you made to this waveform."
-                    "   \n\n**Are you sure you want to continue?**"
-                ),
-                on_confirm=lambda: self.apply_select_in_editor(newly_selected),
-                on_cancel=lambda: self.cancel_select_in_editor(),
-            )
-            return
-        self.apply_select_in_editor(newly_selected)
-
-    def cancel_select_in_editor(self):
-        """Revert selection of new waveform in editing mode."""
-        self.deselect_all(exclude=self.prev_selection)
 
     def apply_select_in_editor(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
@@ -160,7 +155,7 @@ class WaveformSelector(Viewer):
         """
         if newly_selected:
             newly_selected_key = list(newly_selected.keys())[0]
-            self.deselect_all(exclude=newly_selected_key)
+            self.deselect_all(exclude=newly_selected_key, ignore_watch=True)
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
@@ -171,20 +166,24 @@ class WaveformSelector(Viewer):
         if not self.plotter.plotted_waveforms:
             self.editor.set_empty()
 
-    def deselect_all(self, exclude=None):
+    def deselect_all(self, exclude=None, ignore_watch=False, include=None):
         """Deselect all options in all CheckButtonGroups. A waveform name can be
         provided to be excluded from deselection.
 
         Args:
             exclude: The name of a waveform to exclude from deselection.
         """
-        self._deselect_checkbuttons(self.ui_selector, exclude)
+        if ignore_watch:
+            self.ignore_select_watcher = True
+        self._deselect_checkbuttons(self.ui_selector, exclude, include)
+        if ignore_watch:
+            self.ignore_select_watcher = False
 
     def _create_root_button_row(self):
         """Creates a options button row at the root level of the selector groups."""
         self.root_button_row = OptionsButtonRow(self.main_gui, None, [], visible=False)
 
-    def _deselect_checkbuttons(self, widget, exclude):
+    def _deselect_checkbuttons(self, widget, exclude, include):
         """Helper function to recursively find and deselect all CheckButtonGroup
         widgets.
 
@@ -197,12 +196,16 @@ class WaveformSelector(Viewer):
                 widget.value = [exclude]
             else:
                 widget.value = []
+
+            if include in widget.options and include not in widget.value:
+                widget.value.append(include)
+            widget.param.trigger("value")
         elif isinstance(widget, (pn.Column, pn.Accordion)):
             for child in widget:
                 # Skip select/deselect buttons row
                 if isinstance(widget, pn.Row):
                     continue
-                self._deselect_checkbuttons(child, exclude)
+                self._deselect_checkbuttons(child, exclude, include)
 
     def __panel__(self):
         """Returns the waveform selector UI component."""
