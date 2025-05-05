@@ -2,6 +2,15 @@
 
 The Waveform Editor is a Python tool for creating and managing 1D time-dependent data called waveforms. It utilizes a human-readable, text-based file format where waveforms are described using descriptive tendencies, such as sine waves or linear ramps. The Waveform Editor includes a GUI for interactive creation, editing, and organization of waveforms.
 
+## Development Status 
+
+This project is currently under active development. While a functional prototype and core features are already implemented, additional features, usability improvements, and integrations are in progress. The following features are planned for the coming months:
+- UI usability enhancements
+- Derived waveform expressions: define waveforms from existing ones using expanded math operations and custom Python functions
+- MUSCLE3 actor integration
+- Drag-and-drop editing for piecewise linear tendencies
+- Integration of Plasma Shape Editor: construct waveforms directly from equilibrium solver output 
+
 ## Install
 
 To install the waveform editor, run the following:
