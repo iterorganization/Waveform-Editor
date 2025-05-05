@@ -23,7 +23,7 @@ class WaveformGroup:
                 result[group_name] = group.to_commented_map()
         if self.waveforms:
             for waveform in self.waveforms.values():
-                result[waveform.name] = waveform.yaml_value
+                result[waveform.name] = waveform.yaml
         return result
 
     def print(self, indent=0):

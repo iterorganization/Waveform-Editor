@@ -130,7 +130,7 @@ class WaveformSelector(Viewer):
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.editor.code_editor.value = waveform.get_string_value()
+            self.editor.code_editor.value = waveform.get_yaml_string()
             self.plotter.title = waveform.name
             self.editor.code_editor.readonly = False
         if not self.plotter.plotted_waveforms:

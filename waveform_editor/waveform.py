@@ -46,9 +46,8 @@ class Waveform:
         name="waveform",
         dd_version=None,
     ):
-        self.yaml = YAML()
-        yaml_dict = self.yaml.load(yaml_str)
-        self.yaml_value = yaml_dict[name] if yaml_dict else None
+        yaml_dict = YAML().load(yaml_str)
+        self.yaml = yaml_dict[name] if yaml_dict else None
         self.tendencies = []
         self.name = name
         self.line_number = line_number
@@ -277,13 +276,19 @@ class Waveform:
             return True
         return False
 
-    def get_string_value(self):
-        if isinstance(self.yaml_value, CommentedSeq):
+    def get_yaml_string(self):
+        """Converts the internal YAML waveform description to a string.
+
+        Returns:
+            The YAML waveform description as a string.
+        """
+        if isinstance(self.yaml, CommentedSeq):
+            # Dump using ruamel to preserve YAML structure and comments
             stream = io.StringIO()
-            self.yaml.dump(self.yaml_value, stream)
+            YAML().dump(self.yaml, stream)
             return stream.getvalue()
         else:
-            return str(self.yaml_value)
+            return str(self.yaml)
 
     def _handle_tendency(self, entry):
         """Creates a tendency instance based on the entry in the YAML file.
