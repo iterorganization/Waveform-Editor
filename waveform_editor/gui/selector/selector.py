@@ -13,7 +13,6 @@ class WaveformSelector(Viewer):
         self.config = self.main_gui.config
         self.plotter = self.main_gui.plotter
         self.editor = self.main_gui.editor
-        self.edit_waveforms_enabled = False
         self.confirm_modal = ConfirmModal()
         self.ui_selector = pn.Accordion(sizing_mode="stretch_width")
         self.prev_selection = []
@@ -41,23 +40,11 @@ class WaveformSelector(Viewer):
                     "   \n\n**Are you sure you want to continue?**"
                 ),
                 on_cancel=self.cancel_tab_change,
-                on_confirm=lambda: self.apply_tab_change(event.new),
+                on_confirm=self.deselect_all,
             )
             return
         if not self.ignore_tab_watcher:
-            self.apply_tab_change(event.new)
-
-    def apply_tab_change(self, tab_choice):
-        """Apply the selected tab change and deselect all selected waveforms.
-
-        Args:
-            tab_choice: Integer representing which tab is selected.
-        """
-        if tab_choice == self.main_gui.EDIT_WAVEFORMS_TAB:
-            self.edit_waveforms_enabled = True
-        else:
-            self.edit_waveforms_enabled = False
-        self.deselect_all()
+            self.deselect_all()
 
     def cancel_tab_change(self):
         """Revert the selection Select the edit waveforms tab."""
@@ -136,7 +123,7 @@ class WaveformSelector(Viewer):
         for key, value in newly_selected.items():
             self.plotter.plotted_waveforms[key] = value
 
-        if self.edit_waveforms_enabled:
+        if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
             self.select_in_editor(newly_selected)
         self.plotter.param.trigger("plotted_waveforms")
 
