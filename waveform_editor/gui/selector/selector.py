@@ -35,8 +35,13 @@ class WaveformSelector(Viewer):
         # selected
         if event.new == 1:
             self.edit_waveforms_enabled = True
+            self.plotter.has_legend = False
         else:
             self.edit_waveforms_enabled = False
+            self.plotter.has_legend = True
+            # Ensure empty plot when switching back to "View Waveforms"
+            self.plotter.title = ""
+            self.plotter.param.trigger("plotted_waveforms")
 
     def create_group_ui(self, group, path, parent_accordion=None):
         """Recursively create a Panel UI structure from the YAML.
@@ -125,7 +130,8 @@ class WaveformSelector(Viewer):
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.editor.code_editor.value = waveform.yaml_str
+            self.editor.code_editor.value = waveform.get_yaml_string()
+            self.plotter.title = waveform.name
             self.editor.code_editor.readonly = False
         if not self.plotter.plotted_waveforms:
             self.editor.set_empty()
