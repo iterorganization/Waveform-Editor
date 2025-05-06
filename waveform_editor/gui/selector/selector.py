@@ -18,6 +18,11 @@ class WaveformSelector(Viewer):
         self.prev_selection = []
         self.ignore_tab_watcher = False
         self.ignore_select_watcher = False
+        self.warning_message = (
+            "# **⚠️ Warning**  \nYou did not save your changes. "
+            "Leaving now will discard any changes you made to this waveform."
+            "   \n\n**Are you sure you want to continue?**"
+        )
         self._create_root_button_row()
 
     def create_waveform_selector_ui(self):
@@ -35,11 +40,7 @@ class WaveformSelector(Viewer):
         """Change selection behavior, depending on which tab is selected."""
         if event.new != self.main_gui.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
             self.confirm_modal.show(
-                (
-                    "# **⚠️ Warning**  \nYou did not save your changes. "
-                    "Leaving now will discard any changes you made to this waveform."
-                    "   \n\n**Are you sure you want to continue?**"
-                ),
+                self.warning_message,
                 on_cancel=self.cancel_tab_change,
                 on_confirm=self.apply_tab_change,
             )
@@ -127,11 +128,7 @@ class WaveformSelector(Viewer):
         if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
             if self.editor.has_changed():
                 self.confirm_modal.show(
-                    (
-                        "# **⚠️ Warning**  \nYou did not save your changes. "
-                        "Leaving now will discard any changes you made to this waveform."
-                        "   \n\n**Are you sure you want to continue?**"
-                    ),
+                    self.warning_message,
                     on_confirm=lambda: self.apply_select_in_editor(
                         newly_selected, deselected
                     ),
