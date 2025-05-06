@@ -67,6 +67,8 @@ class WaveformEditor(Viewer):
         self.error_alert.visible = False
         self.code_editor.readonly = True
         self.stored_string = None
+        self.plotter.plotted_waveforms = {}
+        self.plotter.param.trigger("plotted_waveforms")
 
     def set_value(self, value):
         """Set code editor value to the given value and disable read-only mode.

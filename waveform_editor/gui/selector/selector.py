@@ -48,7 +48,7 @@ class WaveformSelector(Viewer):
             self.apply_tab_change()
 
     def apply_tab_change(self):
-        self.deselect_all()
+        self.deselect_all(ignore_watch=True)
         self.editor.set_empty()
 
     def cancel_tab_change(self):
