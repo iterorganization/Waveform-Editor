@@ -1,4 +1,3 @@
-from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 
@@ -19,13 +18,12 @@ class WaveformGroup:
 
     def to_commented_map(self):
         result = CommentedMap()
-        yaml = YAML()
         if self.groups:
             for group_name, group in self.groups.items():
                 result[group_name] = group.to_commented_map()
         if self.waveforms:
             for waveform in self.waveforms.values():
-                result[waveform.name] = yaml.load(waveform.yaml_str)[waveform.name]
+                result[waveform.name] = waveform.yaml
         return result
 
     def print(self, indent=0):

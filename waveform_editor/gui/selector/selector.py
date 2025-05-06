@@ -163,7 +163,7 @@ class WaveformSelector(Viewer):
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.editor.set_value(waveform.yaml_str)
+            self.editor.set_value(waveform.get_yaml_string())
             if len(newly_selected) != 1:
                 raise ValueError("Expected only a single new waveform to be selected.")
             self.prev_selection = next(iter(newly_selected))

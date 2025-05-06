@@ -35,8 +35,22 @@ class WaveformEditor(Viewer):
         Args:
             event: Event containing the code editor value input.
         """
+        if not self.plotter.plotted_waveforms:
+            return
         editor_text = event.new
-        self.waveform = self.config.parse_waveform(editor_text)
+
+        # Fetch name of selected waveform
+        if len(self.plotter.plotted_waveforms) != 1:
+            raise ValueError("The plotter may only have a single waveform selected.")
+        name = next(iter(self.plotter.plotted_waveforms))
+
+        # Merge code editor string with name into a single YAML string, ensure that
+        # dashed lists are placed below the key containing the waveform name
+        if editor_text.lstrip().startswith("- "):
+            waveform_yaml = f"{name}:\n{editor_text}"
+        else:
+            waveform_yaml = f"{name}: {editor_text}"
+        self.waveform = self.config.parse_waveform(waveform_yaml)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
@@ -67,7 +81,7 @@ class WaveformEditor(Viewer):
         self.error_alert.visible = False
         self.code_editor.readonly = True
         self.stored_string = None
-        self.plotter.plotted_waveforms = {}
+        self.plotter.title = ""
         self.plotter.param.trigger("plotted_waveforms")
 
     def set_value(self, value):
@@ -79,6 +93,8 @@ class WaveformEditor(Viewer):
         self.code_editor.value = value
         self.stored_string = value
         self.code_editor.readonly = False
+        self.plotter.title = ""
+        self.plotter.param.trigger("plotted_waveforms")
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
