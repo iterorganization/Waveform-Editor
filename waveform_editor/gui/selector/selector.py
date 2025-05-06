@@ -41,14 +41,14 @@ class WaveformSelector(Viewer):
         if event.new != self.main_gui.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
             self.confirm_modal.show(
                 self.warning_message,
+                on_confirm=self.confirm_tab_change,
                 on_cancel=self.cancel_tab_change,
-                on_confirm=self.apply_tab_change,
             )
             return
         if not self.ignore_tab_watcher:
-            self.apply_tab_change()
+            self.confirm_tab_change()
 
-    def apply_tab_change(self):
+    def confirm_tab_change(self):
         self.deselect_all(ignore_watch=True)
         self.editor.set_empty()
 
@@ -129,7 +129,7 @@ class WaveformSelector(Viewer):
             if self.editor.has_changed():
                 self.confirm_modal.show(
                     self.warning_message,
-                    on_confirm=lambda: self.apply_select_in_editor(
+                    on_confirm=lambda: self.confirm_on_select(
                         newly_selected, deselected
                     ),
                     on_cancel=lambda: self.deselect_all(
@@ -137,7 +137,7 @@ class WaveformSelector(Viewer):
                     ),
                 )
                 return
-            self.apply_select_in_editor(newly_selected, deselected)
+            self.confirm_on_select(newly_selected, deselected)
 
         self.update_plotter(newly_selected, deselected)
 
@@ -150,7 +150,7 @@ class WaveformSelector(Viewer):
 
         self.plotter.param.trigger("plotted_waveforms")
 
-    def apply_select_in_editor(self, newly_selected, deselected):
+    def confirm_on_select(self, newly_selected, deselected):
         """Only allow for a single waveform to be selected. All waveforms except for
         the newly selected waveform will be deselected.
 
