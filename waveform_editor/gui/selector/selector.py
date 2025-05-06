@@ -50,6 +50,7 @@ class WaveformSelector(Viewer):
 
     def confirm_tab_change(self):
         self.deselect_all(ignore_watch=True)
+        self.plotter.plotted_waveforms = {}
         self.editor.set_empty()
 
     def cancel_tab_change(self):
@@ -157,6 +158,7 @@ class WaveformSelector(Viewer):
         Args:
             newly_selected: The newly selected waveform.
         """
+        self.plotter.plotted_waveforms = {}
         if newly_selected:
             newly_selected_key = list(newly_selected.keys())[0]
             self.deselect_all(exclude=newly_selected_key, ignore_watch=True)
@@ -167,9 +169,6 @@ class WaveformSelector(Viewer):
             if len(newly_selected) != 1:
                 raise ValueError("Expected only a single new waveform to be selected.")
             self.prev_selection = next(iter(newly_selected))
-        self.update_plotter(newly_selected, deselected)
-        if not self.plotter.plotted_waveforms:
-            self.editor.set_empty()
 
     def deselect_all(self, exclude=None, ignore_watch=False, include=None):
         """Deselect all options in all CheckButtonGroups. A waveform name can be
