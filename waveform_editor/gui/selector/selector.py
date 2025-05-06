@@ -50,6 +50,10 @@ class WaveformSelector(Viewer):
 
     def confirm_tab_change(self):
         self.deselect_all(ignore_watch=True)
+        if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
+            self.plotter.has_legend = False
+        else:
+            self.plotter.has_legend = True
         self.plotter.plotted_waveforms = {}
         self.editor.set_empty()
 
@@ -165,7 +169,7 @@ class WaveformSelector(Viewer):
 
             # Update code editor with the selected value
             waveform = newly_selected[newly_selected_key]
-            self.editor.set_value(waveform.get_yaml_string())
+            self.editor.set_value(waveform.get_yaml_string(), waveform.name)
             if len(newly_selected) != 1:
                 raise ValueError("Expected only a single new waveform to be selected.")
             self.prev_selection = next(iter(newly_selected))
