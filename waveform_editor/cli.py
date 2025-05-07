@@ -10,8 +10,8 @@ from rich import console, traceback
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
-from waveform_editor.util import times_from_csv
 from waveform_editor.gui.main import WaveformEditorGui
+from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
 
