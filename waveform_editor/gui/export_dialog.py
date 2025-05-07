@@ -187,17 +187,24 @@ class ExportDialog:
 
     def _validate_export_ready(self, *events):
         """Enable or disable export button based on input validation."""
+        self.error_alert.visible = False
         valid = bool(self.input.value_input.strip())
 
         if self.time_source.value == CSVFILE:
             valid &= bool(self.csv_file_input.value)
         elif self.time_source.value == MANUALINPUT:
             try:
-                self.time_array = np.fromstring(
-                    self.time_manual_input.value_input, sep=","
-                )
-                valid &= self.time_array.size > 0
-            except Exception:
+                input = self.time_manual_input.value_input
+                if input:
+                    self.time_array = np.array(
+                        [float(x) for x in input.split(",") if x.strip()]
+                    )
+                    valid &= self.time_array.size > 0
+                else:
+                    valid = False
+            except Exception as e:
+                self.error_alert.visible = True
+                self.error_alert.object = f"Invalid input: {e}"
                 valid = False
 
         self.export_button.disabled = not valid
