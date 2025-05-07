@@ -16,7 +16,7 @@ class WaveformEditor(Viewer):
             sizing_mode="stretch_both", language="yaml"
         )
         self.code_editor.param.watch(self.on_value_change, "value")
-        self.set_default()
+        self.set_empty()
 
         save_button = pn.widgets.ButtonIcon(
             icon="device-floppy",
@@ -34,8 +34,22 @@ class WaveformEditor(Viewer):
         Args:
             event: Event containing the code editor value input.
         """
+        if not self.plotter.plotted_waveforms:
+            return
         editor_text = event.new
-        self.waveform = self.config.parse_waveform(editor_text)
+
+        # Fetch name of selected waveform
+        if len(self.plotter.plotted_waveforms) != 1:
+            raise ValueError("The plotter may only have a single waveform selected.")
+        name = next(iter(self.plotter.plotted_waveforms))
+
+        # Merge code editor string with name into a single YAML string, ensure that
+        # dashed lists are placed below the key containing the waveform name
+        if editor_text.lstrip().startswith("- "):
+            waveform_yaml = f"{name}:\n{editor_text}"
+        else:
+            waveform_yaml = f"{name}: {editor_text}"
+        self.waveform = self.config.parse_waveform(waveform_yaml)
         annotations = self.waveform.annotations
 
         self.code_editor.annotations = list(annotations)
@@ -60,9 +74,13 @@ class WaveformEditor(Viewer):
         if not self.config.parser.parse_errors:
             self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
 
-    def set_default(self):
-        """Set code editor value to default."""
-        self.code_editor.value = "empty_waveform: {}"
+    def set_empty(self):
+        """Set code editor value to empty value in read-only mode."""
+        self.code_editor.value = "Select a waveform to edit"
+        self.code_editor.readonly = True
+        self.error_alert.visible = False
+        self.plotter.title = ""
+        self.plotter.param.trigger("plotted_waveforms")
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined

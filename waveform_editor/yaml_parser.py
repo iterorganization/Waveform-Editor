@@ -146,8 +146,6 @@ class YamlParser:
 
         Args:
             yaml_str: YAML content as a string.
-            dd_version: Data dictionary version to create waveform for. Default version
-                will be used if None.
         """
         try:
             loader = LineNumberYamlLoader
@@ -183,6 +181,13 @@ class YamlParser:
 
             name = waveform_key.removeprefix("user_")
             waveform = waveform_yaml[waveform_key]
+            if not waveform:
+                raise yaml.YAMLError("Cannot have an empty waveform.")
+            if not isinstance(waveform, (list, int, float)):
+                raise yaml.YAMLError(
+                    "Waveform must either be a list of tendencies, "
+                    "or a single constant value."
+                )
             line_number = waveform_yaml.get("line_number", 0)
             waveform = Waveform(
                 waveform=waveform,
