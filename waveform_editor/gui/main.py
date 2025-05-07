@@ -107,6 +107,9 @@ class WaveformEditorGui:
         yaml_str = self.config.dump()
         return io.BytesIO(yaml_str.encode("utf-8"))
 
+    def __panel__(self):
+        return self.template
+
     def serve(self):
         """Serve the Panel app"""
         return self.template.servable()

@@ -19,7 +19,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "imas-python[netcdf]",
-    "panel",
+    "panel>=1.6.0",
     "pygments",
     "plotly",
     "holoviews",
