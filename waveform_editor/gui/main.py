@@ -6,6 +6,7 @@ import panel as pn
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
+from waveform_editor.gui.export_dialog import ExportDialog
 from waveform_editor.gui.plotter import WaveformPlotter
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
@@ -33,6 +34,19 @@ class WaveformEditorGui:
             auto=True,
             visible=False,
         )
+
+        self.export_button = pn.widgets.Button(
+            name="Export Data",
+            icon="upload",
+            button_type="primary",
+            visible=False,
+            align="end",
+            width=150,
+            margin=(5, 5),
+        )
+        export_dialog = ExportDialog(self)
+        self.export_button.on_click(export_dialog.open)
+
         # Add tabs to switch from viewer to editor
         self.modal = ConfirmModal()
         self.plotter = WaveformPlotter()
@@ -53,13 +67,14 @@ class WaveformEditorGui:
         self.start_up = StartUpPrompt(self)
 
         # Append to sidebar to make the content of the sidebar dynamic
-        self.sidebar_column = pn.Column(
+        sidebar_column = pn.Column(
             self.start_up,
-            self.file_download,
+            pn.Row(self.file_download, self.export_button),
             self.selector,
             self.modal,
+            export_dialog,
         )
-        self.template.sidebar.append(self.sidebar_column)
+        self.template.sidebar.append(sidebar_column)
 
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.
@@ -99,6 +114,7 @@ class WaveformEditorGui:
         """
         self.tabs.visible = is_visible
         self.file_download.visible = is_visible
+        self.export_button.visible = is_visible
         self.start_up.visible = not is_visible
         self.selector.ui_selector.visible = is_visible
 

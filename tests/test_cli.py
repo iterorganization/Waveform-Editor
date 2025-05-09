@@ -81,48 +81,6 @@ def test_parse_linspace_none():
     assert result is None
 
 
-def test_load_csv_file_valid(test_csv_file):
-    """Test loading a valid CSV time file."""
-    csv_path, expected_array = test_csv_file
-    result = waveform_cli.load_csv_file(csv_path)
-    np.testing.assert_array_equal(result, expected_array)
-
-
-def test_load_csv_file_nonexistent(tmp_path):
-    """Test loading a non-existent CSV file."""
-    non_existent_path = tmp_path / "not_a_file.csv"
-    with pytest.raises(click.ClickException):
-        waveform_cli.load_csv_file(non_existent_path)
-
-
-def test_load_csv_file_invalid_rows(tmp_path):
-    """Test loading a CSV file with incorrect number of rows."""
-
-    csv_file = tmp_path / "invalid_times_rows.csv"
-    with open(csv_file, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([1, 2, 3])
-        writer.writerow([4, 5, 6])
-    with pytest.raises(click.ClickException):
-        waveform_cli.load_csv_file(csv_file)
-
-
-def test_load_csv_file_invalid_format(tmp_path):
-    """Test loading a CSV file with non-numeric values."""
-
-    csv_file = tmp_path / "invalid_times_format.csv"
-    with open(csv_file, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([1, "a", 3])
-    with pytest.raises(click.ClickException):
-        waveform_cli.load_csv_file(csv_file)
-
-
-def test_load_csv_file_none():
-    """Test calling load_csv_file with None."""
-    assert waveform_cli.load_csv_file(None) is None
-
-
 def test_export_csv(runner, tmp_path, test_yaml_file, test_csv_file):
     csv_path, _ = test_csv_file
     output_csv = tmp_path / "test.csv"

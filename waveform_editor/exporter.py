@@ -11,9 +11,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
-    def __init__(self, config, times):
+    def __init__(self, config, times, progress=None):
         self.config = config
         self.times = times
+        self.progress = progress
+        self.total_progress = None
+        self.current_progress = None
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
 
@@ -24,6 +27,8 @@ class ConfigurationExporter:
             uri: URI to the data entry.
         """
         ids_map = self._get_ids_map()
+        self.total_progress = sum(2 * len(waveforms) for waveforms in ids_map.values())
+        self.current_progress = 0
 
         with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
             for ids_name, waveforms in ids_map.items():
@@ -52,6 +57,8 @@ class ConfigurationExporter:
         Args:
             dir_path: The directory path to store the PNGs into.
         """
+        self.total_progress = len(self.config.waveform_map)
+        self.current_progress = 0
 
         Path(dir_path).mkdir(parents=True, exist_ok=True)
         for name, group in self.config.waveform_map.items():
@@ -70,6 +77,7 @@ class ConfigurationExporter:
             png_file = output_path.with_suffix(".png")
             logger.debug(f"Writing PNG: {png_file}...")
             fig.write_image(png_file, format="png")
+            self._increment_progress()
         logger.info(f"Successfully exported waveform configuration PNGs to {dir_path}.")
 
     def to_csv(self, file_path):
@@ -78,7 +86,8 @@ class ConfigurationExporter:
         Args:
             file_path: The file path to store the CSV to.
         """
-
+        self.total_progress = len(self.config.waveform_map)
+        self.current_progress = 0
         data = {"time": self.times}
 
         for name, group in self.config.waveform_map.items():
@@ -91,6 +100,7 @@ class ConfigurationExporter:
                 )
                 continue
             data[name] = values
+            self._increment_progress()
 
         df = pd.DataFrame(data)
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
@@ -136,6 +146,7 @@ class ConfigurationExporter:
             _, values = waveform.get_value(self.times)
             values_per_waveform.append((path, values))
             self._fill_nodes_recursively(ids, path, values, fill=False)
+            self._increment_progress()
 
         # NOTE: We perform two passes:
         # - The first pass (above) resizes the necessary nodes without filling values.
@@ -149,6 +160,14 @@ class ConfigurationExporter:
         for waveform, (path, values) in zip(waveforms, values_per_waveform):
             logger.debug(f"Filling {waveform.name}...")
             self._fill_nodes_recursively(ids, path, values)
+            self._increment_progress()
+
+    def _increment_progress(self):
+        """Increment the progress bar"""
+        if self.progress:
+            self.current_progress += 1
+            # Maximum is is 90%, the last 10% must be set after exporting
+            self.progress.value = int(90 * self.current_progress / self.total_progress)
 
     def _fill_nodes_recursively(self, node, path, values, path_index=0, fill=True):
         """Recursively fills nodes in the IDS based on the provided path and values.
