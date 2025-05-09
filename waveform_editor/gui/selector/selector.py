@@ -134,15 +134,13 @@ class WaveformSelector(Viewer):
             if self.editor.has_changed():
                 self.confirm_modal.show(
                     self.warning_message,
-                    on_confirm=lambda: self.confirm_on_select(
-                        newly_selected, deselected
-                    ),
+                    on_confirm=lambda: self.confirm_on_select(newly_selected),
                     on_cancel=lambda: self.deselect_all(
                         include=self.prev_selection, ignore_watch=True
                     ),
                 )
                 return
-            self.confirm_on_select(newly_selected, deselected)
+            self.confirm_on_select(newly_selected)
 
         self.update_plotter(newly_selected, deselected)
 
@@ -155,7 +153,7 @@ class WaveformSelector(Viewer):
 
         self.plotter.param.trigger("plotted_waveforms")
 
-    def confirm_on_select(self, newly_selected, deselected):
+    def confirm_on_select(self, newly_selected):
         """Only allow for a single waveform to be selected. All waveforms except for
         the newly selected waveform will be deselected.
 
@@ -173,6 +171,8 @@ class WaveformSelector(Viewer):
             if len(newly_selected) != 1:
                 raise ValueError("Expected only a single new waveform to be selected.")
             self.prev_selection = next(iter(newly_selected))
+        else:
+            self.editor.set_empty()
 
     def deselect_all(self, exclude=None, ignore_watch=False, include=None):
         """Deselect all options in all CheckButtonGroups. A waveform name can be
