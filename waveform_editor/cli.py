@@ -1,3 +1,4 @@
+from ast import Import
 import logging
 import sys
 from pathlib import Path
@@ -146,6 +147,25 @@ def export_csv(yaml, output_csv, csv, linspace):
     exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_csv)
     exporter.to_csv(output_path)
+
+
+@cli.command("actor")
+def actor():
+    """Run the MUSCLE3 actor.
+
+    This command does not accept any options or arguments: configuration of the actor is
+    done through MUSCLE3 settings. Please have a look at the documentation for more
+    details: https://waveform-editor.readthedocs.io/
+    """
+    try:
+        import libmuscle  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError(
+            "The muscle3 python package is required to run the waveform-editor actor."
+        ) from exc
+    from waveform_editor.muscle3 import waveform_actor
+
+    waveform_actor()
 
 
 def create_exporter(yaml, csv, linspace):
