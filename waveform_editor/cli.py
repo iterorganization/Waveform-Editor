@@ -171,13 +171,39 @@ def create_exporter(yaml, csv, linspace):
         times = np.linspace(start, stop, num)
     else:
         times = None
-    with open(yaml) as file:
-        yaml_str = file.read()
 
     config = WaveformConfiguration()
-    config.parser.load_yaml(yaml_str)
+    load_config(config, Path(yaml))
     exporter = ConfigurationExporter(config, times)
     return exporter
+
+
+def load_config(config: WaveformConfiguration, filepath: Path) -> None:
+    """Load the YAML file from disk with the provided configuration.
+
+    Args:
+        config: configuration to load the file with
+        filepath: Path to the yaml file
+    """
+    if not filepath.is_file():
+        raise ValueError(f"Cannot find waveform configuration file '{filepath}'")
+    logging.debug("Loading waveform configuration from %s", filepath)
+
+    config.clear()
+    config.parser.load_yaml(filepath)
+
+    if config.load_error:  # Set when the YAML could not be parsed
+        raise RuntimeError(f"Could not load waveforms: {config.load_error}")
+
+    # Warn for any waveform with issues
+    for name, group in config.waveform_map.items():
+        waveform = group[name]
+        if waveform.annotations:
+            details = "\n".join(
+                f"- {item['text'].replace('\n', '\n  ').strip()}"
+                for item in waveform.annotations
+            )
+            logger.warning("Found issues with waveform '%s':\n%s", name, details)
 
 
 if __name__ == "__main__":
