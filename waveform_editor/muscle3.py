@@ -52,12 +52,12 @@ def waveform_actor():
 
             if idsname not in idss:
                 raise RuntimeError(
-                    f"Output port '{portname}' does not match to an IDS in the "
+                    f"Output port '{portname}' does not match any IDS in the "
                     f"waveform configuration (from '{fname}'). Available IDSs are: "
                     f"{', '.join(idss)}"
                 )
 
-            data = idsname[idss].serialize()
+            data = idss[idsname].serialize()
             instance.send(portname, Message(msg.timestamp, msg.next_timestamp, data))
 
 
