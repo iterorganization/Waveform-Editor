@@ -2,11 +2,13 @@ import imas
 import numpy as np
 import pytest
 
-from waveform_editor.muscle3 import waveform_actor
-
 # libmuscle and ymmsl are optional dependencies, so may not be installed
 libmuscle = pytest.importorskip("libmuscle")
 ymmsl = pytest.importorskip("ymmsl")
+
+# This cannot be imported if libmuscle is not available
+from waveform_editor.muscle3 import waveform_actor  # noqa: E402
+
 # imas_core is required for IDS serialize, unfortunately this means we cannot run these
 # tests in github Actions yet..
 pytest.importorskip("imas_core")
