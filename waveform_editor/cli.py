@@ -219,7 +219,7 @@ def load_config(config: WaveformConfiguration, filepath: Path) -> None:
         waveform = group[name]
         if waveform.annotations:
             details = "\n".join(
-                f"- {item['text'].replace('\n', '\n  ').strip()}"
+                "- " + item["text"].replace("\n", "\n  ").strip()
                 for item in waveform.annotations
             )
             logger.warning("Found issues with waveform '%s':\n%s", name, details)
