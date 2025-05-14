@@ -21,6 +21,7 @@ Manual
    cli
    tendencies
    yaml_format
+   muscle3
 
 .. toctree::
    :caption: API docs

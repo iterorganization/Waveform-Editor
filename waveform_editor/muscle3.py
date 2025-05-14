@@ -54,7 +54,7 @@ def waveform_actor():
                 raise RuntimeError(
                     f"Output port '{portname}' does not match any IDS in the "
                     f"waveform configuration (from '{fname}'). Available IDSs are: "
-                    f"{', '.join(idss)}"
+                    f"{', '.join(idss) or '<none>'}"
                 )
 
             data = idss[idsname].serialize()
