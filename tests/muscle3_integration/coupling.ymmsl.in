@@ -1,0 +1,47 @@
+ymmsl_version: v0.1
+
+model:
+  name: example_coupling_with_waveform_actor
+
+  components:
+    controller:
+      implementation: controller
+      ports:
+        o_i: time_out
+        s:
+        - ec_launchers_in
+        - nbi_in
+      
+    waveform_actor:
+      implementation: waveform_actor
+      ports:
+        # The name of the input port can be freely chosen:
+        f_init: time_in
+        # Names of the output port are "<ids_name>_out":
+        o_f:
+        - ec_launchers_out
+        - nbi_out
+    
+  conduits:
+    controller.time_out: waveform_actor.time_in
+    waveform_actor.ec_launchers_out: controller.ec_launchers_in
+    waveform_actor.nbi_out: controller.nbi_in
+
+settings:
+  # Mandatory setting for the waveform actor: the waveform configuration:
+  waveform_actor.waveforms: __PATH__/waveforms.yaml
+
+resources:
+  controller:
+    threads: 1
+  waveform_actor:
+    threads: 1
+
+implementations:
+  controller:
+    executable: python
+    args: __PATH__/controller.py
+  
+  waveform_actor:
+    executable: waveform-editor
+    args: actor

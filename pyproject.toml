@@ -29,7 +29,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["waveform-editor[dev,linting,test,docs]"]
+all = ["waveform-editor[muscle3,dev,linting,test,docs]"]
+muscle3 = [
+    "muscle3",
+]
 dev = [
     "waveform-editor[test,linting]",
     # useful to run panel in --dev mode
