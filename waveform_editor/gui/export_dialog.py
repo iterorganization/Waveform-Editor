@@ -92,7 +92,7 @@ class ExportDialog(param.Parameterized):
 
         # Main layout
         layout = pn.Column(
-            pn.pane.Markdown("## Export Configuration"),
+            pn.pane.Markdown("## Export waveforms"),
             output_option_box,
             time_options_box,
             pn.pane.Alert(
