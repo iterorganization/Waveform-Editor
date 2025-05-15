@@ -37,7 +37,6 @@ Parameters
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: constant, value: 3, start: 3, duration: 10}
 
 If the ``value`` is not specified, it will be set to the last value of the previous tendency. For example:
@@ -49,7 +48,6 @@ If the ``value`` is not specified, it will be set to the last value of the previ
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
 
@@ -72,7 +70,6 @@ Parameters
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: linear, from: 3, to: 8, duration: 10}
 
 If the ``from`` or ``to`` values are not specified, they will be taken from the adjacent tendencies. For example:
@@ -84,7 +81,6 @@ If the ``from`` or ``to`` values are not specified, they will be taken from the 
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: constant, value: 3, duration: 10}
     - {type: linear, duration: 10}
     - {type: constant, value: 10, duration: 10}
@@ -94,7 +90,6 @@ If the ``from`` or ``to`` values are not specified, they will be taken from the 
 
     .. code-block:: yaml
 
-        example/waveform: 
         - {type: linear, from: 3, to: 5, rate: 2, duration: 10}
 
 
@@ -116,7 +111,6 @@ Parameters
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: linear, from: 3, to: 8, duration: 10}
     - {type: smooth, duration: 10}
     - {type: linear, from: 5, to: 1, duration: 10}
@@ -144,7 +138,6 @@ Parameters
 
 .. code-block:: yaml
 
-    example/waveform: 
     - type: repeat
       duration: 30
       waveform:
@@ -161,7 +154,6 @@ If you want to keep the same repeated waveform as above, but would like to set t
 
 .. code-block:: yaml
 
-    example/waveform: 
     - type: repeat
       duration: 30
       period: 10
@@ -189,7 +181,6 @@ Parameters
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: piecewise, time: [0,1,2,3,6,7], value: [5,3,4,1,8,4]}
 
 .. warning::
@@ -229,7 +220,6 @@ A smooth oscillation following a sine function.
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: sine, base: 8, amplitude: 2, frequency: 1, duration: 4}
 
 Sawtooth Wave
@@ -245,7 +235,6 @@ Linearly increases from minimum to maximum, then instantly drops back to minimum
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: sawtooth, base: 8, amplitude: 2, frequency: 1, duration: 4}
 
 Triangle Wave
@@ -261,7 +250,6 @@ Linearly increases from minimum to maximum, then linearly decreases back to mini
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: triangle, base: 8, amplitude: 2, frequency: 1, duration: 4}
 
 Square Wave
@@ -277,6 +265,5 @@ Instantly switches between minimum and maximum values.
 
 .. code-block:: yaml
 
-    example/waveform: 
     - {type: square, base: 8, amplitude: 2, frequency: 1, duration: 4}
 
