@@ -62,6 +62,7 @@ class ExportDialog(param.Parameterized):
                 self.param.output,
                 name=self._export_type_description,
                 placeholder=self._export_type_placeholder,
+                sizing_mode="stretch_width",
             ),
             sizing_mode="stretch_width",
             margin=(10, 5),
@@ -71,6 +72,7 @@ class ExportDialog(param.Parameterized):
         time_options_box = pn.WidgetBox(
             pn.pane.Markdown("### ⏱️ Time Options"),
             pn.widgets.RadioBoxGroup.from_param(self.param.time_mode, inline=True),
+            pn.pane.HTML(self._time_mode_description, styles={"font-style": "italic"}),
             self._time_mode_ui_element,
             sizing_mode="stretch_width",
             margin=(10, 5),
@@ -129,6 +131,18 @@ class ExportDialog(param.Parameterized):
             CSV_EXPORT: "Please enter an output file below:",
         }[self.export_type]
 
+    @param.depends("export_type", watch=True)
+    def _update_time_mode(self):
+        """Add DEFAULT time mode when selecting PNG export."""
+        if self.export_type == PNG_EXPORT:
+            self.param["time_mode"].objects = TIME_MODES_FOR_PNG
+            self.time_mode = DEFAULT
+        else:
+            if self.time_mode == DEFAULT:
+                self.time_mode = LINSPACE
+            self.param["time_mode"].objects = TIME_MODES
+        self.param.trigger("time_mode")
+
     @param.depends("time_mode")
     def _time_mode_ui_element(self):
         """Create the time selection UI element(s) for the selected time mode."""
@@ -150,16 +164,18 @@ class ExportDialog(param.Parameterized):
             ),
         }.get(self.time_mode, None)  # DEFAULT has no time mode UI element
 
-    @param.depends("export_type", watch=True)
-    def _update_time_mode(self):
-        """Add DEFAULT time mode when selecting PNG export."""
-        if self.export_type == PNG_EXPORT:
-            self.param["time_mode"].objects = TIME_MODES_FOR_PNG
-        else:
-            if self.time_mode == DEFAULT:
-                self.time_mode = LINSPACE
-            self.param["time_mode"].objects = TIME_MODES
-        self.param.trigger("time_mode")
+    @param.depends("time_mode")
+    def _time_mode_description(self):
+        """Description of the selected time mode."""
+        return {
+            LINSPACE: "Linearly spaced time array. Start and Stop are both included.",
+            CSVFILE: (
+                "Upload a CSV file with time points. The file should contain a "
+                "single line, with values separated by commas."
+            ),
+            MANUALINPUT: "Explicitly provide the time array below.",
+            DEFAULT: "Automatically determine the time array for each waveform.",
+        }[self.time_mode]
 
     @param.depends("time_mode", "output", "csvfile", "time_array_input", watch=True)
     def _export_disabled(self):
