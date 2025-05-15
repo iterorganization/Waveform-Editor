@@ -5,12 +5,12 @@ import numpy as np
 
 
 def times_from_csv(source, from_file_path=True):
-    """Parse the CSV file or base64-encoded content containing time values.
+    """Parse the CSV file or utf8-encoded content containing time values.
 
     Args:
-        source: Either a file path or base64-encoded content from FileInput.
+        source: Either a file path or utf8-encoded content from FileInput.
         from_file_path: If True, treat source as a file path. If False, treat as
-            base64-encoded bytes.
+            utf8-encoded bytes.
 
     Returns:
         Numpy array containing the times or None if the source is None.

@@ -15,7 +15,7 @@ class WaveformConfiguration:
         # of waveforms
         self.waveform_map = {}
         self.dd_version = None
-        self.machine_description = None
+        self.machine_description = {}
         self.load_error = ""
         self.parser = YamlParser(self)
 
@@ -184,5 +184,5 @@ class WaveformConfiguration:
         self.groups = {}
         self.waveform_map = {}
         self.dd_version = None
-        self.machine_description = None
+        self.machine_description = {}
         self.load_error = ""
