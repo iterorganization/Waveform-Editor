@@ -61,7 +61,8 @@ include = ["waveform_editor*"]
 waveform-editor = "waveform_editor.cli:cli"
 
 [tool.setuptools_scm]
-# version_file = "waveform_editor/_version.py"
+#version_file = "waveform_editor/_version.py"
+local_scheme = "no-local-version"
 
 [tool.isort]
 line_length = 88
