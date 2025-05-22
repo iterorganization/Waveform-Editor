@@ -46,26 +46,3 @@ jobs:
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
-  ### TO BE REMOVED AFTER TESTS ###
-  publish-to-testpypi:
-    name: Publish Waveform-Editor distribution to TestPyPI
-    if: github.ref=='refs/heads/pypi-publish-workflow'  # only publish to TestPyPI on the feature branch
-    needs:
-    - build
-    runs-on: ubuntu-22.04
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/waveform-editor
-    permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-    steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Publish distribution to TestPyPI
-      uses: pypa/gh-action-pypi-publish@unstable/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
-        verbose: true
