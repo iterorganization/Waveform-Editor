@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "waveform-editor"
 description = "Python tool to create and edit 1D waveforms (time-varying signals)"
-readme = "README.rst"
+readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     {name = "Waveform Editor Developers"}
 ]
