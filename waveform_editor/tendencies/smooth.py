@@ -26,6 +26,7 @@ class SmoothTendency(BaseTendency):
         self.from_ = 0.0
         self.to = 0.0
         super().__init__(**kwargs)
+        self._update_values()
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -46,6 +47,12 @@ class SmoothTendency(BaseTendency):
             time = np.linspace(float(self.start), float(self.end), num_steps)
 
         values = self.spline(time)
+
+        if np.any(np.isnan(values)):
+            raise ValueError(
+                "A spline was generated at a time outside of its generated time range."
+            )
+
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
@@ -110,6 +117,7 @@ class SmoothTendency(BaseTendency):
             [self.start, self.end],
             [from_, to],
             bc_type=((1, d_start), (1, d_end)),
+            extrapolate=False,
         )
 
         values_changed = (
