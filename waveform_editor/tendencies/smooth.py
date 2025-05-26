@@ -114,10 +114,7 @@ class SmoothTendency(BaseTendency):
             d_end = self.next_tendency.start_derivative
 
         self.spline = CubicSpline(
-            [self.start, self.end],
-            [from_, to],
-            bc_type=((1, d_start), (1, d_end)),
-            extrapolate=False,
+            [self.start, self.end], [from_, to], bc_type=((1, d_start), (1, d_end))
         )
 
         values_changed = (
