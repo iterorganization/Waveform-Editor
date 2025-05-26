@@ -62,6 +62,7 @@ class ExportDialog(param.Parameterized):
                 self.param.output,
                 name=self._export_type_description,
                 placeholder=self._export_type_placeholder,
+                onkeyup=True,
                 sizing_mode="stretch_width",
             ),
             sizing_mode="stretch_width",
@@ -160,7 +161,7 @@ class ExportDialog(param.Parameterized):
             ),
             CSVFILE: pn.widgets.FileInput.from_param(self.param.csvfile),
             MANUALINPUT: pn.widgets.TextInput.from_param(
-                self.param.time_array_input, placeholder="e.g. 1,2,3,4,5"
+                self.param.time_array_input, placeholder="e.g. 1,2,3,4,5", onkeyup=True
             ),
         }.get(self.time_mode, None)  # DEFAULT has no time mode UI element
 
