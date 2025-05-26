@@ -4,13 +4,11 @@ from pathlib import Path
 
 import click
 import numpy as np
-import panel as pn
 from rich import console, traceback
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
-from waveform_editor.gui.main import WaveformEditorGui
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
@@ -65,6 +63,12 @@ def parse_linspace(ctx, param, value):
 @cli.command("gui")
 def launch_gui():
     """Launch the Waveform Editor GUI using Panel."""
+    # Use local imports to avoid loading the full GUI dependencies for the other CLI use
+    # cases:
+    import panel as pn
+
+    from waveform_editor.gui.main import WaveformEditorGui
+
     try:
         app = WaveformEditorGui()
         pn.serve(app)
