@@ -230,6 +230,10 @@ class OptionsButtonRow(Viewer):
         )
         existing_accordion.append((name, new_group_ui))
 
+        # Auto-expand new group. N.B. active list must be replaced to take effect:
+        new_index = len(existing_accordion.objects) - 1
+        existing_accordion.active = existing_accordion.active + [new_index]
+
         self.new_group_panel.is_visible(False)
         self.new_group_panel.clear_input()
 

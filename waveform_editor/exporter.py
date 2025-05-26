@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import imas
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
@@ -19,6 +20,9 @@ class ConfigurationExporter:
         self.current_progress = None
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
+        # times must be None, or in increasing order
+        if self.times is not None and not np.all(np.diff(self.times) > 0):
+            raise ValueError("Time array must be in increasing order.")
 
     def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.

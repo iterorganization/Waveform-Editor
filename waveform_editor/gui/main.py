@@ -35,7 +35,7 @@ class WaveformEditorGui:
         )
 
         self.export_button = pn.widgets.Button(
-            name="Export Data",
+            name="Export waveforms",
             icon="upload",
             button_type="primary",
             visible=False,
