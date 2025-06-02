@@ -14,8 +14,7 @@ from waveform_editor.gui.start_up import StartUpPrompt
 
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
-hv.extension("plotly")
-pn.extension("plotly", "modal", "codeeditor", notifications=True)
+pn.extension("modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
@@ -48,7 +47,7 @@ class WaveformEditorGui:
 
         # Add tabs to switch from viewer to editor
         self.modal = ConfirmModal()
-        self.plotter = WaveformPlotter()
+        self.plotter = WaveformPlotter(self)
         self.editor = WaveformEditor(self.plotter, self.config)
         self.selector = WaveformSelector(self)
         self.tabs = pn.Tabs(
