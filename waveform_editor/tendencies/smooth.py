@@ -26,7 +26,6 @@ class SmoothTendency(BaseTendency):
         self.from_ = 0.0
         self.to = 0.0
         super().__init__(**kwargs)
-        self._update_values()
 
     def get_value(
         self, time: Optional[np.ndarray] = None
