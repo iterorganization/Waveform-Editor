@@ -91,7 +91,9 @@ class WaveformEditorGui:
 
         if self.config.load_error:
             pn.state.notifications.error(
-                f"YAML could not be loaded:\n{self.config.load_error}", duration=10000
+                "YAML could not be loaded:<br>"
+                + self.config.load_error.replace("\n", "<br>"),
+                duration=10000,
             )
             self.make_ui_visible(False)
             return
