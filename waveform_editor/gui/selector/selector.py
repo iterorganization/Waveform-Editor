@@ -146,7 +146,8 @@ class WaveformSelector(Viewer):
 
     def update_plotter(self, newly_selected, deselected):
         for key in deselected:
-            del self.plotter.plotted_waveforms[key]
+            if key in self.plotter.plotted_waveforms:
+                del self.plotter.plotted_waveforms[key]
 
         for key, value in newly_selected.items():
             self.plotter.plotted_waveforms[key] = value

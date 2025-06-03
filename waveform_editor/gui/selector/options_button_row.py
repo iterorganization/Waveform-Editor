@@ -138,9 +138,10 @@ class OptionsButtonRow(Viewer):
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this CheckButtonGroup."""
+        self.main_gui.editor.stored_string = None
         selected_waveforms = self.check_buttons.value.copy()
         for waveform_name in selected_waveforms:
-            self.main_gui.selector.config.remove_waveform(waveform_name)
+            self.main_gui.config.remove_waveform(waveform_name)
             self.check_buttons.options.remove(waveform_name)
         self.check_buttons.value = []
         self.check_buttons.param.trigger("options")
@@ -160,11 +161,12 @@ class OptionsButtonRow(Viewer):
     def _remove_group(self):
         """Remove the group."""
 
+        self.main_gui.editor.stored_string = None
         # TODO: This prevents deleted waveforms from remaining in the plotter.
         # It would be nicer to have the selected waveforms which are not in the deleted
         # group to stay selected.
         self.main_gui.selector.deselect_all()
-        self.main_gui.selector.config.remove_group(self.path)
+        self.main_gui.config.remove_group(self.path)
 
         # Remove group from UI
         for idx, column in enumerate(self.parent_accordion):
@@ -195,7 +197,7 @@ class OptionsButtonRow(Viewer):
         new_waveform = self.main_gui.config.parse_waveform(f"{name}: [{{}}]")
         # TODO:this try-except block can be replaced with a global error handler later
         try:
-            self.main_gui.selector.config.add_waveform(new_waveform, self.path)
+            self.main_gui.config.add_waveform(new_waveform, self.path)
         except ValueError as e:
             pn.state.notifications.error(str(e))
             return
@@ -217,7 +219,7 @@ class OptionsButtonRow(Viewer):
 
         # Create new group in configuration
         try:
-            new_group = self.main_gui.selector.config.add_group(name, self.path)
+            new_group = self.main_gui.config.add_group(name, self.path)
         except ValueError as e:
             pn.state.notifications.error(str(e))
             return
