@@ -17,7 +17,7 @@ def filled_annotations():
             "type": "error",
         },
         {
-            "row": line_numbers[1],
+            "row": line_numbers[1] - 1,  # account for annotation offset
             "column": 0,
             "text": test_messages[1],
             "type": "warning",

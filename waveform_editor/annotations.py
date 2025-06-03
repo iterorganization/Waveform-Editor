@@ -28,6 +28,9 @@ class Annotations(UserList):
                 treated as an error.
         """
         error_type = "warning" if is_warning else "error"
+        # The key of the kv-pair is removed in the editor, so we account for this
+        if line_number > 0:
+            line_number -= 1
         self.append(
             {
                 "row": line_number,
