@@ -1,6 +1,5 @@
 import io
 
-import holoviews as hv
 import panel as pn
 
 import waveform_editor
