@@ -202,4 +202,6 @@ class YamlParser:
             return waveform
         except yaml.YAMLError as e:
             self.parse_errors.append(str(e))
-            return Waveform()
+            empty_waveform = Waveform()
+            empty_waveform.annotations.add_yaml_error(e)
+            return empty_waveform
