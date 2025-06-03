@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 
 import holoviews as hv
 import panel as pn
@@ -58,16 +59,15 @@ class WaveformEditorGui:
             visible=False,
         )
         self.tabs.param.watch(self.selector.on_tab_change, "active")
+        self.start_up = StartUpPrompt(self)
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
-            main=self.tabs,
+            main=pn.Column(self.start_up, self.tabs),
             sidebar_width=400,
         )
-        self.start_up = StartUpPrompt(self)
 
         # Append to sidebar to make the content of the sidebar dynamic
         sidebar_column = pn.Column(
-            self.start_up,
             pn.Row(self.file_download, self.export_button),
             self.selector,
             self.modal,
@@ -83,7 +83,8 @@ class WaveformEditorGui:
         """
 
         self.plotter.plotted_waveforms = {}
-        yaml_content = event.new.decode("utf-8")
+        with open(event.new[0]) as file:
+            yaml_content = file.read()
         self.config.parser.load_yaml(yaml_content)
 
         if self.config.load_error:
@@ -98,10 +99,9 @@ class WaveformEditorGui:
         # Create tree structure in sidebar based on waveform groups in YAML
         self.selector.create_waveform_selector_ui()
 
-        if self.start_up.file_input.filename:
-            new_filename = self.start_up.file_input.filename.replace(
-                ".yaml", "-new.yaml"
-            )
+        if self.start_up.file_input.value:
+            file_path = Path(self.start_up.file_input.value[0])
+            new_filename = file_path.name.replace(".yaml", "-new.yaml")
             self.file_download.filename = new_filename
 
     def make_ui_visible(self, is_visible):

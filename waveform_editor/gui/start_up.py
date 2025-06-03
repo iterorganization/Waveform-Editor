@@ -15,7 +15,9 @@ class StartUpPrompt(Viewer):
     def __init__(self, main_gui):
         super().__init__()
         self.main_gui = main_gui
-        self.file_input = pn.widgets.FileInput(accept=".yaml")
+        self.file_input = pn.widgets.FileSelector(
+            "/", file_pattern="*.yaml", only_files=True
+        )
         self.file_input.param.watch(self.main_gui.load_yaml, "value")
 
         self.selection_text = pn.pane.Markdown(
