@@ -78,8 +78,8 @@ class WaveformEditor(Viewer):
     def set_empty(self):
         """Set code editor value to empty value in read-only mode."""
         self.code_editor.value = "Select a waveform to edit"
-        self.error_alert.visible = False
         self.code_editor.readonly = True
+        self.error_alert.visible = False
         self.stored_string = None
         self.plotter.title = ""
         self.plotter.param.trigger("plotted_waveforms")
