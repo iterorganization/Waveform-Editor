@@ -4,13 +4,11 @@ from pathlib import Path
 
 import click
 import numpy as np
-import panel as pn
 from rich import console, traceback
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.exporter import ConfigurationExporter
-from waveform_editor.gui.main import WaveformEditorGui
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
@@ -65,6 +63,12 @@ def parse_linspace(ctx, param, value):
 @cli.command("gui")
 def launch_gui():
     """Launch the Waveform Editor GUI using Panel."""
+    # Use local imports to avoid loading the full GUI dependencies for the other CLI use
+    # cases:
+    import panel as pn
+
+    from waveform_editor.gui.main import WaveformEditorGui
+
     try:
         app = WaveformEditorGui()
         pn.serve(app)
@@ -148,6 +152,25 @@ def export_csv(yaml, output_csv, csv, linspace):
     exporter.to_csv(output_path)
 
 
+@cli.command("actor")
+def actor():
+    """Run the MUSCLE3 actor.
+
+    This command does not accept any options or arguments: configuration of the actor is
+    done through MUSCLE3 settings. Please have a look at the documentation for more
+    details: https://waveform-editor.readthedocs.io/
+    """
+    try:
+        import libmuscle  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError(
+            "The muscle3 python package is required to run the waveform-editor actor."
+        ) from exc
+    from waveform_editor.muscle3 import waveform_actor
+
+    waveform_actor()
+
+
 def create_exporter(yaml, csv, linspace):
     """Read a YAML file from disk, load it into a WaveformConfiguration and create a
     ConfigurationExporter using the given times.
@@ -171,13 +194,39 @@ def create_exporter(yaml, csv, linspace):
         times = np.linspace(start, stop, num)
     else:
         times = None
-    with open(yaml) as file:
-        yaml_str = file.read()
 
     config = WaveformConfiguration()
-    config.parser.load_yaml(yaml_str)
+    load_config(config, Path(yaml))
     exporter = ConfigurationExporter(config, times)
     return exporter
+
+
+def load_config(config: WaveformConfiguration, filepath: Path) -> None:
+    """Load the YAML file from disk with the provided configuration.
+
+    Args:
+        config: configuration to load the file with
+        filepath: Path to the yaml file
+    """
+    if not filepath.is_file():
+        raise ValueError(f"Cannot find waveform configuration file '{filepath}'")
+    logging.debug("Loading waveform configuration from %s", filepath)
+
+    config.clear()
+    config.parser.load_yaml(filepath)
+
+    if config.load_error:  # Set when the YAML could not be parsed
+        raise RuntimeError(f"Could not load waveforms: {config.load_error}")
+
+    # Warn for any waveform with issues
+    for name, group in config.waveform_map.items():
+        waveform = group[name]
+        if waveform.annotations:
+            details = "\n".join(
+                "- " + item["text"].replace("\n", "\n  ").strip()
+                for item in waveform.annotations
+            )
+            logger.warning("Found issues with waveform '%s':\n%s", name, details)
 
 
 if __name__ == "__main__":

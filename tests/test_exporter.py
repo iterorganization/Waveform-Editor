@@ -613,3 +613,17 @@ def _export_ids(file_path, yaml_str, times):
     config.parser.load_yaml(yaml_str)
     exporter = ConfigurationExporter(config, times)
     exporter.to_ids(file_path)
+
+
+def test_increasing_times():
+    config = WaveformConfiguration()
+    # This is fine:
+    ConfigurationExporter(config, np.linspace(0, 1, 5))
+    ConfigurationExporter(config, np.array([0]))
+
+    with pytest.raises(ValueError):
+        ConfigurationExporter(config, np.linspace(1, 0, 5))
+    with pytest.raises(ValueError):
+        ConfigurationExporter(config, np.array([0, 0, 1]))
+    with pytest.raises(ValueError):
+        ConfigurationExporter(config, np.array([0, 2, 1]))

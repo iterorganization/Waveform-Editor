@@ -1,0 +1,19 @@
+# Very simple waveform configuration as an example for the MUSCLE3 IMAS actor
+globals:
+  dd_version: 4.0.0
+
+ec_launchers:
+  ec_launchers/beam(1)/power_launched/data:
+    # Ramp up to 50 kW
+    - {type: linear, to: 50e3, duration: 10}
+    # Flat top, constant at 50 kW
+    - {type: constant, duration: 30}
+    # Ramp down
+    - {type: linear, to: 0, duration: 10}
+
+nbi:
+  # Note that the actor would give an error if we do not include this waveform:
+  # the yMMSL file expects an output for the NBI IDS, so we must define
+  # waveforms for this IDS.
+  nbi/unit(1)/power_launched/data:
+  - {type: constant, value: 0}  # NBI is turned off for this configuration

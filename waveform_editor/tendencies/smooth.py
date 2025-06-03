@@ -46,6 +46,12 @@ class SmoothTendency(BaseTendency):
             time = np.linspace(float(self.start), float(self.end), num_steps)
 
         values = self.spline(time)
+
+        if np.any(np.isnan(values)):
+            raise ValueError(
+                "A spline was generated at a time outside of its generated time range."
+            )
+
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
@@ -82,6 +88,8 @@ class SmoothTendency(BaseTendency):
         "_trigger",
         "user_from",
         "user_to",
+        "start",
+        "end",
         watch=True,
         on_init=True,
     )
@@ -106,10 +114,14 @@ class SmoothTendency(BaseTendency):
         if self.next_tendency is not None:
             d_end = self.next_tendency.start_derivative
 
+        if self.start >= self.end:
+            return
+
         self.spline = CubicSpline(
             [self.start, self.end],
             [from_, to],
             bc_type=((1, d_start), (1, d_end)),
+            extrapolate=False,
         )
 
         values_changed = (

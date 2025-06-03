@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import imas
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
@@ -19,6 +20,9 @@ class ConfigurationExporter:
         self.current_progress = None
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
+        # times must be None, or in increasing order
+        if self.times is not None and not np.all(np.diff(self.times) > 0):
+            raise ValueError("Time array must be in increasing order.")
 
     def to_ids(self, uri):
         """Export the waveforms in the configuration to IDSs.
@@ -26,30 +30,49 @@ class ConfigurationExporter:
         Args:
             uri: URI to the data entry.
         """
+        with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
+            for _, ids in self._generate_idss(entry.factory):
+                entry.put(ids)
+
+        logger.info(f"Successfully exported waveform configuration to {uri}.")
+
+    def to_ids_dict(self):
+        """Export the waveforms in the configuration to IDSs.
+
+        Returns:
+            A dictionary with IDS names as keys and IDS objects as values.
+        """
+        factory = imas.IDSFactory(self.config.dd_version)
+        return {ids_name: ids for ids_name, ids in self._generate_idss(factory)}
+
+    def _generate_idss(self, factory):
+        """Generator for creating IDS objects from the configuration.
+        Common logic for to_ids and to_ids_dict exporters.
+
+        Args:
+            factory: IDSFactory to use for creating new IDSs
+        """
         ids_map = self._get_ids_map()
         self.total_progress = sum(2 * len(waveforms) for waveforms in ids_map.values())
         self.current_progress = 0
+        for ids_name, waveforms in ids_map.items():
+            logger.debug(f"Filling {ids_name}...")
 
-        with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
-            for ids_name, waveforms in ids_map.items():
-                logger.debug(f"Filling {ids_name}...")
-
-                # Copy machine description if provided, otherwise start from empty IDS
-                md = self.config.machine_description.get(ids_name)
-                if md:
-                    with imas.DBEntry(md, "r") as entry_md:
-                        orig_ids = entry_md.get(ids_name, autoconvert=False)
-                        ids = imas.convert_ids(orig_ids, self.config.dd_version)
-                else:
-                    ids = entry.factory.new(ids_name)
-                # TODO: currently only IDSs with homogeneous time mode are supported
-                ids.ids_properties.homogeneous_time = (
-                    imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-                )
-                ids.time = self.times
-                self._fill_waveforms(ids, waveforms)
-                entry.put(ids)
-        logger.info(f"Successfully exported waveform configuration to {uri}.")
+            # Copy machine description if provided, otherwise start from empty IDS
+            md = self.config.machine_description.get(ids_name)
+            if md:
+                with imas.DBEntry(md, "r") as entry_md:
+                    orig_ids = entry_md.get(ids_name, autoconvert=False)
+                    ids = imas.convert_ids(orig_ids, self.config.dd_version)
+            else:
+                ids = factory.new(ids_name)
+            # TODO: currently only IDSs with homogeneous time mode are supported
+            ids.ids_properties.homogeneous_time = (
+                imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+            )
+            ids.time = self.times
+            self._fill_waveforms(ids, waveforms)
+            yield ids_name, ids
 
     def to_png(self, dir_path):
         """Export the waveforms to PNGs.
@@ -118,7 +141,7 @@ class ConfigurationExporter:
             waveform = group[name]
             if not waveform.metadata:
                 logger.warning(
-                    f"{waveform.name} does not exist in IDS, so it is not exported."
+                    f"'{waveform.name}' does not exist in IDS, so it is not exported."
                 )
                 continue
             split_path = waveform.name.split("/")

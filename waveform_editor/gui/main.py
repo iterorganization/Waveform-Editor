@@ -12,6 +12,8 @@ from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.start_up import StartUpPrompt
 
+# Note: these extension() calls take a couple of seconds
+# Please avoid importing this module unless actually starting the GUI
 hv.extension("plotly")
 pn.extension("plotly", "modal", "codeeditor", notifications=True)
 
@@ -36,7 +38,7 @@ class WaveformEditorGui:
         )
 
         self.export_button = pn.widgets.Button(
-            name="Export Data",
+            name="Export waveforms",
             icon="upload",
             button_type="primary",
             visible=False,

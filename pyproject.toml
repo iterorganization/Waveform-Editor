@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "waveform-editor"
 description = "Python tool to create and edit 1D waveforms (time-varying signals)"
-readme = "README.rst"
+readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     {name = "Waveform Editor Developers"}
 ]
@@ -29,7 +29,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["waveform-editor[dev,linting,test,docs]"]
+all = ["waveform-editor[muscle3,dev,linting,test,docs]"]
+muscle3 = [
+    "muscle3",
+]
 dev = [
     "waveform-editor[test,linting]",
     # useful to run panel in --dev mode
@@ -61,7 +64,8 @@ include = ["waveform_editor*"]
 waveform-editor = "waveform_editor.cli:cli"
 
 [tool.setuptools_scm]
-# version_file = "waveform_editor/_version.py"
+#version_file = "waveform_editor/_version.py"
+local_scheme = "no-local-version"
 
 [tool.isort]
 line_length = 88
