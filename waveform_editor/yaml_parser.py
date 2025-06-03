@@ -86,6 +86,9 @@ class YamlParser:
 
                 root_group = self._recursive_load(group_content, group_name)
                 self.config.groups[group_name] = root_group
+
+            if self.parse_errors:
+                raise ValueError("\n".join(self.parse_errors))
         except Exception as e:
             self.config.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
@@ -181,7 +184,7 @@ class YamlParser:
 
             name = waveform_key.removeprefix("user_")
             waveform = waveform_yaml[waveform_key]
-            if not waveform:
+            if waveform is None:
                 raise yaml.YAMLError("Cannot have an empty waveform.")
             if not isinstance(waveform, (list, int, float)):
                 raise yaml.YAMLError(
@@ -198,5 +201,5 @@ class YamlParser:
             )
             return waveform
         except yaml.YAMLError as e:
-            self.parse_errors.append(e)
+            self.parse_errors.append(str(e))
             return Waveform()
