@@ -1,8 +1,11 @@
+from io import StringIO
+
 import holoviews as hv
 import panel as pn
 import param
 from holoviews import streams
 from panel.viewable import Viewer
+from ruamel.yaml import YAML
 
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 
@@ -38,6 +41,7 @@ class WaveformPlotter(Viewer):
 
         curves = []
 
+        num_piecewise = 0
         for tendency in waveform.tendencies:
             times, values = tendency.get_value()
             curve = hv.Curve((times, values), label=label).opts(
@@ -53,7 +57,10 @@ class WaveformPlotter(Viewer):
                     source=curve,
                     style={"color": "black", "size": 10},
                 )
-                curve_stream.add_subscriber(self.click_and_drag)
+                curve_stream.add_subscriber(
+                    lambda data, idx=num_piecewise: self.click_and_drag(data, idx)
+                )
+                num_piecewise += 1
             curves.append(curve)
 
         # TODO: fix color
@@ -63,32 +70,27 @@ class WaveformPlotter(Viewer):
         )
         return overlay
 
-    def click_and_drag(self, data):
-        code_lines = self.main_gui.editor.code_editor.value.strip().split("\n")
-        updated_lines = []
-        for line in code_lines:
-            if "type: piecewise" in line:
-                # Find the index of 'time: [' and 'value: [' in the line
-                time_start = line.find("time: [")
-                time_end = line.find("]", time_start) + 1
-                value_start = line.find("value: [")
-                value_end = line.find("]", value_start) + 1
+    def click_and_drag(self, data, idx):
+        yaml = YAML()
+        content = self.main_gui.editor.code_editor.value
+        stream = StringIO(content)
+        items = yaml.load(stream)
 
-                # Extract and replace time and value lists with new data
-                new_time = ", ".join(str(x) for x in data["x"])
-                new_value = ", ".join(str(y) for y in data["y"])
-                new_line = (
-                    line[:time_start]
-                    + f"time: [{new_time}]"
-                    + line[time_end:value_start]
-                    + f"value: [{new_value}]"
-                    + line[value_end:]
-                )
-                updated_lines.append(new_line)
-            else:
-                updated_lines.append(line)
+        # Get indices for all piecewise tendencies
+        piecewise_indices = [
+            i for i, item in enumerate(items) if item.get("type") == "piecewise"
+        ]
 
-        self.main_gui.editor.code_editor.value = "\n".join(updated_lines)
+        if idx >= len(piecewise_indices):
+            return
+
+        target_idx = piecewise_indices[idx]
+        items[target_idx]["time"] = [float(x) for x in data["x"]]
+        items[target_idx]["value"] = [float(y) for y in data["y"]]
+
+        output = StringIO()
+        yaml.dump(items, output)
+        self.main_gui.editor.code_editor.value = output.getvalue()
 
     def update_plot(self, event):
         """
