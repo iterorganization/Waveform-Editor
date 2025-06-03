@@ -89,6 +89,8 @@ class SmoothTendency(BaseTendency):
         "_trigger",
         "user_from",
         "user_to",
+        "start",
+        "end",
         watch=True,
         on_init=True,
     )
@@ -112,6 +114,9 @@ class SmoothTendency(BaseTendency):
             d_start = self.prev_tendency.end_derivative
         if self.next_tendency is not None:
             d_end = self.next_tendency.start_derivative
+
+        if self.start >= self.end:
+            return
 
         self.spline = CubicSpline(
             [self.start, self.end],
