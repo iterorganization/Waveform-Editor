@@ -9,7 +9,6 @@ class PlotterBase(Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
-        self.plot_layout = pn.Column(self.pane)
         self.title = ""
 
     def plot_waveform(self, waveform, show_legend=True):
@@ -34,4 +33,4 @@ class PlotterBase(Viewer):
         return line
 
     def __panel__(self):
-        return self.plot_layout
+        return pn.Column(self.pane)

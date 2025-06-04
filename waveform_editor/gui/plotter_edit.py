@@ -21,7 +21,6 @@ class PlotterEdit(PlotterBase):
         Overlay object, and update the plot pane.
         """
         if self.plotted_waveform is None:
-            self.title = ""
             curve = hv.Curve([])
         else:
             curve = self.plot_waveform(self.plotted_waveform, show_legend=False)
