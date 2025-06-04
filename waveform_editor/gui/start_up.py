@@ -41,7 +41,7 @@ class StartUpPrompt(Viewer):
         self.visible = False
         self.main_gui.file_download.filename = "new.yaml"
         self.main_gui.make_ui_visible(True)
-        self.main_gui.selector.create_waveform_selector_ui()
+        self.main_gui.selector.refresh()
 
     def is_visible(self, event):
         """Sets visibility of the start-up prompt."""

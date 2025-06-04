@@ -24,7 +24,7 @@ class TextInputForm(Viewer):
             active_icon="circle-x-filled",
             description="Cancel",
             margin=(10, 0, 0, 0),
-            on_click=self._on_select_cancel,
+            on_click=self.cancel,
         )
         self.panel = pn.Row(
             self.input,
@@ -42,6 +42,6 @@ class TextInputForm(Viewer):
     def __panel__(self):
         return self.panel
 
-    def _on_select_cancel(self, event):
+    def cancel(self, event=None):
         self.panel.visible = False
         self.clear_input()
