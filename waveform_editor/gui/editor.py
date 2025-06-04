@@ -9,6 +9,8 @@ class WaveformEditor(Viewer):
         self.plotter = plotter
         self.config = config
         self.waveform = None
+
+        # Contains the waveform text before any changes were made in the editor
         self.stored_string = None
 
         # Code editor UI
