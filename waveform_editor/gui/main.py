@@ -7,15 +7,15 @@ import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.export_dialog import ExportDialog
-from waveform_editor.gui.plotter import WaveformPlotter
+from waveform_editor.gui.plotter_edit import PlotterEdit
+from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.start_up import StartUpPrompt
 
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
-hv.extension("plotly")
-pn.extension("plotly", "modal", "codeeditor", notifications=True)
+pn.extension("modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
@@ -51,13 +51,14 @@ class WaveformEditorGui:
 
         # Add tabs to switch from viewer to editor
         self.modal = ConfirmModal()
-        self.plotter = WaveformPlotter()
-        self.editor = WaveformEditor(self.plotter, self.config)
+        self.plotter_view = PlotterView()
+        self.plotter_edit = PlotterEdit()
+        self.editor = WaveformEditor(self)
         self.selector = WaveformSelector(self)
         self.selector.param.watch(self.update_plotted_waveforms, "selection")
         self.tabs = pn.Tabs(
-            ("View Waveforms", self.plotter),
-            ("Edit Waveforms", pn.Row(self.editor, self.plotter)),
+            ("View Waveforms", self.plotter_view),
+            ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
             visible=False,
         )
@@ -92,7 +93,8 @@ class WaveformEditorGui:
             event: The event object containing the uploaded file data.
         """
 
-        self.plotter.plotted_waveforms = {}
+        self.plotter_view.plotted_waveforms = {}
+        self.plotter_edit.plotted_waveform = None
         yaml_content = event.new.decode("utf-8")
         self.config.parser.load_yaml(yaml_content)
 

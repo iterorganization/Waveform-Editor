@@ -5,9 +5,9 @@ from panel.viewable import Viewer
 class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
-    def __init__(self, plotter, config):
-        self.plotter = plotter
-        self.config = config
+    def __init__(self, main_gui):
+        self.main_gui = main_gui
+        self.config = self.main_gui.config
         self.waveform = None
 
         # Contains the waveform text before any changes were made in the editor
@@ -37,14 +37,12 @@ class WaveformEditor(Viewer):
         Args:
             event: Event containing the code editor value input.
         """
-        if not self.plotter.plotted_waveforms:
+        if not self.main_gui.plotter_edit.plotted_waveform:
             return
         editor_text = event.new
 
         # Fetch name of selected waveform
-        if len(self.plotter.plotted_waveforms) != 1:
-            raise ValueError("The plotter may only have a single waveform selected.")
-        name = next(iter(self.plotter.plotted_waveforms))
+        name = self.main_gui.plotter_edit.plotted_waveform.name
 
         # Merge code editor string with name into a single YAML string, ensure that
         # dashed lists are placed below the key containing the waveform name
@@ -75,7 +73,7 @@ class WaveformEditor(Viewer):
 
         # Only update plot when there are no YAML errors
         if not self.config.parser.parse_errors:
-            self.plotter.plotted_waveforms = {self.waveform.name: self.waveform}
+            self.main_gui.plotter_edit.plotted_waveform = self.waveform
 
     def set_empty(self):
         """Set code editor value to empty value in read-only mode."""
@@ -83,8 +81,6 @@ class WaveformEditor(Viewer):
         self.code_editor.readonly = True
         self.error_alert.visible = False
         self.stored_string = None
-        self.plotter.title = ""
-        self.plotter.param.trigger("plotted_waveforms")
 
     def set_value(self, value, title):
         """Set code editor value to the given value and disable read-only mode.
@@ -95,8 +91,6 @@ class WaveformEditor(Viewer):
         self.code_editor.value = value
         self.stored_string = value
         self.code_editor.readonly = False
-        self.plotter.title = title
-        self.plotter.param.trigger("plotted_waveforms")
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration at the location determined
