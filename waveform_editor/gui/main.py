@@ -19,6 +19,9 @@ pn.extension("plotly", "modal", "codeeditor", notifications=True)
 
 
 class WaveformEditorGui:
+    VIEW_WAVEFORMS_TAB = 0
+    EDIT_WAVEFORMS_TAB = 1
+
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         self.config = WaveformConfiguration()
