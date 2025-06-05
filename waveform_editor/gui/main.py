@@ -81,9 +81,18 @@ class WaveformEditorGui:
 
     def update_plotted_waveforms(self, _):
         """Update plotter.plotted_waveforms whenever the selector.selection changes."""
-        self.plotter.plotted_waveforms = {
-            waveform: self.config[waveform] for waveform in self.selector.selection
-        }
+        if self.tabs.active == self.VIEW_WAVEFORMS_TAB:
+            self.plotter_view.plotted_waveforms = {
+                waveform: self.config[waveform] for waveform in self.selector.selection
+            }
+        elif self.tabs.active == self.EDIT_WAVEFORMS_TAB:
+            if len(self.selector.selection) == 0:
+                self.plotter_edit.plotted_waveform = None
+            elif len(self.selector.selection) == 1:
+                waveform = self.selector.selection[0]
+                self.plotter_edit.plotted_waveform = self.config[waveform]
+            else:
+                raise ValueError("Cannot select more than 1 waveform in editor.")
 
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.
