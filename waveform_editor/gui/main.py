@@ -54,6 +54,7 @@ class WaveformEditorGui:
         self.plotter = WaveformPlotter()
         self.editor = WaveformEditor(self.plotter, self.config)
         self.selector = WaveformSelector(self)
+        self.selector.param.watch(self.update_plotted_waveforms, "selection")
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter)),
@@ -78,6 +79,12 @@ class WaveformEditorGui:
         )
         self.template.sidebar.append(sidebar_column)
 
+    def update_plotted_waveforms(self, _):
+        """Update plotter.plotted_waveforms whenever the selector.selection changes."""
+        self.plotter.plotted_waveforms = {
+            waveform: self.config[waveform] for waveform in self.selector.selection
+        }
+
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.
 
@@ -101,7 +108,7 @@ class WaveformEditorGui:
         self.make_ui_visible(True)
 
         # Create tree structure in sidebar based on waveform groups in YAML
-        self.selector.create_waveform_selector_ui()
+        self.selector.refresh()
 
         if self.start_up.file_input.filename:
             new_filename = self.start_up.file_input.filename.replace(
@@ -120,7 +127,7 @@ class WaveformEditorGui:
         self.file_download.visible = is_visible
         self.export_button.visible = is_visible
         self.start_up.visible = not is_visible
-        self.selector.ui_selector.visible = is_visible
+        self.selector.visible = is_visible
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""
