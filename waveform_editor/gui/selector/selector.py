@@ -17,9 +17,7 @@ class WaveformSelector(Viewer):
         super().__init__()
         self.main_gui = main_gui
         self.config = self.main_gui.config
-
-        # FIXME: we should be able to remove these
-        self.plotter = self.main_gui.plotter
+        # FIXME: we should be able to remove this
         self.editor = self.main_gui.editor
 
         self.confirm_modal = ConfirmModal()
@@ -76,12 +74,10 @@ class WaveformSelector(Viewer):
 
     def confirm_tab_change(self):
         if self.main_gui.tabs.active == self.main_gui.EDIT_WAVEFORMS_TAB:
-            self.plotter.has_legend = False
             self.multiselect = False
             # Only keep last selected waveform to edit:
             self.confirm_on_select(self.selection[-1:])
         else:
-            self.plotter.has_legend = True
             self.multiselect = True
             # ensure plot is updated when discarding changes:
             self.main_gui.update_plotted_waveforms(None)
@@ -134,7 +130,7 @@ class WaveformSelector(Viewer):
             newly_selected_key = new_selection[0]
             # Update code editor with the selected value
             waveform = self.config[newly_selected_key]
-            self.editor.set_value(waveform.get_yaml_string(), waveform.name)
+            self.editor.set_value(waveform.get_yaml_string())
         else:
             self.editor.set_empty()
 
