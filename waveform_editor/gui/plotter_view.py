@@ -19,12 +19,14 @@ class PlotterView(PlotterBase):
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object, and update the plot pane.
         """
-        curves = [
-            self.plot_waveform(waveform) for waveform in self.plotted_waveforms.values()
-        ]
-        if not curves:
-            # show an empty curve when there are no waveforms
-            curves = [hv.Curve([])]
+        curves = []
+        for waveform in self.plotted_waveforms.values():
+            curve = self.plot_waveform(waveform)
+            curve = curve.opts(line_width=2, framewise=True, show_legend=True)
+            curves.append(curve)
 
-        overlay = hv.Overlay(curves).opts(title=self.title, show_legend=True)
+        if not curves:
+            curves = [self.plot_waveform(None)]
+
+        overlay = hv.Overlay(curves).opts(title="", show_legend=True)
         self.pane.object = overlay

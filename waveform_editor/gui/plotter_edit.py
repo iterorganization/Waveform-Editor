@@ -20,9 +20,12 @@ class PlotterEdit(PlotterBase):
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object, and update the plot pane.
         """
-        if self.plotted_waveform is None:
-            curve = hv.Curve([])
-        else:
-            curve = self.plot_waveform(self.plotted_waveform, show_legend=False)
+        curve = self.plot_waveform(self.plotted_waveform)
+
+        curve = curve.opts(
+            line_width=2,
+            framewise=True,
+            show_legend=False,
+        )
 
         self.pane.object = curve

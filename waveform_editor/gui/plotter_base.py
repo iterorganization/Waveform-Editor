@@ -9,9 +9,8 @@ class PlotterBase(Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
-        self.title = ""
 
-    def plot_waveform(self, waveform, show_legend=True):
+    def plot_waveform(self, waveform):
         """
         Store the tendencies of a waveform into a holoviews curve.
 
@@ -21,16 +20,15 @@ class PlotterBase(Viewer):
         Returns:
             A Holoviews Curve object.
         """
+        # TODO: The y axis should show the units of the plotted waveform
+        xlabel = "Time (s)"
+        ylabel = "Value"
+
         if waveform is None or not waveform.tendencies:
-            return hv.Curve([])
+            return hv.Curve(([], []), xlabel, ylabel)
         times, values = waveform.get_value()
 
-        # TODO: The y axis should show the units of the plotted waveform
-        line = hv.Curve((times, values), "Time (s)", "Value", label=waveform.name).opts(
-            line_width=2, framewise=True, show_legend=show_legend
-        )
-
-        return line
+        return hv.Curve((times, values), xlabel, ylabel, label=waveform.name)
 
     def __panel__(self):
         return pn.Column(self.pane)
