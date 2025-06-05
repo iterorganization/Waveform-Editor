@@ -1,4 +1,3 @@
-import holoviews as hv
 import param
 
 from waveform_editor.gui.plotter_base import PlotterBase
