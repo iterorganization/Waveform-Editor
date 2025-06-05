@@ -3,7 +3,7 @@ import csv
 import numpy as np
 import pytest
 
-from waveform_editor.util import times_from_csv
+from waveform_editor.util import State, times_from_csv
 
 
 def test_times_from_csv_valid(tmp_path):
@@ -51,3 +51,25 @@ def test_times_from_csv_invalid_format(tmp_path):
 def test_times_from_csv_none():
     """Test calling times_from_csv with None."""
     assert times_from_csv(None) is None
+
+
+def test_state():
+    state = State()
+
+    assert bool(state) is False
+    with state:
+        assert bool(state) is True
+    assert bool(state) is False
+
+    # Test that state returns to False on exceptions
+    try:
+        with state:
+            assert bool(state) is True
+            1 / 0  # noqa
+    except ZeroDivisionError:
+        pass
+    assert bool(state) is False
+
+    # enter state twice is an error:
+    with pytest.raises(RuntimeError), state, state:
+        pass
