@@ -88,15 +88,16 @@ class SelectionGroup(Viewer):
         for index, group_ui in enumerate(self.selection_groups.values()):  # noqa: B007
             if group_ui.name == group:
                 break
-        # Remove from accordion
-        self.selection_groups.pop(group)
-        self.accordion.remove(self.accordion[index])
-        # Update active pane indices
-        self.accordion.active = [
+        # Calculate which panes should be active after removing this one
+        new_active = [
             num if num < index else num - 1
             for num in self.accordion.active
             if num != index
         ]
+        # Remove from accordion and update active panes
+        self.selection_groups.pop(group)
+        self.accordion.remove(self.accordion[index])
+        self.accordion.active = new_active
 
     def get_selection(self, recursive=False) -> list[str]:
         """Get a list of the selected waveforms.

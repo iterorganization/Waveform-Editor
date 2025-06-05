@@ -83,6 +83,8 @@ class WaveformSelector(Viewer):
         else:
             self.plotter.has_legend = True
             self.multiselect = True
+            # ensure plot is updated when discarding changes:
+            self.main_gui.update_plotted_waveforms(None)
 
     def cancel_tab_change(self):
         """Revert the selection Select the edit waveforms tab."""
