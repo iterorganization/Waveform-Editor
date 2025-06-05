@@ -82,7 +82,7 @@ class WaveformEditor(Viewer):
         self.error_alert.visible = False
         self.stored_string = None
 
-    def set_value(self, value, title):
+    def set_value(self, value):
         """Set code editor value to the given value and disable read-only mode.
 
         Args:

@@ -130,7 +130,7 @@ class WaveformSelector(Viewer):
             newly_selected_key = new_selection[0]
             # Update code editor with the selected value
             waveform = self.config[newly_selected_key]
-            self.editor.set_value(waveform.get_yaml_string(), waveform.name)
+            self.editor.set_value(waveform.get_yaml_string())
         else:
             self.editor.set_empty()
 
