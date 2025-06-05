@@ -15,7 +15,7 @@ class PlotterEdit(PlotterBase):
         self.param.watch(self.update_plot, "plotted_waveform")
         self.update_plot(None)
 
-    def update_plot(self, event):
+    def update_plot(self, _):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object, and update the plot pane.

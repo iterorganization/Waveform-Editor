@@ -5,7 +5,7 @@ from waveform_editor.gui.plotter_base import PlotterBase
 
 
 class PlotterView(PlotterBase):
-    """Class to handle dynamic waveform plotting."""
+    """Class to plot multiple waveforms in view mode."""
 
     plotted_waveforms = param.Dict(default={})
 
@@ -14,7 +14,7 @@ class PlotterView(PlotterBase):
         self.param.watch(self.update_plot, "plotted_waveforms")
         self.update_plot(None)
 
-    def update_plot(self, event):
+    def update_plot(self, _):
         """
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object, and update the plot pane.

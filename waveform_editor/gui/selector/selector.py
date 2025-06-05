@@ -17,6 +17,7 @@ class WaveformSelector(Viewer):
         super().__init__()
         self.main_gui = main_gui
         self.config = self.main_gui.config
+        # FIXME: we should be able to remove this
         self.editor = self.main_gui.editor
 
         self.confirm_modal = ConfirmModal()
