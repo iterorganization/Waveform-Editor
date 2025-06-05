@@ -52,7 +52,8 @@ class WaveformEditorGui:
         self.modal = ConfirmModal()
         self.plotter_view = PlotterView()
         self.plotter_edit = PlotterEdit()
-        self.editor = WaveformEditor(self)
+        self.editor = WaveformEditor(self.config)
+        self.plotter_edit.plotted_waveform = self.editor.param.waveform
         self.selector = WaveformSelector(self)
         self.selector.param.watch(self.update_plotted_waveforms, "selection")
         self.tabs = pn.Tabs(
@@ -81,18 +82,14 @@ class WaveformEditorGui:
 
     def update_plotted_waveforms(self, _):
         """Update plotter.plotted_waveforms whenever the selector.selection changes."""
-        if self.tabs.active == self.VIEW_WAVEFORMS_TAB:
-            self.plotter_view.plotted_waveforms = {
-                waveform: self.config[waveform] for waveform in self.selector.selection
-            }
-        elif self.tabs.active == self.EDIT_WAVEFORMS_TAB:
-            if len(self.selector.selection) == 0:
-                self.plotter_edit.plotted_waveform = None
-            elif len(self.selector.selection) == 1:
-                waveform = self.selector.selection[0]
-                self.plotter_edit.plotted_waveform = self.config[waveform]
-            else:
-                raise ValueError("Cannot select more than 1 waveform in editor.")
+        self.plotter_view.plotted_waveforms = {
+            waveform: self.config[waveform] for waveform in self.selector.selection
+        }
+        if len(self.selector.selection) == 0:
+            self.editor.set_waveform(None)
+        else:
+            waveform = self.selector.selection[0]
+            self.editor.set_waveform(waveform)
 
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.
@@ -102,7 +99,6 @@ class WaveformEditorGui:
         """
 
         self.plotter_view.plotted_waveforms = {}
-        self.plotter_edit.plotted_waveform = None
         yaml_content = event.new.decode("utf-8")
         self.config.parser.load_yaml(yaml_content)
 

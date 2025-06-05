@@ -79,8 +79,6 @@ class WaveformSelector(Viewer):
             self.confirm_on_select(self.selection[-1:])
         else:
             self.multiselect = True
-            # ensure plot is updated when discarding changes:
-            self.main_gui.update_plotted_waveforms(None)
 
     def cancel_tab_change(self):
         """Revert the selection Select the edit waveforms tab."""
@@ -125,14 +123,6 @@ class WaveformSelector(Viewer):
         self.ignore_select_watcher = True
         self.selection = new_selection
         self.ignore_select_watcher = False
-        # Update editor:
-        if new_selection:
-            newly_selected_key = new_selection[0]
-            # Update code editor with the selected value
-            waveform = self.config[newly_selected_key]
-            self.editor.set_value(waveform.get_yaml_string())
-        else:
-            self.editor.set_empty()
 
     def cancel_on_select(self):
         """Don't change selection"""

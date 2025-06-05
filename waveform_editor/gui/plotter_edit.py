@@ -7,7 +7,7 @@ from waveform_editor.waveform import Waveform
 class PlotterEdit(PlotterBase):
     """Class to plot a single waveform in edit mode."""
 
-    plotted_waveform: Waveform = param.ClassSelector(class_=Waveform, allow_None=True)
+    plotted_waveform: Waveform = param.ClassSelector(class_=Waveform, allow_refs=True)
 
     def __init__(self, **params):
         super().__init__(**params)
