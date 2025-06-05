@@ -11,6 +11,7 @@ from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.start_up import StartUpPrompt
+from waveform_editor.util import State
 
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
@@ -21,8 +22,16 @@ class WaveformEditorGui:
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
 
+    DISCARD_CHANGES_MESSAGE = (
+        "# **⚠️ Warning**  \nYou did not save your changes. "
+        "Leaving now will discard any changes you made to this waveform."
+        "   \n\n**Are you sure you want to continue?**"
+    )
+
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
+        self._reverting_to_editor = State()
+
         self.config = WaveformConfiguration()
 
         # TODO: The file download button is a placeholder for the actual saving
@@ -36,6 +45,7 @@ class WaveformEditorGui:
             visible=False,
         )
 
+        export_dialog = ExportDialog(self)
         self.export_button = pn.widgets.Button(
             name="Export waveforms",
             icon="upload",
@@ -44,25 +54,32 @@ class WaveformEditorGui:
             align="end",
             width=150,
             margin=(5, 5),
+            on_click=export_dialog.open,
         )
-        export_dialog = ExportDialog(self)
-        self.export_button.on_click(export_dialog.open)
 
-        # Add tabs to switch from viewer to editor
+        # Modal and side bar selector
         self.modal = ConfirmModal()
+        self.selector = WaveformSelector(self)
+        self.selector.param.watch(self.on_selection_change, "selection")
+
+        # Main views: view and edit tabs
         self.plotter_view = PlotterView()
         self.plotter_edit = PlotterEdit()
         self.editor = WaveformEditor(self.config)
         self.plotter_edit.plotted_waveform = self.editor.param.waveform
-        self.selector = WaveformSelector(self)
-        self.selector.param.watch(self.update_plotted_waveforms, "selection")
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
             visible=False,
         )
-        self.tabs.param.watch(self.selector.on_tab_change, "active")
+        self.tabs.param.watch(self.on_tab_change, "active")
+
+        # Set multiselect of the selector based on the active tab:
+        allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
+        self.selector.multiselect = allow_multiselect
+
+        # Combine UI:
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
@@ -80,16 +97,54 @@ class WaveformEditorGui:
         )
         self.template.sidebar.append(sidebar_column)
 
-    def update_plotted_waveforms(self, _):
-        """Update plotter.plotted_waveforms whenever the selector.selection changes."""
-        self.plotter_view.plotted_waveforms = {
-            waveform: self.config[waveform] for waveform in self.selector.selection
-        }
-        if len(self.selector.selection) == 0:
-            self.editor.set_waveform(None)
+    def on_selection_change(self, event):
+        """Respond to a changed waveform selection"""
+        if self._reverting_to_editor:
+            return  # ignore this event when we revert to the editor
+        if (
+            self.tabs.active == self.EDIT_WAVEFORMS_TAB
+            and self.editor.has_changed()
+            # Check if current waveform is being removed. The user already confirmed
+            # they want to remove the waveform, so we don't ask again:
+            and not self.selector.is_removing_waveform
+        ):
+            self.modal.show(
+                self.DISCARD_CHANGES_MESSAGE,
+                on_confirm=self.update_selection,
+                on_cancel=self.revert_to_editor,
+            )
         else:
-            waveform = self.selector.selection[0]
-            self.editor.set_waveform(waveform)
+            self.update_selection()
+
+    def on_tab_change(self, event):
+        """Respond to a tab change"""
+        if self._reverting_to_editor:
+            return  # ignore this event when we revert to the editor
+        if event.old == self.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
+            self.modal.show(
+                self.DISCARD_CHANGES_MESSAGE,
+                on_confirm=self.update_selection,
+                on_cancel=self.revert_to_editor,
+            )
+        elif not self.editor.has_changed():  # only update sele
+            self.update_selection()
+
+    def update_selection(self):
+        """Reflect updated selection in other components"""
+        selection = self.selector.selection
+        if self.tabs.active == self.EDIT_WAVEFORMS_TAB:
+            self.editor.set_waveform(None if not selection else selection[0])
+            self.plotter_view.plotted_waveforms = {}
+        elif self.tabs.active == self.VIEW_WAVEFORMS_TAB:
+            self.editor.set_waveform(None)
+            waveform_map = {name: self.config[name] for name in selection}
+            self.plotter_view.plotted_waveforms = waveform_map
+
+    def revert_to_editor(self):
+        """Revert to the editor without changing its contents"""
+        with self._reverting_to_editor:  # Disable watchers for tab and selection
+            self.tabs.active = self.EDIT_WAVEFORMS_TAB
+            self.selector.set_selection([self.editor.waveform.name])
 
     def load_yaml(self, event):
         """Load waveform configuration from a YAML file.

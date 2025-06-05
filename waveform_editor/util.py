@@ -45,7 +45,7 @@ class State:
 
         ignore_clicks = State()
         def process(obj):
-            if skip_processing:
+            if ignore_clicks:
                 return
             ...
         widget = pn.widgets.Button(name="Process", on_click=process)
