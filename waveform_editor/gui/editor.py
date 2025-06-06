@@ -23,13 +23,16 @@ class WaveformEditor(Viewer):
 
         # Code editor UI
         self.error_alert = pn.pane.Alert()
+        # Show error alert when object is set:
         self.error_alert.visible = self.error_alert.param.object.rx.bool()
+
         self.code_editor = pn.widgets.CodeEditor(
             sizing_mode="stretch_both",
             language="yaml",
             readonly=self.param.waveform.rx.is_(None),
         )
         self.code_editor.param.watch(self.on_value_change, "value")
+
         save_button = pn.widgets.ButtonIcon(
             icon="device-floppy",
             size="30px",

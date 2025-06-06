@@ -1,6 +1,7 @@
 import io
 
 import panel as pn
+import param
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
@@ -18,7 +19,7 @@ from waveform_editor.util import State
 pn.extension("modal", "codeeditor", notifications=True)
 
 
-class WaveformEditorGui:
+class WaveformEditorGui(param.Parameterized):
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
 
@@ -28,8 +29,11 @@ class WaveformEditorGui:
         "   \n\n**Are you sure you want to continue?**"
     )
 
+    show_startup_options = param.Boolean(True)
+
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
+        super().__init__()
         self._reverting_to_editor = State()
 
         self.config = WaveformConfiguration()
@@ -42,7 +46,7 @@ class WaveformEditorGui:
             filename="output.yaml",
             button_type="primary",
             auto=True,
-            visible=False,
+            visible=self.param.show_startup_options.rx.not_(),
         )
 
         export_dialog = ExportDialog(self)
@@ -50,17 +54,26 @@ class WaveformEditorGui:
             name="Export waveforms",
             icon="upload",
             button_type="primary",
-            visible=False,
+            visible=self.param.show_startup_options.rx.not_(),
             align="end",
             width=150,
             margin=(5, 5),
             on_click=export_dialog.open,
         )
 
-        # Modal and side bar selector
+        # Side bar
         self.modal = ConfirmModal()
         self.selector = WaveformSelector(self)
+        self.selector.visible = self.param.show_startup_options.rx.not_()
         self.selector.param.watch(self.on_selection_change, "selection")
+        self.start_up = StartUpPrompt(self, visible=self.param.show_startup_options)
+        sidebar = pn.Column(
+            self.start_up,
+            pn.Row(self.file_download, self.export_button),
+            self.selector,
+            self.modal,
+            export_dialog,
+        )
 
         # Main views: view and edit tabs
         self.plotter_view = PlotterView()
@@ -71,31 +84,21 @@ class WaveformEditorGui:
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
-            visible=False,
+            visible=self.param.show_startup_options.rx.not_(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 
-        # Set multiselect of the selector based on the active tab:
+        # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
 
-        # Combine UI:
+        # Combined UI:
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
+            sidebar=sidebar,
             sidebar_width=400,
         )
-        self.start_up = StartUpPrompt(self)
-
-        # Append to sidebar to make the content of the sidebar dynamic
-        sidebar_column = pn.Column(
-            self.start_up,
-            pn.Row(self.file_download, self.export_button),
-            self.selector,
-            self.modal,
-            export_dialog,
-        )
-        self.template.sidebar.append(sidebar_column)
 
     def on_selection_change(self, event):
         """Respond to a changed waveform selection"""
@@ -163,10 +166,10 @@ class WaveformEditorGui:
                 + self.config.load_error.replace("\n", "<br>"),
                 duration=10000,
             )
-            self.make_ui_visible(False)
+            self.show_startup_options = True
             return
 
-        self.make_ui_visible(True)
+        self.show_startup_options = False
 
         # Create tree structure in sidebar based on waveform groups in YAML
         self.selector.refresh()
@@ -176,19 +179,6 @@ class WaveformEditorGui:
                 ".yaml", "-new.yaml"
             )
             self.file_download.filename = new_filename
-
-    def make_ui_visible(self, is_visible):
-        """
-        Toggles the visibility of UI elements based on the given flag.
-
-        Args:
-            is_visible: If True, makes certain UI elements visible, else hides them.
-        """
-        self.tabs.visible = is_visible
-        self.file_download.visible = is_visible
-        self.export_button.visible = is_visible
-        self.start_up.visible = not is_visible
-        self.selector.visible = is_visible
 
     def save_yaml(self):
         """Generate and return the YAML file as a BytesIO object"""

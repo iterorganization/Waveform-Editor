@@ -9,7 +9,7 @@ from waveform_editor.util import State
 class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    visible = param.Boolean()
+    visible = param.Boolean(allow_refs=True)
     selection = param.List(
         doc="List of selected waveform names. Use `set_selection` to set.",
     )
@@ -25,7 +25,6 @@ class WaveformSelector(Viewer):
         self.config = main_gui.config
         self.is_removing_waveform = State()
         self._ignore_selection_change = State()
-        self.param.watch(self._multiselect_changed, "multiselect")
 
         # UI
         self.selection_group = SelectionGroup(self, self.config, [])
@@ -40,9 +39,10 @@ class WaveformSelector(Viewer):
         self.panel[0] = self.selection_group
         self.selection = []
 
-    def _multiselect_changed(self, _):
+    @param.depends("multiselect", watch=True)
+    def _multiselect_changed(self):
+        """Update selection when multiselect True -> False: keep at most one item."""
         if not self.multiselect:
-            # Keep at most one item of the current selection:
             self.set_selection(self.selection[:1])
 
     def set_selection(self, new_selection: list[str]):
