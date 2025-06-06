@@ -20,6 +20,9 @@ class PlotterEdit(Viewer):
         super().__init__(**params)
         self.editor = editor
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
+        # TODO: The y axis should show the units of the plotted waveform
+        self.xlabel = "Time (s)"
+        self.ylabel = "Value"
         self.update_plot()
 
     @param.depends("plotted_waveform", watch=True)
@@ -28,23 +31,32 @@ class PlotterEdit(Viewer):
         Generate curves for each selected waveform and combine them into a Holoviews
         Overlay object, and update the plot pane.
         """
-        curve = self.plot_waveform(self.plotted_waveform)
+        overlay = self.plot_waveform(self.plotted_waveform)
 
-        self.pane.object = curve
+        self.pane.object = overlay
 
     def plot_waveform(self, waveform):
-        # TODO: The y axis should show the units of the plotted waveform
-        xlabel = "Time (s)"
-        ylabel = "Value"
+        """
+        Store the tendencies of a waveform into a holoviews overlay. If the waveform
+        contains a piecewise linear tendency, enable the point draw tool.
+
+        Args:
+            waveform: The waveform to convert to a holoviews curve.
+
+        Returns:
+            A Holoviews Curve object.
+        """
 
         if waveform is None or not waveform.tendencies:
-            return hv.Curve(([], []), xlabel, ylabel)
+            return hv.Curve(([], []), self.xlabel, self.ylabel)
 
         curves = []
         num_piecewise = 0
         for tendency in waveform.tendencies:
             times, values = tendency.get_value()
-            curve = hv.Curve((times, values), label=waveform.name)
+            curve = hv.Curve(
+                (times, values), self.xlabel, self.ylabel, label=waveform.name
+            )
 
             curve = curve.opts(
                 line_width=2,
@@ -87,8 +99,8 @@ class PlotterEdit(Viewer):
             return
 
         target_idx = piecewise_indices[piecewise_idx]
-        items[target_idx]["time"] = [float(x) for x in piecewise_data["x"]]
-        items[target_idx]["value"] = [float(y) for y in piecewise_data["y"]]
+        items[target_idx]["time"] = [float(x) for x in piecewise_data[self.xlabel]]
+        items[target_idx]["value"] = [float(y) for y in piecewise_data[self.ylabel]]
 
         output = StringIO()
         yaml.dump(items, output)
