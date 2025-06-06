@@ -1,35 +1,65 @@
+from typing import Optional
+
 import panel as pn
+import param
 from panel.viewable import Viewer
+
+from waveform_editor.waveform import Waveform
 
 
 class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
-    def __init__(self, main_gui):
-        self.main_gui = main_gui
-        self.config = self.main_gui.config
-        self.waveform = None
+    waveform = param.ClassSelector(
+        class_=Waveform,
+        doc="Waveform currently being edited. Use `set_waveform` to change.",
+    )
 
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
         # Contains the waveform text before any changes were made in the editor
         self.stored_string = None
 
         # Code editor UI
-        self.error_alert = pn.pane.Alert(visible=False)
+        self.error_alert = pn.pane.Alert()
+        # Show error alert when object is set:
+        self.error_alert.visible = self.error_alert.param.object.rx.bool()
+
         self.code_editor = pn.widgets.CodeEditor(
-            sizing_mode="stretch_both", language="yaml"
+            sizing_mode="stretch_both",
+            language="yaml",
+            readonly=self.param.waveform.rx.is_(None),
         )
         self.code_editor.param.watch(self.on_value_change, "value")
-        self.set_empty()
 
         save_button = pn.widgets.ButtonIcon(
             icon="device-floppy",
             size="30px",
             active_icon="check",
             description="Save waveform",
+            on_click=self.save_waveform,
         )
-        save_button.on_click(self.save_waveform)
-
         self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
+
+        # Initialize empty
+        self.set_waveform(None)
+
+    def set_waveform(self, waveform: Optional[str]) -> None:
+        """Start editing a waveform.
+
+        Args:
+            waveform: Name of the waveform to edit. Can be set to None to disable the
+                editor.
+        """
+        self.waveform = None if waveform is None else self.config[waveform]
+        self.error_alert.object = ""  # clear any errors
+        if self.waveform is None:
+            self.code_editor.value = "Select a waveform to edit"
+            self.stored_string = None
+        else:
+            waveform_yaml = self.waveform.get_yaml_string()
+            self.stored_string = self.code_editor.value = waveform_yaml
 
     def on_value_change(self, event):
         """Update the plot based on the YAML editor input.
@@ -37,78 +67,49 @@ class WaveformEditor(Viewer):
         Args:
             event: Event containing the code editor value input.
         """
-        if not self.main_gui.plotter_edit.plotted_waveform:
+        if self.waveform is None:
             return
+
+        # Parse waveform YAML
         editor_text = event.new
-
-        # Fetch name of selected waveform
-        name = self.main_gui.plotter_edit.plotted_waveform.name
-
+        name = self.waveform.name
         # Merge code editor string with name into a single YAML string, ensure that
         # dashed lists are placed below the key containing the waveform name
         if editor_text.lstrip().startswith("- "):
             waveform_yaml = f"{name}:\n{editor_text}"
         else:
             waveform_yaml = f"{name}: {editor_text}"
-        self.waveform = self.config.parse_waveform(waveform_yaml)
-        annotations = self.waveform.annotations
+        waveform = self.config.parse_waveform(waveform_yaml)
 
+        # Handle exceptions:
+        annotations = waveform.annotations
         self.code_editor.annotations = list(annotations)
-
-        if self.config.parser.parse_errors:
+        if self.config.parser.parse_errors:  # Handle errors
             self.error_alert.object = (
                 "### The YAML did not parse correctly\n  "
                 f"{self.config.parser.parse_errors[0]}"
             )
             self.error_alert.alert_type = "danger"
-            self.error_alert.visible = True
-        elif self.code_editor.annotations:
-            self.error_alert.object = (
-                f"### There was an error in the YAML configuration\n{annotations}"
-            )
-            self.error_alert.alert_type = "warning"
-            self.error_alert.visible = True
-        else:
-            self.error_alert.visible = False
-
-        # Only update plot when there are no YAML errors
-        if not self.config.parser.parse_errors:
-            self.main_gui.plotter_edit.plotted_waveform = self.waveform
-
-    def set_empty(self):
-        """Set code editor value to empty value in read-only mode."""
-        self.code_editor.value = "Select a waveform to edit"
-        self.code_editor.readonly = True
-        self.error_alert.visible = False
-        self.stored_string = None
-
-    def set_value(self, value):
-        """Set code editor value to the given value and disable read-only mode.
-
-        Args:
-            value: The value to set the code editor's value to.
-        """
-        self.code_editor.value = value
-        self.stored_string = value
-        self.code_editor.readonly = False
+        else:  # No errors
+            if self.code_editor.annotations:  # Handle warnings
+                self.error_alert.object = (
+                    f"### There was an error in the YAML configuration\n{annotations}"
+                )
+                self.error_alert.alert_type = "warning"
+            else:
+                self.error_alert.object = ""  # Clear any previous errors or warnings
+            # There are no errors: update self.waveform
+            self.waveform = waveform
 
     def save_waveform(self, event=None):
-        """Store the waveform into the WaveformConfiguration at the location determined
-        by self.path."""
+        """Store the waveform into the WaveformConfiguration."""
         if self.error_alert.visible:
             pn.state.notifications.error("Cannot save YAML with errors.")
             return
 
-        if self.waveform.name in self.config.waveform_map:
-            self.config.replace_waveform(self.waveform)
-            # TODO: Sometimes notifications seem to not be shown, even when this is
-            # called, should be investigated
-            pn.state.notifications.success("Succesfully saved waveform!")
-            self.stored_string = self.code_editor.value
-        else:
-            pn.state.notifications.error(
-                f"Error: `{self.waveform.name}` not found in YAML"
-            )
+        self.config.replace_waveform(self.waveform)
+        self.stored_string = self.code_editor.value
+        pn.state.notifications.success("Succesfully saved waveform!")
 
     def has_changed(self):
         """Return whether the code editor value was changed from its stored value"""

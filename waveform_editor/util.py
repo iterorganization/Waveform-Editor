@@ -36,3 +36,38 @@ def times_from_csv(source, from_file_path=True):
     # Convert string values to floats
     time_array = [float(value) for value in rows[0]]
     return np.array(time_array)
+
+
+class State:
+    """Simple state object to suppress declarative logic.
+
+    Example:
+
+        ignore_clicks = State()
+        def process(obj):
+            if ignore_clicks:
+                return
+            ...
+        widget = pn.widgets.Button(name="Process", on_click=process)
+
+        # Elsewhere we can use a with statement to temporarily ignore clicks:
+        with ignore_clicks:
+            # process will not do anything, even though the on_click triggers
+            widget.clicks = 0
+    """
+
+    def __init__(self):
+        self.state = False
+
+    def __bool__(self):
+        return self.state
+
+    def __enter__(self):
+        if self.state:
+            raise RuntimeError("Cannot enter context manager twice")
+        self.state = True
+
+    def __exit__(self, type, value, traceback):
+        if not self.state:
+            raise RuntimeError("Unexpected state")
+        self.state = False

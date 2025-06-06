@@ -121,10 +121,10 @@ class OptionsButtonRow(Viewer):
 
     def _remove_waveforms(self):
         """Remove all selected waveforms in this SelectionGroup."""
-        self.main_gui.editor.stored_string = None
         for waveform_name in self.selection_group.get_selection():
             self.config.remove_waveform(waveform_name)
-        self.selection_group.sync_waveforms()
+        with self.selector.is_removing_waveform:  # Signal we're removing waveforms
+            self.selection_group.sync_waveforms()
 
     def _show_remove_group_modal(self, event):
         self.main_gui.modal.show(

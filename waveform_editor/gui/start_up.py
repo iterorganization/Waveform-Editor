@@ -10,10 +10,11 @@ class StartUpPrompt(Viewer):
     visible = param.Boolean(
         default=True,
         doc="The visibility of the start-up prompt.",
+        allow_refs=True,
     )
 
-    def __init__(self, main_gui):
-        super().__init__()
+    def __init__(self, main_gui, **params):
+        super().__init__(**params)
         self.main_gui = main_gui
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         self.file_input.param.watch(self.main_gui.load_yaml, "value")
@@ -33,19 +34,15 @@ class StartUpPrompt(Viewer):
             self.file_input,
             self.or_text,
             self.create_new_yaml_button,
+            visible=self.param.visible,
         )
-        self.param.watch(self.is_visible, "visible")
 
     def _create_new(self, event):
         """Sets up the GUI to start from a new, empty yaml."""
         self.visible = False
         self.main_gui.file_download.filename = "new.yaml"
-        self.main_gui.make_ui_visible(True)
+        self.main_gui.show_startup_options = False
         self.main_gui.selector.refresh()
-
-    def is_visible(self, event):
-        """Sets visibility of the start-up prompt."""
-        self.panel.visible = self.visible
 
     def __panel__(self):
         return self.panel
