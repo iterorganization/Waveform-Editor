@@ -1,16 +1,17 @@
 from io import StringIO
 
 import holoviews as hv
+import panel as pn
 import param
 from holoviews import streams
+from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
-from waveform_editor.gui.plotter_base import PlotterBase
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.waveform import Waveform
 
 
-class PlotterEdit(PlotterBase):
+class PlotterEdit(Viewer):
     """Class to plot a single waveform in edit mode."""
 
     plotted_waveform: Waveform = param.ClassSelector(class_=Waveform, allow_refs=True)
@@ -18,6 +19,7 @@ class PlotterEdit(PlotterBase):
     def __init__(self, editor, **params):
         super().__init__(**params)
         self.editor = editor
+        self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
         self.update_plot()
 
     @param.depends("plotted_waveform", watch=True)
@@ -91,3 +93,6 @@ class PlotterEdit(PlotterBase):
         output = StringIO()
         yaml.dump(items, output)
         self.editor.code_editor.value = output.getvalue()
+
+    def __panel__(self):
+        return pn.Column(self.pane)
