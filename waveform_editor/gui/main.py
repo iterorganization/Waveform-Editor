@@ -129,7 +129,7 @@ class WaveformEditorGui(param.Parameterized):
                 on_confirm=self.update_selection,
                 on_cancel=self.revert_to_editor,
             )
-        elif not self.editor.has_changed():  # only update sele
+        else:
             self.update_selection()
 
     def update_selection(self):
