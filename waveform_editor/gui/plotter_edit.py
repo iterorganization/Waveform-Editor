@@ -63,18 +63,16 @@ class PlotterEdit(Viewer):
             stitched_time = np.concatenate(stitched_time)
             stitched_values = np.concatenate(stitched_values)
 
-            edit_curve = hv.Curve(
-                (stitched_time, stitched_values),
-                self.xlabel,
-                self.ylabel,
-                label="edit",
-            )
-            curve_stream = streams.CurveEdit(
-                data=edit_curve.columns(),
-                source=edit_curve,
+            self.curve_stream = streams.CurveEdit(
+                data={self.xlabel: stitched_time, self.ylabel: stitched_values},
                 style={"color": "black", "size": 10},
             )
-            curve_stream.add_subscriber(self.piecewise_click_and_drag)
+            self.curve_stream.add_subscriber(self.piecewise_click_and_drag)
+
+            edit_curve = hv.DynamicMap(
+                lambda data: hv.Curve(data, self.xlabel, self.ylabel, label="edit"),
+                streams=[self.curve_stream],
+            )
 
             overlay = hv.DynamicMap(self.main_curve, streams=[self.pipe]) * edit_curve
             self.pane.object = overlay.opts(
@@ -112,10 +110,7 @@ class PlotterEdit(Viewer):
             for i in range(1, len(times)):
                 if times[i] <= times[i - 1]:
                     times[i] = times[i - 1] * (1 + 1e-15)
-            # Coulnd't find an easy way to update the values of the CurveEdit, so just
-            # trigger a notification... Updating the CurveEdit should be possible
-            # though: the Table and CurveEdit in the documentation are linked as well:
-            # https://holoviews.org/reference/streams/bokeh/CurveEdit.html
+            self.curve_stream.data = {self.xlabel: times, self.ylabel: values}
             pn.state.notifications.warning(
                 "Times must be increasing: clipping to previous time point."
             )
