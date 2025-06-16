@@ -48,7 +48,7 @@ class PlotterEdit(Viewer):
             if isinstance(tendency, PiecewiseLinearTendency)
         ]
         if not pwl_tendencies:
-            # No need for a CruveEdit stream, just show the whole waveform:
+            # No need for a CurveEdit stream, just show the whole waveform:
             self.pane.object = self.main_curve()
 
         else:
