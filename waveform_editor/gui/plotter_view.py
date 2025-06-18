@@ -53,4 +53,5 @@ class PlotterView(Viewer):
         return hv.Curve((times, values), xlabel, ylabel, label=waveform.name)
 
     def __panel__(self):
+        # Wrap HoloViews pane in Column to avoid update conflicts during rendering
         return pn.Column(self.pane)
