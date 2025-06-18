@@ -22,6 +22,8 @@ class PlotterEdit(Viewer):
         super().__init__(**params)
         self.editor = editor
 
+        self.plotted_waveform = self.editor.param.waveform
+
         self._update_plot_from_drag = State()
         self.pipe = streams.Pipe()
 
