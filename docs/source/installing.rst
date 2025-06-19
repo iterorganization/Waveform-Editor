@@ -9,20 +9,21 @@ This section guides you through installing the Waveform Editor package.
 Standard Installation
 ---------------------
 
-.. warning:: Installing from PyPI is not yet supported currently. Please follow `Installation from Source (for Development)`_ below.
+The recommended way to install the Waveform Editor is pip installing from PyPI.
+This will download and install the package along with all its required dependencies.
 
-.. TODO: Remove once project is added to PyPI
-.. The recommended way to install the Waveform Editor is pip installing from from PyPI. This will download and install the package along with all its required dependencies.
-..
-.. .. code-block:: bash
-..
-..    pip install waveform-editor
+.. code-block:: bash
+
+   pip install waveform-editor
 
 
 Installation from Source (for Development)
 ------------------------------------------
 
-If you want to install the latest development version, you can install directly from a local clone of the source code repository:
+If you want to install the latest development version, you can install directly from a
+local clone of the source code repository:
+
+.. note:: Please load the ``IMAS-Python`` module when working on SDCC.
 
 1.  Clone the repository:
 
@@ -30,7 +31,6 @@ If you want to install the latest development version, you can install directly 
 
        git clone https://github.com/iterorganization/Waveform-Editor.git
        cd Waveform-Editor
-       git checkout develop
 
 2.  Create a virtual environment
 
@@ -62,7 +62,10 @@ You can also try launching the command-line interface help or the GUI:
    waveform-editor --help
 
    # Launch the GUI (requires a graphical environment)
-   panel serve waveform_editor/gui/main.py --show
+   waveform-editor gui
+
+   # Or directly execute with panel (which auto-refreshes when changing files)
+   panel serve waveform_editor/gui/main.py --show --dev
 
 Building Documentation
 ----------------------
