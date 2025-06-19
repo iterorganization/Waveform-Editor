@@ -43,17 +43,19 @@ class State:
 
     Example:
 
-        ignore_clicks = State()
-        def process(obj):
-            if ignore_clicks:
-                return
-            ...
-        widget = pn.widgets.Button(name="Process", on_click=process)
+        .. code-block:: bash
 
-        # Elsewhere we can use a with statement to temporarily ignore clicks:
-        with ignore_clicks:
-            # process will not do anything, even though the on_click triggers
-            widget.clicks = 0
+            ignore_clicks = State()
+            def process(obj):
+                if ignore_clicks:
+                    return
+                ...
+            widget = pn.widgets.Button(name="Process", on_click=process)
+
+            # Elsewhere we can use a with statement to temporarily ignore clicks:
+            with ignore_clicks:
+                # process will not do anything, even though the on_click triggers
+                widget.clicks = 0
     """
 
     def __init__(self):
