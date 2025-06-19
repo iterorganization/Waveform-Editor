@@ -48,7 +48,7 @@ The optional ``globals`` section defines parameters applicable to the entire wav
          DD_version: 3.42.0
          machine_description:
            ec_launchers: imas:hdf5?path=machine_description1
-           equilibrium: imas:hdf5?path=machine_description2
+           nbi: imas:hdf5?path=machine_description2
            # Add other IDSs as needed
 
 Grouping Waveforms
