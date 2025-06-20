@@ -70,6 +70,22 @@ class OptionsButtonRow(Viewer):
             visible=has_waveforms,
         )
 
+        # 'Rename waveform' button
+        self.rename_waveform_button = pn.widgets.ButtonIcon(
+            icon="edit",
+            size="20px",
+            active_icon="check",
+            description="Rename waveform",
+            on_click=self._on_rename_waveform_button_click,
+            visible=has_waveforms,
+        )
+
+        self.rename_waveform_panel = TextInputForm(
+            "",
+            is_visible=False,
+            on_click=self._rename_waveform,
+        )
+
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
             icon="library-plus",
@@ -102,10 +118,12 @@ class OptionsButtonRow(Viewer):
             self.select_all_button,
             self.deselect_all_button,
             self.remove_group_button,
+            self.rename_waveform_button,
         )
         self.panel = pn.Column(
             option_buttons,
             self.new_waveform_panel,
+            self.rename_waveform_panel,
             self.new_group_panel,
         )
 
@@ -164,6 +182,23 @@ class OptionsButtonRow(Viewer):
     def _on_add_group_button_click(self, event):
         """Show the text input form to add a new group."""
         self.new_group_panel.is_visible(True)
+
+    def _on_rename_waveform_button_click(self, event):
+        selection = self.selection_group.get_selection()
+        if len(selection) != 1:
+            pn.state.notifications.error(
+                "You must select only a single waveform to rename."
+            )
+            return
+        self.rename_waveform_panel.is_visible(True)
+        self.old_name = selection[0]
+        self.rename_waveform_panel.input.value = self.old_name
+
+    def _rename_waveform(self, event):
+        new_name = self.rename_waveform_panel.input.value_input
+        self.config.rename_waveform(self.old_name, new_name)
+        self.selection_group.sync_waveforms()
+        self.rename_waveform_panel.cancel()
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""

@@ -45,18 +45,42 @@ class WaveformConfiguration:
             waveform: The waveform object to add.
             path: A list representing the path where the new waveform should be created.
         """
-        if "/" not in waveform.name:
-            raise ValueError(
-                "Waveforms in configurations must contain '/' in their name."
-            )
+        self._validate_name(waveform.name)
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
-        if waveform.name in self.waveform_map:
-            raise ValueError("The waveform already exists in this configuration.")
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
+
+    def rename_waveform(self, old_name, new_name):
+        """Renames an existing waveform.
+
+        Args:
+            old_name: The name of the waveform to rename.
+            new_name: The name to rename the old waveform to.
+        """
+
+        self._validate_name(new_name)
+        if old_name not in self.waveform_map:
+            raise ValueError(
+                f"Waveform '{old_name}' does not exist in the configuration."
+            )
+
+        waveform = self[old_name]
+        waveform.name = new_name
+        group = self.waveform_map[old_name]
+        group.waveforms[new_name] = waveform
+        self.waveform_map[new_name] = group
+        self.remove_waveform(old_name)
+
+    def _validate_name(self, name):
+        if "/" not in name:
+            raise ValueError(
+                "Waveforms in configurations must contain '/' in their name."
+            )
+        if name in self.waveform_map:
+            raise ValueError("The waveform already exists in this configuration.")
 
     def replace_waveform(self, waveform):
         """Replaces an existing waveform with a new waveform.
