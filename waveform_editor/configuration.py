@@ -75,6 +75,12 @@ class WaveformConfiguration:
         self.remove_waveform(old_name)
 
     def _validate_name(self, name):
+        """Check that name contains a '/' and doesn't exist already. If not, a
+        ValueError is raised.
+
+        Args:
+            name: The waveform name to validate.
+        """
         if "/" not in name:
             raise ValueError(
                 "Waveforms in configurations must contain '/' in their name."
