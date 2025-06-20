@@ -72,14 +72,13 @@ class OptionsButtonRow(Viewer):
 
         # 'Rename waveform' button
         self.rename_waveform_button = pn.widgets.ButtonIcon(
-            icon="edit",
+            icon="cursor-text",
             size="20px",
             active_icon="check",
             description="Rename waveform",
             on_click=self._on_rename_waveform_button_click,
             visible=has_waveforms,
         )
-
         self.rename_waveform_panel = TextInputForm(
             "",
             is_visible=False,
@@ -184,6 +183,7 @@ class OptionsButtonRow(Viewer):
         self.new_group_panel.is_visible(True)
 
     def _on_rename_waveform_button_click(self, event):
+        """Rename a waveform and update the configuration and GUI."""
         selection = self.selection_group.get_selection()
         if len(selection) != 1:
             pn.state.notifications.error(
@@ -195,10 +195,14 @@ class OptionsButtonRow(Viewer):
         self.rename_waveform_panel.input.value = self.old_name
 
     def _rename_waveform(self, event):
+        """Rename a waveform and update the GUI."""
         new_name = self.rename_waveform_panel.input.value_input
-        self.config.rename_waveform(self.old_name, new_name)
-        self.selection_group.sync_waveforms()
-        self.rename_waveform_panel.cancel()
+        try:
+            self.config.rename_waveform(self.old_name, new_name)
+            self.selection_group.sync_waveforms()
+            self.rename_waveform_panel.cancel()
+        except ValueError as e:
+            pn.state.notifications.error(str(e))
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
