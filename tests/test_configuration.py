@@ -176,6 +176,27 @@ def test_get_item(config):
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform1
 
 
+def test_rename_waveform(config):
+    waveform1 = Waveform(name="waveform/1")
+    config.add_waveform(waveform1, ["ec_launchers"])
+    assert config["ec_launchers"]["waveform/1"] == waveform1
+
+    config.rename_waveform("waveform/1", "waveform/2")
+    with pytest.raises(KeyError):
+        assert config["ec_launchers"]["waveform/1"] == waveform1
+    assert config["ec_launchers"]["waveform/2"] == waveform1
+    assert config["ec_launchers"]["waveform/2"].name == "waveform/2"
+
+    with pytest.raises(ValueError):
+        config.rename_waveform("waveform/1", "test_error/1")
+
+    with pytest.raises(ValueError):
+        config.rename_waveform("waveform/2", "invalid_waveform")
+
+    with pytest.raises(ValueError):
+        config.rename_waveform("waveform/2", "waveform/2")
+
+
 def test_dump():
     """Check if YAML dump contains all waveforms in configuration."""
 
