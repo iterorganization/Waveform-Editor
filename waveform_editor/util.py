@@ -43,7 +43,7 @@ class State:
 
     Example:
 
-        .. code-block:: bash
+        .. code-block:: python
 
             ignore_clicks = State()
             def process(obj):
