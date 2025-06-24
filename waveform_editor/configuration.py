@@ -4,6 +4,7 @@ import logging
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -23,6 +24,7 @@ class WaveformConfiguration:
         self.end = 0  # End of the latest occuring waveform
         self.load_error = ""
         self.parser = YamlParser(self)
+        self.dependency_graph = None
 
     def __getitem__(self, key):
         """Retrieves a waveform group by name.
@@ -72,6 +74,7 @@ class WaveformConfiguration:
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         self.calculate_bounds()
+        self.dependency_graph = self.build_dependency_graph()
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -122,6 +125,7 @@ class WaveformConfiguration:
             group = self.waveform_map[waveform.name]
             group.waveforms[waveform.name] = waveform
             self.calculate_bounds()
+            self.dependency_graph = self.build_dependency_graph()
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -136,6 +140,7 @@ class WaveformConfiguration:
         del self.waveform_map[name]
         del group.waveforms[name]
         self.calculate_bounds()
+        self.dependency_graph = self.build_dependency_graph()
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -147,6 +152,7 @@ class WaveformConfiguration:
         group = parent_group.groups.pop(path[-1])
         self._recursive_remove_waveforms(group)
         self.calculate_bounds()
+        self.dependency_graph = self.build_dependency_graph()
 
     def _recursive_remove_waveforms(self, group):
         """Recursively remove all waveforms from a group and its nested subgroups from
@@ -244,6 +250,9 @@ class WaveformConfiguration:
                     max_end = w.tendencies[-1].end
         self.start = min_start if min_start != float("inf") else 0
         self.end = max_end if max_end != float("-inf") else 0
+
+    def build_dependency_graph(self):
+        return DependencyGraph(self.waveform_map)
 
     def clear(self):
         """Clears the data stored in the configuration."""
