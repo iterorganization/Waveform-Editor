@@ -1,4 +1,4 @@
-import re
+import ast
 from typing import Optional
 
 import numpy as np
@@ -6,9 +6,25 @@ import numpy as np
 from waveform_editor.annotations import Annotations
 
 
+class ReplaceStrings(ast.NodeTransformer):
+    def __init__(self, config, time, eval_context, dependent_waveforms):
+        self.config = config
+        self.time = time
+        self.eval_context = eval_context
+        self.dependent_waveforms = dependent_waveforms
+
+    def visit_Constant(self, node):
+        if isinstance(node.value, str):
+            name = node.value
+            self.eval_context[name] = self.config[name].get_value(self.time)[1]
+            self.dependent_waveforms.add(self.config[name])
+            return ast.copy_location(ast.Name(id=name, ctx=ast.Load()), node)
+        return node
+
+
 class DerivedWaveform:
     def __init__(self, waveform=None, name="", config=None):
-        self.dependent_waveforms = []
+        self.dependent_waveforms = set()
         self.name = name
         self.tendencies = None
         self.yaml = waveform
@@ -18,53 +34,35 @@ class DerivedWaveform:
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        # pattern matches waveform names
-        pattern = r"\b[A-Za-z0-9_()/]+(?:/[A-Za-z0-9_()/]+)+\b"
-        matches = re.findall(pattern, self.yaml)
-
-        # filter matches that are actual waveform paths
-        var_map = {}
-        for i, m in enumerate(matches):
-            if m == self.name:
-                error_msg = "Derived waveforms cannot depend on itself! \n"
-                self.annotations.add(0, error_msg)
-                return np.array([self.config.start, self.config.end]), np.array([0, 0])
-            if m in self.config.waveform_map:
-                var_name = f"var_{i}"
-                var_map[m] = var_name
-            else:
-                error_msg = f"Waveform {m!r} does not exist! \n"
-                self.annotations.add(0, error_msg)
-                return np.array([self.config.start, self.config.end]), np.array([0, 0])
-
-        # prepare a dict of variables to pass to eval
-        eval_locals = {}
-        for path, var_name in var_map.items():
-            # TODO: properly handle time
-            if time is None:
-                time = np.linspace(self.config.start, self.config.end, 1000)
-
-            eval_locals[var_name] = self.config[path].get_value(time)[1]
-
-        expr = self.yaml
-        for path, var_name in var_map.items():
-            expr = expr.replace(path, var_name)
-
+        if time is None:
+            # TODO: handle the time array properly
+            time = np.linspace(self.config.start, self.config.end, 1000)
         try:
-            values = eval(expr, {}, eval_locals)
+            tree = ast.parse(self.yaml, mode="eval")
+        except SyntaxError as e:
+            self.annotations.add(0, f"Expression syntax error: {e}")
+            return time, np.zeros_like(time)
+
+        eval_context = {}
+        try:
+            transformer = ReplaceStrings(
+                self.config, time, eval_context, self.dependent_waveforms
+            )
+            tree = transformer.visit(tree)
+            ast.fix_missing_locations(tree)
+            compiled = compile(tree, filename="<expr>", mode="eval")
+            result = eval(compiled, {}, eval_context)
         except Exception as e:
-            self.annotations.add(0, str(e))
-            values = np.zeros_like(time)
-        return time, values
+            self.annotations.add(0, f"Evaluation error: {e}")
+            return time, np.zeros_like(time)
+
+        return time, np.asarray(result)
 
     def get_derivative(self, time):
         # Derivative not implemented
         return np.zeros_like(time)
 
     def get_yaml_string(self):
-        """Converts the internal YAML waveform description to a string.
-
-        Returns:
-            The YAML waveform description as a string.
-        """
-        return self.yaml
+        # TODO: the following is not valid YAML: test/3: 'test/1' + 'test/2'
+        # Instead for now encapsulate into string: test/3: "'test/1' + 'test/2'"
+        return f'"{self.yaml}"'
