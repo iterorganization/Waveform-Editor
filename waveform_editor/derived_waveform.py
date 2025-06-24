@@ -28,24 +28,21 @@ class DerivedWaveform:
             if m == self.name:
                 error_msg = "Derived waveforms cannot depend on itself! \n"
                 self.annotations.add(0, error_msg)
-                return np.array([self.start, self.end]), np.array([0, 0])
+                return np.array([self.config.start, self.config.end]), np.array([0, 0])
             if m in self.config.waveform_map:
                 var_name = f"var_{i}"
                 var_map[m] = var_name
             else:
                 error_msg = f"Waveform {m!r} does not exist! \n"
                 self.annotations.add(0, error_msg)
-                return np.array([self.start, self.end]), np.array([0, 0])
+                return np.array([self.config.start, self.config.end]), np.array([0, 0])
 
         # prepare a dict of variables to pass to eval
         eval_locals = {}
         for path, var_name in var_map.items():
-            dependent_waveform = self.config[path]
-            self.start = dependent_waveform.tendencies[0].start
-            self.end = dependent_waveform.tendencies[-1].end
             # TODO: properly handle time
             if time is None:
-                time = np.linspace(self.start, self.end, 1000)
+                time = np.linspace(self.config.start, self.config.end, 1000)
 
             eval_locals[var_name] = self.config[path].get_value(time)[1]
 

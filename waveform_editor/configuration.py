@@ -19,6 +19,8 @@ class WaveformConfiguration:
         self.waveform_map = {}
         self.dd_version = None
         self.machine_description = {}
+        self.start = 0  # Start of earliest occuring waveform
+        self.end = 0  # End of the latest occuring waveform
         self.load_error = ""
         self.parser = YamlParser(self)
 
@@ -69,6 +71,7 @@ class WaveformConfiguration:
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
+        self.calculate_bounds()
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -118,6 +121,7 @@ class WaveformConfiguration:
         else:
             group = self.waveform_map[waveform.name]
             group.waveforms[waveform.name] = waveform
+            self.calculate_bounds()
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -131,6 +135,7 @@ class WaveformConfiguration:
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
+        self.calculate_bounds()
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -141,6 +146,7 @@ class WaveformConfiguration:
         parent_group = self if len(path) == 1 else self.traverse(path[:-1])
         group = parent_group.groups.pop(path[-1])
         self._recursive_remove_waveforms(group)
+        self.calculate_bounds()
 
     def _recursive_remove_waveforms(self, group):
         """Recursively remove all waveforms from a group and its nested subgroups from
@@ -225,6 +231,19 @@ class WaveformConfiguration:
         for group_name, group in self.groups.items():
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
+
+    def calculate_bounds(self):
+        min_start = float("inf")
+        max_end = float("-inf")
+        for wf in self.waveform_map:
+            w = self.waveform_map[wf].waveforms[wf]
+            if w.tendencies:
+                if w.tendencies[0].start < min_start:
+                    min_start = w.tendencies[0].start
+                if w.tendencies[-1].end > max_end:
+                    max_end = w.tendencies[-1].end
+        self.start = min_start if min_start != float("inf") else 0
+        self.end = max_end if max_end != float("-inf") else 0
 
     def clear(self):
         """Clears the data stored in the configuration."""
