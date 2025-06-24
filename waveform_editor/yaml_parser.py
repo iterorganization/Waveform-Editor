@@ -5,6 +5,7 @@ from io import StringIO
 import yaml
 from ruamel.yaml import YAML
 
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.waveform import Waveform
 
 logger = logging.getLogger(__name__)
@@ -154,19 +155,24 @@ class YamlParser:
             waveform = waveform_yaml[waveform_key]
             if waveform is None:
                 raise yaml.YAMLError("Cannot have an empty waveform.")
-            if not isinstance(waveform, (list, int, float)):
+            if not isinstance(waveform, (list, int, float, str)):
                 raise yaml.YAMLError(
                     "Waveform must either be a list of tendencies, "
-                    "or a single constant value."
+                    "a single constant value (int/float), or a derived waveform (str)."
                 )
             line_number = waveform_yaml.get("line_number", 0)
-            waveform = Waveform(
-                waveform=waveform,
-                yaml_str=yaml_str,
-                line_number=line_number,
-                name=name,
-                dd_version=self.config.dd_version,
-            )
+            if isinstance(waveform, str):
+                waveform = DerivedWaveform(
+                    waveform=waveform, name=name, config=self.config
+                )
+            else:
+                waveform = Waveform(
+                    waveform=waveform,
+                    yaml_str=yaml_str,
+                    line_number=line_number,
+                    name=name,
+                    dd_version=self.config.dd_version,
+                )
             return waveform
         except yaml.YAMLError as e:
             self.parse_errors.append(str(e))
