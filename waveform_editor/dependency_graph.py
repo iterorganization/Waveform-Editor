@@ -1,24 +1,21 @@
-from waveform_editor.derived_waveform import DerivedWaveform
-
-
 class DependencyGraph:
-    def __init__(self, waveform_map):
+    def __init__(self):
         self.graph = {}
-        self._build_graph(waveform_map)
 
-    def _build_graph(self, waveform_map):
-        for name, group in waveform_map.items():
-            waveform = group.waveforms[name]
-            if isinstance(waveform, DerivedWaveform):
-                self.graph.setdefault(name, set())
-                for dependent_name in waveform.dependent_waveforms:
-                    if dependent_name not in waveform_map:
-                        raise ValueError(
-                            f"Dependent waveform '{dependent_name}' does not exist."
-                        )
-                    self.graph.setdefault(dependent_name, set())
-                    self.graph[dependent_name].add(name)
-        self.detect_cycles()
+    def add_node(self, name, dependencies, check_cycle=True):
+        self.graph.setdefault(name, set())
+        for node in list(self.graph.keys()):
+            self.graph[node].discard(name)
+        for dep in dependencies:
+            self.graph.setdefault(dep, set()).add(name)
+        if check_cycle:
+            self.detect_cycles()
+
+    def remove_node(self, name):
+        if name in self.graph:
+            del self.graph[name]
+        for node in self.graph:
+            self.graph[node].discard(name)
 
     def detect_cycles(self):
         visited = set()

@@ -149,10 +149,13 @@ class OptionsButtonRow(Viewer):
 
     def _remove_group(self):
         """Remove the group."""
-        # Remove from config
-        self.config.remove_group(self.path)
-        # Remove from GUI
-        self.selector.remove_group(self.path)
+        try:
+            # Remove from config
+            self.config.remove_group(self.path)
+            # Remove from GUI
+            self.selector.remove_group(self.path)
+        except Exception as e:
+            pn.state.notifications.error(str(e))
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""
