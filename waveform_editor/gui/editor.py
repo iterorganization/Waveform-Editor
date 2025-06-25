@@ -108,9 +108,12 @@ class WaveformEditor(Viewer):
             pn.state.notifications.error("Cannot save YAML with errors.")
             return
 
-        self.config.replace_waveform(self.waveform)
-        self.stored_string = self.code_editor.value
-        pn.state.notifications.success("Succesfully saved waveform!")
+        try:
+            self.config.replace_waveform(self.waveform)
+            self.stored_string = self.code_editor.value
+            pn.state.notifications.success("Succesfully saved waveform!")
+        except Exception as e:
+            pn.state.notifications.error(str(e))
 
     def has_changed(self):
         """Return whether the code editor value was changed from its stored value"""

@@ -74,7 +74,7 @@ class WaveformConfiguration:
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         self.calculate_bounds()
-        self.dependency_graph = self.build_dependency_graph()
+        self.dependency_graph = self.build_dependency_graph(self.waveform_map)
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -125,7 +125,7 @@ class WaveformConfiguration:
             group = self.waveform_map[waveform.name]
             group.waveforms[waveform.name] = waveform
             self.calculate_bounds()
-            self.dependency_graph = self.build_dependency_graph()
+            self.dependency_graph = self.build_dependency_graph(self.waveform_map)
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -140,7 +140,7 @@ class WaveformConfiguration:
         del self.waveform_map[name]
         del group.waveforms[name]
         self.calculate_bounds()
-        self.dependency_graph = self.build_dependency_graph()
+        self.dependency_graph = self.build_dependency_graph(self.waveform_map)
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -152,7 +152,7 @@ class WaveformConfiguration:
         group = parent_group.groups.pop(path[-1])
         self._recursive_remove_waveforms(group)
         self.calculate_bounds()
-        self.dependency_graph = self.build_dependency_graph()
+        self.dependency_graph = self.build_dependency_graph(self.waveform_map)
 
     def _recursive_remove_waveforms(self, group):
         """Recursively remove all waveforms from a group and its nested subgroups from
@@ -251,8 +251,8 @@ class WaveformConfiguration:
         self.start = min_start if min_start != float("inf") else 0
         self.end = max_end if max_end != float("-inf") else 0
 
-    def build_dependency_graph(self):
-        return DependencyGraph(self.waveform_map)
+    def build_dependency_graph(self, waveform_map):
+        return DependencyGraph(waveform_map)
 
     def clear(self):
         """Clears the data stored in the configuration."""
