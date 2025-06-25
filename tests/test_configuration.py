@@ -183,7 +183,7 @@ def test_rename_waveform(config):
 
     config.rename_waveform("waveform/1", "waveform/2")
     assert "waveform/1" not in config["ec_launchers"]
-    assert config["ec_launchers"]["waveform/2"] == waveform1
+    assert config["ec_launchers"]["waveform/2"] is waveform1
     assert config["ec_launchers"]["waveform/2"].name == "waveform/2"
 
     with pytest.raises(ValueError):
