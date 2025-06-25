@@ -16,6 +16,11 @@ class WaveformGroup:
                 return self.groups[key]
         raise KeyError(f"'{key}' not found in groups or waveforms")
 
+    def __contains__(self, key):
+        if "/" in key:
+            return key in self.waveforms
+        return key in self.groups
+
     def to_commented_map(self):
         result = CommentedMap()
         if self.groups:
