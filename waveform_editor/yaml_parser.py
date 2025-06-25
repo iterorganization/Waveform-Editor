@@ -5,7 +5,6 @@ from io import StringIO
 import yaml
 from ruamel.yaml import YAML
 
-from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
 
 logger = logging.getLogger(__name__)
@@ -56,35 +55,27 @@ class YamlParser:
             yaml_str: The YAML string to load YAML for.
         """
         self.parse_errors = []
-        self.config.clear()
-        try:
-            yaml_data = self.yaml.load(yaml_str)
-            globals = yaml_data.get("globals", {})
-            self.config.dd_version = globals.get("dd_version")
-            md_dict = globals.get("machine_description", {})
-            if not isinstance(md_dict, dict):
-                raise ValueError("The machine description must be a dictionary")
 
-            self.config.machine_description = md_dict
+        yaml_data = self.yaml.load(yaml_str)
+        globals = yaml_data.get("globals", {})
+        self.config.dd_version = globals.get("dd_version")
+        md_dict = globals.get("machine_description", {})
+        if not isinstance(md_dict, dict):
+            raise ValueError("The machine description must be a dictionary")
 
-            if not isinstance(yaml_data, dict):
-                raise ValueError("Input yaml_data must be a dictionary.")
+        self.config.machine_description = md_dict
 
-            for group_name, group_content in yaml_data.items():
-                if group_name == "globals":
-                    continue
+        if not isinstance(yaml_data, dict):
+            raise ValueError("Input yaml_data must be a dictionary.")
 
-                if not isinstance(group_content, dict):
-                    raise ValueError("Waveforms must belong to a group.")
+        for group_name, group_content in yaml_data.items():
+            if group_name == "globals":
+                continue
 
-                self._recursive_load(group_content, group_name, [])
+            if not isinstance(group_content, dict):
+                raise ValueError("Waveforms must belong to a group.")
 
-            if self.parse_errors:
-                raise ValueError("\n".join(self.parse_errors))
-        except Exception as e:
-            self.config.clear()
-            logger.warning("Got unexpected error: %s", e, exc_info=e)
-            self.config.load_error = str(e)
+            self._recursive_load(group_content, group_name, [])
 
     def _recursive_load(self, data_dict, group_name, path):
         """Recursively builds a hierarchy of WaveformGroup objects from a nested
@@ -102,10 +93,8 @@ class YamlParser:
 
         for key, value in data_dict.items():
             if isinstance(value, dict):
-                # Nested group, recurse further
                 self._recursive_load(value, key, path + [group_name])
             else:
-                # Add Waveform
                 yaml_str = self.generate_yaml_str(key, value)
                 waveform = self.parse_waveform(yaml_str)
                 self.config.add_waveform(waveform, path + [group_name])
