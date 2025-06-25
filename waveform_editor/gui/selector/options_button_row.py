@@ -133,7 +133,10 @@ class OptionsButtonRow(Viewer):
     def _remove_waveforms(self):
         """Remove all selected waveforms in this SelectionGroup."""
         for waveform_name in self.selection_group.get_selection():
-            self.config.remove_waveform(waveform_name)
+            try:
+                self.config.remove_waveform(waveform_name)
+            except Exception as e:
+                pn.state.notifications.error(str(e))
         with self.selector.is_removing_waveform:  # Signal we're removing waveforms
             self.selection_group.sync_waveforms()
 

@@ -34,6 +34,18 @@ class DerivedWaveform:
         self.yaml = waveform
         self.config = config
         self.annotations = Annotations()
+        self._analyze_dependencies()
+
+    def _analyze_dependencies(self):
+        if self.yaml is None:
+            return
+        dummy_time = np.linspace(self.config.start, self.config.end, 1000)
+        transformer = ReplaceStrings(self, dummy_time, eval_context={})
+        try:
+            tree = ast.parse(self.yaml, mode="eval")
+            transformer.visit(tree)
+        except SyntaxError:
+            pass
 
     def get_value(
         self, time: Optional[np.ndarray] = None

@@ -5,6 +5,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from waveform_editor.dependency_graph import DependencyGraph
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -141,6 +142,14 @@ class WaveformConfiguration:
         """
         if name not in self.waveform_map:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
+
+        # Check if any DerivedWaveform depends on this waveform
+        for group in self.waveform_map.values():
+            for wf in group.waveforms.values():
+                if isinstance(wf, DerivedWaveform) and name in wf.dependent_waveforms:
+                    raise RuntimeError(
+                        f"Cannot remove waveform '{name}' because it is dependent on '{wf.name}'"
+                    )
 
         group = self.waveform_map[name]
         del self.waveform_map[name]
