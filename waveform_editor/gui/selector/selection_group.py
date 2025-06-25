@@ -111,6 +111,17 @@ class SelectionGroup(Viewer):
                 selection.extend(group_ui.get_selection(recursive))
         return selection
 
+    def set_selection(self, selection: list[str]) -> None:
+        """Select a list of waveforms.
+
+        Args:
+            selection: List of waveform names to select.
+        """
+        if self.waveform_selector is not None:
+            self.waveform_selector.value = [
+                s for s in selection if s in self.waveform_selector.options
+            ]
+
     def deselect_all(self, event=None) -> None:
         """Deselect all waveforms."""
         self.waveform_selector.value = []

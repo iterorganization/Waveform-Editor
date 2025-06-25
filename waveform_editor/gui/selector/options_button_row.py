@@ -202,6 +202,7 @@ class OptionsButtonRow(Viewer):
                 self.selection_group.get_selection()[0], new_name
             )
             self.selection_group.sync_waveforms()
+            self.selection_group.set_selection([new_name])
         except ValueError as e:
             pn.state.notifications.error(str(e))
 
