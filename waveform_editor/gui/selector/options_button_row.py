@@ -194,6 +194,9 @@ class OptionsButtonRow(Viewer):
 
     def _rename_waveform(self, new_name):
         """Rename a waveform and update the GUI."""
+        old_name = self.selection_group.get_selection()[0]
+        if new_name == old_name:
+            return
         try:
             self.config.rename_waveform(
                 self.selection_group.get_selection()[0], new_name
