@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import panel as pn
 from panel.viewable import Viewer
 
+from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.text_input_form import TextInputForm
 
 if TYPE_CHECKING:
@@ -79,11 +80,7 @@ class OptionsButtonRow(Viewer):
             on_click=self._on_rename_waveform_button_click,
             visible=has_waveforms,
         )
-        self.rename_waveform_panel = TextInputForm(
-            "",
-            is_visible=False,
-            on_click=self._rename_waveform,
-        )
+        self.rename_waveform_modal = RenameModal()
 
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
@@ -122,7 +119,7 @@ class OptionsButtonRow(Viewer):
         self.panel = pn.Column(
             option_buttons,
             self.new_waveform_panel,
-            self.rename_waveform_panel,
+            self.rename_waveform_modal,
             self.new_group_panel,
         )
 
@@ -190,17 +187,18 @@ class OptionsButtonRow(Viewer):
                 "You must select only a single waveform to rename."
             )
             return
-        self.rename_waveform_panel.is_visible(True)
-        self.old_name = selection[0]
-        self.rename_waveform_panel.input.value = self.old_name
+        old_name = selection[0]
+        self.rename_waveform_modal.show(
+            current_name=old_name, on_accept=self._rename_waveform
+        )
 
-    def _rename_waveform(self, event):
+    def _rename_waveform(self, new_name):
         """Rename a waveform and update the GUI."""
-        new_name = self.rename_waveform_panel.input.value_input
         try:
-            self.config.rename_waveform(self.old_name, new_name)
+            self.config.rename_waveform(
+                self.selection_group.get_selection()[0], new_name
+            )
             self.selection_group.sync_waveforms()
-            self.rename_waveform_panel.cancel()
         except ValueError as e:
             pn.state.notifications.error(str(e))
 
