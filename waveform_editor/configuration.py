@@ -55,6 +55,7 @@ class WaveformConfiguration:
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
+            self.calculate_bounds()
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)

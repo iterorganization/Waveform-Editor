@@ -175,7 +175,6 @@ class WaveformEditorGui(param.Parameterized):
 
         # Create tree structure in sidebar based on waveform groups in YAML
         self.selector.refresh()
-        self.config.calculate_bounds()
 
         if self.start_up.file_input.filename:
             new_filename = self.start_up.file_input.filename.replace(
