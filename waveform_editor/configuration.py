@@ -121,11 +121,17 @@ class WaveformConfiguration:
             raise ValueError(
                 f"Waveform '{waveform.name}' does not exist in the configuration."
             )
-        else:
-            group = self.waveform_map[waveform.name]
-            group.waveforms[waveform.name] = waveform
-            self.calculate_bounds()
-            self.dependency_graph = self.build_dependency_graph(self.waveform_map)
+
+        group = self.waveform_map[waveform.name]
+        old_waveform = group.waveforms[waveform.name]
+        group.waveforms[waveform.name] = waveform
+        try:
+            new_graph = self.build_dependency_graph(self.waveform_map)
+        except Exception as e:
+            group.waveforms[waveform.name] = old_waveform
+            raise e
+        self.calculate_bounds()
+        self.dependency_graph = new_graph
 
     def remove_waveform(self, name):
         """Removes an existing waveform.

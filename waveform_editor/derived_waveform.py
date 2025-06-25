@@ -7,17 +7,21 @@ from waveform_editor.annotations import Annotations
 
 
 class ReplaceStrings(ast.NodeTransformer):
-    def __init__(self, config, time, eval_context, dependent_waveforms):
-        self.config = config
-        self.time = time
+    def __init__(self, derived_waveform, time, eval_context):
         self.eval_context = eval_context
-        self.dependent_waveforms = dependent_waveforms
+        self.time = time
+        self.config = derived_waveform.config
+        self.dependent_waveforms = derived_waveform.dependent_waveforms
+        self.annotations = derived_waveform.annotations
 
     def visit_Constant(self, node):
         if isinstance(node.value, str):
             name = node.value
-            self.eval_context[name] = self.config[name].get_value(self.time)[1]
-            self.dependent_waveforms.add(self.config[name])
+            if name not in self.config.waveform_map:
+                self.eval_context[name] = np.zeros_like(self.time)
+            else:
+                self.eval_context[name] = self.config[name].get_value(self.time)[1]
+            self.dependent_waveforms.add(name)
             return ast.copy_location(ast.Name(id=name, ctx=ast.Load()), node)
         return node
 
@@ -45,9 +49,7 @@ class DerivedWaveform:
 
         eval_context = {}
         try:
-            transformer = ReplaceStrings(
-                self.config, time, eval_context, self.dependent_waveforms
-            )
+            transformer = ReplaceStrings(self, time, eval_context)
             tree = transformer.visit(tree)
             ast.fix_missing_locations(tree)
             compiled = compile(tree, filename="<expr>", mode="eval")
