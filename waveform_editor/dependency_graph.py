@@ -2,20 +2,15 @@ class DependencyGraph:
     def __init__(self):
         self.graph = {}
 
-    def add_node(self, name, dependencies, check_cycle=True):
-        self.graph.setdefault(name, set())
-        for node in list(self.graph.keys()):
-            self.graph[node].discard(name)
-        for dep in dependencies:
-            self.graph.setdefault(dep, set()).add(name)
-        if check_cycle:
-            self.detect_cycles()
+    def add_node(self, name, dependencies):
+        self.graph[name] = set(dependencies)
+        self.detect_cycles()
 
     def remove_node(self, name):
         if name in self.graph:
             del self.graph[name]
-        for node in self.graph:
-            self.graph[node].discard(name)
+        for deps in self.graph.values():
+            deps.discard(name)
 
     def detect_cycles(self):
         visited = set()
@@ -25,9 +20,7 @@ class DependencyGraph:
 
     def _visit(self, node, visited, stack):
         if node in stack:
-            raise RuntimeError(
-                f"Circular dependency detected involving waveform '{node}'"
-            )
+            raise RuntimeError(f"Circular dependency detected involving '{node}'")
         if node in visited:
             return
         visited.add(node)

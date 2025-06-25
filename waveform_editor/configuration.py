@@ -157,7 +157,8 @@ class WaveformConfiguration:
             for wf in group.waveforms.values():
                 if isinstance(wf, DerivedWaveform) and name in wf.dependent_waveforms:
                     raise RuntimeError(
-                        f"Cannot remove waveform '{name}' because it is dependent on '{wf.name}'"
+                        f"Cannot remove waveform '{name}' because it is dependent "
+                        "on '{wf.name}'"
                     )
 
         group = self.waveform_map[name]
@@ -289,6 +290,8 @@ class WaveformConfiguration:
             group.print(indent + 4)
 
     def calculate_bounds(self):
+        # FIXME:calculations of bounds is triggered on every change, and is looped
+        # through all waveforms every time, which can be optimized
         min_start = float("inf")
         max_end = float("-inf")
         for wf in self.waveform_map:
