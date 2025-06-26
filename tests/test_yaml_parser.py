@@ -220,12 +220,8 @@ def test_load_yaml_globals():
     globals:
       machine_description: imas:hdf5?path=test_md
     """
-    parser.load_yaml(yaml_str)
-    assert config.load_error
-    assert not config.groups
-    assert not config.waveform_map
-    assert config.dd_version is None
-    assert not config.machine_description
+    with pytest.raises(ValueError):
+        parser.load_yaml(yaml_str)
 
     yaml_str = """
     globals:

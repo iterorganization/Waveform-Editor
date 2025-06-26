@@ -213,7 +213,7 @@ def load_config(config: WaveformConfiguration, filepath: Path) -> None:
     logging.debug("Loading waveform configuration from %s", filepath)
 
     config.clear()
-    config.parser.load_yaml(filepath)
+    config.load_yaml(filepath)
 
     if config.load_error:  # Set when the YAML could not be parsed
         raise RuntimeError(f"Could not load waveforms: {config.load_error}")

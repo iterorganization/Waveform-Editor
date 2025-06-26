@@ -1,10 +1,13 @@
 import io
+import logging
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
+
+logger = logging.getLogger(__name__)
 
 
 class WaveformConfiguration:
@@ -37,6 +40,20 @@ class WaveformConfiguration:
             if key in self.groups:
                 return self.groups[key]
             raise KeyError(f"{key!r} not found in groups")
+
+    def load_yaml(self, yaml_str):
+        """Parses a YAML string and populates configuration.
+
+        Args:
+            yaml_str: The YAML string to load YAML for.
+        """
+        self.clear()
+        try:
+            self.parser.load_yaml(yaml_str)
+        except Exception as e:
+            self.clear()
+            logger.warning("Got unexpected error: %s", e, exc_info=e)
+            self.load_error = str(e)
 
     def add_waveform(self, waveform, path):
         """Adds a waveform to a specific group in the configuration.

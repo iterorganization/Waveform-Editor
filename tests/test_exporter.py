@@ -610,7 +610,7 @@ def _export_ids(file_path, yaml_str, times):
     """Load the yaml string into a waveform config and export to an IDS."""
     config = WaveformConfiguration()
     config.dd_version = "4.0.0"
-    config.parser.load_yaml(yaml_str)
+    config.load_yaml(yaml_str)
     exporter = ConfigurationExporter(config, times)
     exporter.to_ids(file_path)
 

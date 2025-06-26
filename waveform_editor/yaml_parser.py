@@ -5,7 +5,6 @@ from io import StringIO
 import yaml
 from ruamel.yaml import YAML
 
-from waveform_editor.group import WaveformGroup
 from waveform_editor.waveform import Waveform
 
 logger = logging.getLogger(__name__)
@@ -50,86 +49,55 @@ class YamlParser:
         self.parse_errors = []
 
     def load_yaml(self, yaml_str):
-        """Parses a YAML string and builds waveform groups and a waveform map.
+        """Parses a YAML string and populates the WaveformConfiguration.
 
         Args:
             yaml_str: The YAML string to load YAML for.
-        Returns:
-            A dictionary containing 'groups' and 'waveform_map', or None on error.
         """
         self.parse_errors = []
-        self.config.clear()
-        try:
-            yaml_data = self.yaml.load(yaml_str)
-            globals = yaml_data.get("globals", {})
-            self.config.dd_version = globals.get("dd_version")
-            md_dict = globals.get("machine_description", {})
-            if not isinstance(md_dict, dict):
-                raise ValueError("The machine description must be a dictionary")
 
-            self.config.machine_description = md_dict
+        yaml_data = self.yaml.load(yaml_str)
+        globals = yaml_data.get("globals", {})
+        self.config.dd_version = globals.get("dd_version")
+        md_dict = globals.get("machine_description", {})
+        if not isinstance(md_dict, dict):
+            raise ValueError("The machine description must be a dictionary")
 
-            if not isinstance(yaml_data, dict):
-                raise ValueError("Input yaml_data must be a dictionary.")
+        self.config.machine_description = md_dict
 
-            for group_name, group_content in yaml_data.items():
-                if group_name == "globals":
-                    continue
+        if not isinstance(yaml_data, dict):
+            raise ValueError("Input yaml_data must be a dictionary.")
 
-                if "/" in group_name:
-                    raise ValueError(
-                        f"Invalid group name '{group_name}': "
-                        "Group names may not contain '/'."
-                    )
-                if not isinstance(group_content, dict):
-                    raise ValueError("Waveforms must belong to a group.")
+        for group_name, group_content in yaml_data.items():
+            if group_name == "globals":
+                continue
 
-                root_group = self._recursive_load(group_content, group_name)
-                self.config.groups[group_name] = root_group
+            if not isinstance(group_content, dict):
+                raise ValueError("Waveforms must belong to a group.")
 
-            if self.parse_errors:
-                raise ValueError("\n".join(self.parse_errors))
-        except Exception as e:
-            self.config.clear()
-            logger.warning("Got unexpected error: %s", e, exc_info=e)
-            self.config.load_error = str(e)
+            self._recursive_load(group_content, group_name, [])
 
-    def _recursive_load(self, data_dict, group_name):
+    def _recursive_load(self, data_dict, group_name, path):
         """Recursively builds a hierarchy of WaveformGroup objects from a nested
         dictionary.
-
-        Groups are represented by dictionaries without '/' in their keys.
-        Waveforms are key-value pairs where keys contain '/'.
 
         Args:
             data_dict: Input data containing waveform groups and waveforms.
             group_name: Name of the current group.
+            path: The list of parent group names representing the current path.
 
         Returns:
             The populated waveform group.
         """
-        current_group = WaveformGroup(group_name)
+        current_group = self.config.add_group(group_name, path)
 
         for key, value in data_dict.items():
-            # If value is a dictionary, treat it as a group, otherwise as a waveform
             if isinstance(value, dict):
-                if "/" in key:
-                    raise ValueError(
-                        f"Invalid group '{key}': Group names may not contain '/'."
-                    )
-
-                nested_group = self._recursive_load(value, key)
-                current_group.groups[key] = nested_group
+                self._recursive_load(value, key, path + [group_name])
             else:
-                if "/" not in key:
-                    raise ValueError(
-                        f"Invalid waveform name '{key}': "
-                        "Waveform names must contain '/'."
-                    )
                 yaml_str = self.generate_yaml_str(key, value)
                 waveform = self.parse_waveform(yaml_str)
-                current_group.waveforms[key] = waveform
-                self.config.waveform_map[key] = current_group
+                self.config.add_waveform(waveform, path + [group_name])
 
         return current_group
 
