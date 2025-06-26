@@ -205,7 +205,7 @@ class OptionsButtonRow(Viewer):
             self.config.rename_waveform(old_name, new_name)
             self.selection_group.sync_waveforms()
             self.selection_group.set_selection([new_name])
-        except ValueError as e:
+        except Exception as e:
             pn.state.notifications.error(str(e))
 
     def _add_new_group(self, event):

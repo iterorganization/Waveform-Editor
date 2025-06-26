@@ -109,12 +109,13 @@ class WaveformConfiguration:
                 f"Waveform '{old_name}' does not exist in the configuration."
             )
 
+        # TODO: update bounds and dependency graph upon renaming
         waveform = self[old_name]
-        waveform.name = new_name
         group = self.waveform_map[old_name]
+        self.remove_waveform(old_name)
+        waveform.name = new_name
         group.waveforms[new_name] = waveform
         self.waveform_map[new_name] = group
-        self.remove_waveform(old_name)
 
     def _validate_name(self, name):
         """Check that name contains a '/' and doesn't exist already. If not, a
