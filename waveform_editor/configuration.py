@@ -42,6 +42,11 @@ class WaveformConfiguration:
             raise KeyError(f"{key!r} not found in groups")
 
     def load_yaml(self, yaml_str):
+        """Parses a YAML string and populates configuration.
+
+        Args:
+            yaml_str: The YAML string to load YAML for.
+        """
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
