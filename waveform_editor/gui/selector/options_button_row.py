@@ -70,6 +70,16 @@ class OptionsButtonRow(Viewer):
             visible=has_waveforms,
         )
 
+        # 'Rename waveform' button
+        self.rename_waveform_button = pn.widgets.ButtonIcon(
+            icon="cursor-text",
+            size="20px",
+            active_icon="check",
+            description="Rename waveform",
+            on_click=self._on_rename_waveform_button_click,
+            visible=has_waveforms,
+        )
+
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
             icon="library-plus",
@@ -102,6 +112,7 @@ class OptionsButtonRow(Viewer):
             self.select_all_button,
             self.deselect_all_button,
             self.remove_group_button,
+            self.rename_waveform_button,
         )
         self.panel = pn.Column(
             option_buttons,
@@ -113,7 +124,7 @@ class OptionsButtonRow(Viewer):
         if not self.selection_group.get_selection():
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.main_gui.modal.show(
+        self.main_gui.confirm_modal.show(
             "Are you sure you want to delete the selected waveform(s) from the "
             f"**{self.path[-1]}** group?",
             on_confirm=self._remove_waveforms,
@@ -127,7 +138,7 @@ class OptionsButtonRow(Viewer):
             self.selection_group.sync_waveforms()
 
     def _show_remove_group_modal(self, event):
-        self.main_gui.modal.show(
+        self.main_gui.confirm_modal.show(
             f"Are you sure you want to delete the **{self.path[-1]}** group?  \n"
             "This will also remove all waveforms and subgroups in this group!",
             on_confirm=self._remove_group,
@@ -164,6 +175,32 @@ class OptionsButtonRow(Viewer):
     def _on_add_group_button_click(self, event):
         """Show the text input form to add a new group."""
         self.new_group_panel.is_visible(True)
+
+    def _on_rename_waveform_button_click(self, event):
+        """Rename a waveform and update the configuration and GUI."""
+        selection = self.selection_group.get_selection()
+        if len(selection) != 1:
+            pn.state.notifications.error(
+                "You must select only a single waveform to rename."
+            )
+            return
+        old_name = selection[0]
+
+        self.main_gui.rename_modal.show(
+            current_name=old_name, on_accept=self._rename_waveform
+        )
+
+    def _rename_waveform(self, new_name):
+        """Rename a waveform and update the GUI."""
+        old_name = self.selection_group.get_selection()[0]
+        if new_name == old_name:
+            return
+        try:
+            self.config.rename_waveform(old_name, new_name)
+            self.selection_group.sync_waveforms()
+            self.selection_group.set_selection([new_name])
+        except ValueError as e:
+            pn.state.notifications.error(str(e))
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""

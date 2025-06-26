@@ -10,6 +10,7 @@ from waveform_editor.gui.export_dialog import ExportDialog
 from waveform_editor.gui.plotter_edit import PlotterEdit
 from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
+from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.start_up import StartUpPrompt
 from waveform_editor.util import State
@@ -62,7 +63,8 @@ class WaveformEditorGui(param.Parameterized):
         )
 
         # Side bar
-        self.modal = ConfirmModal()
+        self.confirm_modal = ConfirmModal()
+        self.rename_modal = RenameModal()
         self.selector = WaveformSelector(self)
         self.selector.visible = self.param.show_startup_options.rx.not_()
         self.selector.param.watch(self.on_selection_change, "selection")
@@ -71,7 +73,8 @@ class WaveformEditorGui(param.Parameterized):
             self.start_up,
             pn.Row(self.file_download, self.export_button),
             self.selector,
-            self.modal,
+            self.confirm_modal,
+            self.rename_modal,
             export_dialog,
         )
 
@@ -110,7 +113,7 @@ class WaveformEditorGui(param.Parameterized):
             # they want to remove the waveform, so we don't ask again:
             and not self.selector.is_removing_waveform
         ):
-            self.modal.show(
+            self.confirm_modal.show(
                 self.DISCARD_CHANGES_MESSAGE,
                 on_confirm=self.update_selection,
                 on_cancel=self.revert_to_editor,
@@ -123,7 +126,7 @@ class WaveformEditorGui(param.Parameterized):
         if self._reverting_to_editor:
             return  # ignore this event when we revert to the editor
         if event.old == self.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
-            self.modal.show(
+            self.confirm_modal.show(
                 self.DISCARD_CHANGES_MESSAGE,
                 on_confirm=self.update_selection,
                 on_cancel=self.revert_to_editor,

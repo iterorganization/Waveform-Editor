@@ -21,7 +21,7 @@ class WaveformSelector(Viewer):
 
     def __init__(self, main_gui):
         super().__init__()
-        self.main_gui = main_gui  # options_button_row needs the modal from main_gui
+        self.main_gui = main_gui  # options_button_row needs the modals from main_gui
         self.config = main_gui.config
         self.is_removing_waveform = State()
         self._ignore_selection_change = State()
