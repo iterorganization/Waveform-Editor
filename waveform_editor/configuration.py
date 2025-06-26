@@ -21,8 +21,8 @@ class WaveformConfiguration:
         self.waveform_map = {}
         self.dd_version = None
         self.machine_description = {}
-        self.start = 0  # Start of earliest occuring waveform
-        self.end = 0  # End of the latest occuring waveform
+        self.first_waveform = None  # Waveform with earliest start
+        self.last_waveform = None  # Waveform with the latest end
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
@@ -55,7 +55,7 @@ class WaveformConfiguration:
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
-            self.calculate_bounds()
+            self._calculate_bounds()
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
@@ -75,9 +75,25 @@ class WaveformConfiguration:
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
-        self.calculate_bounds()
         if isinstance(waveform, DerivedWaveform):
             self.dependency_graph.add_node(waveform.name, waveform.dependent_waveforms)
+        else:
+            self._update_bounds_for_add(waveform)
+
+    def _update_bounds_for_add(self, waveform):
+        if not waveform.tendencies:
+            return
+
+        if self.first_waveform is None:
+            self.first_waveform = waveform
+            self.last_waveform = waveform
+            return
+
+        if waveform.tendencies[0].start < self.first_waveform.tendencies[0].start:
+            self.first_waveform = waveform
+
+        if waveform.tendencies[-1].end > self.last_waveform.tendencies[-1].end:
+            self.last_waveform = waveform
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -136,12 +152,15 @@ class WaveformConfiguration:
                     waveform.name, waveform.dependent_waveforms
                 )
             else:
+                if self._needs_recalc_bounds(old_waveform):
+                    self._calculate_bounds()
+                else:
+                    self._update_bounds_for_add(waveform)
                 self.dependency_graph.remove_node(waveform.name)
         except Exception as e:
             # Revert replacement
             group.waveforms[waveform.name] = old_waveform
             raise e
-        self.calculate_bounds()
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -161,10 +180,12 @@ class WaveformConfiguration:
                         f"on {wf.name!r}"
                     )
 
+        deleted_waveform = self[name]
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
-        self.calculate_bounds()
+        if self._needs_recalc_bounds(deleted_waveform):
+            self._calculate_bounds()
         self.dependency_graph.remove_node(name)
 
     def remove_group(self, path):
@@ -191,7 +212,7 @@ class WaveformConfiguration:
 
         del parent_group.groups[path[-1]]
         self._recursive_remove_waveforms(group)
-        self.calculate_bounds()
+        self._calculate_bounds()
         for wf in list(self.waveform_map.keys()):
             if wf not in self.waveform_map:
                 self.dependency_graph.remove_node(wf)
@@ -289,20 +310,28 @@ class WaveformConfiguration:
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
 
-    def calculate_bounds(self):
-        # FIXME:calculations of bounds is triggered on every change, and is looped
-        # through all waveforms every time, which can be optimized
+    def _needs_recalc_bounds(self, waveform):
+        if self.first_waveform is None:
+            return False
+
+        is_first = self.first_waveform.name == waveform.name
+        is_last = self.last_waveform.name == waveform.name
+        return is_first or is_last
+
+    def _calculate_bounds(self):
         min_start = float("inf")
         max_end = float("-inf")
-        for wf in self.waveform_map:
-            w = self.waveform_map[wf].waveforms[wf]
-            if w.tendencies:
-                if w.tendencies[0].start < min_start:
-                    min_start = w.tendencies[0].start
-                if w.tendencies[-1].end > max_end:
-                    max_end = w.tendencies[-1].end
-        self.start = min_start if min_start != float("inf") else 0
-        self.end = max_end if max_end != float("-inf") else 0
+        self.first_waveform = None
+        self.last_waveform = None
+        for name in self.waveform_map:
+            waveform = self[name]
+            if waveform.tendencies:
+                if waveform.tendencies[0].start < min_start:
+                    min_start = waveform.tendencies[0].start
+                    self.first_waveform = waveform
+                if waveform.tendencies[-1].end > max_end:
+                    max_end = waveform.tendencies[-1].end
+                    self.last_waveform = waveform
 
     def clear(self):
         """Clears the data stored in the configuration."""
@@ -311,3 +340,5 @@ class WaveformConfiguration:
         self.dd_version = None
         self.machine_description = {}
         self.load_error = ""
+        self.first_waveform = None
+        self.last_waveform = None

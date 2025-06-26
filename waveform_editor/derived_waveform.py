@@ -51,8 +51,10 @@ class DerivedWaveform:
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
         if time is None:
+            start = self.config.first_waveform.tendencies[0].start
+            end = self.config.last_waveform.tendencies[-1].end
             # TODO: handle the time array properly
-            time = np.linspace(self.config.start, self.config.end, 1000)
+            time = np.linspace(start, end, 1000)
         try:
             tree = ast.parse(self.yaml, mode="eval")
         except SyntaxError as e:
