@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 import panel as pn
 from panel.viewable import Viewer
 
-from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.text_input_form import TextInputForm
 
 if TYPE_CHECKING:
@@ -80,7 +79,6 @@ class OptionsButtonRow(Viewer):
             on_click=self._on_rename_waveform_button_click,
             visible=has_waveforms,
         )
-        self.rename_waveform_modal = RenameModal()
 
         # 'Add new group' button
         self.new_group_button = pn.widgets.ButtonIcon(
@@ -119,7 +117,6 @@ class OptionsButtonRow(Viewer):
         self.panel = pn.Column(
             option_buttons,
             self.new_waveform_panel,
-            self.rename_waveform_modal,
             self.new_group_panel,
         )
 
@@ -127,7 +124,7 @@ class OptionsButtonRow(Viewer):
         if not self.selection_group.get_selection():
             pn.state.notifications.error("No waveforms selected for removal.")
             return
-        self.main_gui.modal.show(
+        self.main_gui.confirm_modal.show(
             "Are you sure you want to delete the selected waveform(s) from the "
             f"**{self.path[-1]}** group?",
             on_confirm=self._remove_waveforms,
@@ -141,7 +138,7 @@ class OptionsButtonRow(Viewer):
             self.selection_group.sync_waveforms()
 
     def _show_remove_group_modal(self, event):
-        self.main_gui.modal.show(
+        self.main_gui.confirm_modal.show(
             f"Are you sure you want to delete the **{self.path[-1]}** group?  \n"
             "This will also remove all waveforms and subgroups in this group!",
             on_confirm=self._remove_group,
@@ -188,7 +185,8 @@ class OptionsButtonRow(Viewer):
             )
             return
         old_name = selection[0]
-        self.rename_waveform_modal.show(
+
+        self.main_gui.rename_modal.show(
             current_name=old_name, on_accept=self._rename_waveform
         )
 
@@ -198,9 +196,7 @@ class OptionsButtonRow(Viewer):
         if new_name == old_name:
             return
         try:
-            self.config.rename_waveform(
-                self.selection_group.get_selection()[0], new_name
-            )
+            self.config.rename_waveform(old_name, new_name)
             self.selection_group.sync_waveforms()
             self.selection_group.set_selection([new_name])
         except ValueError as e:
