@@ -157,8 +157,8 @@ class WaveformConfiguration:
             for wf in group.waveforms.values():
                 if isinstance(wf, DerivedWaveform) and name in wf.dependent_waveforms:
                     raise RuntimeError(
-                        f"Cannot remove waveform '{name}' because it is dependent "
-                        "on '{wf.name}'"
+                        f"Cannot remove waveform {name!r} because it is dependent "
+                        f"on {wf.name!r}"
                     )
 
         group = self.waveform_map[name]

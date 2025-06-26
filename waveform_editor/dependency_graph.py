@@ -28,3 +28,10 @@ class DependencyGraph:
         for neighbor in self.graph.get(node, []):
             self._visit(neighbor, visited, stack)
         stack.remove(node)
+
+    def print(self):
+        for node, deps in self.graph.items():
+            if deps:
+                print(f"{node} -> {', '.join(deps)}")
+            else:
+                print(f"{node} -> (no dependencies)")
