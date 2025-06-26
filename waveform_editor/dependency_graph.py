@@ -12,6 +12,14 @@ class DependencyGraph:
         for deps in self.graph.values():
             deps.discard(name)
 
+    def rename_node(self, old_name, new_name):
+        self.graph[new_name] = self.graph.pop(old_name)
+
+        for dependencies in self.graph.values():
+            if old_name in dependencies:
+                dependencies.remove(old_name)
+                dependencies.add(new_name)
+
     def detect_cycles(self):
         visited = set()
         stack = set()

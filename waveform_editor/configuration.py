@@ -29,11 +29,17 @@ class WaveformConfiguration:
 
     @property
     def start(self):
-        return self.bounds.first_waveform.tendencies[0].start
+        """The start time of the earliest waveform."""
+        if self.bounds.first_waveform:
+            return self.bounds.first_waveform.tendencies[0].start
+        return 0.0
 
     @property
     def end(self):
-        return self.bounds.last_waveform.tendencies[-1].end
+        """The end time of the latest waveform."""
+        if self.bounds.last_waveform:
+            return self.bounds.last_waveform.tendencies[-1].end
+        return 0.0
 
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
@@ -102,13 +108,16 @@ class WaveformConfiguration:
                 f"Waveform '{old_name}' does not exist in the configuration."
             )
 
-        # TODO: update bounds and dependency graph upon renaming
-        waveform = self[old_name]
-        group = self.waveform_map[old_name]
-        self.remove_waveform(old_name)
+        group = self.waveform_map.pop(old_name)
+        waveform = group.waveforms.pop(old_name)
+
         waveform.name = new_name
+
         group.waveforms[new_name] = waveform
         self.waveform_map[new_name] = group
+
+        if isinstance(waveform, DerivedWaveform):
+            self.dependency_graph.rename_node(old_name, new_name)
 
     def _validate_name(self, name):
         """Check that name contains a '/' and doesn't exist already. If not, a
