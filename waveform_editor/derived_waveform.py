@@ -59,7 +59,7 @@ class DerivedWaveform:
             self.annotations.add(0, f"Expression syntax error: {e}")
             return time, np.zeros_like(time)
 
-        eval_context = {}
+        eval_context = {"np": np}
         try:
             transformer = ReplaceStrings(self, time, eval_context)
             tree = transformer.visit(tree)
