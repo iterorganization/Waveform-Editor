@@ -39,6 +39,16 @@ class WaveformEditorGui(param.Parameterized):
 
         self.config = WaveformConfiguration()
 
+        self.template = pn.template.FastListTemplate(
+            title=f"Waveform Editor (v{waveform_editor.__version__})",
+            sidebar_width=400,
+        )
+
+        # Wrap modal into column so it can be modified on the fly
+        self.template.modal.append(pn.Column())
+        self.confirm_modal = ConfirmModal(self.template)
+        self.rename_modal = RenameModal(self.template)
+
         # TODO: The file download button is a placeholder for the actual saving
         # behavior, which should be implemented later
         self.file_download = pn.widgets.FileDownload(
@@ -63,19 +73,12 @@ class WaveformEditorGui(param.Parameterized):
         )
 
         # Side bar
-        self.confirm_modal = ConfirmModal()
-        self.rename_modal = RenameModal()
         self.selector = WaveformSelector(self)
         self.selector.visible = self.param.show_startup_options.rx.not_()
         self.selector.param.watch(self.on_selection_change, "selection")
         self.start_up = StartUpPrompt(self, visible=self.param.show_startup_options)
         sidebar = pn.Column(
-            self.start_up,
-            pn.Row(self.file_download, self.export_button),
-            self.selector,
-            self.confirm_modal,
-            self.rename_modal,
-            export_dialog,
+            self.start_up, pn.Row(self.file_download, self.export_button), self.selector
         )
 
         # Main views: view and edit tabs
@@ -95,12 +98,8 @@ class WaveformEditorGui(param.Parameterized):
         self.selector.multiselect = allow_multiselect
 
         # Combined UI:
-        self.template = pn.template.FastListTemplate(
-            title=f"Waveform Editor (v{waveform_editor.__version__})",
-            main=self.tabs,
-            sidebar=sidebar,
-            sidebar_width=400,
-        )
+        self.template.main.append(self.tabs)
+        self.template.sidebar.append(sidebar)
 
     def on_selection_change(self, event):
         """Respond to a changed waveform selection"""
