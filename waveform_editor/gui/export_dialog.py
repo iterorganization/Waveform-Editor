@@ -52,6 +52,7 @@ class ExportDialog(param.Parameterized):
         """
         super().__init__()
         self.main_gui = main_gui
+        self.template = main_gui.template
         self.time_array = None  # set when time_array_input is updated
 
         # Export type options
@@ -92,7 +93,7 @@ class ExportDialog(param.Parameterized):
         cancel_button = pn.widgets.Button(name="Cancel", on_click=self._close)
 
         # Main layout
-        layout = pn.Column(
+        self.layout = pn.Column(
             pn.pane.Markdown("## Export waveforms"),
             output_option_box,
             time_options_box,
@@ -109,8 +110,6 @@ class ExportDialog(param.Parameterized):
             self.progress,
             sizing_mode="stretch_width",
         )
-        self.modal = pn.Modal(layout, width=500)
-
         # Check if export button should be disabled
         self._export_disabled()
 
@@ -240,11 +239,11 @@ class ExportDialog(param.Parameterized):
 
     def open(self, event):
         """Open the export modal dialog."""
-        self.modal.show()
+
+        self.template.modal[0].clear()
+        self.template.modal[0].append(self.layout)
+        self.template.open_modal()
 
     def _close(self, event=None):
         """Close the export modal dialog."""
-        self.modal.hide()
-
-    def __panel__(self):
-        return self.modal
+        self.template.close_modal()
