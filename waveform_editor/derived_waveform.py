@@ -34,6 +34,7 @@ class DerivedWaveform:
         self.yaml = waveform
         self.config = config
         self.annotations = Annotations()
+        self._parsed_tree = None
         self._analyze_dependencies()
 
     def _analyze_dependencies(self):
@@ -41,29 +42,34 @@ class DerivedWaveform:
             return
         try:
             tree = ast.parse(self.yaml, mode="eval")
-        except SyntaxError:
-            return
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                self.dependent_waveforms.add(node.value)
+            self._parsed_tree = tree
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    name = node.value
+                    self.dependent_waveforms.add(name)
+                    if name not in self.config.waveform_map:
+                        self.annotations.add(0, f"Waveform {name!r} does not exist!")
+                    if name == self.name:
+                        self.annotations.add(
+                            0, "Waveform cannot be dependent on itself."
+                        )
+        except Exception as e:
+            self.annotations.add(0, f"Could not parse the waveform: {e}")
+            self._parsed_tree = None
 
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
         if time is None:
-            # TODO: handle the time array properly
             time = np.linspace(self.config.start, self.config.end, 1000)
-        try:
-            tree = ast.parse(self.yaml, mode="eval")
-        except SyntaxError as e:
-            self.annotations.add(0, f"Expression syntax error: {e}")
+
+        if self._parsed_tree is None:
             return time, np.zeros_like(time)
 
         eval_context = {"np": np}
         try:
             transformer = ReplaceStrings(self, time, eval_context)
-            tree = transformer.visit(tree)
-            ast.fix_missing_locations(tree)
+            tree = transformer.visit(ast.fix_missing_locations(self._parsed_tree))
             compiled = compile(tree, filename="<expr>", mode="eval")
             result = eval(compiled, {}, eval_context)
         except Exception as e:
