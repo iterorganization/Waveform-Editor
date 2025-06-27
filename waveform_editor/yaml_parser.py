@@ -161,17 +161,17 @@ class YamlParser:
                     "a single constant value (int/float), or a derived waveform (str)."
                 )
             line_number = waveform_yaml.get("line_number", 0)
-            if isinstance(waveform, str):
-                waveform = DerivedWaveform(
-                    waveform=waveform, name=name, config=self.config
-                )
-            else:
+            if isinstance(waveform, list):
                 waveform = Waveform(
                     waveform=waveform,
                     yaml_str=yaml_str,
                     line_number=line_number,
                     name=name,
                     dd_version=self.config.dd_version,
+                )
+            else:
+                waveform = DerivedWaveform(
+                    waveform=waveform, name=name, config=self.config
                 )
             return waveform
         except yaml.YAMLError as e:
