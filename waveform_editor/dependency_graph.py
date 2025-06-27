@@ -20,22 +20,28 @@ class DependencyGraph:
                 dependencies.remove(old_name)
                 dependencies.add(new_name)
 
-    def detect_cycles(self):
+    def detect_cycles(self, start_node=None):
         visited = set()
         stack = set()
-        for node in self.graph:
-            self._visit(node, visited, stack)
 
-    def _visit(self, node, visited, stack):
-        if node in stack:
-            raise RuntimeError(f"Circular dependency detected involving '{node}'")
-        if node in visited:
-            return
-        visited.add(node)
-        stack.add(node)
-        for neighbor in self.graph.get(node, []):
-            self._visit(neighbor, visited, stack)
-        stack.remove(node)
+        def visit(node):
+            if node in stack:
+                raise RuntimeError(f"Circular dependency detected involving '{node}'")
+            if node in visited:
+                return
+            visited.add(node)
+            stack.add(node)
+            for neighbor in self.graph.get(node, []):
+                visit(neighbor)
+            stack.remove(node)
+
+        if start_node is not None:
+            if start_node not in self.graph:
+                return
+            visit(start_node)
+        else:
+            for node in self.graph:
+                visit(node)
 
     def print(self):
         for node, deps in self.graph.items():
