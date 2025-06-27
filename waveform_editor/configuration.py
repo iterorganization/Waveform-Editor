@@ -4,7 +4,6 @@ import logging
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from waveform_editor.config_bounds import ConfigurationBounds
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
@@ -25,21 +24,8 @@ class WaveformConfiguration:
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
-        self.bounds = ConfigurationBounds(self)
-
-    @property
-    def start(self):
-        """The start time of the earliest waveform."""
-        if self.bounds.first_waveform:
-            return self.bounds.first_waveform.tendencies[0].start
-        return 0.0
-
-    @property
-    def end(self):
-        """The end time of the latest waveform."""
-        if self.bounds.last_waveform:
-            return self.bounds.last_waveform.tendencies[-1].end
-        return 0.0
+        self.start = 0
+        self.end = 0
 
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
@@ -69,7 +55,7 @@ class WaveformConfiguration:
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
-            self.bounds.recalculate()
+            self._calculate_bounds()
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
@@ -91,8 +77,7 @@ class WaveformConfiguration:
         self.waveform_map[waveform.name] = group
         if isinstance(waveform, DerivedWaveform):
             self.dependency_graph.add_node(waveform.name, waveform.dependent_waveforms)
-        else:
-            self.bounds.update_for_add(waveform)
+        self._calculate_bounds()
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -155,11 +140,8 @@ class WaveformConfiguration:
                     waveform.name, waveform.dependent_waveforms
                 )
             else:
-                if self.bounds.needs_recalc(old_waveform):
-                    self.bounds.recalculate()
-                else:
-                    self.bounds.update_for_add(waveform)
                 self.dependency_graph.remove_node(waveform.name)
+            self._calculate_bounds()
         except Exception as e:
             # Revert replacement
             group.waveforms[waveform.name] = old_waveform
@@ -187,8 +169,7 @@ class WaveformConfiguration:
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
-        if self.bounds.needs_recalc(deleted_waveform):
-            self.bounds.recalculate()
+        self._calculate_bounds()
         self.dependency_graph.remove_node(name)
 
     def remove_group(self, path):
@@ -215,7 +196,7 @@ class WaveformConfiguration:
 
         del parent_group.groups[path[-1]]
         self._recursive_remove_waveforms(group)
-        self.bounds.recalculate()
+        self._calculate_bounds()
         for wf in list(self.waveform_map.keys()):
             if wf not in self.waveform_map:
                 self.dependency_graph.remove_node(wf)
@@ -303,6 +284,24 @@ class WaveformConfiguration:
             result[group_name] = group.to_commented_map()
         return result
 
+    def _calculate_bounds(self):
+        min_start = float("inf")
+        max_end = float("-inf")
+
+        for name in self.waveform_map:
+            waveform = self[name]
+            if not isinstance(waveform, DerivedWaveform) and waveform.tendencies:
+                start = waveform.tendencies[0].start
+                end = waveform.tendencies[-1].end
+
+                if start < min_start:
+                    min_start = start
+                if end > max_end:
+                    max_end = end
+
+        self.start = min_start if min_start != float("inf") else 0
+        self.end = max_end if max_end != float("-inf") else 0
+
     def print(self, indent=0):
         """Prints the waveform configuration as a hierarchical tree.
 
@@ -320,4 +319,5 @@ class WaveformConfiguration:
         self.dd_version = None
         self.machine_description = {}
         self.load_error = ""
-        self.bounds.clear()
+        self.start = 0
+        self.end = 0
