@@ -43,7 +43,10 @@ class PlotterEdit(Viewer):
             return  # Skip update triggered from a drag-and-drop
 
         if isinstance(self.plotted_waveform, DerivedWaveform):
-            self.pane.object = self.main_curve()
+            try:
+                self.pane.object = self.main_curve()
+            except Exception as e:
+                self.editor.create_error_alert(e)
             return
 
         if self.plotted_waveform is None or not self.plotted_waveform.tendencies:

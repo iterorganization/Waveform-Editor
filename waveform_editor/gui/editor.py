@@ -86,21 +86,31 @@ class WaveformEditor(Viewer):
         annotations = waveform.annotations
         self.code_editor.annotations = list(annotations)
         if self.config.parser.parse_errors:  # Handle errors
-            self.error_alert.object = (
-                "### The YAML did not parse correctly\n  "
-                f"{self.config.parser.parse_errors[0]}"
+            self.create_error_alert(
+                "The YAML did not parse correctly\n  "
+                + f"{self.config.parser.parse_errors[0]}",
+                "danger",
             )
-            self.error_alert.alert_type = "danger"
         else:  # No errors
             if self.code_editor.annotations:  # Handle warnings
-                self.error_alert.object = (
-                    f"### There was an error in the YAML configuration\n{annotations}"
+                self.create_error_alert(
+                    "There was an error in the YAML configuration\n" + f"{annotations}",
+                    "warning",
                 )
-                self.error_alert.alert_type = "warning"
             else:
                 self.error_alert.object = ""  # Clear any previous errors or warnings
             # There are no errors: update self.waveform
             self.waveform = waveform
+
+    def create_error_alert(self, message, alert_type="danger"):
+        """Create a formatted error or warning alert.
+
+        Args:
+            message: The alert message content.
+            alert_type: Type of alert
+        """
+        self.error_alert.object = f"### {message}"
+        self.error_alert.alert_type = alert_type
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration."""
