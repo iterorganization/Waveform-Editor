@@ -133,10 +133,7 @@ class OptionsButtonRow(Viewer):
     def _remove_waveforms(self):
         """Remove all selected waveforms in this SelectionGroup."""
         for waveform_name in self.selection_group.get_selection():
-            try:
-                self.config.remove_waveform(waveform_name)
-            except Exception as e:
-                pn.state.notifications.error(str(e))
+            self.config.remove_waveform(waveform_name)
         with self.selector.is_removing_waveform:  # Signal we're removing waveforms
             self.selection_group.sync_waveforms()
 
@@ -149,13 +146,10 @@ class OptionsButtonRow(Viewer):
 
     def _remove_group(self):
         """Remove the group."""
-        try:
-            # Remove from config
-            self.config.remove_group(self.path)
-            # Remove from GUI
-            self.selector.remove_group(self.path)
-        except Exception as e:
-            pn.state.notifications.error(str(e))
+        # Remove from config
+        self.config.remove_group(self.path)
+        # Remove from GUI
+        self.selector.remove_group(self.path)
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""
@@ -205,7 +199,7 @@ class OptionsButtonRow(Viewer):
             self.config.rename_waveform(old_name, new_name)
             self.selection_group.sync_waveforms()
             self.selection_group.set_selection([new_name])
-        except Exception as e:
+        except ValueError as e:
             pn.state.notifications.error(str(e))
 
     def _add_new_group(self, event):

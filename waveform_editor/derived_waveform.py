@@ -17,10 +17,12 @@ class ExpressionTransformer(ast.NodeTransformer):
     def visit_Constant(self, node):
         if not isinstance(node.value, str):
             return node
+        # Rename a specific dependency
         if self.rename_from is not None:
             if node.value == self.rename_from:
                 return ast.copy_location(ast.Constant(value=self.rename_to), node)
             return node
+        # Prepare expression for evaluation
         else:
             self.string_nodes.append(node.value)
             return ast.copy_location(ast.Name(id=node.value, ctx=ast.Load()), node)
