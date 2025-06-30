@@ -105,10 +105,6 @@ class DerivedWaveform:
             result = np.full_like(time, result)
         return time, result
 
-    def get_derivative(self, time):
-        # Derivative not implemented
-        return np.zeros_like(time)
-
     def get_yaml_string(self):
         if self.is_constant:
             return self.yaml
