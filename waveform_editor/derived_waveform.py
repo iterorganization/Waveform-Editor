@@ -29,7 +29,7 @@ class ExpressionTransformer(ast.NodeTransformer):
 
 
 class DerivedWaveform:
-    def __init__(self, waveform=None, name="", config=None):
+    def __init__(self, waveform, name, config):
         self.name = name
         self.yaml = waveform
         self.config = config
@@ -59,6 +59,10 @@ class DerivedWaveform:
             self.dependent_waveforms = set()
             for name in self.string_refs:
                 self.dependent_waveforms.add(name)
+
+            for dep_name in self.dependent_waveforms:
+                if dep_name not in self.config.waveform_map:
+                    raise ValueError(f"Undefined dependency: '{dep_name}'")
 
         except Exception as e:
             self.annotations.add(0, f"Could not parse or evaluate the waveform: {e}")
