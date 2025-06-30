@@ -238,9 +238,7 @@ def test_dump():
     assert isinstance(new_waveform1.tendencies[1], SmoothTendency)
     assert new_waveform1.tendencies[1].user_to == 0
 
-    assert len(new_waveform2.tendencies) == 1
-    assert isinstance(new_waveform2.tendencies[0], ConstantTendency)
-    assert new_waveform2.tendencies[0].user_value == 3
+    assert new_waveform2.yaml == 3
 
     assert len(old_waveform.tendencies) == 3
     assert isinstance(old_waveform.tendencies[0], LinearTendency)

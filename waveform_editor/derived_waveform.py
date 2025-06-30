@@ -2,15 +2,12 @@ import ast
 from typing import Optional
 
 import numpy as np
-from ruamel.yaml import YAML
 
-from waveform_editor.annotations import Annotations
+from waveform_editor.base_waveform import BaseWaveform
 
 
 class ExpressionTransformer(ast.NodeTransformer):
-    def __init__(
-        self, rename_from: Optional[str] = None, rename_to: Optional[str] = None
-    ):
+    def __init__(self, rename_from=None, rename_to=None):
         self.rename_from = rename_from
         self.rename_to = rename_to
         self.string_nodes = []
@@ -29,20 +26,14 @@ class ExpressionTransformer(ast.NodeTransformer):
             return ast.copy_location(ast.Name(id=node.value, ctx=ast.Load()), node)
 
 
-class DerivedWaveform:
-    def __init__(self, yaml_str, name, config):
-        yaml_dict = YAML().load(yaml_str)
-        self.yaml = yaml_dict[name]
+class DerivedWaveform(BaseWaveform):
+    def __init__(self, yaml_str, name, config, dd_version=None):
+        super().__init__(yaml_str, name, dd_version)
         self.expression = str(self.yaml)
-        self.tendencies = None
-        self.metadata = None
-        self.name = name
         self.config = config
-        self.annotations = Annotations()
         self.dependent_waveforms = set()
         self.compiled_expr = None
         self.string_refs = []
-
         self._prepare_expression()
 
     def _prepare_expression(self):
@@ -87,10 +78,7 @@ class DerivedWaveform:
     def _build_eval_context(self, time: np.ndarray) -> dict:
         context = {"np": np}
         for name in self.string_refs:
-            if name not in self.config.waveform_map:
-                context[name] = np.zeros_like(time)
-            else:
-                context[name] = self.config[name].get_value(time)[1]
+            context[name] = self.config[name].get_value(time)[1]
         return context
 
     def get_value(

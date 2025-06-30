@@ -1,13 +1,11 @@
 import io
 from typing import Optional
 
-import imas
 import numpy as np
-from imas.ids_path import IDSPath
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
-from waveform_editor.annotations import Annotations
+from waveform_editor.base_waveform import BaseWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -35,7 +33,7 @@ tendency_map = {
 }
 
 
-class Waveform:
+class Waveform(BaseWaveform):
     def __init__(
         self,
         *,
@@ -46,15 +44,9 @@ class Waveform:
         name="waveform",
         dd_version=None,
     ):
-        yaml_dict = YAML().load(yaml_str)
-        self.yaml = yaml_dict[name] if yaml_dict else None
-        self.tendencies = []
-        self.name = name
+        super().__init__(yaml_str, name, dd_version)
         self.line_number = line_number
-        self.annotations = Annotations()
         self.is_repeated = is_repeated
-        self.metadata = self.get_metadata(dd_version)
-        self.units = self.metadata.units if self.metadata else "a.u."
         if waveform is not None:
             self._process_waveform(waveform)
 
@@ -93,26 +85,6 @@ class Waveform:
             numpy array containing the derivatives
         """
         return self._evaluate_tendencies(time, eval_derivatives=True)
-
-    def get_metadata(self, dd_version):
-        """Parses the name of the waveform and returns the IDS metadata for this
-        waveform. The name must be formatted as follows: ``<IDS-Name>/<IDS-path>``
-
-        For example: ``ec_launchers/beam(2)/phase/angle``
-
-        Args:
-            dd_version: Data dictionary version to create metadata for.
-
-        Returns:
-            The metadata of the IDS node, or None if it could not find it.
-        """
-        try:
-            ids_name, path = self.name.split("/", 1)
-            dd_path = IDSPath(path)
-            ids = imas.IDSFactory(version=dd_version).new(ids_name)
-            return dd_path.goto_metadata(ids.metadata)
-        except (imas.exception.IDSNameError, ValueError):
-            return None
 
     def _evaluate_tendencies(self, time, eval_derivatives=False):
         """Evaluates the values (or derivatives) of the tendencies at the provided
