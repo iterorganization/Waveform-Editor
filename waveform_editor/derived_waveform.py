@@ -34,6 +34,8 @@ class DerivedWaveform:
         yaml_dict = YAML().load(yaml_str)
         self.yaml = yaml_dict[name]
         self.expression = str(self.yaml)
+        self.tendencies = None
+        self.metadata = None
         self.name = name
         self.config = config
         self.annotations = Annotations()
@@ -101,6 +103,9 @@ class DerivedWaveform:
             return time, np.zeros_like(time)
 
         eval_context = self._build_eval_context(time)
+        # WARNING: Using raw eval poses security risks if applied to untrusted input.
+        # It can execute arbitrary code, leading to code injection vulnerabilities.
+        # Restrict usage strictly to controlled, local, and trusted environments only.
         result = eval(self.compiled_expr, {}, eval_context)
 
         # If derived waveform is a constant, ensure an array is returned
