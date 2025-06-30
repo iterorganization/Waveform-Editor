@@ -1,3 +1,6 @@
+from waveform_editor.derived_waveform import DerivedWaveform
+
+
 class DependencyGraph:
     def __init__(self):
         self.graph = {}
@@ -12,8 +15,15 @@ class DependencyGraph:
         for deps in self.graph.values():
             deps.discard(name)
 
-    def rename_node(self, old_name, new_name):
-        self.graph[new_name] = self.graph.pop(old_name)
+    def rename_node(self, old_name, new_name, config):
+        dependents = {node for node, deps in self.graph.items() if old_name in deps}
+        for dependent_name in dependents:
+            dependent_waveform = config[dependent_name]
+            if isinstance(dependent_waveform, DerivedWaveform):
+                dependent_waveform.rename_dependency(old_name, new_name)
+
+        if old_name in self.graph:
+            self.graph[new_name] = self.graph.pop(old_name)
 
         for dependencies in self.graph.values():
             if old_name in dependencies:
