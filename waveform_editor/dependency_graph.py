@@ -7,7 +7,11 @@ class DependencyGraph:
 
     def add_node(self, name, dependencies):
         self.graph[name] = set(dependencies)
-        self.detect_cycles()
+        try:
+            self.detect_cycles()
+        except RuntimeError as e:
+            del self.graph[name]
+            raise e
 
     def remove_node(self, name):
         if name in self.graph:

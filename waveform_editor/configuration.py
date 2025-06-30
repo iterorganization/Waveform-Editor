@@ -76,7 +76,14 @@ class WaveformConfiguration:
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         if isinstance(waveform, DerivedWaveform):
-            self.dependency_graph.add_node(waveform.name, waveform.dependent_waveforms)
+            try:
+                self.dependency_graph.add_node(
+                    waveform.name, waveform.dependent_waveforms
+                )
+            except Exception as e:
+                del group[waveform.name]
+                del self.waveform_map[waveform.name]
+                raise e
         self._calculate_bounds()
 
     def rename_waveform(self, old_name, new_name):
@@ -164,7 +171,6 @@ class WaveformConfiguration:
                         f"on {wf.name!r}"
                     )
 
-        deleted_waveform = self[name]
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
