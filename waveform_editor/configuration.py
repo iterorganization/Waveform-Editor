@@ -56,6 +56,10 @@ class WaveformConfiguration:
         try:
             self.parser.load_yaml(yaml_str)
             self._calculate_bounds()
+            for name, group in self.waveform_map.items():
+                waveform = group[name]
+                if isinstance(waveform, DerivedWaveform):
+                    waveform.prepare_expression()
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)

@@ -34,9 +34,9 @@ class DerivedWaveform(BaseWaveform):
         self.dependent_waveforms = set()
         self.compiled_expr = None
         self.string_refs = []
-        self._prepare_expression()
+        self.prepare_expression()
 
-    def _prepare_expression(self):
+    def prepare_expression(self):
         if self.yaml is None:
             return
         try:
@@ -68,7 +68,7 @@ class DerivedWaveform(BaseWaveform):
             modified_tree = ast.fix_missing_locations(renamer.visit(tree))
 
             self.yaml = ast.unparse(modified_tree)
-            self._prepare_expression()
+            self.prepare_expression()
         except Exception as e:
             raise RuntimeError(
                 f"Failed to rename dependency '{old_name}' to '{new_name}' in "
