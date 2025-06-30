@@ -2,6 +2,7 @@ import ast
 from typing import Optional
 
 import numpy as np
+from ruamel.yaml import YAML
 
 from waveform_editor.annotations import Annotations
 
@@ -29,28 +30,24 @@ class ExpressionTransformer(ast.NodeTransformer):
 
 
 class DerivedWaveform:
-    def __init__(self, waveform, name, config):
+    def __init__(self, yaml_str, name, config):
+        yaml_dict = YAML().load(yaml_str)
+        self.yaml = yaml_dict[name]
+        self.expression = str(self.yaml)
         self.name = name
-        self.yaml = waveform
         self.config = config
         self.annotations = Annotations()
         self.dependent_waveforms = set()
         self.compiled_expr = None
         self.string_refs = []
 
-        if isinstance(waveform, str):
-            self.is_constant = False
-        else:
-            self.is_constant = True
-            self.yaml = str(self.yaml)
         self._prepare_expression()
 
     def _prepare_expression(self):
         if self.yaml is None:
             return
         try:
-            expression = str(self.yaml) if self.is_constant else self.yaml
-            tree = ast.parse(expression, mode="eval")
+            tree = ast.parse(self.expression, mode="eval")
             transformer = ExpressionTransformer()
             modified_tree = transformer.visit(ast.fix_missing_locations(tree))
             self.string_refs = transformer.string_nodes
@@ -112,7 +109,4 @@ class DerivedWaveform:
         return time, result
 
     def get_yaml_string(self):
-        if self.is_constant:
-            return self.yaml
-        else:
-            return f'"{self.yaml}"'
+        return self.expression

@@ -170,7 +170,7 @@ class YamlParser:
                     dd_version=self.config.dd_version,
                 )
             else:
-                waveform = DerivedWaveform(waveform, name, self.config)
+                waveform = DerivedWaveform(yaml_str, name, self.config)
             return waveform
         except yaml.YAMLError as e:
             self.parse_errors.append(str(e))
