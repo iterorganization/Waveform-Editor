@@ -189,28 +189,28 @@ class WaveformConfiguration:
 
         for wf_name, grp in self.waveform_map.items():
             if wf_name not in to_remove:
-                for wf in grp.waveforms.values():
-                    if isinstance(wf, DerivedWaveform) and to_remove.intersection(
-                        wf.dependent_waveforms
-                    ):
-                        raise RuntimeError(
-                            f"Cannot remove group {group.name}. "
-                            f"{wf.name!r} depends on waveform in it."
-                        )
+                wf = grp[wf_name]
+                if isinstance(wf, DerivedWaveform) and any(
+                    dep_wf in to_remove for dep_wf in wf.dependent_waveforms
+                ):
+                    raise RuntimeError(
+                        f"Cannot remove group {group.name}. "
+                        f"{wf.name!r} depends on a waveform in it."
+                    )
 
         del parent_group.groups[path[-1]]
         self._recursive_remove_waveforms(group)
         self._calculate_bounds()
-        for wf in list(self.waveform_map.keys()):
-            if wf not in self.waveform_map:
-                self.dependency_graph.remove_node(wf)
+        for name in to_remove:
+            if name in self.dependency_graph:
+                self.dependency_graph.remove_node(name)
 
     def _collect_waveforms_in_group(self, group):
-        waveforms = set()
+        waveforms = []
         groups_to_process = [group]
         while groups_to_process:
             current = groups_to_process.pop()
-            waveforms.update(current.waveforms.keys())
+            waveforms.extend(current.waveforms.keys())
             groups_to_process.extend(current.groups.values())
         return waveforms
 
