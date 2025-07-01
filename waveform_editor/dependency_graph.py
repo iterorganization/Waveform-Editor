@@ -46,12 +46,8 @@ class DependencyGraph:
             raise ValueError(f"{name} does not exist in the dependency graph.")
         del self.graph[name]
 
-    def rename_node(self, old_name, new_name, config):
+    def rename_node(self, old_name, new_name):
         dependents = [node for node, deps in self.graph.items() if old_name in deps]
-        for dependent_name in dependents:
-            dependent_waveform = config[dependent_name]
-            if isinstance(dependent_waveform, DerivedWaveform):
-                dependent_waveform.rename_dependency(old_name, new_name)
 
         if old_name in self.graph:
             self.graph[new_name] = self.graph.pop(old_name)
@@ -60,6 +56,7 @@ class DependencyGraph:
             dependencies = self.graph[dependent_name]
             dependencies.remove(old_name)
             dependencies.add(new_name)
+        return dependents
 
     def detect_cycles(self, start_node=None):
         visited = set()
