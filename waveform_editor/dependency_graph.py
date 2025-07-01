@@ -30,7 +30,7 @@ class DependencyGraph:
         del self.graph[name]
 
     def rename_node(self, old_name, new_name, config):
-        dependents = {node for node, deps in self.graph.items() if old_name in deps}
+        dependents = [node for node, deps in self.graph.items() if old_name in deps]
         for dependent_name in dependents:
             dependent_waveform = config[dependent_name]
             if isinstance(dependent_waveform, DerivedWaveform):
@@ -39,10 +39,10 @@ class DependencyGraph:
         if old_name in self.graph:
             self.graph[new_name] = self.graph.pop(old_name)
 
-        for dependencies in self.graph.values():
-            if old_name in dependencies:
-                dependencies.remove(old_name)
-                dependencies.add(new_name)
+        for dependent_name in dependents:
+            dependencies = self.graph[dependent_name]
+            dependencies.remove(old_name)
+            dependencies.add(new_name)
 
     def detect_cycles(self, start_node=None):
         visited = set()
