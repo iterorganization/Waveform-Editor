@@ -84,8 +84,11 @@ class WaveformEditor(Viewer):
         else:
             waveform_yaml = f"{name}: {editor_text}"
         waveform = self.config.parse_waveform(waveform_yaml)
+        self.handle_exceptions(waveform)
+        if not self.error_alert.object:
+            self.waveform = waveform
 
-        # Handle exceptions:
+    def handle_exceptions(self, waveform):
         annotations = waveform.annotations
         self.code_editor.annotations = list(annotations)
         if self.config.parser.parse_errors:  # Handle errors
@@ -94,16 +97,27 @@ class WaveformEditor(Viewer):
                 + f"{self.config.parser.parse_errors[0]}",
                 "danger",
             )
-        else:  # No errors
-            if self.code_editor.annotations:  # Handle warnings
-                self.create_error_alert(
-                    "There was an error in the YAML configuration\n" + f"{annotations}",
-                    "warning",
-                )
-            else:
-                self.error_alert.object = ""  # Clear any previous errors or warnings
-            # There are no errors: update self.waveform
-            self.waveform = waveform
+        elif self.code_editor.annotations:
+            self.create_error_alert(
+                "There was an error in the YAML configuration\n" + f"{annotations}",
+                "warning",
+            )
+        else:
+            if isinstance(waveform, DerivedWaveform):
+                try:
+                    self.config.dependency_graph.check_safe_to_replace(
+                        waveform.name, waveform.dependent_waveforms
+                    )
+                    for dependent_wf in waveform.dependent_waveforms:
+                        if dependent_wf not in self.config.waveform_map:
+                            raise ValueError(
+                                f"Cannot depend on waveform '{dependent_wf}', "
+                                "it does not exist!"
+                            )
+                except Exception as e:
+                    self.create_error_alert(str(e), "danger")
+                    return
+            self.error_alert.object = ""  # Clear any previous errors or warnings
 
     def create_error_alert(self, message, alert_type):
         """Create a formatted error or warning alert.

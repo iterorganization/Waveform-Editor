@@ -133,24 +133,12 @@ class WaveformConfiguration:
                 f"Waveform '{waveform.name}' does not exist in the configuration."
             )
 
+        if isinstance(waveform, DerivedWaveform):
+            self.dependency_graph.replace_node(
+                waveform.name, waveform.dependent_waveforms
+            )
         group = self.waveform_map[waveform.name]
-        old_waveform = group.waveforms[waveform.name]
-
         group.waveforms[waveform.name] = waveform
-
-        try:
-            if isinstance(waveform, DerivedWaveform):
-                self.dependency_graph.add_node(
-                    waveform.name, waveform.dependent_waveforms
-                )
-            else:
-                if waveform.name in self.dependency_graph:
-                    self.dependency_graph.remove_node(waveform.name)
-            self._calculate_bounds()
-        except Exception:
-            # Revert replacement
-            group.waveforms[waveform.name] = old_waveform
-            raise
 
     def remove_waveform(self, name):
         """Removes an existing waveform.

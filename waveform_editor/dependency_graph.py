@@ -16,6 +16,23 @@ class DependencyGraph:
                     f"{node!r}"
                 )
 
+    def check_safe_to_replace(self, name, dependencies):
+        old_deps = self.graph[name]
+        self.graph[name] = set(dependencies)
+        try:
+            self.detect_cycles()
+        finally:
+            self.graph[name] = old_deps
+
+    def replace_node(self, name, dependencies):
+        old = self.graph[name]
+        self.graph[name] = set(dependencies)
+        try:
+            self.detect_cycles()
+        except RuntimeError:
+            self.graph[name] = old
+            raise
+
     def add_node(self, name, dependencies):
         self.graph[name] = set(dependencies)
         try:
