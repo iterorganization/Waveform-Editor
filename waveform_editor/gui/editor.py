@@ -105,7 +105,7 @@ class WaveformEditor(Viewer):
             # There are no errors: update self.waveform
             self.waveform = waveform
 
-    def create_error_alert(self, message, alert_type="danger"):
+    def create_error_alert(self, message, alert_type):
         """Create a formatted error or warning alert.
 
         Args:

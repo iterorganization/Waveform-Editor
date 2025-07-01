@@ -3,8 +3,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.waveform import Waveform
-
 
 class PlotterView(Viewer):
     """Class to plot multiple waveforms in view mode."""
@@ -48,9 +46,7 @@ class PlotterView(Viewer):
         xlabel = "Time (s)"
         ylabel = "Value"
 
-        if waveform is None or (
-            isinstance(waveform, Waveform) and not waveform.tendencies
-        ):
+        if waveform is None:
             return hv.Curve(([], []), xlabel, ylabel)
         times, values = waveform.get_value()
 
