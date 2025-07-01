@@ -6,24 +6,26 @@ import numpy as np
 from waveform_editor.base_waveform import BaseWaveform
 
 
-class ExpressionTransformer(ast.NodeTransformer):
-    def __init__(self, rename_from=None, rename_to=None):
+class DependencyRenamer(ast.NodeTransformer):
+    def __init__(self, rename_from, rename_to):
         self.rename_from = rename_from
         self.rename_to = rename_to
+
+    def visit_Constant(self, node):
+        if isinstance(node.value, str) and node.value == self.rename_from:
+            return ast.copy_location(ast.Constant(value=self.rename_to), node)
+        return node
+
+
+class ExpressionExtractor(ast.NodeTransformer):
+    def __init__(self):
         self.string_nodes = []
 
     def visit_Constant(self, node):
-        if not isinstance(node.value, str):
-            return node
-        # Rename a specific dependency
-        if self.rename_from is not None:
-            if node.value == self.rename_from:
-                return ast.copy_location(ast.Constant(value=self.rename_to), node)
-            return node
-        # Prepare expression for evaluation
-        else:
+        if isinstance(node.value, str):
             self.string_nodes.append(node.value)
             return ast.copy_location(ast.Name(id=node.value, ctx=ast.Load()), node)
+        return node
 
 
 class DerivedWaveform(BaseWaveform):
@@ -39,41 +41,38 @@ class DerivedWaveform(BaseWaveform):
     def prepare_expression(self):
         if self.yaml is None:
             return
+
         try:
             tree = ast.parse(self.expression, mode="eval")
-            transformer = ExpressionTransformer()
-            modified_tree = transformer.visit(ast.fix_missing_locations(tree))
-            self.string_refs = transformer.string_nodes
-            self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
-
-            self.dependent_waveforms = set()
-            for name in self.string_refs:
-                self.dependent_waveforms.add(name)
-
-            for dep_name in self.dependent_waveforms:
-                if dep_name not in self.config.waveform_map:
-                    raise ValueError(f"Undefined dependency: '{dep_name}'")
-
         except Exception as e:
             self.annotations.add(0, f"Could not parse or evaluate the waveform: {e}")
             self.compiled_expr = None
-
-    def rename_dependency(self, old_name, new_name):
-        if self.is_constant or old_name not in self.dependent_waveforms:
             return
 
-        try:
-            tree = ast.parse(self.yaml, mode="eval")
-            renamer = ExpressionTransformer(rename_from=old_name, rename_to=new_name)
-            modified_tree = ast.fix_missing_locations(renamer.visit(tree))
+        extractor = ExpressionExtractor()
+        modified_tree = extractor.visit(ast.fix_missing_locations(tree))
+        self.string_refs = extractor.string_nodes
 
-            self.yaml = ast.unparse(modified_tree)
-            self.prepare_expression()
+        try:
+            self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to rename dependency '{old_name}' to '{new_name}' in "
-                f"waveform '{self.name}': {e}"
-            ) from e
+            self.annotations.add(0, f"Could not compile the waveform: {e}")
+            self.compiled_expr = None
+            return
+
+        self.dependent_waveforms = set(self.string_refs)
+
+    def rename_dependency(self, old_name, new_name):
+        if old_name not in self.dependent_waveforms:
+            return
+
+        tree = ast.parse(self.yaml, mode="eval")
+        renamer = DependencyRenamer(rename_from=old_name, rename_to=new_name)
+        modified_tree = ast.fix_missing_locations(renamer.visit(tree))
+
+        self.yaml = ast.unparse(modified_tree)
+        self.expression = self.yaml
+        self.prepare_expression()
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
         context = {"np": np}
