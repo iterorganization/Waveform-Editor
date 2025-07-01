@@ -1,6 +1,3 @@
-from waveform_editor.derived_waveform import DerivedWaveform
-
-
 class DependencyGraph:
     def __init__(self):
         self.graph = {}
