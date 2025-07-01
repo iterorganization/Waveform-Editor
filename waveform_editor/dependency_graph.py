@@ -24,6 +24,9 @@ class DependencyGraph:
             self.graph[name] = old_deps
 
     def replace_node(self, name, dependencies):
+        if name not in self.graph:
+            self.add_node(name, dependencies)
+            return
         old = self.graph[name]
         self.graph[name] = set(dependencies)
         try:
