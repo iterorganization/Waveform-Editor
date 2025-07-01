@@ -76,18 +76,12 @@ class WaveformConfiguration:
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
+        if isinstance(waveform, DerivedWaveform):
+            self.dependency_graph.add_node(waveform.name, waveform.dependent_waveforms)
+
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
-        if isinstance(waveform, DerivedWaveform):
-            try:
-                self.dependency_graph.add_node(
-                    waveform.name, waveform.dependent_waveforms
-                )
-            except Exception:
-                del group[waveform.name]
-                del self.waveform_map[waveform.name]
-                raise
         self._calculate_bounds()
 
     def rename_waveform(self, old_name, new_name):
