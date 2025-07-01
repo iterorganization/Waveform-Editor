@@ -21,6 +21,12 @@ class ExpressionExtractor(ast.NodeTransformer):
     def __init__(self):
         self.string_nodes = []
 
+    def visit_Import(self, node):
+        raise ValueError("Import statements are not allowed in waveform expressions.")
+
+    def visit_ImportFrom(self, node):
+        raise ValueError("Import statements are not allowed in waveform expressions.")
+
     def visit_Constant(self, node):
         if isinstance(node.value, str):
             self.string_nodes.append(node.value)
@@ -93,7 +99,7 @@ class DerivedWaveform(BaseWaveform):
         # WARNING: Using raw eval poses security risks if applied to untrusted input.
         # It can execute arbitrary code, leading to code injection vulnerabilities.
         # Restrict usage strictly to controlled, local, and trusted environments only.
-        result = eval(self.compiled_expr, {}, eval_context)
+        result = eval(self.compiled_expr, {"__builtins__": {}}, eval_context)
 
         # If derived waveform is a constant, ensure an array is returned
         if isinstance(result, (int, float)):
