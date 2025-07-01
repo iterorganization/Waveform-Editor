@@ -14,6 +14,8 @@ class DependencyGraph:
                 )
 
     def check_safe_to_replace(self, name, dependencies):
+        if name not in self.graph:
+            return
         old_deps = self.graph[name]
         self.graph[name] = set(dependencies)
         try:
