@@ -9,9 +9,9 @@ class DependencyGraph:
         self.graph[name] = set(dependencies)
         try:
             self.detect_cycles()
-        except RuntimeError as e:
+        except RuntimeError:
             del self.graph[name]
-            raise e
+            raise
 
     def remove_node(self, name):
         if name in self.graph:
