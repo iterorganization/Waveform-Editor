@@ -150,7 +150,8 @@ class WaveformConfiguration:
                     waveform.name, waveform.dependent_waveforms
                 )
             else:
-                self.dependency_graph.remove_node(waveform.name)
+                if waveform.name in self.dependency_graph:
+                    self.dependency_graph.remove_node(waveform.name)
             self._calculate_bounds()
         except Exception:
             # Revert replacement
@@ -294,13 +295,8 @@ class WaveformConfiguration:
         for name in self.waveform_map:
             waveform = self[name]
             if not isinstance(waveform, DerivedWaveform) and waveform.tendencies:
-                start = waveform.tendencies[0].start
-                end = waveform.tendencies[-1].end
-
-                if start < min_start:
-                    min_start = start
-                if end > max_end:
-                    max_end = end
+                min_start = min(min_start, waveform.tendencies[0].start)
+                max_end = max(max_end, waveform.tendencies[-1].end)
 
         self.start = min_start if min_start != float("inf") else 0
         self.end = max_end if max_end != float("-inf") else 0

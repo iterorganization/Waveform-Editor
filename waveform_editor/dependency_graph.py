@@ -66,10 +66,3 @@ class DependencyGraph:
         else:
             for node in self.graph:
                 visit(node)
-
-    def print(self):
-        for node, deps in self.graph.items():
-            if deps:
-                print(f"{node} -> {', '.join(deps)}")
-            else:
-                print(f"{node} -> (no dependencies)")
