@@ -166,20 +166,14 @@ class WaveformConfiguration:
         if name not in self.waveform_map:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
 
-        # Check if any DerivedWaveform depends on this waveform
-        for group in self.waveform_map.values():
-            for wf in group.waveforms.values():
-                if isinstance(wf, DerivedWaveform) and name in wf.dependent_waveforms:
-                    raise RuntimeError(
-                        f"Cannot remove waveform {name!r} because it is dependent "
-                        f"on {wf.name!r}"
-                    )
+        self.dependency_graph.check_safe_to_remove(name)
+        if name in self.dependency_graph:
+            self.dependency_graph.remove_node(name)
 
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
         self._calculate_bounds()
-        self.dependency_graph.remove_node(name)
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.

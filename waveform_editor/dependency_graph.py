@@ -5,6 +5,17 @@ class DependencyGraph:
     def __init__(self):
         self.graph = {}
 
+    def __contains__(self, name):
+        return name in self.graph
+
+    def check_safe_to_remove(self, name):
+        for node, deps in self.graph.items():
+            if name in deps:
+                raise RuntimeError(
+                    f"Cannot remove waveform {name!r} because it is a dependency of "
+                    f"{node!r}"
+                )
+
     def add_node(self, name, dependencies):
         self.graph[name] = set(dependencies)
         try:
@@ -14,10 +25,9 @@ class DependencyGraph:
             raise
 
     def remove_node(self, name):
-        if name in self.graph:
-            del self.graph[name]
-        for deps in self.graph.values():
-            deps.discard(name)
+        if name not in self.graph:
+            raise ValueError(f"{name} does not exist in the dependency graph.")
+        del self.graph[name]
 
     def rename_node(self, old_name, new_name, config):
         dependents = {node for node, deps in self.graph.items() if old_name in deps}
