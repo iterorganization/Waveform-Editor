@@ -18,9 +18,11 @@ class DependencyRenamer(ast.NodeTransformer):
             line_number = node.lineno - 1
             line = split_yaml[line_number]
             split_yaml[line_number] = (
-                line[: node.col_offset + 1]
-                + self.rename_to
-                + line[node.end_col_offset - 1 :]
+                line[: node.col_offset]
+                + line[node.col_offset : node.end_col_offset].replace(
+                    self.rename_from, self.rename_to
+                )
+                + line[node.end_col_offset :]
             )
             self.yaml = "\n".join(split_yaml)
             return ast.copy_location(ast.Constant(value=self.rename_to), node)
