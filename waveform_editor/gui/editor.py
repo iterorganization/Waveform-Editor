@@ -105,15 +105,7 @@ class WaveformEditor(Viewer):
         else:
             if isinstance(waveform, DerivedWaveform):
                 try:
-                    self.config.dependency_graph.check_safe_to_replace(
-                        waveform.name, waveform.dependent_waveforms
-                    )
-                    for dependent_wf in waveform.dependent_waveforms:
-                        if dependent_wf not in self.config.waveform_map:
-                            raise ValueError(
-                                f"Cannot depend on waveform '{dependent_wf}', "
-                                "it does not exist!"
-                            )
+                    self.config.check_safe_to_replace(waveform)
                 except Exception as e:
                     self.create_error_alert(str(e), "danger")
                     return

@@ -111,6 +111,16 @@ class WaveformConfiguration:
             dependent_waveform = self[dependent_name]
             dependent_waveform.rename_dependency(old_name, new_name)
 
+    def check_safe_to_replace(self, waveform):
+        self.dependency_graph.check_safe_to_replace(
+            waveform.name, waveform.dependent_waveforms
+        )
+        for dependent_wf in waveform.dependent_waveforms:
+            if dependent_wf not in self.waveform_map:
+                raise ValueError(
+                    f"Cannot depend on waveform '{dependent_wf}', it does not exist!"
+                )
+
     def _validate_name(self, name):
         """Check that name contains a '/' and doesn't exist already. If not, a
         ValueError is raised.
