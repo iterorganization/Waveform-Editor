@@ -112,6 +112,11 @@ class WaveformConfiguration:
             dependent_waveform.rename_dependency(old_name, new_name)
 
     def check_safe_to_replace(self, waveform):
+        """Validate that a waveform is safe to replace.
+
+        Args:
+            waveform: The waveform to validate for replacement.
+        """
         self.dependency_graph.check_safe_to_replace(
             waveform.name, waveform.dependent_waveforms
         )
@@ -205,6 +210,14 @@ class WaveformConfiguration:
                 self.dependency_graph.remove_node(name)
 
     def _collect_waveforms_in_group(self, group):
+        """Collect all waveform names within a group, including nested subgroups.
+
+        Args:
+            group: The group to collect the waveforms for.
+
+        Returns:
+            Set of waveform names.
+        """
         waveforms = set()
         groups_to_process = [group]
         while groups_to_process:

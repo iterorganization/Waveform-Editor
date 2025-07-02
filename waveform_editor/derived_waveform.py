@@ -7,12 +7,18 @@ from waveform_editor.base_waveform import BaseWaveform
 
 
 class DependencyRenamer(ast.NodeTransformer):
+    """AST transformer to rename string constants."""
+
     def __init__(self, rename_from, rename_to, yaml):
         self.rename_from = rename_from
         self.rename_to = rename_to
         self.yaml = yaml
 
     def visit_Constant(self, node):
+        """
+        Replace string constants equal to `rename_from` with `rename_to`
+        and update the YAML source lines accordingly.
+        """
         if isinstance(node.value, str) and node.value == self.rename_from:
             split_yaml = self.yaml.splitlines()
             line_number = node.lineno - 1
@@ -30,6 +36,11 @@ class DependencyRenamer(ast.NodeTransformer):
 
 
 class ExpressionExtractor(ast.NodeTransformer):
+    """
+    AST transformer extracting all string constants from expressions
+    and replacing them with Name nodes for later evaluation.
+    """
+
     def __init__(self):
         self.string_nodes = []
 
@@ -55,6 +66,9 @@ class DerivedWaveform(BaseWaveform):
         self.prepare_expression()
 
     def prepare_expression(self):
+        """Parse the YAML expression, extract dependencies, transform it for
+        evaluation, and compile it.
+        """
         if self.yaml is None:
             return
 
@@ -71,6 +85,12 @@ class DerivedWaveform(BaseWaveform):
         self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
 
     def rename_dependency(self, old_name, new_name):
+        """Rename a dependency waveform in the expression.
+
+        Args:
+            old_name: Original dependency name.
+            new_name: New dependency name.
+        """
         if old_name not in self.dependent_waveforms:
             return
 
@@ -81,6 +101,14 @@ class DerivedWaveform(BaseWaveform):
         self.prepare_expression()
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
+        """Build the evaluation context dictionary with dependencies resolved.
+
+        Args:
+            time: The time array on which to generate points.
+
+        Returns:
+            dict: Mapping dependency names to waveform values at given times.
+        """
         context = {"np": np}
         for name in self.dependent_waveforms:
             context[name] = self.config[name].get_value(time)[1]
@@ -89,6 +117,15 @@ class DerivedWaveform(BaseWaveform):
     def get_value(
         self, time: Optional[np.ndarray] = None
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Evaluate the derived waveform expression at specified times.
+
+        Args:
+            time: Array of time points. Defaults to 1000 points between config.start
+            and config.end.
+
+        Returns:
+            Tuple containing the time and the derived waveform values.
+        """
         if time is None:
             # TODO: properly handle time for plotting
             time = np.linspace(self.config.start, self.config.end, 1000)
@@ -106,4 +143,5 @@ class DerivedWaveform(BaseWaveform):
         return time, result
 
     def get_yaml_string(self):
+        """Returns the current YAML expression string."""
         return str(self.yaml)
