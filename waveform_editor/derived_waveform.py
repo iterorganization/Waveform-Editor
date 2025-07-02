@@ -121,7 +121,7 @@ class DerivedWaveform(BaseWaveform):
 
         Args:
             time: Array of time points. Defaults to 1000 points between config.start
-            and config.end.
+                and config.end.
 
         Returns:
             Tuple containing the time and the derived waveform values.
