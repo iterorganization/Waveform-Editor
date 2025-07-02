@@ -150,9 +150,8 @@ class WaveformConfiguration:
             self.dependency_graph.replace_node(
                 waveform.name, waveform.dependent_waveforms
             )
-        else:
-            if waveform.name in self.dependency_graph:
-                self.dependency_graph.remove_node(waveform.name)
+        elif waveform.name in self.dependency_graph:
+            self.dependency_graph.remove_node(waveform.name)
 
         group = self.waveform_map[waveform.name]
         group.waveforms[waveform.name] = waveform
