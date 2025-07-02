@@ -109,8 +109,7 @@ class WaveformConfiguration:
         dependents = self.dependency_graph.rename_node(old_name, new_name)
         for dependent_name in dependents:
             dependent_waveform = self[dependent_name]
-            if isinstance(dependent_waveform, DerivedWaveform):
-                dependent_waveform.rename_dependency(old_name, new_name)
+            dependent_waveform.rename_dependency(old_name, new_name)
 
     def _validate_name(self, name):
         """Check that name contains a '/' and doesn't exist already. If not, a
@@ -141,6 +140,9 @@ class WaveformConfiguration:
             self.dependency_graph.replace_node(
                 waveform.name, waveform.dependent_waveforms
             )
+        else:
+            self.dependency_graph.remove_node(waveform.name)
+
         group = self.waveform_map[waveform.name]
         group.waveforms[waveform.name] = waveform
 
