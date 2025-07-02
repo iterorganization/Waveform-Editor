@@ -94,8 +94,7 @@ class DerivedWaveform(BaseWaveform):
             return time, np.zeros_like(time)
 
         eval_context = self._build_eval_context(time)
-        # WARNING: Using raw eval poses security risks if applied to untrusted input.
-        # It can execute arbitrary code, leading to code injection vulnerabilities.
+        # WARNING: Using eval poses security risks if applied to untrusted input.
         # Restrict usage strictly to controlled, local, and trusted environments only.
         result = eval(self.compiled_expr, {"__builtins__": {}}, eval_context)
 
