@@ -155,6 +155,7 @@ class WaveformConfiguration:
 
         group = self.waveform_map[waveform.name]
         group.waveforms[waveform.name] = waveform
+        self._calculate_bounds()
 
     def remove_waveform(self, name):
         """Removes an existing waveform.

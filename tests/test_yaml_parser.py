@@ -2,6 +2,7 @@ import pytest
 from pytest import approx
 
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -9,6 +10,7 @@ from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.waveform import Waveform
 from waveform_editor.yaml_parser import YamlParser
 
 
@@ -125,6 +127,7 @@ def test_scientific_notation(yaml_parser):
 
     for waveform, expected_value in waveforms.items():
         waveform = yaml_parser.parse_waveform(waveform)
+        assert isinstance(waveform, Waveform)
         assert waveform.tendencies[0].to == expected_value
 
 
@@ -135,8 +138,10 @@ def test_constant_shorthand_notation(yaml_parser):
 
     for waveform, expected_value in waveforms.items():
         waveform = yaml_parser.parse_waveform(waveform)
+        assert isinstance(waveform, DerivedWaveform)
         assert waveform.yaml == expected_value
         assert not waveform.annotations
+        assert waveform.dependent_waveforms == set()
         assert not yaml_parser.parse_errors
 
 
