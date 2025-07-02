@@ -7,12 +7,22 @@ from waveform_editor.base_waveform import BaseWaveform
 
 
 class DependencyRenamer(ast.NodeTransformer):
-    def __init__(self, rename_from, rename_to):
+    def __init__(self, rename_from, rename_to, yaml):
         self.rename_from = rename_from
         self.rename_to = rename_to
+        self.yaml = yaml
 
     def visit_Constant(self, node):
         if isinstance(node.value, str) and node.value == self.rename_from:
+            split_yaml = self.yaml.splitlines()
+            line_number = node.lineno - 1
+            line = split_yaml[line_number]
+            split_yaml[line_number] = (
+                line[: node.col_offset + 1]
+                + self.rename_to
+                + line[node.end_col_offset - 1 :]
+            )
+            self.yaml = "\n".join(split_yaml)
             return ast.copy_location(ast.Constant(value=self.rename_to), node)
         return node
 
@@ -37,7 +47,6 @@ class ExpressionExtractor(ast.NodeTransformer):
 class DerivedWaveform(BaseWaveform):
     def __init__(self, yaml_str, name, config, dd_version=None):
         super().__init__(yaml_str, name, dd_version)
-        self.expression = str(self.yaml)
         self.config = config
         self.dependent_waveforms = set()
         self.compiled_expr = None
@@ -48,7 +57,7 @@ class DerivedWaveform(BaseWaveform):
             return
 
         try:
-            tree = ast.parse(self.expression, mode="eval")
+            tree = ast.parse(str(self.yaml), mode="eval")
         except Exception as e:
             self.annotations.add(0, f"Could not parse or evaluate the waveform: {e}")
             self.compiled_expr = None
@@ -64,11 +73,9 @@ class DerivedWaveform(BaseWaveform):
             return
 
         tree = ast.parse(self.yaml, mode="eval")
-        renamer = DependencyRenamer(rename_from=old_name, rename_to=new_name)
-        modified_tree = ast.fix_missing_locations(renamer.visit(tree))
-
-        self.yaml = ast.unparse(modified_tree)
-        self.expression = self.yaml
+        renamer = DependencyRenamer(old_name, new_name, self.yaml)
+        ast.fix_missing_locations(renamer.visit(tree))
+        self.yaml = renamer.yaml
         self.prepare_expression()
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
@@ -98,4 +105,4 @@ class DerivedWaveform(BaseWaveform):
         return time, result
 
     def get_yaml_string(self):
-        return self.expression
+        return str(self.yaml)
