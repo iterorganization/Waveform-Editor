@@ -21,6 +21,7 @@ Manual
    cli
    tendencies
    yaml_format
+   derived
    muscle3
 
 .. toctree::
