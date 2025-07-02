@@ -15,9 +15,10 @@ Examples
 Arithmetic on a Single Waveform
 -------------------------------
 
-This example shows how you can do arithmetic on a waveform.
-``test/2`` divides waveform ``test/1`` by 2, ``test/3`` multiplies it by 2, 
-and ``test/4`` adds a constant offset.
+This example shows how to perform arithmetic on a waveform. It features a simple waveform, 
+``test/1``, which consists of a ramp-up, flat top, and ramp-down. 
+The other waveforms are derived from ``test/1`` and apply different mathematical expressions: 
+``test/2`` divides ``test/1`` by 2, ``test/3`` multiplies it by 2, and ``test/4`` adds a constant offset.
 
 .. code-block:: yaml
 
@@ -41,12 +42,12 @@ and ``test/4`` adds a constant offset.
 
     If you are using the Waveform Editor from the GUI, you only have to enter the 
     expression in the block string. For the example above, you would only need
-    to enter ``'test/1' + 10`` as the waveform definition.
+    to enter ``'test/1' + 10`` as the waveform definition for the waveform ``test/4``.
 
 Multiple Dependencies
 ---------------------
 
-It is allowed to use multiple different dependent waveforms in an expression. 
+It is allowed to use multiple different dependent waveforms in a single expression.
 In the example below, waveform ``test/3`` is the sum of the waveforms ``test/1`` and ``test/2``.
 
 .. code-block:: yaml
@@ -70,7 +71,7 @@ Using NumPy Functions
 ---------------------
 
 It is allowed to use NumPy expressions to transform existing waveforms. 
-This example demonstrates using different NumPy functions in derived waveform expressions.
+This example demonstrates how to use different NumPy functions in derived waveform expressions.
 ``test/2`` applies the absolute value, and ``test/3`` clamps the waveform to non-negative values using ``np.maximum``.
 
 .. code-block:: yaml
@@ -90,7 +91,7 @@ This example demonstrates using different NumPy functions in derived waveform ex
 Combined Operations
 -------------------
 
-All methods explained above may be combined to generate complex waveform definitions, 
+The methods explained above may be combined to generate complex waveform definitions, 
 an example of this is shown below.
 
 .. code-block:: yaml
