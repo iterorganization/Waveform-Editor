@@ -41,7 +41,6 @@ class DerivedWaveform(BaseWaveform):
         self.config = config
         self.dependent_waveforms = set()
         self.compiled_expr = None
-        self.string_refs = []
         self.prepare_expression()
 
     def prepare_expression(self):
@@ -57,16 +56,8 @@ class DerivedWaveform(BaseWaveform):
 
         extractor = ExpressionExtractor()
         modified_tree = extractor.visit(ast.fix_missing_locations(tree))
-        self.string_refs = extractor.string_nodes
-
-        try:
-            self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
-        except Exception as e:
-            self.annotations.add(0, f"Could not compile the waveform: {e}")
-            self.compiled_expr = None
-            return
-
-        self.dependent_waveforms = set(self.string_refs)
+        self.dependent_waveforms = set(extractor.string_nodes)
+        self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
 
     def rename_dependency(self, old_name, new_name):
         if old_name not in self.dependent_waveforms:
@@ -82,7 +73,7 @@ class DerivedWaveform(BaseWaveform):
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
         context = {"np": np}
-        for name in self.string_refs:
+        for name in self.dependent_waveforms:
             context[name] = self.config[name].get_value(time)[1]
         return context
 

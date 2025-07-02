@@ -44,8 +44,6 @@ class DependencyGraph:
             raise
 
     def remove_node(self, name):
-        if name not in self.graph:
-            raise ValueError(f"{name} does not exist in the dependency graph.")
         del self.graph[name]
 
     def rename_node(self, old_name, new_name):
