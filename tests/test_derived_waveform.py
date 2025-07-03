@@ -103,7 +103,7 @@ def test_dependent_waveform_calc(filled_config):
 
 def test_dependent_waveform_numpy(filled_config):
     name = "waveform/2"
-    yaml_str = f"{name}: |\n  np.maximum('waveform/1' * 10, 150)"
+    yaml_str = f"{name}: |\n  maximum('waveform/1' * 10, 150)"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
     assert waveform.dependent_waveforms == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
