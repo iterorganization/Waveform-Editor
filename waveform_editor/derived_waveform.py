@@ -2,6 +2,7 @@ import ast
 from typing import Optional
 
 import numpy as np
+from asteval import Interpreter
 
 from waveform_editor.base_waveform import BaseWaveform
 
@@ -43,18 +44,25 @@ class ExpressionExtractor(ast.NodeTransformer):
 
     def __init__(self):
         self.string_nodes = []
-
-    def visit_Import(self, node):
-        raise ValueError("Import statements are not allowed in waveform expressions.")
-
-    def visit_ImportFrom(self, node):
-        raise ValueError("Import statements are not allowed in waveform expressions.")
+        self.is_constant = True
 
     def visit_Constant(self, node):
         if isinstance(node.value, str):
             self.string_nodes.append(node.value)
-            return ast.copy_location(ast.Name(id=node.value, ctx=ast.Load()), node)
-        return node
+            self.is_constant = False
+            return ast.copy_location(
+                ast.Subscript(
+                    value=ast.Name(id="__w", ctx=ast.Load()),
+                    slice=ast.Constant(value=node.value),
+                    ctx=ast.Load(),
+                ),
+                node,
+            )
+        elif isinstance(node.value, (int, float)):
+            return node
+        else:
+            self.is_constant = False
+            return node
 
 
 class DerivedWaveform(BaseWaveform):
@@ -62,7 +70,8 @@ class DerivedWaveform(BaseWaveform):
         super().__init__(yaml_str, name, dd_version)
         self.config = config
         self.dependent_waveforms = set()
-        self.compiled_expr = None
+        self.is_constant = False
+        self.expression = None
         self.prepare_expression()
 
     def prepare_expression(self):
@@ -76,13 +85,14 @@ class DerivedWaveform(BaseWaveform):
             tree = ast.parse(str(self.yaml), mode="eval")
         except Exception as e:
             self.annotations.add(0, f"Could not parse or evaluate the waveform: {e}")
-            self.compiled_expr = None
+            self.expression = None
             return
 
         extractor = ExpressionExtractor()
         modified_tree = extractor.visit(ast.fix_missing_locations(tree))
+        self.is_constant = extractor.is_constant
+        self.expression = ast.unparse(modified_tree)
         self.dependent_waveforms = set(extractor.string_nodes)
-        self.compiled_expr = compile(modified_tree, filename="<expr>", mode="eval")
 
     def rename_dependency(self, old_name, new_name):
         """Rename a dependency waveform in the expression.
@@ -109,10 +119,11 @@ class DerivedWaveform(BaseWaveform):
         Returns:
             dict: Mapping dependency names to waveform values at given times.
         """
-        context = {"np": np}
+        eval_context = {}
+
         for name in self.dependent_waveforms:
-            context[name] = self.config[name].get_value(time)[1]
-        return context
+            eval_context[name] = self.config[name].get_value(time)[1]
+        return eval_context
 
     def get_value(
         self, time: Optional[np.ndarray] = None
@@ -129,17 +140,29 @@ class DerivedWaveform(BaseWaveform):
         if time is None:
             # TODO: properly handle time for plotting
             time = np.linspace(self.config.start, self.config.end, 1000)
-        if self.compiled_expr is None:
+        if self.expression is None:
             return time, np.zeros_like(time)
 
         eval_context = self._build_eval_context(time)
-        # WARNING: Using eval poses security risks if applied to untrusted input.
-        # Restrict usage strictly to controlled, local, and trusted environments only.
-        result = eval(self.compiled_expr, {"__builtins__": {}}, eval_context)
+        aeval = Interpreter(user_symbols={"__w": eval_context}, minimal=True)
+        with np.printoptions(threshold=10):
+            result = aeval.eval(self.expression, raise_errors=True)
 
         # If derived waveform is a constant, ensure an array is returned
-        if isinstance(result, (int, float)):
-            result = np.full_like(time, result)
+        if self.is_constant:
+            return time, np.full_like(time, result)
+
+        # Ensure the result is a 1D array
+        if not isinstance(result, (list, np.ndarray)):
+            raise ValueError("Evaluation result is not a list or 1D array")
+        result = np.asarray(result)
+        if result.ndim != 1:
+            raise ValueError("Evaluation result is not 1-dimensional")
+        if result.shape[0] != len(time):
+            raise ValueError(
+                "Evaluation result length does not match time vector length"
+            )
+
         return time, result
 
     def get_yaml_string(self):
