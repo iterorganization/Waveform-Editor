@@ -98,7 +98,7 @@ class WaveformEditorGui(param.Parameterized):
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             main=self.tabs,
-            sidebar=sidebar,
+            sidebar=[sidebar],
             sidebar_width=400,
         )
 
