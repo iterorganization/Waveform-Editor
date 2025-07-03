@@ -207,11 +207,7 @@ class OptionsButtonRow(Viewer):
         name = self.new_group_panel.input.value_input
 
         # Create new group in configuration
-        try:
-            new_group = self.config.add_group(name, self.path)
-        except ValueError as e:
-            pn.state.notifications.error(str(e))
-            return
+        new_group = self.config.add_group(name, self.path)
 
         # Update UI
         self.selection_group.add_group(new_group)

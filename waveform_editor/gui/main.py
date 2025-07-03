@@ -1,4 +1,5 @@
 import io
+import logging
 
 import panel as pn
 import param
@@ -15,9 +16,19 @@ from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.start_up import StartUpPrompt
 from waveform_editor.util import State
 
+logger = logging.getLogger(__name__)
+
+
+def exception_handler(ex):
+    logging.error("Error", exc_info=ex)
+    pn.state.notifications.error(f"{ex}")
+
+
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
-pn.extension("modal", "codeeditor", notifications=True)
+pn.extension(
+    "modal", "codeeditor", notifications=True, exception_handler=exception_handler
+)
 
 
 class WaveformEditorGui(param.Parameterized):
