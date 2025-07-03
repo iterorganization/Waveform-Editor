@@ -4,6 +4,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.waveform import Waveform
 
 
@@ -11,7 +12,7 @@ class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
     waveform = param.ClassSelector(
-        class_=Waveform,
+        class_=(Waveform, DerivedWaveform),
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
 
@@ -77,29 +78,48 @@ class WaveformEditor(Viewer):
         # dashed lists are placed below the key containing the waveform name
         if editor_text.lstrip().startswith("- "):
             waveform_yaml = f"{name}:\n{editor_text}"
+        # Derived waveforms are parsed as YAML block strings
+        elif "'" in editor_text or '"' in editor_text:
+            waveform_yaml = f"{name}: |\n  {editor_text}"
         else:
             waveform_yaml = f"{name}: {editor_text}"
         waveform = self.config.parse_waveform(waveform_yaml)
+        self.handle_exceptions(waveform)
+        if not self.error_alert.object:
+            self.waveform = waveform
 
-        # Handle exceptions:
+    def handle_exceptions(self, waveform):
         annotations = waveform.annotations
         self.code_editor.annotations = list(annotations)
         if self.config.parser.parse_errors:  # Handle errors
-            self.error_alert.object = (
-                "### The YAML did not parse correctly\n  "
-                f"{self.config.parser.parse_errors[0]}"
+            self.create_error_alert(
+                "The YAML did not parse correctly\n  "
+                + f"{self.config.parser.parse_errors[0]}",
+                "danger",
             )
-            self.error_alert.alert_type = "danger"
-        else:  # No errors
-            if self.code_editor.annotations:  # Handle warnings
-                self.error_alert.object = (
-                    f"### There was an error in the YAML configuration\n{annotations}"
-                )
-                self.error_alert.alert_type = "warning"
-            else:
-                self.error_alert.object = ""  # Clear any previous errors or warnings
-            # There are no errors: update self.waveform
-            self.waveform = waveform
+        elif self.code_editor.annotations:
+            self.create_error_alert(
+                "There was an error in the YAML configuration\n" + f"{annotations}",
+                "warning",
+            )
+        else:
+            if isinstance(waveform, DerivedWaveform):
+                try:
+                    self.config.check_safe_to_replace(waveform)
+                except Exception as e:
+                    self.create_error_alert(str(e), "danger")
+                    return
+            self.error_alert.object = ""  # Clear any previous errors or warnings
+
+    def create_error_alert(self, message, alert_type):
+        """Create a formatted error or warning alert.
+
+        Args:
+            message: The alert message content.
+            alert_type: Type of alert
+        """
+        self.error_alert.object = f"### {message}"
+        self.error_alert.alert_type = alert_type
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration."""
