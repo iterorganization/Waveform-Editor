@@ -12,6 +12,28 @@ recalculated in the GUI.
 Examples
 ========
 
+Dividing Total Power Among Multiple Beams
+-----------------------------------------
+
+This example demonstrates how to distribute a total power value across multiple beams. 
+The ``total_power`` waveform defines the overall power profile over time. 
+The power of the individual beams are scaled by the total power to ensure the power of 
+all beams combined is equal to the total power.
+
+.. code-block:: yaml
+
+    ec_launchers:
+      ec_launchers/total_power:
+      - {duration: 1}
+      - {type: constant, value: 5e+5, duration: 18}
+      - {to: 0}
+      ec_launchers/beam(1:10)/power_launched/data: |
+        'ec_launchers/total_power' / 10
+
+.. image:: images/derived_power.jpg
+   :width: 600px
+   :align: center
+
 Arithmetic on a Single Waveform
 -------------------------------
 
@@ -80,9 +102,9 @@ This example demonstrates how to use different NumPy functions in derived wavefo
       test/1:
       - {type: linear, from: -10, to: 10, duration: 20}
       test/2: |
-        np.abs('test/1')
+        abs('test/1')
       test/3: |
-        np.maximum('test/1', 0)
+        maximum('test/1', 0)
 
 .. image:: images/derived_np.jpg
    :width: 600px
