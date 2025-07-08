@@ -89,7 +89,7 @@ class DerivedWaveform(BaseWaveform):
             return
 
         extractor = ExpressionExtractor()
-        modified_tree = extractor.visit(ast.fix_missing_locations(tree))
+        modified_tree = ast.fix_missing_locations(extractor.visit(tree))
         self.is_constant = extractor.is_constant
         self.expression = ast.unparse(modified_tree)
         self.dependent_waveforms = set(extractor.string_nodes)
