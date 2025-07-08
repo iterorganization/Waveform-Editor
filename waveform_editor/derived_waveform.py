@@ -44,12 +44,10 @@ class ExpressionExtractor(ast.NodeTransformer):
 
     def __init__(self):
         self.string_nodes = []
-        self.is_constant = True
 
     def visit_Constant(self, node):
         if isinstance(node.value, str):
             self.string_nodes.append(node.value)
-            self.is_constant = False
             return ast.copy_location(
                 ast.Subscript(
                     value=ast.Name(id="__w", ctx=ast.Load()),
@@ -58,10 +56,7 @@ class ExpressionExtractor(ast.NodeTransformer):
                 ),
                 node,
             )
-        elif isinstance(node.value, (int, float)):
-            return node
         else:
-            self.is_constant = False
             return node
 
 
@@ -90,7 +85,7 @@ class DerivedWaveform(BaseWaveform):
 
         extractor = ExpressionExtractor()
         modified_tree = ast.fix_missing_locations(extractor.visit(tree))
-        self.is_constant = extractor.is_constant
+        self.is_constant = not extractor.string_nodes
         self.expression = ast.unparse(modified_tree)
         self.dependencies = set(extractor.string_nodes)
 
