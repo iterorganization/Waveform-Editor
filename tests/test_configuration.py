@@ -286,7 +286,6 @@ def test_load_yaml_duplicate():
 
 
 def test_load_yaml_bounds():
-    """Check if configuration fails to load if there are duplicate entries."""
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 
