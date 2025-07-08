@@ -145,6 +145,8 @@ class DerivedWaveform(BaseWaveform):
 
         eval_context = self._build_eval_context(time)
         aeval = Interpreter(user_symbols={"__w": eval_context}, minimal=True)
+
+        # Don't print the entire NumPy array in the error alert message
         with np.printoptions(threshold=10):
             result = aeval.eval(self.expression, raise_errors=True)
 
@@ -153,14 +155,13 @@ class DerivedWaveform(BaseWaveform):
             return time, np.full_like(time, result)
 
         # Ensure the result is a 1D array
-        if not isinstance(result, (list, np.ndarray)):
-            raise ValueError("Evaluation result is not a list or 1D array")
+        if not isinstance(result, np.ndarray):
+            raise ValueError("The derived waveform is not a 1D array.")
         result = np.asarray(result)
-        if result.ndim != 1:
-            raise ValueError("Evaluation result is not 1-dimensional")
-        if result.shape[0] != len(time):
+        if result.shape != time.shape:
             raise ValueError(
-                "Evaluation result length does not match time vector length"
+                f"The shape of the derived waveform {result.shape} does not match the "
+                f"shape of the time array {time.shape}"
             )
 
         return time, result
