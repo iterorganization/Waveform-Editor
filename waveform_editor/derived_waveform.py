@@ -69,7 +69,7 @@ class DerivedWaveform(BaseWaveform):
     def __init__(self, yaml_str, name, config, dd_version=None):
         super().__init__(yaml_str, name, dd_version)
         self.config = config
-        self.dependent_waveforms = set()
+        self.dependencies = set()
         self.is_constant = False
         self.expression = None
         self.prepare_expression()
@@ -92,7 +92,7 @@ class DerivedWaveform(BaseWaveform):
         modified_tree = ast.fix_missing_locations(extractor.visit(tree))
         self.is_constant = extractor.is_constant
         self.expression = ast.unparse(modified_tree)
-        self.dependent_waveforms = set(extractor.string_nodes)
+        self.dependencies = set(extractor.string_nodes)
 
     def rename_dependency(self, old_name, new_name):
         """Rename a dependency waveform in the expression.
@@ -101,7 +101,7 @@ class DerivedWaveform(BaseWaveform):
             old_name: Original dependency name.
             new_name: New dependency name.
         """
-        if old_name not in self.dependent_waveforms:
+        if old_name not in self.dependencies:
             return
 
         tree = ast.parse(self.yaml, mode="eval")
@@ -121,7 +121,7 @@ class DerivedWaveform(BaseWaveform):
         """
         eval_context = {}
 
-        for name in self.dependent_waveforms:
+        for name in self.dependencies:
             eval_context[name] = self.config[name].get_value(time)[1]
         return eval_context
 

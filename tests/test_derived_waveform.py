@@ -46,7 +46,7 @@ def test_const_waveform(const_waveform):
 
     assert waveform.name == name
     assert waveform.yaml == const_value
-    assert waveform.dependent_waveforms == set()
+    assert waveform.dependencies == set()
     assert waveform.get_yaml_string() == str(const_value)
     time_ret, value_ret = waveform.get_value()
     assert np.all(time_ret == 0)
@@ -77,7 +77,7 @@ def test_dependent_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    assert waveform.dependent_waveforms == {"waveform/1"}
+    assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
     assert time_ret[-1] == 15
@@ -91,7 +91,7 @@ def test_dependent_waveform_calc(filled_config):
     name = "waveform/2"
     yaml_str = f'{name}: |\n  "waveform/1" * 10'
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    assert waveform.dependent_waveforms == {"waveform/1"}
+    assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
     assert time_ret[-1] == 15
@@ -105,7 +105,7 @@ def test_dependent_waveform_numpy(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  maximum('waveform/1' * 10, 150)"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    assert waveform.dependent_waveforms == {"waveform/1"}
+    assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
     assert time_ret[-1] == 15
@@ -119,8 +119,8 @@ def test_rename_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    assert waveform.dependent_waveforms == {"waveform/1"}
+    assert waveform.dependencies == {"waveform/1"}
     assert waveform.get_yaml_string() == "'waveform/1'"
     waveform.rename_dependency("waveform/1", "waveform/3")
-    assert waveform.dependent_waveforms == {"waveform/3"}
+    assert waveform.dependencies == {"waveform/3"}
     assert waveform.get_yaml_string() == "'waveform/3'"

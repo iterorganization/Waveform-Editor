@@ -77,7 +77,7 @@ class WaveformConfiguration:
             raise ValueError("Waveforms must be added at a specific group path.")
 
         if isinstance(waveform, DerivedWaveform):
-            self.dependency_graph.add_node(waveform.name, waveform.dependent_waveforms)
+            self.dependency_graph.add_node(waveform.name, waveform.dependencies)
 
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
@@ -118,9 +118,9 @@ class WaveformConfiguration:
             waveform: The waveform to validate for replacement.
         """
         self.dependency_graph.check_safe_to_replace(
-            waveform.name, waveform.dependent_waveforms
+            waveform.name, waveform.dependencies
         )
-        for dependent_wf in waveform.dependent_waveforms:
+        for dependent_wf in waveform.dependencies:
             if dependent_wf not in self.waveform_map:
                 raise ValueError(
                     f"Cannot depend on waveform '{dependent_wf}', it does not exist!"
@@ -152,9 +152,7 @@ class WaveformConfiguration:
             )
 
         if isinstance(waveform, DerivedWaveform):
-            self.dependency_graph.replace_node(
-                waveform.name, waveform.dependent_waveforms
-            )
+            self.dependency_graph.replace_node(waveform.name, waveform.dependencies)
         elif waveform.name in self.dependency_graph:
             self.dependency_graph.remove_node(waveform.name)
 
@@ -194,7 +192,7 @@ class WaveformConfiguration:
             if wf_name not in to_remove:
                 wf = grp[wf_name]
                 if isinstance(wf, DerivedWaveform) and to_remove.intersection(
-                    wf.dependent_waveforms
+                    wf.dependencies
                 ):
                     raise RuntimeError(
                         f"Cannot remove group {group.name}. "

@@ -141,7 +141,7 @@ def test_constant_shorthand_notation(yaml_parser):
         assert isinstance(waveform, DerivedWaveform)
         assert waveform.yaml == expected_value
         assert not waveform.annotations
-        assert waveform.dependent_waveforms == set()
+        assert waveform.dependencies == set()
         assert not yaml_parser.parse_errors
 
 
