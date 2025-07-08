@@ -34,6 +34,12 @@ all beams combined is equal to the total power.
    :width: 600px
    :align: center
 
+.. warning::
+
+    In this example case, the editor does not validate whether the sum of all 
+    ec_launchers/beam*/power_launched values matches ec_launchers/total_power.
+
+
 Arithmetic on a Single Waveform
 -------------------------------
 
@@ -94,7 +100,7 @@ Using NumPy Functions
 
 It is allowed to use NumPy expressions to transform existing waveforms. 
 This example demonstrates how to use different NumPy functions in derived waveform expressions.
-``test/2`` applies the absolute value, and ``test/3`` clamps the waveform to non-negative values using ``np.maximum``.
+``test/2`` applies the absolute value, and ``test/3`` clamps the waveform to non-negative values using ``maximum``.
 
 .. code-block:: yaml
 
@@ -109,6 +115,10 @@ This example demonstrates how to use different NumPy functions in derived wavefo
 .. image:: images/derived_np.jpg
    :width: 600px
    :align: center
+
+.. note::
+
+    It is advised to only use element-wise operations in derived waveforms.
 
 Combined Operations
 -------------------
@@ -126,7 +136,7 @@ an example of this is shown below.
       test/2:
       - {type: sine, amplitude: 3, period: 3, duration: 60}
       test/3: |
-        np.abs('test/1' - 5 + 'test/2' / 2)
+        abs('test/1' - 5 + 'test/2' / 2)
 
 .. image:: images/derived_combi.jpg
    :width: 600px
