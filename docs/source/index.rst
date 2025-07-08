@@ -20,8 +20,8 @@ Manual
    gui
    cli
    tendencies
-   yaml_format
    derived
+   yaml_format
    muscle3
 
 .. toctree::
