@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def exception_handler(ex):
-    logging.error("Error", exc_info=ex)
+    logger.error("Error", exc_info=ex)
     pn.state.notifications.error(f"{ex}")
 
 
