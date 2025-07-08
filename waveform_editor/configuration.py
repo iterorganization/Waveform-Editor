@@ -170,11 +170,10 @@ class WaveformConfiguration:
         """
         if name not in self.waveform_map:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
-
         self.dependency_graph.check_safe_to_remove(name)
+
         if name in self.dependency_graph:
             self.dependency_graph.remove_node(name)
-
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
