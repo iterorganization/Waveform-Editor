@@ -26,6 +26,7 @@ class WaveformSelector(Viewer):
         self.config = main_gui.config
         self.is_removing_waveform = State()
         self._ignore_selection_change = State()
+        self.selection = []
 
         # UI
         self.selection_group = SelectionGroup(self, self.config, [])
@@ -121,8 +122,11 @@ class WaveformSelector(Viewer):
 
         if self.multiselect:
             # Determine if we are in filtered view or tree view.
-            if self.filter_input.value:
-                self.selection = self.filtered_results.value
+            if self.filter_input.value_input:
+                preserved_selection = [
+                    s for s in self.selection if s not in self.filtered_results.options
+                ]
+                self.selection = preserved_selection + event.new
             else:  # Just update all selected
                 self.selection = self.selection_group.get_selection(True)
         else:  # Check which one is new and deselect anything else
