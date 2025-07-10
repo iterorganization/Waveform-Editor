@@ -44,26 +44,42 @@ class WaveformSelector(Viewer):
             orientation="vertical",
             stylesheets=["button {text-align: left!important;}"],
         )
+        clear_filter_button = pn.widgets.ButtonIcon(
+            icon="filter-off",
+            size="25px",
+            active_icon="check",
+            margin=(10, 0, 0, 0),
+            description="Clear filter",
+            visible=self.filter_input.param.value_input.rx.pipe(bool),
+            on_click=lambda event: setattr(self.filter_input, "value_input", ""),
+        )
         self.filtered_results.param.watch(self.on_select, "value")
         self.param.watch(self._sync_filtered_view, "selection")
 
         # The main view, which dynamically switches between tree and filtered list
         view = bind(self._get_view, self.filter_input.param.value_input)
-        self.panel = pn.Column(self.filter_input, view, visible=self.param.visible)
+        self.panel = pn.Column(
+            pn.Row(self.filter_input, clear_filter_button),
+            view,
+            visible=self.param.visible,
+        )
 
     def _get_view(self, filter_text: str):
-        """
-        Return the appropriate view based on whether a filter is active.
-        This function is bound to the filter_input's value.
+        """Return the appropriate view based on whether a filter is active.
+
+        Args:
+            filter_text: The text string of the filter input
         """
         if not filter_text:
             return self.selection_group
         else:
-            all_waveforms = self.selection_group.get_all_waveforms()
-            filtered = [w for w in all_waveforms if filter_text.lower() in w.lower()]
-            self.filtered_results.options = sorted(filtered)
-            # Ensure selection is maintained in the filtered view
-            self._sync_filtered_view()
+            with self._ignore_selection_change:
+                all_waveforms = self.selection_group.get_all_waveforms()
+                filtered = [
+                    w for w in all_waveforms if filter_text.lower() in w.lower()
+                ]
+                self.filtered_results.options = sorted(filtered)
+                self._sync_filtered_view()
             return self.filtered_results
 
     def refresh(self):
@@ -73,7 +89,6 @@ class WaveformSelector(Viewer):
         """
         self.filter_input.value = ""
         self.selection_group = SelectionGroup(self, self.config, [])
-        # The dynamic view will update automatically due to pn.bind
         self.panel[1] = bind(self._get_view, self.filter_input.param.value_input)
         self.selection = []
 
@@ -121,12 +136,11 @@ class WaveformSelector(Viewer):
             return
 
         if self.multiselect:
-            # Determine if we are in filtered view or tree view.
             if self.filter_input.value_input:
                 preserved_selection = [
                     s for s in self.selection if s not in self.filtered_results.options
                 ]
-                self.selection = preserved_selection + event.new
+                self.set_selection(preserved_selection + event.new)
             else:  # Just update all selected
                 self.selection = self.selection_group.get_selection(True)
         else:  # Check which one is new and deselect anything else
