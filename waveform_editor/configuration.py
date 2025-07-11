@@ -4,6 +4,8 @@ import logging
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from waveform_editor.dependency_graph import DependencyGraph
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
 from waveform_editor.yaml_parser import YamlParser
 
@@ -21,15 +23,18 @@ class WaveformConfiguration:
         self.machine_description = {}
         self.load_error = ""
         self.parser = YamlParser(self)
+        self.dependency_graph = DependencyGraph()
+        self.start = 0
+        self.end = 0
 
     def __getitem__(self, key):
-        """Retrieves a waveform group by name.
+        """Retrieves a waveform or group by name/path.
 
         Args:
-            key: The name of the group to retrieve.
+            key: The name of the waveform or group to retrieve.
 
         Returns:
-            The requested waveform group.
+            The requested waveform or group.
         """
         if "/" in key:
             if key in self.waveform_map:
@@ -50,6 +55,11 @@ class WaveformConfiguration:
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
+            self._calculate_bounds()
+            for name, group in self.waveform_map.items():
+                waveform = group[name]
+                if isinstance(waveform, DerivedWaveform):
+                    waveform.prepare_expression()
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
@@ -66,9 +76,13 @@ class WaveformConfiguration:
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
+        if isinstance(waveform, DerivedWaveform):
+            self.dependency_graph.add_node(waveform.name, waveform.dependencies)
+
         group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
+        self._calculate_bounds()
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -84,12 +98,33 @@ class WaveformConfiguration:
                 f"Waveform '{old_name}' does not exist in the configuration."
             )
 
-        waveform = self[old_name]
+        group = self.waveform_map.pop(old_name)
+        waveform = group.waveforms.pop(old_name)
+
         waveform.name = new_name
-        group = self.waveform_map[old_name]
+
         group.waveforms[new_name] = waveform
         self.waveform_map[new_name] = group
-        self.remove_waveform(old_name)
+
+        dependents = self.dependency_graph.rename_node(old_name, new_name)
+        for dependent_name in dependents:
+            dependent_waveform = self[dependent_name]
+            dependent_waveform.rename_dependency(old_name, new_name)
+
+    def check_safe_to_replace(self, waveform):
+        """Validate that a waveform is safe to replace.
+
+        Args:
+            waveform: The waveform to validate for replacement.
+        """
+        self.dependency_graph.check_safe_to_replace(
+            waveform.name, waveform.dependencies
+        )
+        for dependent_wf in waveform.dependencies:
+            if dependent_wf not in self.waveform_map:
+                raise ValueError(
+                    f"Cannot depend on waveform '{dependent_wf}', it does not exist!"
+                )
 
     def _validate_name(self, name):
         """Check that name contains a '/' and doesn't exist already. If not, a
@@ -115,9 +150,15 @@ class WaveformConfiguration:
             raise ValueError(
                 f"Waveform '{waveform.name}' does not exist in the configuration."
             )
-        else:
-            group = self.waveform_map[waveform.name]
-            group.waveforms[waveform.name] = waveform
+
+        if isinstance(waveform, DerivedWaveform):
+            self.dependency_graph.replace_node(waveform.name, waveform.dependencies)
+        elif waveform.name in self.dependency_graph:
+            self.dependency_graph.remove_node(waveform.name)
+
+        group = self.waveform_map[waveform.name]
+        group.waveforms[waveform.name] = waveform
+        self._calculate_bounds()
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -127,10 +168,14 @@ class WaveformConfiguration:
         """
         if name not in self.waveform_map:
             raise ValueError(f"Waveform '{name}' does not exist in the configuration.")
+        self.dependency_graph.check_safe_to_remove(name)
 
+        if name in self.dependency_graph:
+            self.dependency_graph.remove_node(name)
         group = self.waveform_map[name]
         del self.waveform_map[name]
         del group.waveforms[name]
+        self._calculate_bounds()
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -139,8 +184,44 @@ class WaveformConfiguration:
             path: A list representing the path to the group to be removed.
         """
         parent_group = self if len(path) == 1 else self.traverse(path[:-1])
-        group = parent_group.groups.pop(path[-1])
+        group = parent_group.groups[path[-1]]
+
+        to_remove = self._collect_waveforms_in_group(group)
+
+        for wf_name, grp in self.waveform_map.items():
+            if wf_name not in to_remove:
+                wf = grp[wf_name]
+                if isinstance(wf, DerivedWaveform) and to_remove.intersection(
+                    wf.dependencies
+                ):
+                    raise RuntimeError(
+                        f"Cannot remove group {group.name}. "
+                        f"{wf.name!r} depends on a waveform in it."
+                    )
+
+        del parent_group.groups[path[-1]]
         self._recursive_remove_waveforms(group)
+        self._calculate_bounds()
+        for name in to_remove:
+            if name in self.dependency_graph:
+                self.dependency_graph.remove_node(name)
+
+    def _collect_waveforms_in_group(self, group):
+        """Collect all waveform names within a group, including nested subgroups.
+
+        Args:
+            group: The group to collect the waveforms for.
+
+        Returns:
+            Set of waveform names.
+        """
+        waveforms = set()
+        groups_to_process = [group]
+        while groups_to_process:
+            current = groups_to_process.pop()
+            waveforms.update(current.waveforms.keys())
+            groups_to_process.extend(current.groups.values())
+        return waveforms
 
     def _recursive_remove_waveforms(self, group):
         """Recursively remove all waveforms from a group and its nested subgroups from
@@ -216,6 +297,19 @@ class WaveformConfiguration:
             result[group_name] = group.to_commented_map()
         return result
 
+    def _calculate_bounds(self):
+        min_start = float("inf")
+        max_end = float("-inf")
+
+        for name in self.waveform_map:
+            waveform = self[name]
+            if not isinstance(waveform, DerivedWaveform) and waveform.tendencies:
+                min_start = min(min_start, waveform.tendencies[0].start)
+                max_end = max(max_end, waveform.tendencies[-1].end)
+
+        self.start = min_start if min_start != float("inf") else 0
+        self.end = max_end if max_end != float("-inf") else 0
+
     def print(self, indent=0):
         """Prints the waveform configuration as a hierarchical tree.
 
@@ -233,3 +327,5 @@ class WaveformConfiguration:
         self.dd_version = None
         self.machine_description = {}
         self.load_error = ""
+        self.start = 0
+        self.end = 0

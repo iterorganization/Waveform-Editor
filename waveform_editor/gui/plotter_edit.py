@@ -8,6 +8,7 @@ from holoviews import opts, streams
 from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.util import State
 from waveform_editor.waveform import Waveform
@@ -16,7 +17,9 @@ from waveform_editor.waveform import Waveform
 class PlotterEdit(Viewer):
     """Class to plot a single waveform in edit mode."""
 
-    plotted_waveform: Waveform = param.ClassSelector(class_=Waveform, allow_refs=True)
+    plotted_waveform: Waveform = param.ClassSelector(
+        class_=(Waveform, DerivedWaveform), allow_refs=True
+    )
 
     def __init__(self, editor, **params):
         super().__init__(**params)
@@ -38,6 +41,13 @@ class PlotterEdit(Viewer):
         """Update the plot"""
         if self._update_plot_from_drag:
             return  # Skip update triggered from a drag-and-drop
+
+        if isinstance(self.plotted_waveform, DerivedWaveform):
+            try:
+                self.pane.object = self.main_curve()
+            except Exception as e:
+                self.editor.create_error_alert(e, "danger")
+            return
 
         if self.plotted_waveform is None or not self.plotted_waveform.tendencies:
             self.pane.object = hv.Curve(([], []), self.xlabel, self.ylabel)
