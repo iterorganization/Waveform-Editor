@@ -42,7 +42,7 @@ class WaveformSelector(Viewer):
             button_style="outline",
             sizing_mode="stretch_width",
             orientation="vertical",
-            visible=self.filter_input.param.value_input.rx.pipe(bool),
+            visible=self.filter_input.param.value_input.rx.bool(),
             stylesheets=["button {text-align: left!important;}"],
         )
         clear_filter_button = pn.widgets.ButtonIcon(
@@ -51,7 +51,7 @@ class WaveformSelector(Viewer):
             active_icon="check",
             margin=(10, 0, 0, 0),
             description="Clear filter",
-            visible=self.filter_input.param.value_input.rx.pipe(bool),
+            visible=self.filter_input.param.value_input.rx.bool(),
             on_click=lambda event: setattr(self.filter_input, "value_input", ""),
         )
 
