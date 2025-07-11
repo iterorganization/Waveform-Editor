@@ -73,13 +73,12 @@ class WaveformSelector(Viewer):
 
     def _update_filter_view(self, event):
         """Update the appropriate view based on whether a filter is active."""
-        filter_text = self.filter_input.value_input
+        filter_text = self.filter_input.value_input.lower()
         if not filter_text:
             return
 
         with self._ignore_selection_change:
-            all_waveforms = self.selection_group.get_all_waveforms()
-            filtered = [w for w in all_waveforms if filter_text.lower() in w.lower()]
+            filtered = [w for w in self.config.waveform_map if filter_text in w.lower()]
             self.filtered_results.options = sorted(filtered)
             self._sync_filtered_view()
 

@@ -116,20 +116,6 @@ class SelectionGroup(Viewer):
                 selection.extend(group_ui.get_selection(recursive))
         return selection
 
-    def get_all_waveforms(self):
-        """Get a list of all available waveform names in this group and sub-groups.
-
-        Returns:
-            List of all waveforms in this group and sub-groups.
-        """
-        waveforms = []
-        if self.waveform_selector is not None:
-            waveforms.extend(self.waveform_selector.options)
-
-        for group_ui in self.selection_groups.values():
-            waveforms.extend(group_ui.get_all_waveforms())
-        return waveforms
-
     def set_selection(self, selection: list[str]) -> None:
         """Select a list of waveforms.
 
