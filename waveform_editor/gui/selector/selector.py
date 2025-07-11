@@ -25,7 +25,6 @@ class WaveformSelector(Viewer):
         self.config = main_gui.config
         self.is_removing_waveform = State()
         self._ignore_selection_change = State()
-        self.selection = []
 
         # UI
         self.filter_input = pn.widgets.TextInput(
@@ -36,8 +35,6 @@ class WaveformSelector(Viewer):
 
         # Flat selection group for filtered results
         self.filtered_results = pn.widgets.CheckButtonGroup(
-            value=[],
-            options=[],
             button_type="primary",
             button_style="outline",
             sizing_mode="stretch_width",
@@ -64,7 +61,6 @@ class WaveformSelector(Viewer):
             ),
         )
         self.filtered_results.param.watch(self.on_select, "value")
-        self.param.watch(self._sync_filtered_view, "selection")
         self.filter_input.param.watch(self._update_filter_view, "value_input")
 
         self.panel = pn.Column(
@@ -79,16 +75,13 @@ class WaveformSelector(Viewer):
         """Update the appropriate view based on whether a filter is active."""
         filter_text = self.filter_input.value_input
         if not filter_text:
-            return self.selection_group
-        else:
-            with self._ignore_selection_change:
-                all_waveforms = self.selection_group.get_all_waveforms()
-                filtered = [
-                    w for w in all_waveforms if filter_text.lower() in w.lower()
-                ]
-                self.filtered_results.options = sorted(filtered)
-                self._sync_filtered_view()
-            return self.filtered_results
+            return
+
+        with self._ignore_selection_change:
+            all_waveforms = self.selection_group.get_all_waveforms()
+            filtered = [w for w in all_waveforms if filter_text.lower() in w.lower()]
+            self.filtered_results.options = sorted(filtered)
+            self._sync_filtered_view()
 
     def refresh(self):
         """Discard the current UI state and re-build from self.config.
@@ -107,7 +100,8 @@ class WaveformSelector(Viewer):
         if not self.multiselect:
             self.set_selection(self.selection[:1])
 
-    def _sync_filtered_view(self, *events):
+    @param.depends("selection", watch=True)
+    def _sync_filtered_view(self):
         """Syncs the main selection list to the filtered view's value."""
         self.filtered_results.value = [
             s for s in self.selection if s in self.filtered_results.options
