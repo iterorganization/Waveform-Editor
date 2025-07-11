@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Union
 
 import panel as pn
+import param
 from panel.viewable import Viewer
 
 from waveform_editor.configuration import WaveformConfiguration
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
 
 class SelectionGroup(Viewer):
     """User Interface for selecting waveforms in a single waveform group"""
+
+    visible = param.Boolean(True, allow_refs=True)
 
     def __init__(
         self,
@@ -63,7 +66,9 @@ class SelectionGroup(Viewer):
             elems = [self.button_row, self.accordion]
         else:
             elems = [self.button_row, self.waveform_selector, self.accordion]
-        self.panel = pn.Column(*elems, sizing_mode="stretch_both", name=name)
+        self.panel = pn.Column(
+            *elems, sizing_mode="stretch_both", name=name, visible=self.param.visible
+        )
 
     def sync_waveforms(self, event=None):
         """Update waveform selector options and selected values"""

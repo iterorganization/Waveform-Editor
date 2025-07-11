@@ -1,6 +1,5 @@
 import panel as pn
 import param
-from panel import bind
 from panel.viewable import Viewer
 
 from waveform_editor.gui.selector.selection_group import SelectionGroup
@@ -29,12 +28,13 @@ class WaveformSelector(Viewer):
         self.selection = []
 
         # UI
-        self.selection_group = SelectionGroup(self, self.config, [])
-
-        # Flat selection group for filtered results
         self.filter_input = pn.widgets.TextInput(
             placeholder="Filter waveforms...", sizing_mode="stretch_width"
         )
+        self.selection_group = SelectionGroup(self, self.config, [])
+        self.selection_group.visible = self.filter_input.param.value_input.rx.not_()
+
+        # Flat selection group for filtered results
         self.filtered_results = pn.widgets.CheckButtonGroup(
             value=[],
             options=[],
@@ -42,6 +42,7 @@ class WaveformSelector(Viewer):
             button_style="outline",
             sizing_mode="stretch_width",
             orientation="vertical",
+            visible=self.filter_input.param.value_input.rx.pipe(bool),
             stylesheets=["button {text-align: left!important;}"],
         )
         clear_filter_button = pn.widgets.ButtonIcon(
@@ -56,22 +57,19 @@ class WaveformSelector(Viewer):
         self.filter_empty_text = pn.pane.Markdown("_No waveforms found_", visible=False)
         self.filtered_results.param.watch(self.on_select, "value")
         self.param.watch(self._sync_filtered_view, "selection")
+        self.filter_input.param.watch(self._update_filter_view, "value_input")
 
-        # The main view, which dynamically switches between tree and filtered list
-        view = bind(self._get_view, self.filter_input.param.value_input)
         self.panel = pn.Column(
             pn.Row(self.filter_input, clear_filter_button),
-            view,
+            self.selection_group,
+            self.filtered_results,
             self.filter_empty_text,
             visible=self.param.visible,
         )
 
-    def _get_view(self, filter_text: str):
-        """Return the appropriate view based on whether a filter is active.
-
-        Args:
-            filter_text: The text string of the filter input
-        """
+    def _update_filter_view(self, event):
+        """Update the appropriate view based on whether a filter is active."""
+        filter_text = self.filter_input.value_input
         if not filter_text:
             return self.selection_group
         else:
@@ -92,7 +90,8 @@ class WaveformSelector(Viewer):
         """
         self.filter_input.value = ""
         self.selection_group = SelectionGroup(self, self.config, [])
-        self.panel[1] = bind(self._get_view, self.filter_input.param.value_input)
+        self.selection_group.visible = self.filter_input.param.value_input.rx.not_()
+        self.panel[1] = self.selection_group
         self.selection = []
 
     @param.depends("multiselect", watch=True)
