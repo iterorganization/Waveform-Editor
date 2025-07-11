@@ -6,6 +6,12 @@ from asteval import Interpreter
 
 from waveform_editor.base_waveform import BaseWaveform
 
+NUMPY_UFUNCS = {}
+for name in np.__all__:
+    obj = getattr(np, name)
+    if isinstance(obj, np.ufunc):
+        NUMPY_UFUNCS[name] = obj
+
 
 class DependencyRenamer(ast.NodeTransformer):
     """AST transformer to rename string constants."""
@@ -67,9 +73,6 @@ class DerivedWaveform(BaseWaveform):
         self.dependencies = set()
         self.is_constant = False
         self.expression = None
-        self.user_symbols = {
-            name: obj for name, obj in vars(np).items() if isinstance(obj, np.ufunc)
-        }
         self.prepare_expression()
 
     def prepare_expression(self):
@@ -142,9 +145,10 @@ class DerivedWaveform(BaseWaveform):
             return time, np.zeros_like(time)
 
         eval_context = self._build_eval_context(time)
-        self.user_symbols["__w"] = eval_context
+        sym_table = NUMPY_UFUNCS.copy()
+        sym_table["__w"] = eval_context
         aeval = Interpreter(
-            symtable=self.user_symbols,
+            symtable=sym_table,
             minimal=True,
             use_numpy=False,
         )
