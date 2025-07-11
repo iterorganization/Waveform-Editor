@@ -67,6 +67,9 @@ class DerivedWaveform(BaseWaveform):
         self.dependencies = set()
         self.is_constant = False
         self.expression = None
+        self.user_symbols = {
+            name: obj for name, obj in vars(np).items() if isinstance(obj, np.ufunc)
+        }
         self.prepare_expression()
 
     def prepare_expression(self):
@@ -139,7 +142,12 @@ class DerivedWaveform(BaseWaveform):
             return time, np.zeros_like(time)
 
         eval_context = self._build_eval_context(time)
-        aeval = Interpreter(user_symbols={"__w": eval_context}, minimal=True)
+        self.user_symbols["__w"] = eval_context
+        aeval = Interpreter(
+            symtable=self.user_symbols,
+            minimal=True,
+            use_numpy=False,
+        )
 
         # Don't print the entire NumPy array in the error alert message
         with np.printoptions(threshold=10):

@@ -124,3 +124,29 @@ def test_rename_waveform(filled_config):
     waveform.rename_dependency("waveform/1", "waveform/3")
     assert waveform.dependencies == {"waveform/3"}
     assert waveform.get_yaml_string() == "'waveform/3'"
+
+
+def test_function_access_control(filled_config):
+    test_exprs = [
+        ('max("waveform/1")', False),
+        ('sum("waveform/1")', False),
+        ('eval("waveform/1")', False),
+        ('dot("waveform/1", "waveform/1")', False),
+        ('linalg.norm("waveform/1")', False),
+        ('linalg.inv("waveform/1")', False),
+        ('sin("waveform/1")', True),
+        ('log("waveform/1" + 1)', True),
+        ('maximum("waveform/1", 10)', True),
+    ]
+
+    for expr, allowed in test_exprs:
+        name = "waveform/2"
+        yaml_str = f"{name}: |\n  {expr}"
+        waveform = DerivedWaveform(yaml_str, name, filled_config)
+        time_ret = np.linspace(filled_config.start, filled_config.end, 100)
+        if allowed:
+            _, result = waveform.get_value(time_ret)
+            assert result is not None
+        else:
+            with pytest.raises(NameError):
+                waveform.get_value(time_ret)
