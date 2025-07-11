@@ -54,7 +54,15 @@ class WaveformSelector(Viewer):
             visible=self.filter_input.param.value_input.rx.pipe(bool),
             on_click=lambda event: setattr(self.filter_input, "value_input", ""),
         )
-        self.filter_empty_text = pn.pane.Markdown("_No waveforms found_", visible=False)
+
+        filter_empty_text = pn.pane.Markdown(
+            "_No waveforms found_",
+            visible=pn.bind(
+                lambda text, opts: bool(text) and not opts,
+                self.filter_input.param.value_input,
+                self.filtered_results.param.options,
+            ),
+        )
         self.filtered_results.param.watch(self.on_select, "value")
         self.param.watch(self._sync_filtered_view, "selection")
         self.filter_input.param.watch(self._update_filter_view, "value_input")
@@ -63,7 +71,7 @@ class WaveformSelector(Viewer):
             pn.Row(self.filter_input, clear_filter_button),
             self.selection_group,
             self.filtered_results,
-            self.filter_empty_text,
+            filter_empty_text,
             visible=self.param.visible,
         )
 
@@ -79,7 +87,6 @@ class WaveformSelector(Viewer):
                     w for w in all_waveforms if filter_text.lower() in w.lower()
                 ]
                 self.filtered_results.options = sorted(filtered)
-                self.filter_empty_text.visible = not filtered
                 self._sync_filtered_view()
             return self.filtered_results
 
