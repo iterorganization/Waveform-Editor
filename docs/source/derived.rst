@@ -118,7 +118,8 @@ This example demonstrates how to use different NumPy functions in derived wavefo
 
 .. note::
 
-    It is advised to only use element-wise operations in derived waveforms.
+    Only NumPy’s elementwise universal functions (ufuncs) are allowed in expressions. 
+    See the `NumPy ufunc documentation <https://numpy.org/doc/stable/reference/ufuncs.html>`_ for the full list.
 
 Combined Operations
 -------------------
