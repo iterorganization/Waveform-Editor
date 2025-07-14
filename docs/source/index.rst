@@ -20,6 +20,7 @@ Manual
    gui
    cli
    tendencies
+   derived
    yaml_format
    muscle3
 

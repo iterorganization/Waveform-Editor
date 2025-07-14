@@ -24,7 +24,8 @@ dependencies = [
     "plotly",
     "holoviews",
     "ruamel.yaml",
-    "kaleido" # required for exporting PNG to disk
+    "kaleido", # required for exporting PNG to disk
+    "asteval"
 ]
 dynamic = ["version"]
 

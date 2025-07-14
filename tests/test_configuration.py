@@ -238,9 +238,7 @@ def test_dump():
     assert isinstance(new_waveform1.tendencies[1], SmoothTendency)
     assert new_waveform1.tendencies[1].user_to == 0
 
-    assert len(new_waveform2.tendencies) == 1
-    assert isinstance(new_waveform2.tendencies[0], ConstantTendency)
-    assert new_waveform2.tendencies[0].user_value == 3
+    assert new_waveform2.yaml == 3
 
     assert len(old_waveform.tendencies) == 3
     assert isinstance(old_waveform.tendencies[0], LinearTendency)
@@ -287,6 +285,20 @@ def test_load_yaml_duplicate():
     assert not config.waveform_map
 
 
+def test_load_yaml_bounds():
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 
+      - {start: 10, end: 20}
+      ec_launchers/beam(2)/phase/angle:
+      - {start: 5, end: 15}
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    assert config.start == 5
+    assert config.end == 20
+
+
 def test_load_yaml_globals():
     """Check if global variables are loaded from YAML."""
     yaml_str = """
@@ -309,3 +321,43 @@ def test_load_yaml_globals():
     config.load_yaml(yaml_str)
     assert not config.dd_version
     assert not config.machine_description
+
+
+def test_bounds(config):
+    """Check if the start and end attributes update correctly."""
+    waveform1 = Waveform(name="waveform/1")
+    waveform1.tendencies = [ConstantTendency(user_start=5, user_end=15)]
+    path = ["ec_launchers"]
+    path2 = ["ec_launchers", "beams", "steering_angles"]
+    config.add_waveform(waveform1, path)
+    assert config.start == 5
+    assert config.end == 15
+
+    waveform2 = Waveform(name="waveform/2")
+    waveform2.tendencies = [ConstantTendency(user_start=10, user_end=20)]
+    config.add_waveform(waveform2, path2)
+    assert config.start == 5
+    assert config.end == 20
+
+    waveform3 = Waveform(name="waveform/3")
+    waveform3.tendencies = [ConstantTendency(user_start=2, user_end=10)]
+    config.add_waveform(waveform3, path)
+    assert config.start == 2
+    assert config.end == 20
+
+    waveform1b = Waveform(name="waveform/1")
+    waveform1b.tendencies = [ConstantTendency(user_start=1, user_end=15)]
+    config.replace_waveform(waveform1b)
+    assert config.start == 1
+    assert config.end == 20
+
+    config.remove_waveform("waveform/1")
+    assert config.start == 2
+    assert config.end == 20
+
+    config.remove_group(path2)
+    assert config.start == 2
+    assert config.end == 10
+
+    config.remove_group(path)
+    assert config.start == config.end == 0
