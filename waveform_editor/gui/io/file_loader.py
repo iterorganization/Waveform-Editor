@@ -6,6 +6,7 @@ import param
 
 class YAMLFileLoader(param.Parameterized):
     file_list = param.MultiFileSelector()
+    error_alert = param.String()
 
     def __init__(self, controller):
         super().__init__()
@@ -20,7 +21,14 @@ class YAMLFileLoader(param.Parameterized):
             file_pattern="*.yaml",
             only_files=True,
         )
-        self.modal = pn.Modal(file_selector)
+
+        alert = pn.pane.Alert(
+            self.param.error_alert,
+            alert_type="danger",
+            visible=self.param.error_alert.rx.pipe(bool),
+        )
+
+        self.modal = pn.Modal(pn.Column(file_selector, alert))
         self.button = self.modal.create_button(
             "show",
             name="Open...",
@@ -31,11 +39,10 @@ class YAMLFileLoader(param.Parameterized):
     @param.depends("file_list", watch=True)
     def _on_file_selected(self):
         if len(self.file_list) != 1:
-            pn.state.notifications.error(
-                "Only a single YAML file may be loaded at a time"
-            )
+            self.error_alert = "Only a single YAML file may be loaded at a time"
             return
 
+        self.error_alert = ""
         self.load_yaml(Path(self.file_list[0]))
 
     def load_yaml(self, path):
