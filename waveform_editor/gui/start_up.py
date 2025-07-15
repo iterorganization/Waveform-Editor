@@ -17,7 +17,10 @@ class StartUpPrompt(Viewer):
         super().__init__(**params)
         self.main_gui = main_gui
         self.file_input = pn.widgets.FileInput(accept=".yaml")
-        self.file_input.param.watch(self.main_gui.io_controller.load_yaml, "value")
+        # TODO: fix
+        self.file_input.param.watch(
+            self.main_gui.io_controller.open_controller.load_yaml, "value"
+        )
 
         self.selection_text = pn.pane.Markdown(
             "## Select Waveform Editor YAML File", margin=0
