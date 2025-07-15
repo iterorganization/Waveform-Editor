@@ -1,4 +1,3 @@
-import io
 import logging
 
 import panel as pn
@@ -7,7 +6,7 @@ import param
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
-from waveform_editor.gui.export_dialog import ExportDialog
+from waveform_editor.gui.io_controller import IOController
 from waveform_editor.gui.plotter_edit import PlotterEdit
 from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
@@ -50,43 +49,23 @@ class WaveformEditorGui(param.Parameterized):
 
         self.config = WaveformConfiguration()
 
-        # TODO: The file download button is a placeholder for the actual saving
-        # behavior, which should be implemented later
-        self.file_download = pn.widgets.FileDownload(
-            callback=self.save_yaml,
-            icon="download",
-            filename="output.yaml",
-            button_type="primary",
-            auto=True,
-            visible=self.param.show_startup_options.rx.not_(),
-        )
-
-        export_dialog = ExportDialog(self)
-        self.export_button = pn.widgets.Button(
-            name="Export waveforms",
-            icon="upload",
-            button_type="primary",
-            visible=self.param.show_startup_options.rx.not_(),
-            align="end",
-            width=150,
-            margin=(5, 5),
-            on_click=export_dialog.open,
-        )
-
         # Side bar
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
+        self.io_controller = IOController(
+            self, visible=self.param.show_startup_options.rx.not_()
+        )
         self.selector = WaveformSelector(self)
         self.selector.visible = self.param.show_startup_options.rx.not_()
         self.selector.param.watch(self.on_selection_change, "selection")
         self.start_up = StartUpPrompt(self, visible=self.param.show_startup_options)
+
         sidebar = pn.Column(
             self.start_up,
-            pn.Row(self.file_download, self.export_button),
+            self.io_controller,
             self.selector,
             self.confirm_modal,
             self.rename_modal,
-            export_dialog,
         )
 
         # Main views: view and edit tabs
@@ -161,42 +140,6 @@ class WaveformEditorGui(param.Parameterized):
         with self._reverting_to_editor:  # Disable watchers for tab and selection
             self.tabs.active = self.EDIT_WAVEFORMS_TAB
             self.selector.set_selection([self.editor.waveform.name])
-
-    def load_yaml(self, event):
-        """Load waveform configuration from a YAML file.
-
-        Args:
-            event: The event object containing the uploaded file data.
-        """
-
-        self.plotter_view.plotted_waveforms = {}
-        yaml_content = event.new.decode("utf-8")
-        self.config.load_yaml(yaml_content)
-
-        if self.config.load_error:
-            pn.state.notifications.error(
-                "YAML could not be loaded:<br>"
-                + self.config.load_error.replace("\n", "<br>"),
-                duration=10000,
-            )
-            self.show_startup_options = True
-            return
-
-        self.show_startup_options = False
-
-        # Create tree structure in sidebar based on waveform groups in YAML
-        self.selector.refresh()
-
-        if self.start_up.file_input.filename:
-            new_filename = self.start_up.file_input.filename.replace(
-                ".yaml", "-new.yaml"
-            )
-            self.file_download.filename = new_filename
-
-    def save_yaml(self):
-        """Generate and return the YAML file as a BytesIO object"""
-        yaml_str = self.config.dump()
-        return io.BytesIO(yaml_str.encode("utf-8"))
 
     def __panel__(self):
         return self.template
