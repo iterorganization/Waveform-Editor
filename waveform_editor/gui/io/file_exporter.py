@@ -23,7 +23,7 @@ TIME_MODES = [LINSPACE, CSVFILE, MANUALINPUT]
 TIME_MODES_FOR_PNG = [DEFAULT, *TIME_MODES]
 
 
-class YAMLFileExporter(param.Parameterized):
+class FileExporter(param.Parameterized):
     """Handles the UI and logic for exporting waveform configurations."""
 
     # Export type selection

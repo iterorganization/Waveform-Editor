@@ -2,10 +2,10 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from .file_creator import YAMLFileCreator
-from .file_exporter import YAMLFileExporter
-from .file_loader import YAMLFileLoader
-from .file_saver import YAMLFileSaver
+from .file_creator import FileCreator
+from .file_exporter import FileExporter
+from .file_loader import FileLoader
+from .file_saver import FileSaver
 
 
 class IOManager(Viewer):
@@ -17,10 +17,10 @@ class IOManager(Viewer):
         self.main_gui = main_gui
         self.open_file_text = pn.pane.Markdown("", visible=True)
 
-        file_loader = YAMLFileLoader(self)
-        file_creator = YAMLFileCreator(file_loader)
-        file_saver = YAMLFileSaver(self)
-        file_exporter = YAMLFileExporter(self)
+        file_loader = FileLoader(self)
+        file_creator = FileCreator(file_loader)
+        file_saver = FileSaver(self)
+        file_exporter = FileExporter(self)
 
         self.panel = pn.Column(
             self.open_file_text,

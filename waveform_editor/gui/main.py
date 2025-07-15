@@ -49,13 +49,13 @@ class WaveformEditorGui(param.Parameterized):
         # Side bar
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
-        self.io_controller = IOManager(self)
+        self.io_manager = IOManager(self)
         self.selector = WaveformSelector(self)
-        self.selector.visible = self.io_controller.param.open_file.rx.bool()
+        self.selector.visible = self.io_manager.param.open_file.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
-            self.io_controller,
+            self.io_manager,
             self.selector,
             self.confirm_modal,
             self.rename_modal,
@@ -69,7 +69,7 @@ class WaveformEditorGui(param.Parameterized):
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
-            visible=self.io_controller.param.open_file.rx.bool(),
+            visible=self.io_manager.param.open_file.rx.bool(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 

@@ -4,7 +4,7 @@ import panel as pn
 import param
 
 
-class YAMLFileCreator(param.Parameterized):
+class FileCreator(param.Parameterized):
     disabled_description = param.String(
         doc="Stores the validation message or empty string if valid."
     )

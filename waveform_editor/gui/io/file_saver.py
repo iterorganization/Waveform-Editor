@@ -1,7 +1,7 @@
 import panel as pn
 
 
-class YAMLFileSaver:
+class FileSaver:
     def __init__(self, manager):
         super().__init__()
         self.manager = manager

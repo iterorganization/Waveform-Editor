@@ -4,7 +4,7 @@ import panel as pn
 import param
 
 
-class YAMLFileLoader(param.Parameterized):
+class FileLoader(param.Parameterized):
     file_list = param.MultiFileSelector()
     error_alert = param.String()
 
