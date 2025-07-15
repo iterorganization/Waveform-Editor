@@ -8,11 +8,11 @@ class FileLoader(param.Parameterized):
     file_list = param.MultiFileSelector()
     error_alert = param.String()
 
-    def __init__(self, controller):
+    def __init__(self, manager):
         super().__init__()
 
-        self.controller = controller
-        self.main_gui = controller.main_gui
+        self.manager = manager
+        self.main_gui = manager.main_gui
 
         file_selector = pn.widgets.FileSelector.from_param(
             self.param.file_list,
@@ -67,6 +67,6 @@ class FileLoader(param.Parameterized):
             return
 
         pn.state.notifications.success("Successfully loaded YAML file!")
-        self.controller.open_file = path
+        self.manager.open_file = path
         self.modal.hide()
         self.main_gui.selector.refresh()

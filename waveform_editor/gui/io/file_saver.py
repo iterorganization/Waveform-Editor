@@ -5,8 +5,6 @@ class FileSaver:
     def __init__(self, manager):
         super().__init__()
         self.manager = manager
-        self.main_gui = manager.main_gui
-
         self.button = pn.widgets.Button(
             name="Save",
             icon="device-floppy",
@@ -21,7 +19,7 @@ class FileSaver:
         if not self.manager.open_file:
             pn.state.notifications.error("No YAML file is currently opened")
             return
-        yaml_str = self.main_gui.config.dump()
+        yaml_str = self.manager.main_gui.config.dump()
         with open(self.manager.open_file, "w") as f:
             f.write(yaml_str)
         pn.state.notifications.success("YAML file saved successfully")

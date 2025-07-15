@@ -5,23 +5,17 @@ import param
 
 
 class FileCreator(param.Parameterized):
-    disabled_description = param.String(
-        doc="Stores the validation message or empty string if valid."
-    )
-    directory_list = param.List(
-        doc="List of selected directories; must contain exactly one path."
-    )
-    file_name = param.String(doc="Name of the YAML file to be created.")
-    full_path = param.Path(
-        check_exists=False, doc="Full path to the YAML file to be created."
-    )
+    disabled_description = param.String()
+    directory_list = param.List()
+    file_name = param.String()
+    full_path = param.Path(check_exists=False)
 
     def __init__(self, file_loader):
         super().__init__()
         self.file_loader = file_loader
         file_selector = pn.widgets.FileSelector.from_param(
             self.param.directory_list,
-            file_pattern="",
+            file_pattern="",  # Ensure only directories are shown in selector
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
         )
