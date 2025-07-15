@@ -13,7 +13,7 @@ class FileCreator(param.Parameterized):
     def __init__(self, file_loader):
         super().__init__()
         self.file_loader = file_loader
-        file_selector = pn.widgets.FileSelector.from_param(
+        self.file_selector = pn.widgets.FileSelector.from_param(
             self.param.directory_list,
             file_pattern="",  # Ensure only directories are shown in selector
             directory=Path.cwd(),
@@ -34,7 +34,7 @@ class FileCreator(param.Parameterized):
         )
         modal_content = pn.Column(
             pn.pane.Markdown("# Select directory to store YAML"),
-            file_selector,
+            self.file_selector,
             pn.pane.Markdown("# Enter filename"),
             pn.Row(filename_input, confirm_button, margin=10),
             self.output_path_text,
@@ -60,6 +60,10 @@ class FileCreator(param.Parameterized):
         self.full_path.touch()
         self.modal.hide()
         self.file_loader.load_yaml(self.full_path)
+
+        self.file_name = ""
+        # The only way to reset the file selector UI seems to be using a private attr
+        self.file_selector._selector.value = []
 
     @param.depends("disabled_description", watch=True)
     def _set_full_path(self):

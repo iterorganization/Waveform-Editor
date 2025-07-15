@@ -14,7 +14,7 @@ class FileLoader(param.Parameterized):
         self.manager = manager
         self.main_gui = manager.main_gui
 
-        file_selector = pn.widgets.FileSelector.from_param(
+        self.file_selector = pn.widgets.FileSelector.from_param(
             self.param.file_list,
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
@@ -28,7 +28,7 @@ class FileLoader(param.Parameterized):
             visible=self.param.error_alert.rx.pipe(bool),
         )
 
-        self.modal = pn.Modal(pn.Column(file_selector, alert))
+        self.modal = pn.Modal(pn.Column(self.file_selector, alert))
         self.button = self.modal.create_button(
             "show",
             name="Open...",
@@ -45,6 +45,9 @@ class FileLoader(param.Parameterized):
 
         self.error_alert = ""
         self.load_yaml(Path(self.file_list[0]))
+        # The only way to reset the file selector UI seems to be using a private attr
+        self.file_selector._selector.value = []
+        self.file_list.clear()
 
     def load_yaml(self, path):
         """Load waveform configuration from a YAML file.
