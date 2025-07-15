@@ -23,7 +23,7 @@ TIME_MODES = [LINSPACE, CSVFILE, MANUALINPUT]
 TIME_MODES_FOR_PNG = [DEFAULT, *TIME_MODES]
 
 
-class ExportDialog(param.Parameterized):
+class YAMLFileExporter(param.Parameterized):
     """Handles the UI and logic for exporting waveform configurations."""
 
     # Export type selection
@@ -43,7 +43,7 @@ class ExportDialog(param.Parameterized):
     error_alert = param.String()
     export_disabled_description = param.String()
 
-    def __init__(self, main_gui):
+    def __init__(self, manager):
         """
         Initialize the Export Dialog.
 
@@ -51,7 +51,8 @@ class ExportDialog(param.Parameterized):
             main_gui: A reference to the main WaveformEditorGui instance.
         """
         super().__init__()
-        self.main_gui = main_gui
+        self.manager = manager
+        self.main_gui = manager.main_gui
         self.time_array = None  # set when time_array_input is updated
 
         # Export type options
@@ -110,7 +111,13 @@ class ExportDialog(param.Parameterized):
             sizing_mode="stretch_width",
         )
         self.modal = pn.Modal(layout, width=500)
-
+        self.button = self.modal.create_button(
+            "show",
+            name="Export",
+            icon="upload",
+            description="Export the YAML file",
+            visible=self.manager.param.open_file.rx.bool(),
+        )
         # Check if export button should be disabled
         self._export_disabled()
 
@@ -237,10 +244,6 @@ class ExportDialog(param.Parameterized):
 
         self.progress.value = 0
         self.progress.visible = False
-
-    def open(self, event):
-        """Open the export modal dialog."""
-        self.modal.show()
 
     def _close(self, event=None):
         """Close the export modal dialog."""

@@ -47,7 +47,7 @@ class YAMLFileCreator(param.Parameterized):
         )
 
         self.modal = pn.Modal(modal_content)
-        self.new_button = self.modal.create_button(
+        self.button = self.modal.create_button(
             "show",
             name="New...",
             icon="file-plus",
