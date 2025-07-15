@@ -19,7 +19,7 @@ class StartUpPrompt(Viewer):
         self.file_input = pn.widgets.FileInput(accept=".yaml")
         # TODO: fix
         self.file_input.param.watch(
-            self.main_gui.io_controller.open_controller.load_yaml, "value"
+            self.main_gui.io_controller.file_loader.load_yaml, "value"
         )
 
         self.selection_text = pn.pane.Markdown(

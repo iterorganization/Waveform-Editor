@@ -57,7 +57,7 @@ class YamlParser:
         """
         self.parse_errors = []
 
-        yaml_data = self.yaml.load(yaml_str)
+        yaml_data = self.yaml.load(yaml_str) if yaml_str else {}
         globals = yaml_data.get("globals", {})
         self.config.dd_version = globals.get("dd_version")
         md_dict = globals.get("machine_description", {})

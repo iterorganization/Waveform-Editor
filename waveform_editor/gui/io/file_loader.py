@@ -1,34 +1,39 @@
 from pathlib import Path
 
 import panel as pn
+import param
 
 
-class YAMLFileLoader:
-    def __init__(self, main_gui):
-        self.main_gui = main_gui
-        self.open_file = None
+class YAMLFileLoader(param.Parameterized):
+    def __init__(self, controller):
+        super().__init__()
 
-        self.open_file_text = pn.pane.Markdown("", visible=False)
+        self.controller = controller
+        self.main_gui = controller.main_gui
+
         self.file_selector = pn.widgets.FileSelector(
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
             file_pattern="*.yaml",
             only_files=True,
         )
-        self.file_selector.param.watch(self.load_yaml, "value")
+        self.file_selector.param.watch(self._on_file_selected, "value")
         self.modal = pn.Modal(self.file_selector)
         self.open_button = self.modal.create_button(
             "show", name="Open...", icon="folder-open"
         )
 
-    def load_yaml(self, event):
+    def _on_file_selected(self, event):
         if len(self.file_selector.value) != 1:
             pn.state.notifications.error(
                 "Only a single YAML file may be loaded at a time"
             )
             return
 
-        with open(self.file_selector.value[0]) as file:
+        self.load_yaml(Path(self.file_selector.value[0]))
+
+    def load_yaml(self, path):
+        with open(path) as file:
             yaml_content = file.read()
 
         self.main_gui.plotter_view.plotted_waveforms = {}
@@ -43,8 +48,6 @@ class YAMLFileLoader:
             return
 
         pn.state.notifications.success("Successfully loaded YAML file!")
-        self.open_file = Path(self.file_selector.value[0])
-        self.open_file_text.object = f"**Opened file:** `{self.open_file}`"
-        self.open_file_text.visible = True
+        self.controller.open_file = path
         self.modal.hide()
         self.main_gui.selector.refresh()

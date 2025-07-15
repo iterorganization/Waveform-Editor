@@ -9,10 +9,11 @@ class YAMLFileCreator(param.Parameterized):
     directory_list = param.List()
     file_name = param.String()
 
-    def __init__(self):
+    def __init__(self, controller):
         super().__init__()
+        self.controller = controller
         self.file_selector = pn.widgets.FileSelector.from_param(
-            self.param.directory,
+            self.param.directory_list,
             file_pattern="",
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
@@ -21,7 +22,7 @@ class YAMLFileCreator(param.Parameterized):
             self.param.file_name, placeholder="filename", onkeyup=True, name=""
         )
         confirm_button = pn.widgets.Button(
-            name="Confirm",
+            name="Create YAML File",
             button_type="primary",
             on_click=self.on_confirm,
             disabled=self.param.disabled_description.rx.pipe(bool),
@@ -32,6 +33,11 @@ class YAMLFileCreator(param.Parameterized):
             self.file_selector,
             pn.pane.Markdown("# Enter filename"),
             pn.Row(self.filename_input, confirm_button, margin=10),
+            pn.pane.Alert(
+                self.param.disabled_description,
+                visible=self.param.disabled_description.rx.pipe(bool),
+                alert_type="warning",
+            ),
             sizing_mode="stretch_width",
         )
 
@@ -49,17 +55,22 @@ class YAMLFileCreator(param.Parameterized):
             file_name_path = file_name_path.with_suffix(".yaml")
 
         full_path = Path(self.directory_list[0]) / file_name_path
-        print(full_path)
-        self.modal.hide()
+        if full_path.exists():
+            pn.state.notifications.error(f"{full_path} already exists!")
+            return
 
-    @param.depends("directory", "file_name", watch=True)
+        full_path.touch()
+        self.modal.hide()
+        self.controller.file_loader.load_yaml(full_path)
+
+    @param.depends("directory_list", "file_name", watch=True)
     def _export_disabled(self):
         """Determine if the export button is enabled or disabled."""
         message = ""
         if not self.directory_list:
-            message = "Please provide a directory to store the YAML file"
+            message = "Provide a directory to store the YAML file into"
         elif len(self.directory_list) != 1:
             message = "Only a single directory must be selected"
         elif not self.file_name:
-            message = "Please provide a file name"
+            message = "Provide a file name"
         self.disabled_description = message

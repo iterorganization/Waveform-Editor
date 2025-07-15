@@ -10,14 +10,15 @@ from .file_loader import YAMLFileLoader
 
 class FileManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
+    open_file = param.Path()
 
     def __init__(self, main_gui, visible=True, **params):
         super().__init__(**params)
         self.main_gui = main_gui
         self.visible = visible
-
-        self.open_controller = YAMLFileLoader(main_gui)
-        self.new_controller = YAMLFileCreator()
+        self.open_file_text = pn.pane.Markdown("", visible=True)
+        self.file_loader = YAMLFileLoader(self)
+        self.file_creator = YAMLFileCreator(self)
 
         export_dialog = ExportDialog(self.main_gui)
         self.export_button = pn.widgets.Button(
@@ -30,25 +31,32 @@ class FileManager(Viewer):
         )
 
         self.panel = pn.Column(
-            self.open_controller.open_file_text,
+            self.open_file_text,
             pn.Row(
-                self.new_controller.new_button,
-                self.open_controller.open_button,
+                self.file_creator.new_button,
+                self.file_loader.open_button,
                 self.save_button,
                 self.export_button,
             ),
-            self.open_controller.modal,
-            self.new_controller.modal,
+            self.file_loader.modal,
+            self.file_creator.modal,
             export_dialog,
             visible=self.param.visible,
         )
 
+    @param.depends("open_file", watch=True)
+    def set_open_file_text(self):
+        if self.open_file:
+            self.open_file_text.object = f"**Opened file:** `{self.open_file}`"
+        else:
+            self.open_file_text.object = "_No file is currently opened_"
+
     def save_yaml(self):
-        if not self.open_controller.open_file:
+        if not self.open_file:
             pn.state.notifications.error("No YAML file is currently opened")
             return
         yaml_str = self.main_gui.config.dump()
-        with open(self.open_controller.open_file, "w") as f:
+        with open(self.open_file, "w") as f:
             f.write(yaml_str)
         pn.state.notifications.success("YAML file saved successfully")
 
