@@ -15,7 +15,7 @@ class IOManager(Viewer):
     def __init__(self, main_gui, **params):
         super().__init__(**params)
         self.main_gui = main_gui
-        self.open_file_text = pn.pane.Markdown("", visible=True)
+        self.open_file_text = pn.pane.Markdown(width=400)
 
         file_loader = FileLoader(self)
         file_creator = FileCreator(file_loader)
