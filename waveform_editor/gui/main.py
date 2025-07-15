@@ -6,7 +6,7 @@ import param
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
-from waveform_editor.gui.io.controller import FileManager
+from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
 from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
@@ -49,7 +49,7 @@ class WaveformEditorGui(param.Parameterized):
         # Side bar
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
-        self.io_controller = FileManager(self)
+        self.io_controller = IOManager(self)
         self.selector = WaveformSelector(self)
         self.selector.visible = self.io_controller.param.open_file.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")

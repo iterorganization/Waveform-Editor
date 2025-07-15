@@ -20,7 +20,10 @@ class YAMLFileLoader(param.Parameterized):
         self.file_selector.param.watch(self._on_file_selected, "value")
         self.modal = pn.Modal(self.file_selector)
         self.open_button = self.modal.create_button(
-            "show", name="Open...", icon="folder-open"
+            "show",
+            name="Open...",
+            icon="folder-open",
+            description="Open an existing YAML file...",
         )
 
     def _on_file_selected(self, event):

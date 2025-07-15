@@ -51,6 +51,7 @@ class YAMLFileCreator(param.Parameterized):
             "show",
             name="New...",
             icon="file-plus",
+            description="Create a new YAML file...",
         )
         self._create_button_disabled()
 

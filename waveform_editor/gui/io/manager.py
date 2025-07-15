@@ -2,13 +2,12 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.export_dialog import ExportDialog
-
+from .export_dialog import ExportDialog
 from .file_creator import YAMLFileCreator
 from .file_loader import YAMLFileLoader
 
 
-class FileManager(Viewer):
+class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.Path()
 
@@ -23,12 +22,14 @@ class FileManager(Viewer):
         self.export_button = pn.widgets.Button(
             name="Export",
             icon="upload",
+            description="Export the YAML file",
             on_click=export_dialog.open,
             visible=self.param.open_file.rx.bool(),
         )
         self.save_button = pn.widgets.Button(
             name="Save",
             icon="device-floppy",
+            description="Save the YAML file",
             on_click=lambda event: self.save_yaml(),
             visible=self.param.open_file.rx.bool(),
         )
@@ -50,7 +51,7 @@ class FileManager(Viewer):
     @param.depends("open_file", watch=True)
     def set_open_file_text(self):
         if self.open_file:
-            self.open_file_text.object = f"**Opened file:** `{self.open_file}`"
+            self.open_file_text.object = f"**Opened file:**   \n`{self.open_file}`"
         else:
             self.open_file_text.object = "_No file is currently opened_"
 
