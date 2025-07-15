@@ -6,7 +6,7 @@ class FileSaver:
         super().__init__()
         self.manager = manager
         self.button = pn.widgets.Button(
-            name="Save",
+            name="Save" if self.manager.param.changed.rx.not_() else "Save [+]",
             icon="device-floppy",
             description="Save the YAML file",
             on_click=lambda event: self.save_yaml(),
@@ -23,3 +23,4 @@ class FileSaver:
         with open(self.manager.open_file, "w") as f:
             f.write(yaml_str)
         pn.state.notifications.success("YAML file saved successfully")
+        self.manager.changed = False

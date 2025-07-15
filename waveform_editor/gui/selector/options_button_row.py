@@ -136,6 +136,7 @@ class OptionsButtonRow(Viewer):
             self.config.remove_waveform(waveform_name)
         with self.selector.is_removing_waveform:  # Signal we're removing waveforms
             self.selection_group.sync_waveforms()
+        self.main_gui.io_manager.changed = True
 
     def _show_remove_group_modal(self, event):
         self.main_gui.confirm_modal.show(
@@ -150,6 +151,7 @@ class OptionsButtonRow(Viewer):
         self.config.remove_group(self.path)
         # Remove from GUI
         self.selector.remove_group(self.path)
+        self.main_gui.io_manager.changed = True
 
     def _on_add_waveform_button_click(self, event):
         """Show the text input form to add a new waveform."""
@@ -162,15 +164,10 @@ class OptionsButtonRow(Viewer):
 
         # Add empty waveform to YAML
         new_waveform = self.config.parse_waveform(f"{name}:\n- {{}}")
-        # TODO: this try-except block can be replaced with a global error handler later
-        try:
-            self.config.add_waveform(new_waveform, self.path)
-        except ValueError as e:
-            pn.state.notifications.error(str(e))
-            return
-
+        self.config.add_waveform(new_waveform, self.path)
         self.selection_group.sync_waveforms()
         self.new_waveform_panel.cancel()
+        self.main_gui.io_manager.changed = True
 
     def _on_add_group_button_click(self, event):
         """Show the text input form to add a new group."""
@@ -195,12 +192,10 @@ class OptionsButtonRow(Viewer):
         old_name = self.selection_group.get_selection()[0]
         if new_name == old_name:
             return
-        try:
-            self.config.rename_waveform(old_name, new_name)
-            self.selection_group.sync_waveforms()
-            self.selection_group.set_selection([new_name])
-        except ValueError as e:
-            pn.state.notifications.error(str(e))
+        self.config.rename_waveform(old_name, new_name)
+        self.selection_group.sync_waveforms()
+        self.selection_group.set_selection([new_name])
+        self.main_gui.io_manager.changed = True
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
@@ -212,6 +207,7 @@ class OptionsButtonRow(Viewer):
         # Update UI
         self.selection_group.add_group(new_group)
         self.new_group_panel.cancel()
+        self.main_gui.io_manager.changed = True
 
     def __panel__(self):
         """Returns the panel UI element."""

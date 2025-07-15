@@ -62,7 +62,7 @@ class WaveformEditorGui(param.Parameterized):
         )
 
         # Main views: view and edit tabs
-        self.editor = WaveformEditor(self.config)
+        self.editor = WaveformEditor(self)
         self.plotter_view = PlotterView()
         self.plotter_edit = PlotterEdit(self.editor)
         self.tabs = pn.Tabs(

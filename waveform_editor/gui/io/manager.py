@@ -11,6 +11,7 @@ from .file_saver import FileSaver
 class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.Path()
+    changed = param.Boolean()
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
@@ -36,10 +37,13 @@ class IOManager(Viewer):
             visible=self.param.visible,
         )
 
-    @param.depends("open_file", watch=True)
+    @param.depends("open_file", "changed", watch=True)
     def set_open_file_text(self):
         if self.open_file:
-            self.open_file_text.object = f"**Opened file:**   \n`{self.open_file}`"
+            alert = "⚠️ Unsaved changes " if self.changed else ""
+            self.open_file_text.object = (
+                f"**Opened file:** {alert}   \n`{self.open_file}`"
+            )
         else:
             self.open_file_text.object = "_No file is currently opened_"
 

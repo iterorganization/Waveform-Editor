@@ -16,9 +16,10 @@ class WaveformEditor(Viewer):
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
 
-    def __init__(self, config):
+    def __init__(self, main_gui):
         super().__init__()
-        self.config = config
+        self.config = main_gui.config
+        self.main_gui = main_gui
         # Contains the waveform text before any changes were made in the editor
         self.stored_string = None
 
@@ -130,6 +131,7 @@ class WaveformEditor(Viewer):
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
         pn.state.notifications.success("Succesfully saved waveform!")
+        self.main_gui.io_manager.changed = True
 
     def has_changed(self):
         """Return whether the code editor value was changed from its stored value"""
