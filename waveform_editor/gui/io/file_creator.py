@@ -3,6 +3,8 @@ from pathlib import Path
 import panel as pn
 import param
 
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
+
 
 class FileCreator(param.Parameterized):
     disabled_description = param.String()
@@ -10,9 +12,10 @@ class FileCreator(param.Parameterized):
     file_name = param.String()
     full_path = param.Path(check_exists=False)
 
-    def __init__(self, file_loader):
+    def __init__(self, manager):
         super().__init__()
-        self.file_loader = file_loader
+        self.manager = manager
+        self.file_loader = manager.file_loader
         self.file_selector = pn.widgets.FileSelector.from_param(
             self.param.directory_list,
             file_pattern="",  # Ensure only directories are shown in selector
@@ -47,13 +50,25 @@ class FileCreator(param.Parameterized):
         )
 
         self.modal = pn.Modal(modal_content)
-        self.button = self.modal.create_button(
-            "show",
+        self.button = pn.widgets.Button(
             name="New...",
             icon="file-plus",
             description="Create a new YAML file...",
+            on_click=self.handle_button_click,
         )
+        self.confirm_modal = ConfirmModal()
         self._confirm_button_disabled()
+
+    def handle_button_click(self, event):
+        if self.manager.changed:
+            self.confirm_modal.show(
+                "### ⚠️ **You have unsaved changes**  \n"
+                "Creating a new file will discard all unsaved changes.  \n"
+                "Do you want to continue?",
+                on_confirm=self.modal.show,
+            )
+        else:
+            self.modal.show()
 
     def on_confirm(self):
         """Creates a new empty YAML file and loads it."""

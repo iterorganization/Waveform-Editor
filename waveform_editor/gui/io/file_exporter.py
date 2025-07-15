@@ -6,6 +6,7 @@ import panel as pn
 import param
 
 from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
@@ -111,15 +112,29 @@ class FileExporter(param.Parameterized):
             sizing_mode="stretch_width",
         )
         self.modal = pn.Modal(layout, width=500)
-        self.button = self.modal.create_button(
-            "show",
+        self.button = pn.widgets.Button(
             name="Export",
             icon="upload",
             description="Export the YAML file",
             visible=self.manager.param.open_file.rx.bool(),
+            on_click=self.handle_button_click,
         )
+
+        self.confirm_modal = ConfirmModal()
         # Check if export button should be disabled
         self._export_disabled()
+
+    def handle_button_click(self, event):
+        if self.manager.changed:
+            self.confirm_modal.show(
+                "### ⚠️ **You have unsaved changes**  \n"
+                "Exporting now may not include these unsaved changes.  \n"
+                "Do you want to continue?",
+                on_confirm=self.modal.show,
+                on_cancel=lambda: None,
+            )
+        else:
+            self.modal.show()
 
     @param.depends("export_type")
     def _export_type_placeholder(self):

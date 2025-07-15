@@ -18,8 +18,8 @@ class IOManager(Viewer):
         self.main_gui = main_gui
         self.open_file_text = pn.pane.Markdown(width=400)
 
-        file_loader = FileLoader(self)
-        file_creator = FileCreator(file_loader)
+        self.file_loader = FileLoader(self)
+        file_creator = FileCreator(self)
         file_saver = FileSaver(self)
         file_exporter = FileExporter(self)
 
@@ -27,13 +27,16 @@ class IOManager(Viewer):
             self.open_file_text,
             pn.Row(
                 file_creator.button,
-                file_loader.button,
+                self.file_loader.button,
                 file_saver.button,
                 file_exporter.button,
             ),
-            file_loader.modal,
+            self.file_loader.modal,
             file_creator.modal,
             file_exporter.modal,
+            self.file_loader.confirm_modal,
+            file_creator.confirm_modal,
+            file_exporter.confirm_modal,
             visible=self.param.visible,
         )
 

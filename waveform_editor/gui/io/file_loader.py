@@ -3,6 +3,8 @@ from pathlib import Path
 import panel as pn
 import param
 
+from waveform_editor.gui.selector.confirm_modal import ConfirmModal
+
 
 class FileLoader(param.Parameterized):
     file_list = param.MultiFileSelector()
@@ -29,12 +31,25 @@ class FileLoader(param.Parameterized):
         )
 
         self.modal = pn.Modal(pn.Column(self.file_selector, alert))
-        self.button = self.modal.create_button(
-            "show",
+        self.button = pn.widgets.Button(
             name="Open...",
             icon="folder-open",
             description="Open an existing YAML file...",
+            on_click=self.handle_button_click,
         )
+        self.confirm_modal = ConfirmModal()
+
+    def handle_button_click(self, event):
+        if self.manager.changed:
+            self.confirm_modal.show(
+                "### ⚠️ **You have unsaved changed**  \n"
+                "Opening a new file will discard all unsaved changes.  \n"
+                "Do you want to continue?",
+                on_confirm=self.modal.show,
+                on_cancel=lambda: None,
+            )
+        else:
+            self.modal.show()
 
     @param.depends("file_list", watch=True)
     def _on_file_selected(self):
@@ -73,3 +88,4 @@ class FileLoader(param.Parameterized):
         self.manager.open_file = path
         self.modal.hide()
         self.main_gui.selector.refresh()
+        self.manager.changed = False
