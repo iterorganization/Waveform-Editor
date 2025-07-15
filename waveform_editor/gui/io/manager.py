@@ -15,18 +15,18 @@ class IOManager(Viewer):
         super().__init__(**params)
         self.main_gui = main_gui
         self.open_file_text = pn.pane.Markdown("", visible=True)
-        self.file_loader = YAMLFileLoader(self)
-        self.file_creator = YAMLFileCreator(self)
+        file_loader = YAMLFileLoader(self)
+        file_creator = YAMLFileCreator(file_loader)
 
         export_dialog = ExportDialog(self.main_gui)
-        self.export_button = pn.widgets.Button(
+        export_button = pn.widgets.Button(
             name="Export",
             icon="upload",
             description="Export the YAML file",
             on_click=export_dialog.open,
             visible=self.param.open_file.rx.bool(),
         )
-        self.save_button = pn.widgets.Button(
+        save_button = pn.widgets.Button(
             name="Save",
             icon="device-floppy",
             description="Save the YAML file",
@@ -37,13 +37,13 @@ class IOManager(Viewer):
         self.panel = pn.Column(
             self.open_file_text,
             pn.Row(
-                self.file_creator.new_button,
-                self.file_loader.open_button,
-                self.save_button,
-                self.export_button,
+                file_creator.new_button,
+                file_loader.open_button,
+                save_button,
+                export_button,
             ),
-            self.file_loader.modal,
-            self.file_creator.modal,
+            file_loader.modal,
+            file_creator.modal,
             export_dialog,
             visible=self.param.visible,
         )
