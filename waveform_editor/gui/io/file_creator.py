@@ -8,17 +8,18 @@ class YAMLFileCreator(param.Parameterized):
     disabled_description = param.String()
     directory_list = param.List()
     file_name = param.String()
+    full_path = param.Path(check_exists=False)
 
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
-        self.file_selector = pn.widgets.FileSelector.from_param(
+        file_selector = pn.widgets.FileSelector.from_param(
             self.param.directory_list,
             file_pattern="",
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
         )
-        self.filename_input = pn.widgets.TextInput.from_param(
+        filename_input = pn.widgets.TextInput.from_param(
             self.param.file_name, placeholder="filename", onkeyup=True, name=""
         )
         confirm_button = pn.widgets.Button(
@@ -28,11 +29,15 @@ class YAMLFileCreator(param.Parameterized):
             disabled=self.param.disabled_description.rx.pipe(bool),
         )
 
+        self.output_path_text = pn.pane.Markdown(
+            visible=self.param.disabled_description.rx.not_()
+        )
         modal_content = pn.Column(
             pn.pane.Markdown("# Select directory to store YAML"),
-            self.file_selector,
+            file_selector,
             pn.pane.Markdown("# Enter filename"),
-            pn.Row(self.filename_input, confirm_button, margin=10),
+            self.output_path_text,
+            pn.Row(filename_input, confirm_button, margin=10),
             pn.pane.Alert(
                 self.param.disabled_description,
                 visible=self.param.disabled_description.rx.pipe(bool),
@@ -47,24 +52,25 @@ class YAMLFileCreator(param.Parameterized):
             name="New...",
             icon="file-plus",
         )
-        self._export_disabled()
+        self._create_button_disabled()
 
     def on_confirm(self, event):
-        file_name_path = Path(self.file_name)
-        if file_name_path != ".yaml":
-            file_name_path = file_name_path.with_suffix(".yaml")
-
-        full_path = Path(self.directory_list[0]) / file_name_path
-        if full_path.exists():
-            pn.state.notifications.error(f"{full_path} already exists!")
-            return
-
-        full_path.touch()
+        self.full_path.touch()
         self.modal.hide()
-        self.controller.file_loader.load_yaml(full_path)
+        self.controller.file_loader.load_yaml(self.full_path)
+
+    @param.depends("disabled_description", watch=True)
+    def _set_full_path(self):
+        if self.disabled_description:
+            self.full_path = None
+        else:
+            self.full_path = self._create_full_path()
+            self.output_path_text.object = (
+                f"### Creating new file at:\n `{self.full_path}`"
+            )
 
     @param.depends("directory_list", "file_name", watch=True)
-    def _export_disabled(self):
+    def _create_button_disabled(self):
         """Determine if the export button is enabled or disabled."""
         message = ""
         if not self.directory_list:
@@ -73,4 +79,21 @@ class YAMLFileCreator(param.Parameterized):
             message = "Only a single directory must be selected"
         elif not self.file_name:
             message = "Provide a file name"
-        self.disabled_description = message
+        elif Path(self.file_name).name != self.file_name:
+            message = "File name must not contain path components"
+        else:
+            full_path = self._create_full_path()
+            if full_path.exists():
+                message = f"{full_path} already exists!"
+
+        if self.disabled_description != message:
+            self.disabled_description = message
+        else:
+            self.param.trigger("disabled_description")
+
+    def _create_full_path(self):
+        file_name_path = Path(self.file_name)
+        if file_name_path != ".yaml":
+            file_name_path = file_name_path.with_suffix(".yaml")
+
+        return Path(self.directory_list[0]) / file_name_path
