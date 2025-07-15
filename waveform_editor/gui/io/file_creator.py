@@ -5,10 +5,16 @@ import param
 
 
 class YAMLFileCreator(param.Parameterized):
-    disabled_description = param.String()
-    directory_list = param.List()
-    file_name = param.String()
-    full_path = param.Path(check_exists=False)
+    disabled_description = param.String(
+        doc="Stores the validation message or empty string if valid."
+    )
+    directory_list = param.List(
+        doc="List of selected directories; must contain exactly one path."
+    )
+    file_name = param.String(doc="Name of the YAML file to be created.")
+    full_path = param.Path(
+        check_exists=False, doc="Full path to the YAML file to be created."
+    )
 
     def __init__(self, file_loader):
         super().__init__()
@@ -25,7 +31,7 @@ class YAMLFileCreator(param.Parameterized):
         confirm_button = pn.widgets.Button(
             name="Create YAML File",
             button_type="primary",
-            on_click=self.on_confirm,
+            on_click=lambda event: self.on_confirm(),
             disabled=self.param.disabled_description.rx.pipe(bool),
         )
 
@@ -53,15 +59,17 @@ class YAMLFileCreator(param.Parameterized):
             icon="file-plus",
             description="Create a new YAML file...",
         )
-        self._create_button_disabled()
+        self._confirm_button_disabled()
 
-    def on_confirm(self, event):
+    def on_confirm(self):
+        """Creates a new empty YAML file and loads it."""
         self.full_path.touch()
         self.modal.hide()
         self.file_loader.load_yaml(self.full_path)
 
     @param.depends("disabled_description", watch=True)
     def _set_full_path(self):
+        """Updates the full path and output markdown based on validation status."""
         if self.disabled_description:
             self.full_path = None
         else:
@@ -71,8 +79,8 @@ class YAMLFileCreator(param.Parameterized):
             )
 
     @param.depends("directory_list", "file_name", watch=True)
-    def _create_button_disabled(self):
-        """Determine if the export button is enabled or disabled."""
+    def _confirm_button_disabled(self):
+        """Validates input to enable or disable the confirm button."""
         message = ""
         if not self.directory_list:
             message = "Provide a directory to store the YAML file into"
@@ -87,14 +95,22 @@ class YAMLFileCreator(param.Parameterized):
             if full_path.exists():
                 message = f"{full_path} already exists!"
 
+        # Ensure disabled_description's dependencies are triggered, even if it did not
+        # change
         if self.disabled_description != message:
             self.disabled_description = message
         else:
             self.param.trigger("disabled_description")
 
     def _create_full_path(self):
+        """Constructs the full path of the YAML file using the selected directory and
+        input filename, and ensures '.yaml' extension is applied.
+
+        Returns:
+            Path object representing the full file path.
+        """
         file_name_path = Path(self.file_name)
-        if file_name_path != ".yaml":
+        if file_name_path.suffix != ".yaml":
             file_name_path = file_name_path.with_suffix(".yaml")
 
         return Path(self.directory_list[0]) / file_name_path

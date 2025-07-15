@@ -5,20 +5,22 @@ import param
 
 
 class YAMLFileLoader(param.Parameterized):
+    file_list = param.MultiFileSelector()
+
     def __init__(self, controller):
         super().__init__()
 
         self.controller = controller
         self.main_gui = controller.main_gui
 
-        self.file_selector = pn.widgets.FileSelector(
+        file_selector = pn.widgets.FileSelector.from_param(
+            self.param.file_list,
             directory=Path.cwd(),
             root_directory=Path.cwd().root,
             file_pattern="*.yaml",
             only_files=True,
         )
-        self.file_selector.param.watch(self._on_file_selected, "value")
-        self.modal = pn.Modal(self.file_selector)
+        self.modal = pn.Modal(file_selector)
         self.button = self.modal.create_button(
             "show",
             name="Open...",
@@ -26,16 +28,22 @@ class YAMLFileLoader(param.Parameterized):
             description="Open an existing YAML file...",
         )
 
-    def _on_file_selected(self, event):
-        if len(self.file_selector.value) != 1:
+    @param.depends("file_list", watch=True)
+    def _on_file_selected(self):
+        if len(self.file_list) != 1:
             pn.state.notifications.error(
                 "Only a single YAML file may be loaded at a time"
             )
             return
 
-        self.load_yaml(Path(self.file_selector.value[0]))
+        self.load_yaml(Path(self.file_list[0]))
 
     def load_yaml(self, path):
+        """Load waveform configuration from a YAML file.
+
+        Args:
+            path: Path object pointing to the YAML file.
+        """
         with open(path) as file:
             yaml_content = file.read()
 
