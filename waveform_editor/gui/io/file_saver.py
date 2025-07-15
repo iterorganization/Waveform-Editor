@@ -16,6 +16,8 @@ class YAMLFileSaver:
         )
 
     def save_yaml(self):
+        """Saves the current configuration to the open YAML file."""
+
         if not self.manager.open_file:
             pn.state.notifications.error("No YAML file is currently opened")
             return

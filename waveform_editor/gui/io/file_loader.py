@@ -38,6 +38,7 @@ class YAMLFileLoader(param.Parameterized):
 
     @param.depends("file_list", watch=True)
     def _on_file_selected(self):
+        """Triggered on file selection. Loads YAML or sets error alert."""
         if len(self.file_list) != 1:
             self.error_alert = "Only a single YAML file may be loaded at a time"
             return
