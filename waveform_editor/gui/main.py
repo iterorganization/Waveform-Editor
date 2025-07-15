@@ -12,7 +12,6 @@ from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
-from waveform_editor.gui.start_up import StartUpPrompt
 from waveform_editor.util import State
 
 logger = logging.getLogger(__name__)
@@ -40,8 +39,6 @@ class WaveformEditorGui(param.Parameterized):
         "   \n\n**Are you sure you want to continue?**"
     )
 
-    show_startup_options = param.Boolean(True)
-
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         super().__init__()
@@ -52,16 +49,12 @@ class WaveformEditorGui(param.Parameterized):
         # Side bar
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
-        self.io_controller = FileManager(
-            self, visible=self.param.show_startup_options.rx.not_()
-        )
+        self.io_controller = FileManager(self)
         self.selector = WaveformSelector(self)
-        self.selector.visible = self.param.show_startup_options.rx.not_()
+        self.selector.visible = self.io_controller.param.open_file.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
-        self.start_up = StartUpPrompt(self, visible=self.param.show_startup_options)
 
         sidebar = pn.Column(
-            self.start_up,
             self.io_controller,
             self.selector,
             self.confirm_modal,
@@ -76,7 +69,7 @@ class WaveformEditorGui(param.Parameterized):
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
-            visible=self.param.show_startup_options.rx.not_(),
+            visible=self.io_controller.param.open_file.rx.bool(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 

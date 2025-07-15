@@ -12,22 +12,25 @@ class FileManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.Path()
 
-    def __init__(self, main_gui, visible=True, **params):
+    def __init__(self, main_gui, **params):
         super().__init__(**params)
         self.main_gui = main_gui
-        self.visible = visible
         self.open_file_text = pn.pane.Markdown("", visible=True)
         self.file_loader = YAMLFileLoader(self)
         self.file_creator = YAMLFileCreator(self)
 
         export_dialog = ExportDialog(self.main_gui)
         self.export_button = pn.widgets.Button(
-            name="Export", icon="upload", on_click=export_dialog.open
+            name="Export",
+            icon="upload",
+            on_click=export_dialog.open,
+            visible=self.param.open_file.rx.bool(),
         )
         self.save_button = pn.widgets.Button(
             name="Save",
             icon="device-floppy",
             on_click=lambda event: self.save_yaml(),
+            visible=self.param.open_file.rx.bool(),
         )
 
         self.panel = pn.Column(
