@@ -44,12 +44,15 @@ class FileLoader(param.Parameterized):
             return
 
         self.error_alert = ""
-        self.load_yaml(Path(self.file_list[0]))
+        path = Path(self.file_list[0])
+
         # The only way to reset the file selector UI seems to be using a private attr
         self.file_selector._selector.value = []
         self.file_list.clear()
 
-    def load_yaml(self, path):
+        self.load_yaml_from_file(path)
+
+    def load_yaml_from_file(self, path):
         """Load waveform configuration from a YAML file.
 
         Args:
@@ -58,18 +61,20 @@ class FileLoader(param.Parameterized):
         with open(path) as file:
             yaml_content = file.read()
 
-        self.main_gui.plotter_view.plotted_waveforms = {}
-        self.main_gui.config.load_yaml(yaml_content)
-
-        if self.main_gui.config.load_error:
-            pn.state.notifications.error(
-                "YAML could not be loaded:<br>"
-                + self.main_gui.config.load_error.replace("\n", "<br>"),
-                duration=10000,
-            )
-            return
+        self.modal.hide()
+        self.load_yaml(yaml_content)
 
         pn.state.notifications.success("Successfully loaded YAML file!")
         self.manager.open_file = path
-        self.modal.hide()
+
+    def load_yaml(self, yaml_content):
+        self.main_gui.config.load_yaml(yaml_content)
+
+        if self.main_gui.config.load_error:
+            raise RuntimeError(
+                "YAML could not be loaded:<br>"
+                + self.main_gui.config.load_error.replace("\n", "<br>")
+            )
+        self.main_gui.clear_waveform_view()
+        self.manager.is_editing = True
         self.main_gui.selector.refresh()

@@ -11,32 +11,33 @@ from .file_saver import FileSaver
 class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.Path()
+    is_editing = param.Boolean()
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
         self.main_gui = main_gui
         self.open_file_text = pn.pane.Markdown(width=400)
 
-        file_loader = FileLoader(self)
-        file_creator = FileCreator(file_loader)
-        file_saver = FileSaver(self)
+        self.file_loader = FileLoader(self)
+        self.file_creator = FileCreator(self)
+        self.file_saver = FileSaver(self)
         file_exporter = FileExporter(self)
 
         self.panel = pn.Column(
             self.open_file_text,
             pn.Row(
-                file_creator.button,
-                file_loader.button,
-                file_saver.button,
+                self.file_creator.button,
+                self.file_loader.button,
+                self.file_saver.button,
                 file_exporter.button,
             ),
-            file_loader.modal,
-            file_creator.modal,
+            self.file_loader.modal,
+            self.file_creator.modal,
             file_exporter.modal,
             visible=self.param.visible,
         )
 
-    @param.depends("open_file", watch=True)
+    @param.depends("is_editing", "open_file", watch=True)
     def set_open_file_text(self):
         if self.open_file:
             self.open_file_text.object = f"**Opened file:**   \n`{self.open_file}`"

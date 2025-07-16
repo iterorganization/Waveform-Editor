@@ -10,9 +10,9 @@ class FileCreator(param.Parameterized):
     file_name = param.String()
     full_path = param.Path(check_exists=False)
 
-    def __init__(self, file_loader):
+    def __init__(self, manager):
         super().__init__()
-        self.file_loader = file_loader
+        self.manager = manager
         self.file_selector = pn.widgets.FileSelector.from_param(
             self.param.directory_list,
             file_pattern="",  # Ensure only directories are shown in selector
@@ -47,20 +47,27 @@ class FileCreator(param.Parameterized):
         )
 
         self.modal = pn.Modal(modal_content)
-        self.button = self.modal.create_button(
-            "show",
+        self.button = pn.widgets.Button(
             name="New...",
             icon="file-plus",
-            description="Create a new YAML file...",
+            description="Create a new empty YAML file...",
+            on_click=lambda event: self.create_new_file(),
         )
         self._confirm_button_disabled()
+
+    def create_new_file(self):
+        yaml_content = {}
+        self.manager.file_loader.load_yaml(yaml_content)
+        self.manager.open_file = None
 
     def on_confirm(self):
         """Creates a new empty YAML file and loads it."""
         self.full_path.touch()
+        self.manager.open_file = self.full_path
         self.modal.hide()
-        self.file_loader.load_yaml(self.full_path)
+        self.manager.file_saver.save_yaml()
 
+        # Reset UI
         self.file_name = ""
         # The only way to reset the file selector UI seems to be using a private attr
         self.file_selector._selector.value = []

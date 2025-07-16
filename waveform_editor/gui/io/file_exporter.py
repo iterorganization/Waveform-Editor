@@ -116,7 +116,7 @@ class FileExporter(param.Parameterized):
             name="Export",
             icon="upload",
             description="Export the YAML file",
-            visible=self.manager.param.open_file.rx.bool(),
+            visible=self.manager.param.is_editing.rx.bool(),
         )
         # Check if export button should be disabled
         self._export_disabled()
