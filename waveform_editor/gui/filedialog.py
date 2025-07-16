@@ -2,7 +2,7 @@ import os
 from typing import ClassVar
 
 import param
-from panel.layout import Column, Modal, Row
+from panel.layout import Modal, Row
 from panel.viewable import Viewer
 from panel.widgets import Button, TextInput
 
@@ -16,6 +16,7 @@ class FileDialogBase(Viewer):
     _confirm_text: ClassVar[str]
 
     multiselect = param.Boolean(default=True)
+    _filename = param.String()
 
     def __init__(self, root_directory, **params):
         super().__init__(**params)
@@ -24,16 +25,26 @@ class FileDialogBase(Viewer):
             multiselect=self.param.multiselect,
             root_directory=root_directory,
         )
-        self.input = TextInput(name="Filename", sizing_mode="stretch_width")
+        self.input = TextInput.from_param(
+            self.param._filename,
+            onkeyup=True,
+            name="Filename",
+            sizing_mode="stretch_width",
+        )
         self.confirm = Button(
             name=self._confirm_text,
             on_click=self._confirm,
-            disabled=self.input.param.value_input.rx.not_(),
+            disabled=self.param._filename.rx.not_(),
+            align="end",
         )
-        self.cancel = Button(name=self._cancel_text, on_click=self.close)
+        self.cancel = Button(
+            name=self._cancel_text,
+            on_click=self.close,
+            align="end",
+        )
         self.modal = Modal(
             self.filebrowser,
-            Row(self.input, Column(self.confirm, self.cancel)),
+            Row(self.input, self.confirm, self.cancel),
             open=False,
             show_close_button=False,
             background_close=True,
@@ -46,7 +57,9 @@ class FileDialogBase(Viewer):
 
     def _on_fileselection_change(self, event):
         if event.new:
-            self.input.value = ", ".join(os.path.basename(v) for v in event.new)
+            self._filename = ", ".join(os.path.basename(v) for v in event.new)
+        else:
+            self._filename = ""
 
     def open(self, directory, fname=None, on_confirm=None):
         """Open the dialog.
@@ -63,11 +76,11 @@ class FileDialogBase(Viewer):
         """
         self.on_confirm = on_confirm
         self.filebrowser.directory = directory
-        self.input.value = fname or ""
+        self._filename = fname or ""
         self.modal.show()
 
     def _get_input_fname(self):
-        return os.path.join(self.filebrowser.directory, self.input.value)
+        return os.path.join(self.filebrowser.directory, self._filename)
 
     def _confirm(self, event=None):
         if self.on_confirm:
