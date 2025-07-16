@@ -6,9 +6,9 @@ from .file_exporter import FileExporter
 from .file_loader import FileLoader
 from .file_saver import FileSaver
 
-NEW = "✏️ New..."
+NEW = "✏️ New"
 OPEN = "📁 Open..."
-SAVE = "💾 Save..."
+SAVE = "💾 Save"
 SAVE_AS = "💾 Save As..."
 EXPORT = "📤 Export..."
 
