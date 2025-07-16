@@ -33,10 +33,19 @@ class FileSaver(Viewer):
         if path.suffix != ".yaml":
             path = path.with_suffix(".yaml")
 
-        path.touch()
-        self.manager.open_file = path
-        self.file_dialog.close()
-        self.manager.file_saver.save_yaml()
+        def proceed():
+            path.touch()
+            self.manager.open_file = path
+            self.file_dialog.close()
+            self.save_yaml()
+
+        if path.exists():
+            self.manager.main_gui.confirm_modal.show(
+                f"File '{path.name}' already exists. Do you want to overwrite it?",
+                on_confirm=proceed,
+            )
+        else:
+            proceed()
 
     def __panel__(self):
         return self.file_dialog
