@@ -17,7 +17,9 @@ class FileLoader(Viewer):
         self.file_dialog.multiselect = False
 
     def open(self):
-        self.file_dialog.open(str(Path.cwd()), "", on_confirm=self._on_file_selected)
+        self.file_dialog.open(
+            str(Path.cwd()), on_confirm=self._on_file_selected, file_pattern="*.yaml"
+        )
 
     def _on_file_selected(self, file_list):
         """Triggered on file selection. Loads YAML or sets error alert."""

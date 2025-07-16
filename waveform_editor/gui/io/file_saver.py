@@ -24,7 +24,7 @@ class FileSaver(Viewer):
         pn.state.notifications.success("YAML file saved successfully")
 
     def open_save_dialog(self):
-        self.file_dialog.open(str(Path.cwd()), "", on_confirm=self.on_confirm)
+        self.file_dialog.open(str(Path.cwd()), on_confirm=self.on_confirm)
 
     def on_confirm(self, file_list):
         """Creates a new empty YAML file and loads it."""
@@ -41,7 +41,7 @@ class FileSaver(Viewer):
 
         if path.exists():
             self.manager.main_gui.confirm_modal.show(
-                f"File '{path.name}' already exists. Do you want to overwrite it?",
+                f"File '{path.name}' already exists.  \n Do you want to overwrite it?",
                 on_confirm=proceed,
             )
         else:
