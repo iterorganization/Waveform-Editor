@@ -126,7 +126,7 @@ class FileBrowser(BaseFileNavigator):
 
     def _update_files(
         self,
-        event: Optional[param.parameterized.Event] = None,  # noqa: UP007 ignore ruff
+        event: Optional[param.parameterized.Event] = None,  # noqa: UP007 UP045
         refresh: bool = False,
     ):
         path = self._provider.normalize(self._directory.value)
