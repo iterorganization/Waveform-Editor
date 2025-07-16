@@ -34,7 +34,7 @@ class IOManager(Viewer):
         self.panel = pn.Column(
             pn.Row(self.menu, self.open_file_text),
             pn.bind(self._handle_menu_selection, self.menu.param.clicked),
-            self.file_loader.modal,
+            self.file_loader,
             self.file_creator.modal,
             self.file_exporter.modal,
             visible=self.param.visible,
@@ -54,7 +54,7 @@ class IOManager(Viewer):
         if clicked == NEW:
             self.file_creator.create_new_file()
         elif clicked == OPEN:
-            self.file_loader.modal.show()
+            self.file_loader.open()
         elif clicked == SAVE:
             self.file_saver.save_yaml()
         elif clicked == SAVE_AS:

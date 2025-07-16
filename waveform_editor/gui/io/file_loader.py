@@ -1,49 +1,27 @@
 from pathlib import Path
 
 import panel as pn
-import param
+from panel.viewable import Viewer
+
+from .filedialog import OpenFileDialog
 
 
-class FileLoader(param.Parameterized):
-    file_list = param.MultiFileSelector()
-    error_alert = param.String()
-
+class FileLoader(Viewer):
     def __init__(self, manager):
         super().__init__()
 
         self.manager = manager
         self.main_gui = manager.main_gui
 
-        self.file_selector = pn.widgets.FileSelector.from_param(
-            self.param.file_list,
-            directory=Path.cwd(),
-            root_directory=Path.cwd().root,
-            file_pattern="*.yaml",
-            only_files=True,
-        )
+        self.file_dialog = OpenFileDialog(Path.cwd().root)
+        self.file_dialog.multiselect = False
 
-        alert = pn.pane.Alert(
-            self.param.error_alert,
-            alert_type="danger",
-            visible=self.param.error_alert.rx.pipe(bool),
-        )
+    def open(self):
+        self.file_dialog.open(str(Path.cwd()), "", on_confirm=self._on_file_selected)
 
-        self.modal = pn.Modal(pn.Column(self.file_selector, alert))
-
-    @param.depends("file_list", watch=True)
-    def _on_file_selected(self):
+    def _on_file_selected(self, file_list):
         """Triggered on file selection. Loads YAML or sets error alert."""
-        if len(self.file_list) != 1:
-            self.error_alert = "Only a single YAML file may be loaded at a time"
-            return
-
-        self.error_alert = ""
-        path = Path(self.file_list[0])
-
-        # The only way to reset the file selector UI seems to be using a private attr
-        self.file_selector._selector.value = []
-        self.file_list.clear()
-
+        path = Path(file_list[0])
         self.load_yaml_from_file(path)
 
     def load_yaml_from_file(self, path):
@@ -55,7 +33,7 @@ class FileLoader(param.Parameterized):
         with open(path) as file:
             yaml_content = file.read()
 
-        self.modal.hide()
+        self.file_dialog.close()
         self.load_yaml(yaml_content)
 
         pn.state.notifications.success("Successfully loaded YAML file!")
@@ -72,3 +50,6 @@ class FileLoader(param.Parameterized):
         self.main_gui.clear_waveform_view()
         self.manager.is_editing = True
         self.main_gui.selector.refresh()
+
+    def __panel__(self):
+        return self.file_dialog
