@@ -51,7 +51,7 @@ class WaveformEditorGui(param.Parameterized):
         self.rename_modal = RenameModal()
         self.io_manager = IOManager(self)
         self.selector = WaveformSelector(self)
-        self.selector.visible = self.io_manager.param.open_file.rx.bool()
+        self.selector.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
@@ -69,7 +69,7 @@ class WaveformEditorGui(param.Parameterized):
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             dynamic=True,
-            visible=self.io_manager.param.open_file.rx.bool(),
+            visible=self.io_manager.param.is_editing.rx.bool(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 
@@ -122,7 +122,7 @@ class WaveformEditorGui(param.Parameterized):
         selection = self.selector.selection
         if self.tabs.active == self.EDIT_WAVEFORMS_TAB:
             self.editor.set_waveform(None if not selection else selection[0])
-            self.plotter_view.plotted_waveforms = {}
+            self.clear_waveform_view()
         elif self.tabs.active == self.VIEW_WAVEFORMS_TAB:
             self.editor.set_waveform(None)
             waveform_map = {name: self.config[name] for name in selection}
@@ -133,6 +133,9 @@ class WaveformEditorGui(param.Parameterized):
         with self._reverting_to_editor:  # Disable watchers for tab and selection
             self.tabs.active = self.EDIT_WAVEFORMS_TAB
             self.selector.set_selection([self.editor.waveform.name])
+
+    def clear_waveform_view(self):
+        self.plotter_view.plotted_waveforms = {}
 
     def __panel__(self):
         return self.template

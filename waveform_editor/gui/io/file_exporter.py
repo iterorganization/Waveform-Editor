@@ -112,15 +112,6 @@ class FileExporter(param.Parameterized):
             sizing_mode="stretch_width",
         )
         self.modal = pn.Modal(layout, width=500)
-        self.button = pn.widgets.Button(
-            name="Export",
-            icon="upload",
-            description="Export the YAML file",
-            visible=self.manager.param.open_file.rx.bool(),
-            on_click=self.handle_button_click,
-        )
-
-        self.confirm_modal = ConfirmModal()
         # Check if export button should be disabled
         self._export_disabled()
 
