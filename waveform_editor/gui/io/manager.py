@@ -2,7 +2,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from .file_creator import FileCreator
 from .file_exporter import FileExporter
 from .file_loader import FileLoader
 from .file_saver import FileSaver
@@ -27,7 +26,6 @@ class IOManager(Viewer):
         self.menu = pn.widgets.MenuButton(name="File", width=120, margin=(15, 10))
 
         self.file_loader = FileLoader(self)
-        self.file_creator = FileCreator(self)
         self.file_saver = FileSaver(self)
         self.file_exporter = FileExporter(self)
 
@@ -49,9 +47,14 @@ class IOManager(Viewer):
         else:
             self.menu.items = [NEW, OPEN]
 
+    def create_new_file(self):
+        yaml_content = {}
+        self.file_loader.load_yaml(yaml_content)
+        self.open_file = None
+
     def _handle_menu_selection(self, clicked):
         if clicked == NEW:
-            self.file_creator.create_new_file()
+            self.create_new_file()
         elif clicked == OPEN:
             self.file_loader.open()
         elif clicked == SAVE:
