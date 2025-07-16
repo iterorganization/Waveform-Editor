@@ -53,18 +53,49 @@ class IOManager(Viewer):
         yaml_content = {}
         self.file_loader.load_yaml(yaml_content)
         self.open_file = None
+        self.changed = False
+
+    def _confirm_and_execute(self, action, message):
+        def proceed():
+            action()
+
+        if self.changed:
+            self.main_gui.confirm_modal.show(message, on_confirm=proceed)
+        else:
+            proceed()
 
     def _handle_menu_selection(self, clicked):
         if clicked == NEW:
-            self.create_new_file()
+            self._confirm_and_execute(
+                self.create_new_file,
+                (
+                    "### ⚠️ **You have unsaved changed**  \n"
+                    "Opening a new file will discard all unsaved changes.  \n"
+                    "Do you want to continue?"
+                ),
+            )
         elif clicked == OPEN:
-            self.file_loader.open()
+            self._confirm_and_execute(
+                self.file_loader.open,
+                (
+                    "### ⚠️ **You have unsaved changed**  \n"
+                    "Opening a new file will discard all unsaved changes.  \n"
+                    "Do you want to continue?"
+                ),
+            )
         elif clicked == SAVE:
             self.file_saver.save_yaml()
         elif clicked == SAVE_AS:
             self.file_saver.open_save_dialog()
         elif clicked == EXPORT:
-            self.file_exporter.modal.show()
+            self._confirm_and_execute(
+                self.file_exporter.modal.show,
+                (
+                    "### ⚠️ **You have unsaved changes**  \n"
+                    "Exporting now may not include these unsaved changes.  \n"
+                    "Do you want to continue?"
+                ),
+            )
         # Menu items seem to not retrigger when selecting same twice in a row
         self.menu.clicked = None
 
@@ -74,9 +105,9 @@ class IOManager(Viewer):
         if not self.is_editing:
             self.open_file_text.value = "Create or open a YAML file"
         elif self.open_file:
-            self.open_file_text.value = f"{self.open_file} {alert}"
+            self.open_file_text.value = f"{self.open_file}\n{alert}"
         else:
-            self.open_file_text.value = "No file is currently opened"
+            self.open_file_text.value = f"No file is currently opened\n{alert}"
 
     def __panel__(self):
         return self.panel
