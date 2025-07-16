@@ -125,7 +125,9 @@ class FileBrowser(BaseFileNavigator):
         self.value = value
 
     def _update_files(
-        self, event: Optional[param.parameterized.Event] = None, refresh: bool = False
+        self,
+        event: Optional[param.parameterized.Event] = None,  # noqa: UP007 ignore ruff
+        refresh: bool = False,
     ):
         path = self._provider.normalize(self._directory.value)
         super()._update_files(event, refresh)
