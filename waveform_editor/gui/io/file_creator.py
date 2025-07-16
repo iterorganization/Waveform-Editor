@@ -47,12 +47,6 @@ class FileCreator(param.Parameterized):
         )
 
         self.modal = pn.Modal(modal_content)
-        self.button = pn.widgets.Button(
-            name="New...",
-            icon="file-plus",
-            description="Create a new empty YAML file...",
-            on_click=lambda event: self.create_new_file(),
-        )
         self._confirm_button_disabled()
 
     def create_new_file(self):

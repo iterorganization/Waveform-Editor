@@ -5,13 +5,6 @@ class FileSaver:
     def __init__(self, manager):
         super().__init__()
         self.manager = manager
-        self.button = pn.widgets.Button(
-            name="Save",
-            icon="device-floppy",
-            description="Save the YAML file",
-            on_click=lambda event: self.save_yaml(),
-            visible=self.manager.param.is_editing.rx.bool(),
-        )
 
     def save_yaml(self):
         """Saves the current configuration to the open YAML file."""
