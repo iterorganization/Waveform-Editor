@@ -35,12 +35,11 @@ class IOManager(Viewer):
             pn.Row(self.menu, self.open_file_text),
             pn.bind(self._handle_menu_selection, self.menu.param.clicked),
             self.file_loader,
-            self.file_creator.modal,
+            self.file_saver,
             self.file_exporter.modal,
             visible=self.param.visible,
         )
 
-        self._set_open_file_text()
         self._set_menu_items()
 
     @param.depends("is_editing", watch=True)
@@ -58,8 +57,7 @@ class IOManager(Viewer):
         elif clicked == SAVE:
             self.file_saver.save_yaml()
         elif clicked == SAVE_AS:
-            # TODO: implement save as behaviour
-            self.file_saver.save_yaml()
+            self.file_saver.open_save_dialog()
         elif clicked == EXPORT:
             self.file_exporter.modal.show()
         # Menu items seem to not retrigger when selecting same twice in a row
