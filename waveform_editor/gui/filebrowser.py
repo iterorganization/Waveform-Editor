@@ -140,7 +140,8 @@ class FileBrowser(BaseFileNavigator):
             if self.show_hidden or not os.path.basename(p).startswith(".")
         ]
         abbreviated = [
-            ("📁" if f in dirs else "") + os.path.relpath(f, self._cwd) for f in paths
+            ("📁" if f in dirs else "") + os.path.relpath(f, self.directory)
+            for f in paths
         ]
         if not self._up.disabled:
             paths.insert(0, "..")
@@ -149,3 +150,6 @@ class FileBrowser(BaseFileNavigator):
         options = dict(zip(abbreviated, paths))
         self._selector.options = options
         self._selector.value = [s for s in selected if s in paths]
+
+    def update(self):
+        self._update_files()

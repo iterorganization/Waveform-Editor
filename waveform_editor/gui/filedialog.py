@@ -61,7 +61,7 @@ class FileDialogBase(Viewer):
         else:
             self._filename = ""
 
-    def open(self, directory, fname=None, on_confirm=None):
+    def open(self, directory, fname=None, on_confirm=None, file_pattern="*"):
         """Open the dialog.
 
         The ``on_confirm`` callback will be called when the user double-clicks a file,
@@ -73,9 +73,12 @@ class FileDialogBase(Viewer):
             directory: Directory to show in the file dialog
             fname: Preselected filename
             on_confirm: Callback when the dialog is confirmed
+            file_pattern: A glob-like pattern to filter the files, e.g. *.txt
         """
         self.on_confirm = on_confirm
         self.filebrowser.directory = directory
+        self.filebrowser.file_pattern = file_pattern
+        self.filebrowser.update()
         self._filename = fname or ""
         self.modal.show()
 
@@ -83,11 +86,14 @@ class FileDialogBase(Viewer):
         return os.path.join(self.filebrowser.directory, self._filename)
 
     def _confirm(self, event=None):
+        selection = self.filebrowser.value
+        if len(selection) == 1 and os.path.isdir(selection[0]):
+            self.filebrowser.directory = selection[0]
+            self.filebrowser.update()
+            return
+
         if self.on_confirm:
-            if self.input.disabled:
-                fnames = self.filebrowser.value
-            else:
-                fnames = [self._get_input_fname()]
+            fnames = selection if self.input.disabled else [self._get_input_fname()]
             if self.on_confirm(fnames):
                 self.close()
 
