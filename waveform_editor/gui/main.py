@@ -156,7 +156,7 @@ class WaveformEditorGui(param.Parameterized):
         if self.config.load_error:
             raise RuntimeError(
                 "YAML could not be loaded:<br>"
-                + self.main_gui.config.load_error.replace("\n", "<br>")
+                + self.config.load_error.replace("\n", "<br>")
             )
         self.plotter_view.plotted_waveforms = {}
         self.io_manager.is_editing = True
