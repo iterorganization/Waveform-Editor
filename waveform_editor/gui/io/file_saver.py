@@ -35,8 +35,10 @@ class FileSaver(Viewer):
         """Creates a new empty YAML file and loads it."""
         path = Path(file_list[0])
 
-        if path.suffix != ".yaml":
+        if path.suffix == ".yml":
             path = path.with_suffix(".yaml")
+        elif path.suffix != ".yaml":
+            path = path.with_suffix(path.suffix + ".yaml")
 
         def proceed():
             self.manager.open_file = path
