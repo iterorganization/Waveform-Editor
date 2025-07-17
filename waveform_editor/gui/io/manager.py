@@ -51,8 +51,8 @@ class IOManager(Viewer):
             self.menu.items = [NEW, OPEN]
 
     def create_new_file(self):
-        yaml_content = {}
-        self.file_loader.load_yaml(yaml_content)
+        yaml_content = ""
+        self.main_gui.load_yaml(yaml_content)
         self.open_file = None
 
     def _handle_menu_selection(self, event):
