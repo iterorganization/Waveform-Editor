@@ -23,8 +23,8 @@ class FileLoader(Viewer):
     def _on_file_selected(self, file_list):
         """Triggered on file selection. Loads YAML or sets error alert."""
         path = Path(file_list[0])
-        self.main_gui.load_yaml_from_file(path)
         self.file_dialog.close()
+        self.main_gui.load_yaml_from_file(path)
         pn.state.notifications.success("Successfully loaded YAML file!")
 
     def __panel__(self):
