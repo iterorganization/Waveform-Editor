@@ -25,10 +25,15 @@ class FileSaver(Viewer):
 
     def open_save_dialog(self):
         start_path = Path.cwd()
+        file_name = None
         if self.manager.open_file:
             start_path = self.manager.open_file.parent
+            file_name = self.manager.open_file.name
         self.file_dialog.open(
-            str(start_path), on_confirm=self.on_confirm, file_pattern="*.yaml"
+            str(start_path),
+            on_confirm=self.on_confirm,
+            file_pattern="*.yaml",
+            fname=file_name,
         )
 
     def on_confirm(self, file_list):
