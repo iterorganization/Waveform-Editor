@@ -39,7 +39,6 @@ class FileSaver(Viewer):
             path = path.with_suffix(".yaml")
 
         def proceed():
-            path.touch()
             self.manager.open_file = path
             self.file_dialog.close()
             self.save_yaml()
@@ -50,6 +49,8 @@ class FileSaver(Viewer):
                 on_confirm=proceed,
             )
         else:
+            # Ensure the file exists before saving YAML
+            path.touch()
             proceed()
 
     def __panel__(self):
