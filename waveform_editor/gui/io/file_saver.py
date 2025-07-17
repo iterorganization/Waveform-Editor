@@ -24,7 +24,12 @@ class FileSaver(Viewer):
         pn.state.notifications.success("YAML file saved successfully")
 
     def open_save_dialog(self):
-        self.file_dialog.open(str(Path.cwd()), on_confirm=self.on_confirm)
+        start_path = Path.cwd()
+        if self.manager.open_file:
+            start_path = self.manager.open_file.parent
+        self.file_dialog.open(
+            str(start_path), on_confirm=self.on_confirm, file_pattern="*.yaml"
+        )
 
     def on_confirm(self, file_list):
         """Creates a new empty YAML file and loads it."""

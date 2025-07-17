@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -15,7 +17,7 @@ EXPORT = "📤 Export..."
 
 class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
-    open_file = param.Path()
+    open_file = param.ClassSelector(class_=Path)
     is_editing = param.Boolean()
     menu_items = param.List()
 
