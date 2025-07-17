@@ -3,7 +3,7 @@ from pathlib import Path
 import panel as pn
 from panel.viewable import Viewer
 
-from .filedialog import SaveFileDialog
+from waveform_editor.gui.io.filedialog import SaveFileDialog
 
 
 class FileSaver(Viewer):

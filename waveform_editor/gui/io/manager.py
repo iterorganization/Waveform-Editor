@@ -4,9 +4,9 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from .file_exporter import FileExporter
-from .file_loader import FileLoader
-from .file_saver import FileSaver
+from waveform_editor.gui.io.file_exporter import FileExporter
+from waveform_editor.gui.io.file_loader import FileLoader
+from waveform_editor.gui.io.file_saver import FileSaver
 
 NEW = "✏️ New"
 OPEN = "📁 Open..."

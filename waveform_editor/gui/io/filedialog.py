@@ -6,7 +6,7 @@ from panel.layout import Modal, Row
 from panel.viewable import Viewer
 from panel.widgets import Button, TextInput
 
-from .filebrowser import FileBrowser
+from waveform_editor.gui.io.filebrowser import FileBrowser
 
 
 class FileDialogBase(Viewer):
