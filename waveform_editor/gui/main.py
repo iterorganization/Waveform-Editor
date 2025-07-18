@@ -134,8 +134,33 @@ class WaveformEditorGui(param.Parameterized):
             self.tabs.active = self.EDIT_WAVEFORMS_TAB
             self.selector.set_selection([self.editor.waveform.name])
 
-    def clear_waveform_view(self):
+    def load_yaml_from_file(self, path):
+        """Load waveform configuration from a YAML file.
+
+        Args:
+            path: Path object pointing to the YAML file.
+        """
+        with open(path) as file:
+            yaml_content = file.read()
+
+        self.load_yaml(yaml_content)
+        self.io_manager.open_file = path
+
+    def load_yaml(self, yaml_content):
+        """Load waveform configuration from YAML string.
+
+        Args:
+            yaml_content: YAML string to load.
+        """
+        self.config.load_yaml(yaml_content)
+        if self.config.load_error:
+            raise RuntimeError(
+                "YAML could not be loaded:<br>"
+                + self.config.load_error.replace("\n", "<br>")
+            )
         self.plotter_view.plotted_waveforms = {}
+        self.io_manager.is_editing = True
+        self.selector.refresh()
 
     def __panel__(self):
         return self.template

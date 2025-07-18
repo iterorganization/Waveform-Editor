@@ -3,7 +3,7 @@ from pathlib import Path
 import panel as pn
 from panel.viewable import Viewer
 
-from .filedialog import SaveFileDialog
+from waveform_editor.gui.io.filedialog import SaveFileDialog
 
 
 class FileSaver(Viewer):
@@ -25,17 +25,28 @@ class FileSaver(Viewer):
         self.manager.changed = False
 
     def open_save_dialog(self):
-        self.file_dialog.open(str(Path.cwd()), on_confirm=self.on_confirm)
+        start_path = Path.cwd()
+        file_name = None
+        if self.manager.open_file:
+            start_path = self.manager.open_file.parent
+            file_name = self.manager.open_file.name
+        self.file_dialog.open(
+            str(start_path),
+            on_confirm=self.on_confirm,
+            file_pattern="*.yaml",
+            fname=file_name,
+        )
 
     def on_confirm(self, file_list):
         """Creates a new empty YAML file and loads it."""
         path = Path(file_list[0])
 
-        if path.suffix != ".yaml":
+        if path.suffix == ".yml":
             path = path.with_suffix(".yaml")
+        elif path.suffix != ".yaml":
+            path = path.with_suffix(path.suffix + ".yaml")
 
         def proceed():
-            path.touch()
             self.manager.open_file = path
             self.file_dialog.close()
             self.save_yaml()
@@ -46,6 +57,8 @@ class FileSaver(Viewer):
                 on_confirm=proceed,
             )
         else:
+            # Ensure the file exists before saving YAML
+            path.touch()
             proceed()
 
     def __panel__(self):

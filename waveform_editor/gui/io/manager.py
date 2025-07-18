@@ -1,10 +1,12 @@
+from pathlib import Path
+
 import panel as pn
 import param
 from panel.viewable import Viewer
 
-from .file_exporter import FileExporter
-from .file_loader import FileLoader
-from .file_saver import FileSaver
+from waveform_editor.gui.io.file_exporter import FileExporter
+from waveform_editor.gui.io.file_loader import FileLoader
+from waveform_editor.gui.io.file_saver import FileSaver
 
 NEW = "✏️ New"
 OPEN = "📁 Open..."
@@ -15,14 +17,18 @@ EXPORT = "📤 Export..."
 
 class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
-    open_file = param.Path()
+    open_file = param.ClassSelector(class_=Path)
     changed = param.Boolean()
     is_editing = param.Boolean()
     menu_items = param.List()
 
     def __init__(self, main_gui, **params):
         self.open_file_text = pn.widgets.StaticText(width=250, align="center")
-        self.menu = pn.widgets.MenuButton(name="File", width=120, margin=(15, 10))
+        self.menu = pn.widgets.MenuButton(
+            name="File",
+            width=120,
+            on_click=self._handle_menu_selection,
+        )
         super().__init__(**params)
         self.main_gui = main_gui
 
@@ -32,10 +38,6 @@ class IOManager(Viewer):
 
         self.panel = pn.Column(
             pn.Row(self.menu, self.open_file_text),
-            pn.Row(  # Ensure the bind doesn't take any UI space
-                pn.bind(self._handle_menu_selection, self.menu.param.clicked),
-                visible=False,
-            ),
             self.file_loader,
             self.file_saver,
             self.file_exporter.modal,
@@ -50,8 +52,8 @@ class IOManager(Viewer):
             self.menu.items = [NEW, OPEN]
 
     def create_new_file(self):
-        yaml_content = {}
-        self.file_loader.load_yaml(yaml_content)
+        yaml_content = ""
+        self.main_gui.load_yaml(yaml_content)
         self.open_file = None
         self.changed = False
 
@@ -64,7 +66,8 @@ class IOManager(Viewer):
         else:
             proceed()
 
-    def _handle_menu_selection(self, clicked):
+    def _handle_menu_selection(self, event):
+        clicked = event.new
         if clicked == NEW:
             self._confirm_and_execute(
                 self.create_new_file,
@@ -96,8 +99,6 @@ class IOManager(Viewer):
                     "Do you want to continue?"
                 ),
             )
-        # Menu items seem to not retrigger when selecting same twice in a row
-        self.menu.clicked = None
 
     @param.depends("is_editing", "open_file", "changed", watch=True, on_init=True)
     def _set_open_file_text(self):
@@ -107,7 +108,7 @@ class IOManager(Viewer):
         elif self.open_file:
             self.open_file_text.value = f"{self.open_file}\n{alert}"
         else:
-            self.open_file_text.value = f"No file is currently opened\n{alert}"
+            self.open_file_text.value = f"Untitled_1.yaml\n{alert}"
 
     def __panel__(self):
         return self.panel
