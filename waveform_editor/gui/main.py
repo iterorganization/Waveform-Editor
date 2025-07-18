@@ -122,7 +122,7 @@ class WaveformEditorGui(param.Parameterized):
         selection = self.selector.selection
         if self.tabs.active == self.EDIT_WAVEFORMS_TAB:
             self.editor.set_waveform(None if not selection else selection[0])
-            self.clear_waveform_view()
+            self.plotter_view.plotted_waveforms = {}
         elif self.tabs.active == self.VIEW_WAVEFORMS_TAB:
             self.editor.set_waveform(None)
             waveform_map = {name: self.config[name] for name in selection}
