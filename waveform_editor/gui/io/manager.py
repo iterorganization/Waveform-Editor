@@ -25,18 +25,20 @@ class IOManager(Viewer):
 
     def __init__(self, main_gui, **params):
         self.open_file_text = pn.widgets.StaticText(align="center")
-        self.open_file_tool_tip = pn.widgets.TooltipIcon(value="")
-        self.open_file_tool_tip.visible = self.open_file_tool_tip.param.value.rx.bool()
-
         self.menu = pn.widgets.MenuButton(
             name="File",
             width=120,
             on_click=self._handle_menu_selection,
         )
+        self.open_file_tool_tip = pn.widgets.TooltipIcon()
         self.main_gui = main_gui
         super().__init__(**params)
-        self.config = main_gui.config
 
+        self.config = main_gui.config
+        self.open_file_tool_tip.visible = (
+            self.open_file_tool_tip.param.value.rx.bool()
+            or self.main_gui.config.param.has_changed.rx.bool()
+        )
         self.file_loader = FileLoader(self)
         self.file_saver = FileSaver(self)
         self.file_exporter = FileExporter(self)
@@ -97,15 +99,21 @@ class IOManager(Viewer):
         "is_editing", "open_file", "config.has_changed", watch=True, on_init=True
     )
     def _set_open_file_text(self):
-        alert = "⚠️ Unsaved changes " if self.main_gui.config.has_changed else ""
-        self.open_file_tool_tip.value = ""
+        unsaved_icon = "*" if self.main_gui.config.has_changed else ""
+        tooltip_msg = (
+            "⚠️There are unsaved changes." if self.main_gui.config.has_changed else ""
+        )
         if not self.is_editing:
             self.open_file_text.value = "Create or open a YAML file"
+            self.open_file_tool_tip.value = ""
         elif self.open_file:
-            self.open_file_text.value = f"{self.open_file.name}\n{alert}"
-            self.open_file_tool_tip.value = str(self.open_file)
+            self.open_file_text.value = f"{unsaved_icon}{self.open_file.name}"
+            self.open_file_tool_tip.value = (
+                f"**Full path:** `{self.open_file}`  \n{tooltip_msg}"
+            )
         else:
-            self.open_file_text.value = f"Untitled_1.yaml\n{alert}"
+            self.open_file_text.value = f"{unsaved_icon}Untitled_1.yaml"
+            self.open_file_tool_tip.value = tooltip_msg
 
     def __panel__(self):
         return self.panel
