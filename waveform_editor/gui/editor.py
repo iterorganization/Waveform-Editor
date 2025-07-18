@@ -131,7 +131,7 @@ class WaveformEditor(Viewer):
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
         pn.state.notifications.success("Succesfully saved waveform!")
-        self.main_gui.io_manager.changed = True
+        self.main_gui.io_manager.has_changed = True
 
     def has_changed(self):
         """Return whether the code editor value was changed from its stored value"""

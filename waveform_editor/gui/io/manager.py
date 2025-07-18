@@ -18,7 +18,7 @@ EXPORT = "📤 Export..."
 class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.ClassSelector(class_=Path)
-    changed = param.Boolean()
+    has_changed = param.Boolean()
     is_editing = param.Boolean()
     menu_items = param.List()
 
@@ -55,13 +55,13 @@ class IOManager(Viewer):
         yaml_content = ""
         self.main_gui.load_yaml(yaml_content)
         self.open_file = None
-        self.changed = False
+        self.has_changed = False
 
     def _confirm_and_execute(self, action, message):
         def proceed():
             action()
 
-        if self.changed:
+        if self.has_changed:
             self.main_gui.confirm_modal.show(message, on_confirm=proceed)
         else:
             proceed()
@@ -100,9 +100,9 @@ class IOManager(Viewer):
                 ),
             )
 
-    @param.depends("is_editing", "open_file", "changed", watch=True, on_init=True)
+    @param.depends("is_editing", "open_file", "has_changed", watch=True, on_init=True)
     def _set_open_file_text(self):
-        alert = "⚠️ Unsaved changes " if self.changed else ""
+        alert = "⚠️ Unsaved changes " if self.has_changed else ""
         if not self.is_editing:
             self.open_file_text.value = "Create or open a YAML file"
         elif self.open_file:
