@@ -22,7 +22,7 @@ class FileSaver(Viewer):
         with open(self.manager.open_file, "w") as f:
             f.write(yaml_str)
         pn.state.notifications.success("YAML file saved successfully")
-        self.manager.has_changed = False
+        self.manager.main_gui.config.has_changed = False
 
     def open_save_dialog(self):
         start_path = Path.cwd()

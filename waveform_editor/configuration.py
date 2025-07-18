@@ -1,6 +1,7 @@
 import io
 import logging
 
+import param
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
@@ -12,8 +13,11 @@ from waveform_editor.yaml_parser import YamlParser
 logger = logging.getLogger(__name__)
 
 
-class WaveformConfiguration:
+class WaveformConfiguration(param.Parameterized):
+    has_changed = param.Boolean()
+
     def __init__(self):
+        super().__init__()
         self.groups = {}
         # Since waveform names must be unique, we can store a flat mapping of waveform
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
@@ -83,6 +87,7 @@ class WaveformConfiguration:
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         self._calculate_bounds()
+        self.has_changed = True
 
     def rename_waveform(self, old_name, new_name):
         """Renames an existing waveform.
@@ -110,6 +115,7 @@ class WaveformConfiguration:
         for dependent_name in dependents:
             dependent_waveform = self[dependent_name]
             dependent_waveform.rename_dependency(old_name, new_name)
+        self.has_changed = True
 
     def check_safe_to_replace(self, waveform):
         """Validate that a waveform is safe to replace.
@@ -159,6 +165,7 @@ class WaveformConfiguration:
         group = self.waveform_map[waveform.name]
         group.waveforms[waveform.name] = waveform
         self._calculate_bounds()
+        self.has_changed = True
 
     def remove_waveform(self, name):
         """Removes an existing waveform.
@@ -176,6 +183,7 @@ class WaveformConfiguration:
         del self.waveform_map[name]
         del group.waveforms[name]
         self._calculate_bounds()
+        self.has_changed = True
 
     def remove_group(self, path):
         """Removes a group, and all the groups/waveforms in it.
@@ -205,6 +213,7 @@ class WaveformConfiguration:
         for name in to_remove:
             if name in self.dependency_graph:
                 self.dependency_graph.remove_node(name)
+        self.has_changed = True
 
     def _collect_waveforms_in_group(self, group):
         """Collect all waveform names within a group, including nested subgroups.
@@ -256,6 +265,7 @@ class WaveformConfiguration:
             raise ValueError(f"{name} already exists at path: {path or 'root'}.")
 
         group[name] = WaveformGroup(name)
+        self.has_changed = True
         return group[name]
 
     def traverse(self, path):
@@ -329,3 +339,4 @@ class WaveformConfiguration:
         self.load_error = ""
         self.start = 0
         self.end = 0
+        self.has_changed = False
