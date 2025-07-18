@@ -24,7 +24,10 @@ class IOManager(Viewer):
     menu_items = param.List()
 
     def __init__(self, main_gui, **params):
-        self.open_file_text = pn.widgets.StaticText(width=250, align="center")
+        self.open_file_text = pn.widgets.StaticText(align="center")
+        self.open_file_tool_tip = pn.widgets.TooltipIcon(value="")
+        self.open_file_tool_tip.visible = self.open_file_tool_tip.param.value.rx.bool()
+
         self.menu = pn.widgets.MenuButton(
             name="File",
             width=120,
@@ -39,7 +42,7 @@ class IOManager(Viewer):
         self.file_exporter = FileExporter(self)
 
         self.panel = pn.Column(
-            pn.Row(self.menu, self.open_file_text),
+            pn.Row(self.menu, self.open_file_text, self.open_file_tool_tip),
             self.file_loader,
             self.file_saver,
             self.file_exporter.modal,
@@ -95,10 +98,12 @@ class IOManager(Viewer):
     )
     def _set_open_file_text(self):
         alert = "⚠️ Unsaved changes " if self.main_gui.config.has_changed else ""
+        self.open_file_tool_tip.value = ""
         if not self.is_editing:
             self.open_file_text.value = "Create or open a YAML file"
         elif self.open_file:
-            self.open_file_text.value = f"{self.open_file}\n{alert}"
+            self.open_file_text.value = f"{self.open_file.name}\n{alert}"
+            self.open_file_tool_tip.value = str(self.open_file)
         else:
             self.open_file_text.value = f"Untitled_1.yaml\n{alert}"
 
