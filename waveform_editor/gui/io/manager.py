@@ -58,7 +58,11 @@ class IOManager(Viewer):
         self.main_gui.load_yaml(yaml_content)
         self.open_file = None
 
-    def _confirm_and_execute(self, action, message):
+    def _confirm_unsaved_changes(self, action, message):
+        message = f"""\
+        ### ⚠️ **You have unsaved changes**
+        {message}  
+        Do you want to continue?"""
         if self.main_gui.config.has_changed:
             self.main_gui.confirm_modal.show(message, on_confirm=action)
         else:
@@ -67,35 +71,23 @@ class IOManager(Viewer):
     def _handle_menu_selection(self, event):
         clicked = event.new
         if clicked == NEW:
-            self._confirm_and_execute(
+            self._confirm_unsaved_changes(
                 self.create_new_file,
-                (
-                    "### ⚠️ **You have unsaved changes**  \n"
-                    "Opening a new file will discard all unsaved changes.  \n"
-                    "Do you want to continue?"
-                ),
+                "Creating a new file will discard all unsaved changes.",
             )
         elif clicked == OPEN:
-            self._confirm_and_execute(
+            self._confirm_unsaved_changes(
                 self.file_loader.open,
-                (
-                    "### ⚠️ **You have unsaved changes**  \n"
-                    "Opening a new file will discard all unsaved changes.  \n"
-                    "Do you want to continue?"
-                ),
+                "Opening a new file will discard all unsaved changes.",
             )
         elif clicked == SAVE:
             self.file_saver.save_yaml()
         elif clicked == SAVE_AS:
             self.file_saver.open_save_dialog()
         elif clicked == EXPORT:
-            self._confirm_and_execute(
+            self._confirm_unsaved_changes(
                 self.file_exporter.modal.show,
-                (
-                    "### ⚠️ **You have unsaved changes**  \n"
-                    "Exporting now may not include these unsaved changes.  \n"
-                    "Do you want to continue?"
-                ),
+                "Exporting now may not include these unsaved changes.",
             )
 
     @param.depends(
