@@ -16,10 +16,9 @@ class WaveformEditor(Viewer):
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
 
-    def __init__(self, main_gui):
+    def __init__(self, config):
         super().__init__()
-        self.config = main_gui.config
-        self.main_gui = main_gui
+        self.config = config
         # Contains the waveform text before any changes were made in the editor
         self.stored_string = None
 
