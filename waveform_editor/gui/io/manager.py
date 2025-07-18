@@ -101,7 +101,7 @@ class IOManager(Viewer):
     def _set_open_file_text(self):
         unsaved_icon = "*" if self.main_gui.config.has_changed else ""
         tooltip_msg = (
-            "⚠️There are unsaved changes." if self.main_gui.config.has_changed else ""
+            "There are unsaved changes." if self.main_gui.config.has_changed else ""
         )
         if not self.is_editing:
             self.open_file_text.value = "Create or open a YAML file"
