@@ -64,6 +64,7 @@ class WaveformConfiguration(param.Parameterized):
                 waveform = group[name]
                 if isinstance(waveform, DerivedWaveform):
                     waveform.prepare_expression()
+            self.has_changed = False
         except Exception as e:
             self.clear()
             logger.warning("Got unexpected error: %s", e, exc_info=e)
