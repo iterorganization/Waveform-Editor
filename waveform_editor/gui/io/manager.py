@@ -59,13 +59,10 @@ class IOManager(Viewer):
         self.open_file = None
 
     def _confirm_and_execute(self, action, message):
-        def proceed():
-            action()
-
         if self.main_gui.config.has_changed:
-            self.main_gui.confirm_modal.show(message, on_confirm=proceed)
+            self.main_gui.confirm_modal.show(message, on_confirm=action)
         else:
-            proceed()
+            action()
 
     def _handle_menu_selection(self, event):
         clicked = event.new
