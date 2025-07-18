@@ -64,11 +64,11 @@ class IOManager(Viewer):
         self.open_file = None
 
     def _confirm_unsaved_changes(self, action, message):
-        message = f"""\
-        ### ⚠️ **You have unsaved changes**
-        {message}  
-        Do you want to continue?"""
         if self.main_gui.config.has_changed:
+            message = f"""\
+            ### ⚠️ **You have unsaved changes**
+            {message}  
+            Do you want to continue?"""
             self.main_gui.confirm_modal.show(message, on_confirm=action)
         else:
             action()
@@ -83,7 +83,7 @@ class IOManager(Viewer):
         elif clicked == OPEN:
             self._confirm_unsaved_changes(
                 self.file_loader.open,
-                "Opening a new file will discard all unsaved changes.",
+                "Opening another file will discard all unsaved changes.",
             )
         elif clicked == SAVE:
             self.file_saver.save_yaml()
