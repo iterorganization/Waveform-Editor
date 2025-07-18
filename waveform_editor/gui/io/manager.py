@@ -72,7 +72,7 @@ class IOManager(Viewer):
             self._confirm_and_execute(
                 self.create_new_file,
                 (
-                    "### ⚠️ **You have unsaved changed**  \n"
+                    "### ⚠️ **You have unsaved changes**  \n"
                     "Opening a new file will discard all unsaved changes.  \n"
                     "Do you want to continue?"
                 ),
@@ -81,7 +81,7 @@ class IOManager(Viewer):
             self._confirm_and_execute(
                 self.file_loader.open,
                 (
-                    "### ⚠️ **You have unsaved changed**  \n"
+                    "### ⚠️ **You have unsaved changes**  \n"
                     "Opening a new file will discard all unsaved changes.  \n"
                     "Do you want to continue?"
                 ),
