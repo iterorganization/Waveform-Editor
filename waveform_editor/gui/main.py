@@ -42,7 +42,7 @@ class WaveformEditorGui(param.Parameterized):
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         super().__init__()
-        self._reverting_to_editor = State()
+        self._skip_editor_change_check = State()
 
         self.config = WaveformConfiguration()
 
@@ -87,7 +87,7 @@ class WaveformEditorGui(param.Parameterized):
 
     def on_selection_change(self, event):
         """Respond to a changed waveform selection"""
-        if self._reverting_to_editor:
+        if self._skip_editor_change_check:
             return  # ignore this event when we revert to the editor
         if (
             self.tabs.active == self.EDIT_WAVEFORMS_TAB
@@ -106,7 +106,7 @@ class WaveformEditorGui(param.Parameterized):
 
     def on_tab_change(self, event):
         """Respond to a tab change"""
-        if self._reverting_to_editor:
+        if self._skip_editor_change_check:
             return  # ignore this event when we revert to the editor
         if event.old == self.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
             self.confirm_modal.show(
@@ -130,7 +130,7 @@ class WaveformEditorGui(param.Parameterized):
 
     def revert_to_editor(self):
         """Revert to the editor without changing its contents"""
-        with self._reverting_to_editor:  # Disable watchers for tab and selection
+        with self._skip_editor_change_check:  # Disable watchers for tab and selection
             self.tabs.active = self.EDIT_WAVEFORMS_TAB
             self.selector.set_selection([self.editor.waveform.name])
 
@@ -158,7 +158,7 @@ class WaveformEditorGui(param.Parameterized):
                 "YAML could not be loaded:<br>"
                 + self.config.load_error.replace("\n", "<br>")
             )
-        with self._reverting_to_editor:
+        with self._skip_editor_change_check:
             self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
         self.io_manager.is_editing = True
