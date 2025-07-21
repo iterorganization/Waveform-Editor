@@ -158,6 +158,8 @@ class WaveformEditorGui(param.Parameterized):
                 "YAML could not be loaded:<br>"
                 + self.config.load_error.replace("\n", "<br>")
             )
+        with self._reverting_to_editor:
+            self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
         self.io_manager.is_editing = True
         self.selector.refresh()
