@@ -139,5 +139,32 @@ This command reads the waveform definitions from the `YAML` file, evaluates them
 .. note::
     You must provide exactly one of `--linspace` or `--csv` for this command.
 
+export-xml
+----------
+
+Exports the waveform data to a PCSSP-compatible XML file.
+
+**Usage:**
+
+.. code-block:: bash
+
+   waveform-editor export-xml [OPTIONS] YAML OUTPUT_XML
+
+**Description:**
+
+This command reads waveform definitions from the given `YAML` file, evaluates them at the specified time points (via ``--linspace`` or ``--csv``), and exports the result to a PCSSP-compatible XML file at the path specified by ``OUTPUT_XML``. The XML format includes signal declarations and associated time-based trajectories.
+
+**Arguments:**
+
+*   ``YAML``: Path to the input waveform YAML configuration file.
+*   ``OUTPUT_XML``: Path to the file where the XML data will be saved. The parent directory will be created if it does not exist.
+
+**Options:**
+
+*   ``--linspace START,STOP,NUM``: Define time points using `numpy.linspace`. (See `Specifying Time Points for Export`_).
+*   ``--csv PATH``: Define time points using a CSV file. (See `Specifying Time Points for Export`_).
+
+.. note::
+    You must provide exactly one of `--linspace` or `--csv` for this command.
 
 .. _IMAS: https://imas.iter.org/
