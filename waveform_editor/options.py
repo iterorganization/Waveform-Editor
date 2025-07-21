@@ -1,48 +1,39 @@
+import logging
 import os
+from pathlib import Path
 
 import panel as pn
 import param
 import yaml
 
-CONFIG_FILE = (
-    "/home/sebbe/projects/iter_python/Waveform-Editor/waveform_editor_options.yaml"
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+config_home = Path(
+    os.environ.get("XDG_CONFIG_HOME") or Path(os.environ["HOME"]) / ".config"
 )
+CONFIG_FILE = config_home / "waveform_editor.yaml"
 
 
 class NiceOptions(param.Parameterized):
     executable = param.String(
-        label="NICE executable path",
-        default="nice_imas_inv_muscle3",
+        label="NICE executable path", doc="Path to NICE inverse IMAS MUSCLE3 executable"
     )
     environment = param.Dict(
-        label="NICE environment variables",
-        default={"ENV1": 0, "ENV2": "a"},
+        label="NICE environment variables", doc="Environment variables for NICE"
     )
-    modules = param.List(
-        label="NICE modules",
-        default=["MUSCLE3"],
-    )
+    modules = param.List(label="NICE modules", doc="EasyBuild Modules to load for NICE")
     md_pf_active = param.String(
-        label="pf_active machine description URI",
-        default="imas:hdf?path=/path/to/pf_active",
+        label="'pf_active' machine description URI",
     )
     md_pf_passive = param.String(
-        label="pf_passive machine description URI",
-        default="imas:hdf?path=/path/to/pf_passive",
+        label="'pf_passive' machine description URI",
     )
     md_wall = param.String(
-        label="wall machine description URI",
-        default="imas:hdf?path=/path/to/wall",
+        label="'wall' machine description URI",
     )
     md_iron_core = param.String(
-        label="iron_core machine description URI",
-        default="imas:hdf?path=/path/to/iron_core",
+        label="'iron_core' machine description URI",
     )
-    test_float = param.Number(
-        label="Test float",
-        default=1.234,
-    )
-    test_int = param.Integer(label="Test Integer", bounds=[0, 5], default=1)
 
     def update(self, params):
         self.param.update(**params)
@@ -55,11 +46,6 @@ class UserConfig(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE", "CHEASE"], default="NICE")
 
     nice = param.ClassSelector(class_=NiceOptions, default=NiceOptions())
-
-    default_export = param.String(
-        label="Default Export URI",
-        default="imas:hdf5?path=./test",
-    )
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -91,6 +77,7 @@ class UserConfig(param.Parameterized):
 
         with open(CONFIG_FILE, "w") as f:
             yaml.safe_dump(config, f)
+        logger.debug(f"Saved options to {CONFIG_FILE}")
 
     @param.depends("gs_solver")
     def panel(self):
