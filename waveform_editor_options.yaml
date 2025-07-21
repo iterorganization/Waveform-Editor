@@ -1,0 +1,15 @@
+default_export: imas:hdf5?path=./test
+gs_solver: NICE
+nice:
+  environment:
+    ENV1: 0
+    ENV2: a
+  executable: nice_imas_inv_muscle3
+  md_iron_core: imas:hdf?path=/path/to/iron_core
+  md_pf_active: imas:hdf?path=/path/to/pf_active
+  md_pf_passive: imas:hdf?path=/path/to/pf_passive
+  md_wall: imas:hdf?path=/path/to/wall
+  modules:
+  - MUSCLE3
+  test_float: 1.234
+  test_int: 1
