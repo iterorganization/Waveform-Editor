@@ -7,11 +7,10 @@ import param
 import yaml
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-config_home = Path(
-    os.environ.get("XDG_CONFIG_HOME") or Path(os.environ["HOME"]) / ".config"
-)
-CONFIG_FILE = config_home / "waveform_editor.yaml"
+
+_xdg = os.environ.get("XDG_CONFIG_HOME")
+_config_home = Path(_xdg) if _xdg else Path(os.environ["HOME"]) / ".config"
+CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceOptions(param.Parameterized):
@@ -35,15 +34,17 @@ class NiceOptions(param.Parameterized):
         label="'iron_core' machine description URI",
     )
 
-    def update(self, params):
+    def apply_settings(self, params):
+        """Update parameters from a dictionary."""
         self.param.update(**params)
 
     def to_dict(self):
+        """Returns a dictionary representation of current parameter values."""
         return {p: getattr(self, p) for p in self.param if p != "name"}
 
 
 class UserConfig(param.Parameterized):
-    gs_solver = param.Selector(objects=["NICE", "CHEASE"], default="NICE")
+    gs_solver = param.Selector(objects=["NICE"], default="NICE")
 
     nice = param.ClassSelector(class_=NiceOptions, default=NiceOptions())
 
@@ -55,6 +56,7 @@ class UserConfig(param.Parameterized):
         self.nice.param.watch(self._save_settings, list(self.nice.param))
 
     def _load_settings(self):
+        """Load settings from disk and apply them to the current instance."""
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE) as f:
                 settings = yaml.safe_load(f) or {}
@@ -62,12 +64,13 @@ class UserConfig(param.Parameterized):
             settings = {}
 
         if "nice" in settings:
-            self.nice.update(settings["nice"])
+            self.nice.apply_settings(settings["nice"])
 
         base_settings = {k: v for k, v in settings.items() if k != "nice"}
         self.param.update(**base_settings)
 
     def _save_settings(self, event=None):
+        """Serialize current configuration to disk in YAML format."""
         config = {
             p: getattr(self, p) for p in self.param if p != "name" and p != "nice"
         }
@@ -88,7 +91,3 @@ class UserConfig(param.Parameterized):
             return pn.Column(base_ui, pn.Spacer(height=10), nice_ui)
         else:
             return base_ui
-
-
-config = UserConfig()
-pn.panel(config.panel).servable()
