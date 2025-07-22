@@ -140,7 +140,7 @@ This command reads the waveform definitions from the `YAML` file, evaluates them
     You must provide exactly one of `--linspace` or `--csv` for this command.
 
 export-pcssp-xml
-----------
+----------------
 
 Exports the waveform data to a PCSSP-compatible XML file.
 
