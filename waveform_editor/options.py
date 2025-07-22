@@ -9,7 +9,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 _xdg = os.environ.get("XDG_CONFIG_HOME")
-_config_home = Path(_xdg) if _xdg else Path(os.environ["HOME"]) / ".config"
+_config_home = Path(_xdg) if _xdg else Path.home() / ".config"
 CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
@@ -78,6 +78,7 @@ class UserConfig(param.Parameterized):
         if self.gs_solver == "NICE":
             config["nice"] = self.nice.to_dict()
 
+        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(CONFIG_FILE, "w") as f:
             yaml.safe_dump(config, f)
         logger.debug(f"Saved options to {CONFIG_FILE}")
