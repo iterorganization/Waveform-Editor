@@ -29,8 +29,12 @@ class PCSSPExporter:
         segment = ET.SubElement(
             segments,
             "SEGMENT",
-            # Watchdogs are unused, so left empty
-            {"name": "Waveform Editor", "id": "0", "wd_time": "", "wd_target": ""},
+            {
+                "name": "Waveform Editor",
+                "id": "0",
+                "wd_time": str(self.times[-1] - self.times[0]),
+                "wd_target": "EHTerm1",
+            },
         )
         self._add_trajectories(segment)
 
