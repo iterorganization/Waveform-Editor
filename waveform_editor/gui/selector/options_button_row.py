@@ -162,13 +162,7 @@ class OptionsButtonRow(Viewer):
 
         # Add empty waveform to YAML
         new_waveform = self.config.parse_waveform(f"{name}:\n- {{}}")
-        # TODO: this try-except block can be replaced with a global error handler later
-        try:
-            self.config.add_waveform(new_waveform, self.path)
-        except ValueError as e:
-            pn.state.notifications.error(str(e))
-            return
-
+        self.config.add_waveform(new_waveform, self.path)
         self.selection_group.sync_waveforms()
         self.new_waveform_panel.cancel()
 
@@ -195,12 +189,9 @@ class OptionsButtonRow(Viewer):
         old_name = self.selection_group.get_selection()[0]
         if new_name == old_name:
             return
-        try:
-            self.config.rename_waveform(old_name, new_name)
-            self.selection_group.sync_waveforms()
-            self.selection_group.set_selection([new_name])
-        except ValueError as e:
-            pn.state.notifications.error(str(e))
+        self.config.rename_waveform(old_name, new_name)
+        self.selection_group.sync_waveforms()
+        self.selection_group.set_selection([new_name])
 
     def _add_new_group(self, event):
         """Add the new group as a panel accordion and update the YAML."""
