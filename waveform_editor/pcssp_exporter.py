@@ -32,7 +32,7 @@ class PCSSPExporter:
             {
                 "name": "Waveform Editor",
                 "id": "0",
-                "wd_time": str(self.times[-1] - self.times[0]),
+                "wd_time": str(self.times[-1]),
                 "wd_target": "EHTerm1",
             },
         )
