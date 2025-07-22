@@ -2,7 +2,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-class XMLExporter:
+class PCSSPExporter:
+    """Exports waveform configuration into PCSSP-compatible XML format. Information on
+    the PCSSP can be found here: https://github.com/iterorganization/PCSSP
+    """
+
     def __init__(self, config, times):
         self.config = config
         self.times = times

@@ -139,7 +139,7 @@ This command reads the waveform definitions from the `YAML` file, evaluates them
 .. note::
     You must provide exactly one of `--linspace` or `--csv` for this command.
 
-export-xml
+export-pcssp-xml
 ----------
 
 Exports the waveform data to a PCSSP-compatible XML file.
@@ -148,7 +148,7 @@ Exports the waveform data to a PCSSP-compatible XML file.
 
 .. code-block:: bash
 
-   waveform-editor export-xml [OPTIONS] YAML OUTPUT_XML
+   waveform-editor export-pcssp-xml [OPTIONS] YAML OUTPUT_XML
 
 **Description:**
 

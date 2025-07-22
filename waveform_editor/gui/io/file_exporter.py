@@ -17,7 +17,7 @@ MANUALINPUT = "Manual"
 IDS_EXPORT = "IDS"
 CSV_EXPORT = "CSV"
 PNG_EXPORT = "PNG"
-XML_EXPORT = "XML"
+PCSSP_EXPORT = "PCSSP XML"
 DEFAULT = "Default"
 
 TIME_MODES = [LINSPACE, CSVFILE, MANUALINPUT]
@@ -29,7 +29,7 @@ class FileExporter(param.Parameterized):
 
     # Export type selection
     export_type = param.Selector(
-        objects=[IDS_EXPORT, CSV_EXPORT, PNG_EXPORT, XML_EXPORT]
+        objects=[IDS_EXPORT, CSV_EXPORT, PNG_EXPORT, PCSSP_EXPORT]
     )
     # IMAS URI or output path
     output = param.String()
@@ -124,7 +124,7 @@ class FileExporter(param.Parameterized):
             IDS_EXPORT: "e.g. imas:hdf5?path=testdb",
             PNG_EXPORT: "e.g. /path/to/export/pngs",
             CSV_EXPORT: "e.g. /path/to/export/output.csv",
-            XML_EXPORT: "e.g. /path/to/export/output.xml",
+            PCSSP_EXPORT: "e.g. /path/to/export/output.xml",
         }[self.export_type]
 
     @param.depends("export_type")
@@ -134,7 +134,7 @@ class FileExporter(param.Parameterized):
             IDS_EXPORT: "Please enter the output IMAS URI below:",
             PNG_EXPORT: "Please enter an output folder below:",
             CSV_EXPORT: "Please enter an output file below:",
-            XML_EXPORT: "Please enter an output file below:",
+            PCSSP_EXPORT: "Please enter an output file below:",
         }[self.export_type]
 
     @param.depends("export_type", watch=True)
@@ -233,8 +233,8 @@ class FileExporter(param.Parameterized):
                 exporter.to_png(Path(self.output))
             elif self.export_type == CSV_EXPORT:
                 exporter.to_csv(Path(self.output))
-            elif self.export_type == XML_EXPORT:
-                exporter.to_xml(Path(self.output))
+            elif self.export_type == PCSSP_EXPORT:
+                exporter.to_pcssp_xml(Path(self.output))
             self.progress.value = 100
             pn.state.notifications.success("Succesfully exported configuration")
             self._close()

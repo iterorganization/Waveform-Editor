@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 
-from waveform_editor.xml_exporter import XMLExporter
+from waveform_editor.pcssp_exporter import PCSSPExporter
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -26,14 +26,14 @@ class ConfigurationExporter:
         if self.times is not None and not np.all(np.diff(self.times) > 0):
             raise ValueError("Time array must be in increasing order.")
 
-    def to_xml(self, file_path):
+    def to_pcssp_xml(self, file_path):
         """Export the configuration to a PCSSP XML file.
 
         Args:
             file_path: The file path to store the XML file to.
         """
-        xml_exporter = XMLExporter(self.config, self.times)
-        xml_exporter.export(file_path)
+        pcssp_exporter = PCSSPExporter(self.config, self.times)
+        pcssp_exporter.export(file_path)
         logger.info(
             f"Successfully exported waveform configuration to PCSSP XML at {file_path}."
         )

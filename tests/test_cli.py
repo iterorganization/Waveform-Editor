@@ -100,11 +100,11 @@ def test_export_csv(runner, tmp_path, test_yaml_file, test_csv_file):
 
 def test_export_xml(runner, tmp_path, test_yaml_file, test_csv_file):
     csv_path, _ = test_csv_file
-    output_xml = tmp_path / "test.csv"
+    output_xml = tmp_path / "test.xml"
     result = runner.invoke(
         waveform_cli.cli,
         [
-            "export-xml",
+            "export-pcssp-xml",
             str(test_yaml_file),
             str(output_xml),
             "--csv",
