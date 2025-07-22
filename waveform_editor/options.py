@@ -20,7 +20,9 @@ class NiceOptions(param.Parameterized):
     environment = param.Dict(
         label="NICE environment variables", doc="Environment variables for NICE"
     )
-    modules = param.List(label="NICE modules", doc="Environment Modules to load for NICE")
+    modules = param.List(
+        label="NICE modules", doc="Environment Modules to load for NICE"
+    )
     md_pf_active = param.String(
         label="'pf_active' machine description URI",
     )
