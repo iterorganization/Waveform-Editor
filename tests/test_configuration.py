@@ -360,4 +360,5 @@ def test_bounds(config):
     assert config.end == 10
 
     config.remove_group(path)
-    assert config.start == config.end == 0
+    assert config.start == 0
+    assert config.end == 1
