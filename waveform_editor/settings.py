@@ -20,7 +20,9 @@ class NiceSettings(param.Parameterized):
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
     environment = param.Dict(
-        label="NICE environment variables", doc="Environment variables for NICE"
+        default={},
+        label="NICE environment variables",
+        doc="Environment variables for NICE",
     )
     md_pf_active = param.String(
         label="'pf_active' machine description URI",
