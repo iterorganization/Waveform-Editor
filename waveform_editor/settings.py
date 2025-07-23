@@ -13,9 +13,11 @@ _config_home = Path(_xdg) if _xdg else Path.home() / ".config"
 CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
-class NiceOptions(param.Parameterized):
+class NiceSettings(param.Parameterized):
     executable = param.String(
-        label="NICE executable path", doc="Path to NICE inverse IMAS MUSCLE3 executable"
+        default="nice_imas_inv_muscle3",
+        label="NICE executable path",
+        doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
     environment = param.Dict(
         label="NICE environment variables", doc="Environment variables for NICE"
@@ -45,10 +47,10 @@ class NiceOptions(param.Parameterized):
         return {p: getattr(self, p) for p in self.param if p != "name"}
 
 
-class UserConfig(param.Parameterized):
+class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
 
-    nice = param.ClassSelector(class_=NiceOptions, default=NiceOptions())
+    nice = param.ClassSelector(class_=NiceSettings, default=NiceSettings())
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -94,3 +96,6 @@ class UserConfig(param.Parameterized):
             return pn.Column(base_ui, pn.Spacer(height=10), nice_ui)
         else:
             return base_ui
+
+
+settings = UserSettings()  # Global config object
