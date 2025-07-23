@@ -59,12 +59,7 @@ class YamlParser:
 
         yaml_data = self.yaml.load(yaml_str) if yaml_str else {}
         globals = yaml_data.get("globals", {})
-        self.config.dd_version = globals.get("dd_version")
-        md_dict = globals.get("machine_description", {})
-        if not isinstance(md_dict, dict):
-            raise ValueError("The machine description must be a dictionary")
-
-        self.config.machine_description = md_dict
+        self.config.globals.set_globals(globals)
 
         if not isinstance(yaml_data, dict):
             raise ValueError("Input yaml_data must be a dictionary.")
@@ -161,17 +156,18 @@ class YamlParser:
                     "a single constant value (int/float), or a derived waveform (str)."
                 )
             line_number = waveform_yaml.get("line_number", 0)
+            dd_version = self.config.globals.dd_version
             if isinstance(waveform, list):
                 waveform = Waveform(
                     waveform=waveform,
                     yaml_str=yaml_str,
                     line_number=line_number,
                     name=name,
-                    dd_version=self.config.dd_version,
+                    dd_version=dd_version,
                 )
             else:
                 waveform = DerivedWaveform(
-                    yaml_str, name, self.config, dd_version=self.config.dd_version
+                    yaml_str, name, self.config, dd_version=dd_version
                 )
             return waveform
         except yaml.YAMLError as e:

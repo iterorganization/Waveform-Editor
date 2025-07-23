@@ -44,7 +44,7 @@ class ConfigurationExporter:
         Args:
             uri: URI to the data entry.
         """
-        with imas.DBEntry(uri, "x", dd_version=self.config.dd_version) as entry:
+        with imas.DBEntry(uri, "x", dd_version=self.config.globals.dd_version) as entry:
             for _, ids in self._generate_idss(entry.factory):
                 entry.put(ids)
 
@@ -56,7 +56,7 @@ class ConfigurationExporter:
         Returns:
             A dictionary with IDS names as keys and IDS objects as values.
         """
-        factory = imas.IDSFactory(self.config.dd_version)
+        factory = imas.IDSFactory(self.config.globals.dd_version)
         return {ids_name: ids for ids_name, ids in self._generate_idss(factory)}
 
     def _generate_idss(self, factory):
@@ -73,11 +73,11 @@ class ConfigurationExporter:
             logger.debug(f"Filling {ids_name}...")
 
             # Copy machine description if provided, otherwise start from empty IDS
-            md = self.config.machine_description.get(ids_name)
+            md = self.config.globals.machine_description.get(ids_name)
             if md:
                 with imas.DBEntry(md, "r") as entry_md:
                     orig_ids = entry_md.get(ids_name, autoconvert=False)
-                    ids = imas.convert_ids(orig_ids, self.config.dd_version)
+                    ids = imas.convert_ids(orig_ids, self.config.globals.dd_version)
             else:
                 ids = factory.new(ids_name)
             # TODO: currently only IDSs with homogeneous time mode are supported

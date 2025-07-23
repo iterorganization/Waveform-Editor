@@ -6,6 +6,7 @@ import param
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.editor import WaveformEditor
+from waveform_editor.gui.globals_dialog import YamlGlobalsDialog
 from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
 from waveform_editor.gui.plotter_view import PlotterView
@@ -50,12 +51,15 @@ class WaveformEditorGui(param.Parameterized):
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
         self.io_manager = IOManager(self)
+        globals_dialog = YamlGlobalsDialog(self.config)
+        globals_dialog.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector = WaveformSelector(self)
         self.selector.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
             self.io_manager,
+            globals_dialog,
             self.selector,
             self.confirm_modal,
             self.rename_modal,

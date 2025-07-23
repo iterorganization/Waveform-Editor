@@ -8,6 +8,7 @@ from ruamel.yaml.comments import CommentedMap
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
+from waveform_editor.yaml_globals import YamlGlobals
 from waveform_editor.yaml_parser import YamlParser
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,7 @@ class WaveformConfiguration(param.Parameterized):
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
         # of waveforms
         self.waveform_map = {}
-        self.dd_version = None
-        self.machine_description = {}
+        self.globals = YamlGlobals()
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
@@ -285,8 +285,10 @@ class WaveformConfiguration(param.Parameterized):
         """Convert the configuration to a YAML string."""
         yaml = YAML()
         data = self._to_commented_map()
+        # Insert globals first so they appear at the top of YAML
+        combined = CommentedMap({**self.globals.get(), **data})
         stream = io.StringIO()
-        yaml.dump(data, stream)
+        yaml.dump(combined, stream)
         return stream.getvalue()
 
     def parse_waveform(self, yaml_str):
@@ -335,8 +337,7 @@ class WaveformConfiguration(param.Parameterized):
         """Clears the data stored in the configuration."""
         self.groups = {}
         self.waveform_map = {}
-        self.dd_version = None
-        self.machine_description = {}
+        self.globals.reset()
         self.load_error = ""
         self.start = 0
         self.end = 0
