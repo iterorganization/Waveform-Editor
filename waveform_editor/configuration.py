@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class WaveformConfiguration(param.Parameterized):
     has_changed = param.Boolean()
+    DEFAULT_START = 0
+    DEFAULT_END = 1
 
     def __init__(self):
         super().__init__()
@@ -28,8 +30,8 @@ class WaveformConfiguration(param.Parameterized):
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
-        self.start = 0
-        self.end = 0
+        self.start = self.DEFAULT_START
+        self.end = self.DEFAULT_END
 
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
@@ -318,8 +320,8 @@ class WaveformConfiguration(param.Parameterized):
                 min_start = min(min_start, waveform.tendencies[0].start)
                 max_end = max(max_end, waveform.tendencies[-1].end)
 
-        self.start = min_start if min_start != float("inf") else 0
-        self.end = max_end if max_end != float("-inf") else 0
+        self.start = min_start if min_start != float("inf") else self.DEFAULT_START
+        self.end = max_end if max_end != float("-inf") else self.DEFAULT_END
 
     def print(self, indent=0):
         """Prints the waveform configuration as a hierarchical tree.
@@ -338,6 +340,6 @@ class WaveformConfiguration(param.Parameterized):
         self.dd_version = None
         self.machine_description = {}
         self.load_error = ""
-        self.start = 0
-        self.end = 0
+        self.start = self.DEFAULT_START
+        self.end = self.DEFAULT_END
         self.has_changed = False
