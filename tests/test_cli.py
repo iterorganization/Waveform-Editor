@@ -98,6 +98,23 @@ def test_export_csv(runner, tmp_path, test_yaml_file, test_csv_file):
     assert output_csv.exists()
 
 
+def test_export_xml(runner, tmp_path, test_yaml_file, test_csv_file):
+    csv_path, _ = test_csv_file
+    output_xml = tmp_path / "test.xml"
+    result = runner.invoke(
+        waveform_cli.cli,
+        [
+            "export-pcssp-xml",
+            str(test_yaml_file),
+            str(output_xml),
+            "--csv",
+            str(csv_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert output_xml.exists()
+
+
 def test_export_csv_nested(runner, tmp_path, test_yaml_file, test_csv_file):
     csv_path, _ = test_csv_file
     output_csv = tmp_path / "subdir" / "subdir2" / "test.csv"

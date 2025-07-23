@@ -109,6 +109,7 @@ def export_ids(yaml, uri, csv, linspace):
 @click.option("--linspace", callback=parse_linspace)
 def export_png(yaml, output_dir, csv, linspace):
     """Export waveform data to a PNG file.
+
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
@@ -133,6 +134,7 @@ def export_png(yaml, output_dir, csv, linspace):
 @click.option("--linspace", callback=parse_linspace)
 def export_csv(yaml, output_csv, csv, linspace):
     """Export waveform data to a CSV file.
+
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
@@ -150,6 +152,33 @@ def export_csv(yaml, output_csv, csv, linspace):
     exporter = create_exporter(yaml, csv, linspace)
     output_path = Path(output_csv)
     exporter.to_csv(output_path)
+
+
+@cli.command("export-pcssp-xml")
+@click.argument("yaml", type=click.Path(exists=True))
+@click.argument("output_xml", type=click.Path(exists=False))
+@click.option("--csv", type=click.Path(exists=False))
+@click.option("--linspace", callback=parse_linspace)
+def export_pcssp_xml(yaml, output_xml, csv, linspace):
+    """Export waveform data to a PCSSP XML file.
+
+    \b
+    Arguments:
+      yaml: Path to the waveform YAML file.
+      output_xml: Path to output XML file.
+    \b
+    Options:
+      csv: CSV file containing a custom time array.
+      linspace: linspace containing start, stop and num values, e.g. 0,3,4
+
+    Note: The csv containing the time values should be formatted as a single row,
+    delimited by commas, For example: `1,2,3,4,5`.
+    """
+    if not csv and not linspace:
+        raise click.UsageError("Either --csv or --linspace must be provided")
+    exporter = create_exporter(yaml, csv, linspace)
+    output_path = Path(output_xml)
+    exporter.to_pcssp_xml(output_path)
 
 
 @cli.command("actor")
