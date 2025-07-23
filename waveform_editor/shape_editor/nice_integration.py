@@ -15,6 +15,8 @@ from libmuscle import Instance, Message
 from libmuscle.manager.manager import Manager
 from ymmsl import Operator
 
+from waveform_editor.settings import settings
+
 pn.extension("terminal")
 
 
@@ -82,14 +84,15 @@ class NiceIntegration(param.Parameterized):
             self.communicator.kill()
 
         # Stop NICE
-        if self.nice_transport.get_returncode() is None:
-            self.nice_transport.send_signal(signal.SIGINT)  # Send Ctrl+C signal
-        for _ in range(10):
-            if self.nice_transport.get_returncode() is not None:
-                break
-            await asyncio.sleep(0.1)
-        else:  # Kill the communicator if it didn't stop after 1 second
-            self.nice_transport.kill()
+        if self.nice_transport is not None:
+            if self.nice_transport.get_returncode() is None:
+                self.nice_transport.send_signal(signal.SIGINT)  # Send Ctrl+C signal
+            for _ in range(10):
+                if self.nice_transport.get_returncode() is not None:
+                    break
+                await asyncio.sleep(0.1)
+            else:  # Kill the communicator if it didn't stop after 1 second
+                self.nice_transport.kill()
 
         # Stop MUSCLE Manager
         self.manager_pipe.send(None)
@@ -103,7 +106,8 @@ class NiceIntegration(param.Parameterized):
         # Cleanup
         self.communicator_pipe.close()
         self.manager_pipe.close()
-        self.pn_callback.stop()
+        if self.pn_callback is not None:
+            self.pn_callback.stop()
         self.closing = self.running = False
         self._update_state()
 
@@ -136,19 +140,25 @@ class NiceIntegration(param.Parameterized):
 
         # NICE
         nice_env = os.environ.copy()
-        nice_env["LD_LIBRARY_PATH"] = "/home/maarten/.local/lib"
+        nice_env.update(settings.nice.environment)
         nice_env["MUSCLE_INSTANCE"] = "nice_inv"
         nice_env["MUSCLE_MANAGER"] = manager_location
-        nice_exe = "/home/maarten/projects/iter-actors/nice/run/nice_imas_inv_muscle3"
 
+        self.terminal.write(f"{os.getcwd()}$ {settings.nice.executable}\n")
         loop = asyncio.get_running_loop()
-        self.nice_transport, self.nice_protocol = await loop.subprocess_exec(
-            self.create_communicator_protocol,
-            nice_exe,
-            env=nice_env,
-            stdin=subprocess.DEVNULL,
-        )
-        self.terminal.write(f"$ {nice_exe}\n")
+        try:
+            self.nice_transport, self.nice_protocol = await loop.subprocess_exec(
+                self.create_communicator_protocol,
+                settings.nice.executable,
+                env=nice_env,
+                stdin=subprocess.DEVNULL,
+            )
+        except Exception as exc:
+            self.terminal.write(str(exc) + "\n")
+            self.pn_callback = self.nice_transport = self.nice_protocol = None
+            self._update_state()
+            await self.close()
+            raise
 
         # Update state every 500ms
         self.pn_callback = pn.state.add_periodic_callback(self._update_state, 500)
@@ -162,19 +172,24 @@ class NiceIntegration(param.Parameterized):
         """Check if subprocesses are still running."""
         self.muscle_manager_running = self.manager.is_alive()
         self.communicator_running = self.communicator.is_alive()
-        self.nice_running = self.nice_transport.get_returncode() is None
+        self.nice_running = (
+            self.nice_transport is not None
+            and self.nice_transport.get_returncode() is None
+        )
 
     @param.depends("nice_running", watch=True)
-    def _nice_running_changed(self):
+    async def _nice_running_changed(self):
         if not self.nice_running:  # figure out why:
             retcode = self.nice_transport.get_returncode()
-            reason = signal.strsignal(-retcode)
-            reason = f" ({reason})" if reason else ""
+            # Bold green on success, bold red on failure:
+            color = "\033[32;1m" if retcode == 0 else "\033[31;m"
+            # Add signal description (if relevant), e.g. 'Segmentation fault'
+            reason = f" ({signal.strsignal(-retcode)})" if retcode < 0 else ""
             self.terminal.write(
-                #
-                f"\033[31;1mNICE exited with status={retcode}{reason}\033[0m"
+                f"{color}NICE exited with status={retcode}{reason}\033[0m\n"
             )
-            pn.state.add_periodic_callback(self.close, period=0, count=1)
+            # Cleanup after a crash
+            await self.close()
 
     async def submit(
         self,
