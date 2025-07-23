@@ -182,7 +182,7 @@ class NiceIntegration(param.Parameterized):
         if not self.nice_running:  # figure out why:
             retcode = self.nice_transport.get_returncode()
             # Bold green on success, bold red on failure:
-            color = "\033[32;1m" if retcode == 0 else "\033[31;m"
+            color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
             reason = f" ({signal.strsignal(-retcode)})" if retcode < 0 else ""
             self.terminal.write(
