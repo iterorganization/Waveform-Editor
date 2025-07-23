@@ -285,10 +285,8 @@ class WaveformConfiguration(param.Parameterized):
         """Convert the configuration to a YAML string."""
         yaml = YAML()
         data = self._to_commented_map()
-        # Insert globals first so they appear at the top of YAML
-        combined = CommentedMap({**self.globals.get(), **data})
         stream = io.StringIO()
-        yaml.dump(combined, stream)
+        yaml.dump(data, stream)
         return stream.getvalue()
 
     def parse_waveform(self, yaml_str):
@@ -305,7 +303,7 @@ class WaveformConfiguration(param.Parameterized):
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
-        result = CommentedMap()
+        result = CommentedMap(self.globals.get())
         for group_name, group in self.groups.items():
             result[group_name] = group.to_commented_map()
         return result
