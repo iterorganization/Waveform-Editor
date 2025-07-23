@@ -38,7 +38,7 @@ Installing dependencies
 
         .. code-block:: bash
 
-            apt install git build-essential cmake libsaxonhe-java libboost-all-dev \
+            sudo apt install git build-essential cmake libsaxonhe-java libboost-all-dev \
                 pkg-config libhdf5-dev xsltproc libblitz0-dev python3-dev python3-venv \
                 python3-pip libsuitesparse-dev
 
