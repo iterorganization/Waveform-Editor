@@ -208,7 +208,6 @@ def test_dump():
           - {type: constant, duration: 20}
           - {type: smooth, duration: 25, to: 0}"""
     config = WaveformConfiguration()
-    config.dd_version = "4.0.0"
     config.load_yaml(yaml_str)
 
     new_waveform1_str = """
@@ -257,6 +256,10 @@ def test_dump_comments():
     """Check if comments for waveforms are preserved."""
 
     yaml_str = dedent("""
+    globals:
+      dd_version: 3.42.0
+      machine_description:
+        ec_launchers: imas:hdf5?path=test_md
     ec_launchers:
       beams:
         power_launched:
@@ -269,6 +272,27 @@ def test_dump_comments():
     config.load_yaml(yaml_str)
     dumped_yaml = config.dump()
     assert yaml_str.strip() == dumped_yaml.strip()
+
+
+def test_dump_globals():
+    yaml_str = dedent("""
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle:
+      - {to: 8.33e5, duration: 20} # comment""")
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    config.globals.dd_version = "3.41.0"
+    config.globals.machine_description = {"ec_launchers": "imas:mdsplus?path=test"}
+    dumped_yaml = config.dump()
+    expected_dump = dedent("""
+    globals:
+      dd_version: 3.41.0
+      machine_description:
+        ec_launchers: imas:mdsplus?path=test
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle:
+      - {to: 8.33e5, duration: 20} # comment""")
+    assert expected_dump.strip() == dumped_yaml.strip()
 
 
 def test_load_yaml_duplicate():
@@ -311,16 +335,16 @@ def test_load_yaml_globals():
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
-    assert config.dd_version == "3.42.0"
-    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
+    assert config.globals.dd_version == "3.42.0"
+    assert config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
 
     yaml_str = """
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config.load_yaml(yaml_str)
-    assert not config.dd_version
-    assert not config.machine_description
+    assert config.globals.dd_version == "4.0.0"
+    assert not config.globals.machine_description
 
 
 def test_bounds(config):

@@ -20,6 +20,7 @@ class YamlGlobalsDialog(Viewer):
             visible=self.param.visible,
         )
 
+        # Trigger configuration's has_changed boolean when a global param is changed
         for param_name in self.config.globals.param:
             if param_name != "name":
                 self.config.globals.param.watch(self._on_param_change, param_name)
