@@ -69,36 +69,102 @@ def extract_contour_segments(tricontour):
     return segments
 
 
-def plot_nice(processing, levels=20):
-    if not processing and communicator.equilibrium:
-        # Ignore the GGD grid, and get grid points + calc triangulation
-        eqggd = communicator.equilibrium.time_slice[0].ggd[0]
-        r = eqggd.r[0].values
-        z = eqggd.z[0].values
-        psi = eqggd.psi[0].values
-        # time may not be filled for homogeneous
-        time = communicator.equilibrium.time[0]
-        time_meta = communicator.equilibrium.time.metadata
-        r_meta = eqggd.r.metadata
-        z_meta = eqggd.z.metadata
-        psi_meta = eqggd.psi.metadata
+def create_coil_rectangles(pf_active):
+    rectangles = []
+    paths = []
+    for coil in pf_active.coil:
+        for element in coil.element:
+            rect = element.geometry.rectangle
+            outline = element.geometry.outline
+            if rect.has_value:
+                r0 = rect.r - rect.width / 2
+                r1 = rect.r + rect.width / 2
+                z0 = rect.z - rect.height / 2
+                z1 = rect.z + rect.height / 2
+                rectangles.append((r0, z0, r1, z1))
+            elif outline.has_value:
+                path = hv.Path([list(zip(outline.r, outline.z))]).opts(
+                    color="black", line_width=1, show_legend=False
+                )
+                paths.append(path)
+            else:
+                continue
+    rects = hv.Rectangles(rectangles).opts(
+        line_color="black", fill_alpha=0, line_width=2, show_legend=False
+    )
 
-        trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
+    return rects * hv.Overlay(paths)
 
-        contours = hv.Contours(extract_contour_segments(trics), vdims="psi").opts(
-            hv.opts.Contours(
-                cmap="fire",
-                colorbar=True,
-                tools=["hover"],
-                title=f"equilibrium poloidal flux at time: {time:.2f} {time_meta.units}",
-                width=900,
-                height=900,
-                xlabel=f"{r_meta.name} [{r_meta.units}]",
-                ylabel=f"{z_meta.name} [{z_meta.units}]",
-                colorbar_opts={"title": f"{psi_meta.name} [{psi_meta.units}]"},
-            )
+
+def create_contours(equilibrium, levels=20):
+    eqggd = equilibrium.time_slice[0].ggd[0]
+    r = eqggd.r[0].values
+    z = eqggd.z[0].values
+    psi = eqggd.psi[0].values
+    time = communicator.equilibrium.time[0]  # time may not be filled for homogeneous
+    time_meta = communicator.equilibrium.time.metadata
+    r_meta = eqggd.r.metadata
+    z_meta = eqggd.z.metadata
+    psi_meta = eqggd.psi.metadata
+
+    trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
+    contours = hv.Contours(extract_contour_segments(trics), vdims="psi").opts(
+        hv.opts.Contours(
+            cmap="viridis",
+            colorbar=True,
+            tools=["hover"],
+            title=f"equilibrium poloidal flux at time: {time:.2f} {time_meta.units}",
+            width=900,
+            height=900,
+            xlabel=f"{r_meta.name} [{r_meta.units}]",
+            ylabel=f"{z_meta.name} [{z_meta.units}]",
+            colorbar_opts={"title": f"{psi_meta.name} [{psi_meta.units}]"},
+            show_legend=False,
         )
-        return pn.pane.HoloViews(contours, width=700, height=700)
+    )
+    return contours
+
+
+def create_separatrix(equilibrium):
+    r = equilibrium.time_slice[0].boundary.outline.r
+    z = equilibrium.time_slice[0].boundary.outline.z
+
+    separatrix = hv.Curve((r, z)).opts(color="red", line_width=2, show_legend=False)
+
+    return separatrix
+
+
+def create_xo_points(equilibrium):
+    o_points = [
+        (node.r, node.z)
+        for node in equilibrium.time_slice[0].contour_tree.node
+        if node.critical_type == 0 or node.critical_type == 2
+    ]
+    x_points = [
+        (node.r, node.z)
+        for node in equilibrium.time_slice[0].contour_tree.node
+        if node.critical_type == 1
+    ]
+
+    o_scatter = hv.Scatter(o_points).opts(
+        marker="o", size=10, color="black", show_legend=False
+    )
+    x_scatter = hv.Scatter(x_points).opts(
+        marker="x", size=10, color="black", show_legend=False
+    )
+
+    return o_scatter * x_scatter
+
+
+def plot_nice(processing, levels):
+    if not processing and communicator.equilibrium:
+        contours = create_contours(communicator.equilibrium, levels=levels)
+        coils = create_coil_rectangles(communicator.pf_active)
+        separatrix = create_separatrix(communicator.equilibrium)
+        points = create_xo_points(communicator.equilibrium)
+        overlay = contours * coils * separatrix * points
+        overlay = overlay.opts(ylim=(-10, 10))
+        return pn.pane.HoloViews(overlay, width=1000, height=1000)
 
         # Apply Delaunay triangulation
         delaunay = Delaunay(np.column_stack([r, z]))
