@@ -17,6 +17,20 @@ This will download and install the package along with all its required dependenc
    pip install waveform-editor
 
 
+
+
+Installing dependencies for the Plasma Shape Editor
+---------------------------------------------------
+
+The Plasma Shape Editor requires a magnetic equilibrium solver. See the following page
+for further details on how to set this up:
+
+.. toctree::
+   :maxdepth: 1
+   
+   shape_editor_install
+
+
 Installation from Source (for Development)
 ------------------------------------------
 
