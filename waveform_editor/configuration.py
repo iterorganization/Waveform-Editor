@@ -31,6 +31,13 @@ class WaveformConfiguration(param.Parameterized):
         self.start = 0
         self.end = 0
 
+        # Trigger has_changed boolean when a global param is changed
+        for param_name in self.globals.param:
+            if param_name != "name":
+                self.globals.param.watch(
+                    lambda event: setattr(self, "has_changed", True), param_name
+                )
+
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
 

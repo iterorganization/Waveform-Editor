@@ -1,12 +1,13 @@
 import logging
 
+import imas
 import panel as pn
 import param
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.dict_editor import DictEditor
 from waveform_editor.gui.editor import WaveformEditor
-from waveform_editor.gui.globals_dialog import YamlGlobalsDialog
 from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
 from waveform_editor.gui.plotter_view import PlotterView
@@ -18,6 +19,9 @@ from waveform_editor.util import State
 logger = logging.getLogger(__name__)
 
 
+AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
+
+
 def exception_handler(ex):
     logger.error("Error", exc_info=ex)
     pn.state.notifications.error(f"{ex}")
@@ -26,13 +30,18 @@ def exception_handler(ex):
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
 pn.extension(
-    "modal", "codeeditor", notifications=True, exception_handler=exception_handler
+    "modal",
+    "codeeditor",
+    "tabulator",
+    notifications=True,
+    exception_handler=exception_handler,
 )
 
 
 class WaveformEditorGui(param.Parameterized):
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
+    EDIT_YAML_GLOBALS_TAB = 2
 
     DISCARD_CHANGES_MESSAGE = (
         "# **⚠️ Warning**  \nYou did not save your changes. "
@@ -51,15 +60,12 @@ class WaveformEditorGui(param.Parameterized):
         self.confirm_modal = ConfirmModal()
         self.rename_modal = RenameModal()
         self.io_manager = IOManager(self)
-        globals_dialog = YamlGlobalsDialog(self.config)
-        globals_dialog.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector = WaveformSelector(self)
         self.selector.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
             self.io_manager,
-            globals_dialog,
             self.selector,
             self.confirm_modal,
             self.rename_modal,
@@ -69,9 +75,23 @@ class WaveformEditorGui(param.Parameterized):
         self.editor = WaveformEditor(self.config)
         self.plotter_view = PlotterView()
         self.plotter_edit = PlotterEdit(self.editor)
+        globals_editor = pn.Param(
+            self.config.globals.param,
+            name="Edit the global YAML variables",
+            widgets={
+                "machine_description": {
+                    "widget_type": DictEditor,
+                    "key_options": imas.IDSFactory(
+                        AVAILABLE_DD_VERSIONS[-1]
+                    ).ids_names(),
+                    "names": ("IDS", "URI"),
+                }
+            },
+        )
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
+            ("YAML Configuration", globals_editor),
             dynamic=True,
             visible=self.io_manager.param.is_editing.rx.bool(),
         )

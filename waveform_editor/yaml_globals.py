@@ -1,13 +1,19 @@
 import logging
 
+import imas
 import param
 
 logger = logging.getLogger(__name__)
 
+AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
+
 
 class YamlGlobals(param.Parameterized):
-    dd_version = param.String(
-        label="DD Version", default="4.0.0", doc="IMAS Data Dictionary version"
+    dd_version = param.Selector(
+        label="DD Version",
+        default=AVAILABLE_DD_VERSIONS[-1],
+        objects=AVAILABLE_DD_VERSIONS,
+        doc="IMAS Data Dictionary version",
     )
     machine_description = param.Dict(
         label="Machine Description URIs",
