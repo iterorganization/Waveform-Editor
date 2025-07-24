@@ -48,8 +48,9 @@ def test_const_waveform(const_waveform):
     assert waveform.yaml == const_value
     assert waveform.dependencies == set()
     assert waveform.get_yaml_string() == str(const_value)
+    time = np.linspace(0, 1, 1000)
     time_ret, value_ret = waveform.get_value()
-    assert np.all(time_ret == 0)
+    assert np.all(time_ret == time)
     assert np.all(value_ret == const_value)
     time = np.linspace(0, 100, num=101)
     time_ret, value_ret = waveform.get_value(time)
