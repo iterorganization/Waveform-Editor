@@ -4,9 +4,17 @@ import param
 
 
 class DictEditor(pn.viewable.Viewer):
+    """A Panel widget for editing Python dictionaries in a tabular interface."""
+
     value = param.Dict(default={}, allow_refs=True)
 
     def __init__(self, key_options=None, names=("key", "value"), **params):
+        """Initialize the DictEditor widget.
+
+        Args:
+            key_options: List of allowed keys shown in the dropdown editor.
+            names: Tuple of column names to display for keys and values.
+        """
         if key_options is None:
             key_options = []
         self.tabulator = pn.widgets.Tabulator(
@@ -20,12 +28,14 @@ class DictEditor(pn.viewable.Viewer):
 
     @param.depends("value", watch=True, on_init=True)
     def update_value(self):
+        """Update the Tabulator widget to reflect the current dictionary."""
         # Create pd Dataframe from input dict
         df = pd.DataFrame([*self.value.items(), ("", "")], columns=("key", "value"))
         self.tabulator.value = df
 
     def on_cell_update(self, event):
-        # Copy of the current dictionary and overwrite later to trigger watchers
+        """Callback for when a cell in the Tabulator is edited."""
+        # Copy current dict and overwrite later to ensure watchers are triggered
         new_value = self.value.copy()
 
         # Callback when user edits a cell
