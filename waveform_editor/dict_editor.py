@@ -19,12 +19,12 @@ class DictEditor(pn.viewable.Viewer):
             key_options = []
         self.tabulator = pn.widgets.Tabulator(
             editors={"key": {"type": "list", "values": key_options}},
-            titles={"index": "#", "key": names[0], "value": names[1]},
+            titles={"delete": "🗑️", "key": names[0], "value": names[1]},
             layout="fit_data_stretch",
             sizing_mode="stretch_width",
-            buttons={"Trash": "<i class='fa fa-trash'></i>"},
+            show_index=False,
         )
-        self.tabulator.on_click(self.delete_selected_row, column="Trash")
+        self.tabulator.on_click(self.delete_selected_row, column="delete")
         self.tabulator.on_edit(self.on_cell_update)
         super().__init__(**params)
 
@@ -39,7 +39,10 @@ class DictEditor(pn.viewable.Viewer):
     def update_value(self):
         """Update the Tabulator widget to reflect the current dictionary."""
         # Create pd Dataframe from input dict
-        df = pd.DataFrame([*self.value.items(), ("", "")], columns=("key", "value"))
+        data = [("🗑️", k, v) for k, v in self.value.items()]
+        if all(self.value.values()) and all(self.value.keys()):
+            data.append(("🗑️", "", ""))
+        df = pd.DataFrame(data, columns=("delete", "key", "value"))
         self.tabulator.value = df
 
     def on_cell_update(self, event):
@@ -61,7 +64,8 @@ class DictEditor(pn.viewable.Viewer):
             else:
                 new_value[event.value] = ""
             if event.old == "":
-                self.tabulator.value.loc[len(self.tabulator.value)] = ("", "")
+                new_row_data = ("🗑️", "", "")
+                self.tabulator.value.loc[len(self.tabulator.value)] = new_row_data
             self.tabulator.param.trigger("value")
 
         self.value = new_value
