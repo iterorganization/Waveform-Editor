@@ -1,0 +1,180 @@
+"""Tests for the NICE integration.
+
+N.B. these will not run in pytest.
+"""
+
+from pathlib import Path
+
+import holoviews as hv
+import imas
+import matplotlib
+import matplotlib.pyplot
+import numpy as np
+import panel as pn
+import param
+from scipy.spatial import Delaunay
+
+from waveform_editor.settings import settings
+from waveform_editor.shape_editor.nice_integration import NiceIntegration
+
+# Testing
+
+# hv.extension("matplotlib")
+# matplotlib.use("agg")
+
+xml_params = Path(
+    "/home/sebbe/projects/iter_python/nice/run/iwrap/param/inv/iter/param.xml"
+).read_text()
+
+print("loading data:")
+with imas.DBEntry(
+    "imas:hdf5?path=/home/sebbe/projects/iter_python/Waveform-Editor/data/nice-input-dd4",
+    "r",
+) as entry:
+    time = 249.5
+    print("equilibrium")
+    eq = entry.get_slice("equilibrium", time, imas.ids_defs.CLOSEST_INTERP)
+    print("pf_active")
+    pfa = entry.get_slice("pf_active", time, imas.ids_defs.CLOSEST_INTERP)
+    print("pf_passive")
+    pfp = entry.get_slice("pf_passive", time, imas.ids_defs.CLOSEST_INTERP)
+    print("wall")
+    wall = entry.get_slice("wall", time, imas.ids_defs.CLOSEST_INTERP)
+    print("iron_core")
+    iron_core = entry.get_slice("iron_core", time, imas.ids_defs.CLOSEST_INTERP)
+
+communicator = NiceIntegration(imas.IDSFactory())
+
+
+async def submit(event=None):
+    if not communicator.running:
+        await communicator.run()
+    print("Submit to comm")
+    await communicator.submit(
+        xml_params,
+        eq.serialize(),
+        pfa.serialize(),
+        pfp.serialize(),
+        wall.serialize(),
+        iron_core.serialize(),
+    )
+
+
+def extract_contour_segments(tricontour):
+    segments = []
+    for i, level in enumerate(tricontour.levels):
+        for seg in tricontour.allsegs[i]:
+            if len(seg) > 1:
+                segments.append({"x": seg[:, 0], "y": seg[:, 1], "psi": level})
+    return segments
+
+
+def plot_nice(processing, levels=20):
+    if not processing and communicator.equilibrium:
+        # Ignore the GGD grid, and get grid points + calc triangulation
+        eqggd = communicator.equilibrium.time_slice[0].ggd[0]
+        r = eqggd.r[0].values
+        z = eqggd.z[0].values
+        psi = eqggd.psi[0].values
+
+        trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
+        contours = hv.Contours(extract_contour_segments(trics), vdims="psi").opts(
+            hv.opts.Contours(
+                cmap="fire", colorbar=True, tools=["hover"], width=900, height=900
+            )
+        )
+        return pn.pane.HoloViews(contours, width=700, height=700)
+
+        # Apply Delaunay triangulation
+        delaunay = Delaunay(np.column_stack([r, z]))
+        nodes = hv.Points(np.column_stack([r, z, psi]), vdims=["z"])
+        trimesh = hv.TriMesh((delaunay.simplices, nodes))
+        trimesh.opts(
+            hv.opts.TriMesh(
+                cmap="viridis",
+                # node_color="PSI",
+                edge_color="z",
+                filled=True,
+                height=400,
+                # inspection_policy="edges",
+                tools=["hover"],
+                width=400,
+            )
+        )
+        print(trimesh, r.shape, z.shape, psi.shape, nodes.shape)
+        return pn.pane.HoloViews(trimesh, sizing_mode="stretch_both")
+    else:
+        r = np.array([0, 0, 1, 1, 2, 2])
+        z = np.array([0, 1, 0, 1, 0, 1])
+        psi = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+
+        delaunay = Delaunay(np.column_stack([r, z]))
+        trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
+        contours = hv.Contours([p.vertices for p in trics.get_paths()])
+        return pn.pane.HoloViews(contours, sizing_mode="stretch_both")
+        nodes = hv.Points(np.column_stack([r, z, psi]), vdims=["z"])
+        trimesh = hv.TriMesh((delaunay.simplices, nodes))
+        trimesh.opts(
+            hv.opts.TriMesh(
+                cmap="viridis",
+                edge_color="z",
+                filled=True,
+                # height=400,
+                # tools=["hover"],
+                # width=400,
+            )
+        )
+        # contours = hv.operation.contours(trimesh)
+        print(trimesh, r.shape, z.shape, psi.shape, nodes.shape)
+        return pn.pane.HoloViews(trimesh, sizing_mode="stretch_both")
+
+    return pn.indicators.LoadingSpinner(value=True, size=40, name="Loading...")
+
+
+# class PlotParams(param.Parameterized):
+#     levels = param.Integer(default=50, bounds=(1, 200))
+#
+#
+# plot_params = PlotParams()
+# pn.Column(
+#     pn.Param(communicator.param),
+#     pn.Param(plot_params),
+#     pn.widgets.Button(name="Click", on_click=submit),
+#     pn.Tabs(
+#         ("NICE output", communicator.terminal),
+#         (
+#             "NICE plot",
+#             pn.bind(plot_nice, communicator.param.processing, plot_params.param.levels),
+#         ),
+#     ),
+# ).servable()
+
+
+async def start_nice(event):
+    await communicator.run()
+
+
+async def stop_nice(event):
+    await communicator.close()
+
+
+class PlotParams(param.Parameterized):
+    levels = param.Integer(default=50, bounds=(1, 200))
+
+
+plot_params = PlotParams()
+pn.Column(
+    pn.Param(communicator.param),
+    pn.Param(plot_params),
+    pn.widgets.Button(name="Click", on_click=submit),
+    pn.widgets.Button(name="Start NICE", on_click=start_nice),
+    pn.widgets.Button(name="Stop NICE", on_click=stop_nice),
+    pn.Tabs(
+        ("NICE output", communicator.terminal),
+        (
+            "NICE plot",
+            pn.bind(plot_nice, communicator.param.processing, plot_params.param.levels),
+        ),
+        ("NICE settings", settings.panel),
+    ),
+).servable()
