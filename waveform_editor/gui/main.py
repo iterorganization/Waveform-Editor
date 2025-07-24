@@ -14,12 +14,9 @@ from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
-from waveform_editor.util import State
+from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)
-
-
-AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
 
 
 def exception_handler(ex):
@@ -80,9 +77,7 @@ class WaveformEditorGui(param.Parameterized):
             widgets={
                 "machine_description": {
                     "widget_type": DictEditor,
-                    "key_options": imas.IDSFactory(
-                        AVAILABLE_DD_VERSIONS[-1]
-                    ).ids_names(),
+                    "key_options": imas.IDSFactory(LATEST_DD_VERSION).ids_names(),
                     "names": ("IDS", "URI"),
                 }
             },

@@ -1,17 +1,16 @@
 import logging
 
-import imas
 import param
 
-logger = logging.getLogger(__name__)
+from waveform_editor.util import AVAILABLE_DD_VERSIONS, LATEST_DD_VERSION
 
-AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
+logger = logging.getLogger(__name__)
 
 
 class YamlGlobals(param.Parameterized):
     dd_version = param.Selector(
         label="DD Version",
-        default=AVAILABLE_DD_VERSIONS[-1],
+        default=LATEST_DD_VERSION,
         objects=AVAILABLE_DD_VERSIONS,
         doc="IMAS Data Dictionary version",
     )
