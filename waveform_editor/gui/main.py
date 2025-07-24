@@ -61,7 +61,6 @@ class WaveformEditorGui(param.Parameterized):
         self.rename_modal = RenameModal()
         self.io_manager = IOManager(self)
         self.selector = WaveformSelector(self)
-        self.selector.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
@@ -93,7 +92,6 @@ class WaveformEditorGui(param.Parameterized):
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             ("YAML Configuration", globals_editor),
             dynamic=True,
-            visible=self.io_manager.param.is_editing.rx.bool(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 
@@ -185,7 +183,6 @@ class WaveformEditorGui(param.Parameterized):
         with self._skip_editor_change_check:
             self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
-        self.io_manager.is_editing = True
         self.selector.refresh()
 
     def __panel__(self):

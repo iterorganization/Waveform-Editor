@@ -20,7 +20,6 @@ class IOManager(Viewer):
     visible = param.Boolean(default=True, allow_refs=True)
     open_file = param.ClassSelector(class_=Path)
     config = param.ClassSelector(class_=WaveformConfiguration)
-    is_editing = param.Boolean()
     menu_items = param.List()
 
     def __init__(self, main_gui, **params):
@@ -29,6 +28,7 @@ class IOManager(Viewer):
             name="File",
             width=120,
             on_click=self._handle_menu_selection,
+            items=[NEW, OPEN, SAVE, SAVE_AS, EXPORT],
         )
         self.open_file_tool_tip = pn.widgets.TooltipIcon()
         self.main_gui = main_gui
@@ -50,13 +50,6 @@ class IOManager(Viewer):
             self.file_exporter.modal,
             visible=self.param.visible,
         )
-
-    @param.depends("is_editing", watch=True, on_init=True)
-    def _set_menu_items(self):
-        if self.is_editing:
-            self.menu.items = [NEW, OPEN, SAVE, SAVE_AS, EXPORT]
-        else:
-            self.menu.items = [NEW, OPEN]
 
     def create_new_file(self):
         yaml_content = ""
@@ -95,18 +88,13 @@ class IOManager(Viewer):
                 "Exporting now may not include these unsaved changes.",
             )
 
-    @param.depends(
-        "is_editing", "open_file", "config.has_changed", watch=True, on_init=True
-    )
+    @param.depends("open_file", "config.has_changed", watch=True, on_init=True)
     def _set_open_file_text(self):
         unsaved_icon = "*" if self.main_gui.config.has_changed else ""
         tooltip_msg = (
             "There are unsaved changes." if self.main_gui.config.has_changed else ""
         )
-        if not self.is_editing:
-            self.open_file_text.value = "Create or open a YAML file"
-            self.open_file_tool_tip.value = ""
-        elif self.open_file:
+        if self.open_file:
             self.open_file_text.value = f"{unsaved_icon}{self.open_file.name}"
             self.open_file_tool_tip.value = (
                 f"**Full path:** `{self.open_file}`  \n{tooltip_msg}"

@@ -9,7 +9,7 @@ from waveform_editor.util import State
 class WaveformSelector(Viewer):
     """Panel containing a dynamic waveform selection UI from YAML data."""
 
-    visible = param.Boolean(allow_refs=True)
+    visible = param.Boolean(default=True, allow_refs=True)
     selection = param.List(
         doc="List of selected waveform names. Use `set_selection` to set.",
     )
