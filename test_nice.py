@@ -76,11 +76,26 @@ def plot_nice(processing, levels=20):
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
+        # time may not be filled for homogeneous
+        time = communicator.equilibrium.time[0]
+        time_meta = communicator.equilibrium.time.metadata
+        r_meta = eqggd.r.metadata
+        z_meta = eqggd.z.metadata
+        psi_meta = eqggd.psi.metadata
 
         trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
+
         contours = hv.Contours(extract_contour_segments(trics), vdims="psi").opts(
             hv.opts.Contours(
-                cmap="fire", colorbar=True, tools=["hover"], width=900, height=900
+                cmap="fire",
+                colorbar=True,
+                tools=["hover"],
+                title=f"equilibrium poloidal flux at time: {time:.2f} {time_meta.units}",
+                width=900,
+                height=900,
+                xlabel=f"{r_meta.name} [{r_meta.units}]",
+                ylabel=f"{z_meta.name} [{z_meta.units}]",
+                colorbar_opts={"title": f"{psi_meta.name} [{psi_meta.units}]"},
             )
         )
         return pn.pane.HoloViews(contours, width=700, height=700)
