@@ -22,9 +22,18 @@ class DictEditor(pn.viewable.Viewer):
             titles={"index": "#", "key": names[0], "value": names[1]},
             layout="fit_data_stretch",
             sizing_mode="stretch_width",
+            buttons={"Trash": "<i class='fa fa-trash'></i>"},
         )
+        self.tabulator.on_click(self.delete_selected_row, column="Trash")
         self.tabulator.on_edit(self.on_cell_update)
         super().__init__(**params)
+
+    def delete_selected_row(self, event):
+        key = self.tabulator.value.iloc[event.row]["key"]
+        if key and key in self.value:
+            new_value = self.value.copy()
+            del new_value[key]
+            self.value = new_value
 
     @param.depends("value", watch=True, on_init=True)
     def update_value(self):
