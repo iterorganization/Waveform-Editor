@@ -9,7 +9,7 @@ class DictEditor(pn.viewable.Viewer):
     value = param.Dict(default={})
 
     def __init__(
-        self, key_options=None, names=("key", "value"), label=None, doc=None, **params
+        self, key_options, names=("key", "value"), label=None, doc=None, **params
     ):
         """Initialize the DictEditor widget.
 
@@ -17,8 +17,6 @@ class DictEditor(pn.viewable.Viewer):
             key_options: List of allowed keys shown in the dropdown editor.
             names: Tuple of column names to display for keys and values.
         """
-        if key_options is None:
-            key_options = []
         self.tabulator = pn.widgets.Tabulator(
             editors={"key": {"type": "list", "values": key_options}, "delete": None},
             titles={"delete": "🗑️", "key": names[0], "value": names[1]},
