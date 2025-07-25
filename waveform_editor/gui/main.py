@@ -73,7 +73,7 @@ class WaveformEditorGui(param.Parameterized):
         self.plotter_edit = PlotterEdit(self.editor)
         globals_editor = pn.Param(
             self.config.globals.param,
-            name="Edit the global YAML variables",
+            show_name=False,
             widgets={
                 "machine_description": {
                     "widget_type": DictEditor,
@@ -85,7 +85,7 @@ class WaveformEditorGui(param.Parameterized):
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
-            ("YAML Configuration", globals_editor),
+            ("Edit Global Properties", globals_editor),
             dynamic=True,
         )
         self.tabs.param.watch(self.on_tab_change, "active")

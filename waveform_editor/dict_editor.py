@@ -18,7 +18,7 @@ class DictEditor(pn.viewable.Viewer):
         if key_options is None:
             key_options = []
         self.tabulator = pn.widgets.Tabulator(
-            editors={"key": {"type": "list", "values": key_options}},
+            editors={"key": {"type": "list", "values": key_options}, "delete": None},
             titles={"delete": "🗑️", "key": names[0], "value": names[1]},
             layout="fit_data_stretch",
             sizing_mode="stretch_width",
@@ -51,11 +51,7 @@ class DictEditor(pn.viewable.Viewer):
         new_value = self.value.copy()
 
         # Callback when user edits a cell
-        if event.column == "delete":
-            self.tabulator.value.loc[event.row, event.column] = event.old
-            self.tabulator.param.trigger("value")
-            return
-        elif event.column == "value":
+        if event.column == "value":
             key = self.tabulator.value["key"][event.row]
             new_value[key] = event.value
         elif event.column == "key":
