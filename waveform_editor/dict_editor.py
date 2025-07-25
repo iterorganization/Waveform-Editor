@@ -51,7 +51,11 @@ class DictEditor(pn.viewable.Viewer):
         new_value = self.value.copy()
 
         # Callback when user edits a cell
-        if event.column == "value":
+        if event.column == "delete":
+            self.tabulator.value.loc[event.row, event.column] = event.old
+            self.tabulator.param.trigger("value")
+            return
+        elif event.column == "value":
             key = self.tabulator.value["key"][event.row]
             new_value[key] = event.value
         elif event.column == "key":
