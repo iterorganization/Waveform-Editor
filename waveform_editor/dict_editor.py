@@ -3,14 +3,19 @@ import panel as pn
 import param
 
 
-class DictEditor(pn.viewable.Viewer):
+class DictEditor(pn.widgets.CompositeWidget):
     """A Panel widget for editing Python dictionaries in a tabular interface."""
 
     value = param.Dict(default={})
 
-    def __init__(
-        self, key_options, names=("key", "value"), label=None, doc=None, **params
-    ):
+    description = param.String(
+        default="",
+        doc="""An HTML string describing the function of this component.""",
+    )
+
+    _composite_type = pn.Column
+
+    def __init__(self, key_options, names, **params):
         """Initialize the DictEditor widget.
 
         Args:
@@ -24,11 +29,12 @@ class DictEditor(pn.viewable.Viewer):
             sizing_mode="stretch_width",
             show_index=False,
         )
+        super().__init__(**params)
+        self.text = pn.widgets.StaticText(value=self.param.name, margin=(5, 0, 0, 0))
+        self.tooltip = pn.widgets.TooltipIcon(value=self.param.description, margin=0)
         self.tabulator.on_click(self.delete_selected_row, column="delete")
         self.tabulator.on_edit(self.on_cell_update)
-        self.text = pn.widgets.StaticText(value=label, margin=(10, 0, 10, 10))
-        self.tooltip = pn.widgets.TooltipIcon(value=doc, margin=0)
-        super().__init__(**params)
+        self._composite.objects = [pn.Row(self.text, self.tooltip), self.tabulator]
 
     def delete_selected_row(self, event):
         key = self.tabulator.value.iloc[event.row]["key"]
@@ -67,9 +73,3 @@ class DictEditor(pn.viewable.Viewer):
                 new_value[event.value] = ""
 
         self.value = new_value
-
-    def __iter__(self):
-        yield self.tabulator
-
-    def __panel__(self):
-        return pn.Column(pn.Row(self.text, self.tooltip), self.tabulator)
