@@ -1,7 +1,11 @@
 import csv
 import io
 
+import imas
 import numpy as np
+
+AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
+LATEST_DD_VERSION = imas.dd_zip.latest_dd_version()
 
 
 def times_from_csv(source, from_file_path=True):

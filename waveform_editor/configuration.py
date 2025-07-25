@@ -8,6 +8,7 @@ from ruamel.yaml.comments import CommentedMap
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
+from waveform_editor.yaml_globals import YamlGlobals
 from waveform_editor.yaml_parser import YamlParser
 
 logger = logging.getLogger(__name__)
@@ -25,13 +26,19 @@ class WaveformConfiguration(param.Parameterized):
         # names to the WaveformGroup that this waveform belongs to, for cheap look-up
         # of waveforms
         self.waveform_map = {}
-        self.dd_version = None
-        self.machine_description = {}
+        self.globals = YamlGlobals()
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
         self.start = self.DEFAULT_START
         self.end = self.DEFAULT_END
+
+        # Trigger has_changed boolean when a global param is changed
+        for param_name in self.globals.param:
+            self.globals.param.watch(self._set_changed, param_name)
+
+    def _set_changed(self, event):
+        self.has_changed = True
 
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
@@ -305,7 +312,7 @@ class WaveformConfiguration(param.Parameterized):
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
-        result = CommentedMap()
+        result = CommentedMap(self.globals.get())
         for group_name, group in self.groups.items():
             result[group_name] = group.to_commented_map()
         return result
@@ -337,8 +344,7 @@ class WaveformConfiguration(param.Parameterized):
         """Clears the data stored in the configuration."""
         self.groups = {}
         self.waveform_map = {}
-        self.dd_version = None
-        self.machine_description = {}
+        self.globals.reset()
         self.load_error = ""
         self.start = self.DEFAULT_START
         self.end = self.DEFAULT_END

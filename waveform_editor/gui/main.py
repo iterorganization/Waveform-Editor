@@ -1,10 +1,12 @@
 import logging
 
+import imas
 import panel as pn
 import param
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.dict_editor import DictEditor
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
@@ -12,7 +14,7 @@ from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
-from waveform_editor.util import State
+from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +27,18 @@ def exception_handler(ex):
 # Note: these extension() calls take a couple of seconds
 # Please avoid importing this module unless actually starting the GUI
 pn.extension(
-    "modal", "codeeditor", notifications=True, exception_handler=exception_handler
+    "modal",
+    "codeeditor",
+    "tabulator",
+    notifications=True,
+    exception_handler=exception_handler,
 )
 
 
 class WaveformEditorGui(param.Parameterized):
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
+    EDIT_YAML_GLOBALS_TAB = 2
 
     DISCARD_CHANGES_MESSAGE = (
         "# **⚠️ Warning**  \nYou did not save your changes. "
@@ -51,7 +58,6 @@ class WaveformEditorGui(param.Parameterized):
         self.rename_modal = RenameModal()
         self.io_manager = IOManager(self)
         self.selector = WaveformSelector(self)
-        self.selector.visible = self.io_manager.param.is_editing.rx.bool()
         self.selector.param.watch(self.on_selection_change, "selection")
 
         sidebar = pn.Column(
@@ -65,11 +71,22 @@ class WaveformEditorGui(param.Parameterized):
         self.editor = WaveformEditor(self.config)
         self.plotter_view = PlotterView()
         self.plotter_edit = PlotterEdit(self.editor)
+        globals_editor = pn.Param(
+            self.config.globals.param,
+            show_name=False,
+            widgets={
+                "machine_description": {
+                    "widget_type": DictEditor,
+                    "key_options": imas.IDSFactory(LATEST_DD_VERSION).ids_names(),
+                    "names": ("IDS", "URI"),
+                }
+            },
+        )
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
+            ("Edit Global Properties", globals_editor),
             dynamic=True,
-            visible=self.io_manager.param.is_editing.rx.bool(),
         )
         self.tabs.param.watch(self.on_tab_change, "active")
 
@@ -161,7 +178,6 @@ class WaveformEditorGui(param.Parameterized):
         with self._skip_editor_change_check:
             self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
-        self.io_manager.is_editing = True
         self.selector.refresh()
 
     def __panel__(self):

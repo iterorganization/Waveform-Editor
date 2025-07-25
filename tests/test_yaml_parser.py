@@ -17,7 +17,6 @@ from waveform_editor.yaml_parser import YamlParser
 @pytest.fixture
 def config():
     config = WaveformConfiguration()
-    config.dd_version = "4.0.0"
     return config
 
 
@@ -186,8 +185,7 @@ def test_load_yaml(config):
         root_group["beams"]["asdf/asdf"]
 
 
-def test_load_yaml_globals():
-    """Test if globals contain the correct dd version."""
+def test_load_yaml_globals_full(yaml_parser, config):
     yaml_str = """
     globals:
       dd_version: 3.42.0
@@ -195,44 +193,56 @@ def test_load_yaml_globals():
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
-    config = WaveformConfiguration()
-    parser = YamlParser(config)
-    parser.load_yaml(yaml_str)
+    yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.dd_version == "3.42.0"
-    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
-    assert config.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert config.globals.dd_version == "3.42.0"
+    assert (
+        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    )
+    assert (
+        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    )
     assert not config.load_error
 
+
+def test_load_yaml_globals_missing_dd_version(yaml_parser, config):
     yaml_str = """
     globals:
       machine_description: 
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
-    parser.load_yaml(yaml_str)
+    yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.dd_version is None
-    assert config.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
-    assert config.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert config.globals.dd_version == "4.0.0"
+    assert (
+        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    )
+    assert (
+        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    )
     assert not config.load_error
 
+
+def test_load_yaml_globals_invalid_machine_description(yaml_parser):
     yaml_str = """
     globals:
       machine_description: imas:hdf5?path=test_md
     """
     with pytest.raises(ValueError):
-        parser.load_yaml(yaml_str)
+        yaml_parser.load_yaml(yaml_str)
 
+
+def test_load_yaml_globals_dd_version_only(yaml_parser, config):
     yaml_str = """
     globals:
       dd_version: 4.0.0
     """
-    parser.load_yaml(yaml_str)
+    yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.dd_version == "4.0.0"
-    assert not config.machine_description
+    assert config.globals.dd_version == "4.0.0"
+    assert not config.globals.machine_description
     assert not config.load_error
