@@ -6,7 +6,7 @@ import param
 class DictEditor(pn.viewable.Viewer):
     """A Panel widget for editing Python dictionaries in a tabular interface."""
 
-    value = param.Dict(default={}, allow_refs=True)
+    value = param.Dict(default={})
 
     def __init__(
         self, key_options=None, names=("key", "value"), label=None, doc=None, **params
@@ -67,10 +67,6 @@ class DictEditor(pn.viewable.Viewer):
                 new_value[event.value] = new_value.pop(event.old)
             else:
                 new_value[event.value] = ""
-            if event.old == "":
-                new_row_data = ("🗑️", "", "")
-                self.tabulator.value.loc[len(self.tabulator.value)] = new_row_data
-            self.tabulator.param.trigger("value")
 
         self.value = new_value
 
