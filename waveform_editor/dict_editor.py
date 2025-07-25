@@ -8,7 +8,9 @@ class DictEditor(pn.viewable.Viewer):
 
     value = param.Dict(default={}, allow_refs=True)
 
-    def __init__(self, key_options=None, names=("key", "value"), **params):
+    def __init__(
+        self, key_options=None, names=("key", "value"), label=None, doc=None, **params
+    ):
         """Initialize the DictEditor widget.
 
         Args:
@@ -26,6 +28,8 @@ class DictEditor(pn.viewable.Viewer):
         )
         self.tabulator.on_click(self.delete_selected_row, column="delete")
         self.tabulator.on_edit(self.on_cell_update)
+        self.text = pn.widgets.StaticText(value=label, margin=(10, 0, 10, 10))
+        self.tooltip = pn.widgets.TooltipIcon(value=doc, margin=0)
         super().__init__(**params)
 
     def delete_selected_row(self, event):
@@ -74,4 +78,4 @@ class DictEditor(pn.viewable.Viewer):
         yield self.tabulator
 
     def __panel__(self):
-        return self.tabulator
+        return pn.Column(pn.Row(self.text, self.tooltip), self.tabulator)

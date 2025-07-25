@@ -79,6 +79,9 @@ class WaveformEditorGui(param.Parameterized):
                     "widget_type": DictEditor,
                     "key_options": imas.IDSFactory(LATEST_DD_VERSION).ids_names(),
                     "names": ("IDS", "URI"),
+                    # label/doc are not passed automatically for custom widgets
+                    "label": self.config.globals.param.machine_description.label,
+                    "doc": self.config.globals.param.machine_description.doc,
                 }
             },
         )
