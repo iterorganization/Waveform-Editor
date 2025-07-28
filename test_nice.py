@@ -145,6 +145,14 @@ def create_separatrix(equilibrium):
     return separatrix
 
 
+def create_wall(wall):
+    centreline = wall.description_2d[0].vessel.unit[0].annular.centreline
+    r = centreline.r
+    z = centreline.z
+    path = hv.Path([(r, z)]).opts(color="black", line_width=2)
+    return path
+
+
 def create_xo_points(equilibrium):
     o_points = [
         (node.r, node.z)
@@ -173,9 +181,10 @@ def plot_nice(processing, levels):
     elif not processing and communicator.equilibrium:
         contours = create_contours(communicator.equilibrium, levels=levels)
         coils = create_coil_rectangles(communicator.pf_active)
+        wall_plot = create_wall(wall)
         separatrix = create_separatrix(communicator.equilibrium)
         points = create_xo_points(communicator.equilibrium)
-        overlay = contours * coils * separatrix * points
+        overlay = contours * coils * separatrix * points * wall_plot
         overlay = overlay.opts(ylim=(-10, 10))
         return pn.pane.HoloViews(overlay, width=1000, height=1000)
     else:
