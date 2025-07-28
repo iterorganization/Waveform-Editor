@@ -201,7 +201,9 @@ async def stop_nice(event):
 
 class PlotParams(param.Parameterized):
     levels = param.Integer(default=50, bounds=(1, 200))
+
     # global parameters
+    algoMode = param.Selector(default="31", objects=["31", "41"])
     iterMaxInv = param.Integer(default=40, bounds=(1, 50))
     epsStopInv = param.Number(default=1.0e-10, bounds=(1e-20, 1e-5))
 
@@ -215,6 +217,11 @@ class PlotParams(param.Parameterized):
     rx = param.Number(default=5.089, bounds=(0, 10))
     zx = param.Number(default=-3.346, bounds=(-10, 0))
     n_desired_bnd_points = param.Integer(default=96, bounds=(1, 200))
+
+    # p' and ff'
+    useInputAB = param.Boolean(default=True)
+    Aabg = param.String(default="2, 0.6, 1.4")
+    Babg = param.String(default="2, 0.4, 1.4")
 
     def reset(self):
         for p in self.param:
