@@ -3,6 +3,8 @@
 N.B. these will not run in pytest.
 """
 
+import asyncio
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import holoviews as hv
@@ -17,13 +19,8 @@ from scipy.spatial import Delaunay
 from waveform_editor.settings import settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
-# Testing
-
-# hv.extension("matplotlib")
-# matplotlib.use("agg")
-
 xml_params = Path(
-    "/home/sebbe/projects/iter_python/nice/run/iwrap/param/inv/iter/param.xml"
+    "/home/sebbe/projects/iter_actors/nice/run/iwrap/param/inv/iter/param.xml"
 ).read_text()
 
 print("loading data:")
@@ -46,12 +43,26 @@ with imas.DBEntry(
 communicator = NiceIntegration(imas.IDSFactory())
 
 
-async def submit(event=None):
+def update_xml_params(xml_string, params):
+    root = ET.fromstring(xml_string)
+    for key in params.param:
+        elem = root.find(key)
+        if elem is not None:
+            val = getattr(params, key)
+            if isinstance(val, bool):
+                val = int(val)
+            print(f"Changed {key} from {elem.text} to {str(val)}")
+            elem.text = str(val)
+    return ET.tostring(root, encoding="unicode")
+
+
+async def submit(plot_params, event=None):
+    updated_xml = update_xml_params(xml_params, plot_params)
     if not communicator.running:
         await communicator.run()
     print("Submit to comm")
     await communicator.submit(
-        xml_params,
+        updated_xml,
         eq.serialize(),
         pfa.serialize(),
         pfp.serialize(),
@@ -157,7 +168,9 @@ def create_xo_points(equilibrium):
 
 
 def plot_nice(processing, levels):
-    if not processing and communicator.equilibrium:
+    if processing:
+        return pn.indicators.LoadingSpinner(value=True, size=40, name="Loading...")
+    elif not processing and communicator.equilibrium:
         contours = create_contours(communicator.equilibrium, levels=levels)
         coils = create_coil_rectangles(communicator.pf_active)
         separatrix = create_separatrix(communicator.equilibrium)
@@ -165,70 +178,8 @@ def plot_nice(processing, levels):
         overlay = contours * coils * separatrix * points
         overlay = overlay.opts(ylim=(-10, 10))
         return pn.pane.HoloViews(overlay, width=1000, height=1000)
-
-        # Apply Delaunay triangulation
-        delaunay = Delaunay(np.column_stack([r, z]))
-        nodes = hv.Points(np.column_stack([r, z, psi]), vdims=["z"])
-        trimesh = hv.TriMesh((delaunay.simplices, nodes))
-        trimesh.opts(
-            hv.opts.TriMesh(
-                cmap="viridis",
-                # node_color="PSI",
-                edge_color="z",
-                filled=True,
-                height=400,
-                # inspection_policy="edges",
-                tools=["hover"],
-                width=400,
-            )
-        )
-        print(trimesh, r.shape, z.shape, psi.shape, nodes.shape)
-        return pn.pane.HoloViews(trimesh, sizing_mode="stretch_both")
     else:
-        r = np.array([0, 0, 1, 1, 2, 2])
-        z = np.array([0, 1, 0, 1, 0, 1])
-        psi = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
-
-        delaunay = Delaunay(np.column_stack([r, z]))
-        trics = matplotlib.pyplot.tricontour(r, z, psi, levels=levels)
-        contours = hv.Contours([p.vertices for p in trics.get_paths()])
-        return pn.pane.HoloViews(contours, sizing_mode="stretch_both")
-        nodes = hv.Points(np.column_stack([r, z, psi]), vdims=["z"])
-        trimesh = hv.TriMesh((delaunay.simplices, nodes))
-        trimesh.opts(
-            hv.opts.TriMesh(
-                cmap="viridis",
-                edge_color="z",
-                filled=True,
-                # height=400,
-                # tools=["hover"],
-                # width=400,
-            )
-        )
-        # contours = hv.operation.contours(trimesh)
-        print(trimesh, r.shape, z.shape, psi.shape, nodes.shape)
-        return pn.pane.HoloViews(trimesh, sizing_mode="stretch_both")
-
-    return pn.indicators.LoadingSpinner(value=True, size=40, name="Loading...")
-
-
-# class PlotParams(param.Parameterized):
-#     levels = param.Integer(default=50, bounds=(1, 200))
-#
-#
-# plot_params = PlotParams()
-# pn.Column(
-#     pn.Param(communicator.param),
-#     pn.Param(plot_params),
-#     pn.widgets.Button(name="Click", on_click=submit),
-#     pn.Tabs(
-#         ("NICE output", communicator.terminal),
-#         (
-#             "NICE plot",
-#             pn.bind(plot_nice, communicator.param.processing, plot_params.param.levels),
-#         ),
-#     ),
-# ).servable()
+        return None
 
 
 async def start_nice(event):
@@ -241,20 +192,51 @@ async def stop_nice(event):
 
 class PlotParams(param.Parameterized):
     levels = param.Integer(default=50, bounds=(1, 200))
+    # global parameters
+    iterMaxInv = param.Integer(default=40, bounds=(1, 50))
+    epsStopInv = param.Number(default=1.0e-10, bounds=(1e-20, 1e-5))
+
+    # Shape parameters
+    parametric_bnd = param.Boolean(default=True)
+    a = param.Number(default=1.9, bounds=(0, 5))
+    center_r = param.Number(default=6.2, bounds=(5, 7.5))
+    center_z = param.Number(default=0.545, bounds=(0, 2))
+    kappa = param.Number(default=1.8, bounds=(0, 5))
+    delta = param.Number(default=0.43, bounds=(0, 5))
+    rx = param.Number(default=5.089, bounds=(0, 10))
+    zx = param.Number(default=-3.346, bounds=(-10, 0))
+    n_desired_bnd_points = param.Integer(default=96, bounds=(1, 200))
+
+    def reset(self):
+        for p in self.param:
+            if p != "name":
+                setattr(self, p, self.param[p].default)
 
 
 plot_params = PlotParams()
+reset_button = pn.widgets.ButtonIcon(icon="restore", size="25px")
+reset_button.on_click(lambda event: plot_params.reset())
 pn.Column(
     pn.Param(communicator.param),
-    pn.Param(plot_params),
-    pn.widgets.Button(name="Click", on_click=submit),
+    pn.widgets.Button(
+        name="Run",
+        on_click=lambda event: asyncio.create_task(submit(plot_params, event)),
+    ),
     pn.widgets.Button(name="Start NICE", on_click=start_nice),
     pn.widgets.Button(name="Stop NICE", on_click=stop_nice),
     pn.Tabs(
         ("NICE output", communicator.terminal),
         (
             "NICE plot",
-            pn.bind(plot_nice, communicator.param.processing, plot_params.param.levels),
+            pn.Row(
+                pn.Column(
+                    reset_button,
+                    pn.Param(plot_params),
+                ),
+                pn.bind(
+                    plot_nice, communicator.param.processing, plot_params.param.levels
+                ),
+            ),
         ),
         ("NICE settings", settings.panel),
     ),
