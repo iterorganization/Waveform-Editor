@@ -40,7 +40,7 @@ Installing dependencies
 
             sudo apt install git build-essential cmake libsaxonhe-java libboost-all-dev \
                 pkg-config libhdf5-dev xsltproc libblitz0-dev python3-dev python3-venv \
-                python3-pip libsuitesparse-dev
+                python3-pip libsuitesparse-dev default-jre libxml2-dev
 
             # Install imas_core and muscle3 with pip
             pip install 'imas_core @ git+ssh://git@git.iter.org/imas/al-core.git'
