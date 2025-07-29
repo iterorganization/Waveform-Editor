@@ -12,10 +12,6 @@ This project is currently under active development. While a functional prototype
 core features are already implemented, additional features, usability improvements, and
 integrations are in progress. The following features are planned for the coming months:
 - UI usability enhancements
-- Derived waveform expressions: define waveforms from existing ones using expanded math
-  operations and custom Python functions
-- MUSCLE3 actor integration
-- Drag-and-drop editing for piecewise linear tendencies
 - Integration of Plasma Shape Editor: construct waveforms directly from equilibrium
   solver output 
 
