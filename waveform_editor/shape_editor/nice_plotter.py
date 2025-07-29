@@ -10,10 +10,10 @@ class NicePlotter(param.Parameterized):
     levels = param.Integer(default=20, bounds=(1, 200))
     communicator = param.ClassSelector(class_=NiceIntegration)
 
-    def __init__(self, communicator, wall, **params):
+    def __init__(self, communicator, **params):
         super().__init__(**params)
         self.communicator = communicator
-        self.wall = wall
+        self.wall = None
 
     @pn.depends("levels", "communicator.processing")
     def plot(self, width=1000, height=1000):

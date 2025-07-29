@@ -60,7 +60,9 @@ class NiceIntegration(param.Parameterized):
     def __init__(self, imas_factory):
         super().__init__()
         self.imas_factory = imas_factory
-        self.terminal = pn.widgets.Terminal(sizing_mode="stretch_both")
+        self.terminal = pn.widgets.Terminal(
+            sizing_mode="stretch_both", options={"scrollback": 10000}
+        )
         self.running = False
         self.closing = False
         self.equilibrium = None

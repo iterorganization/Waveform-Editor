@@ -5,6 +5,7 @@ from pathlib import Path
 import imas
 import panel as pn
 from panel.viewable import Viewer
+from panel.widgets import FloatInput
 
 from waveform_editor.settings import settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
@@ -14,23 +15,10 @@ from waveform_editor.shape_editor.nice_plotter import NicePlotter
 
 class ShapeEditor(Viewer):
     def __init__(self):
-        with imas.DBEntry(
-            "imas:hdf5?path=/home/sebbe/projects/iter_python/Waveform-Editor/data/nice-input-dd4",
-            "r",
-        ) as entry:
-            time = 249.5
-            self.eq = entry.get_slice("equilibrium", time, imas.ids_defs.CLOSEST_INTERP)
-            self.pfa = entry.get_slice("pf_active", time, imas.ids_defs.CLOSEST_INTERP)
-            self.pfp = entry.get_slice("pf_passive", time, imas.ids_defs.CLOSEST_INTERP)
-            self.wall = entry.get_slice("wall", time, imas.ids_defs.CLOSEST_INTERP)
-            self.iron_core = entry.get_slice(
-                "iron_core", time, imas.ids_defs.CLOSEST_INTERP
-            )
-
         self.xml_params = Path(settings.nice.xml_params).read_text()
         self.communicator = NiceIntegration(imas.IDSFactory())
         nice_params = NiceParams()
-        nice_plotter = NicePlotter(self.communicator, self.wall)
+        self.nice_plotter = NicePlotter(self.communicator)
         reset_button = pn.widgets.ButtonIcon(
             icon="restore", size="25px", name="Restore Defaults"
         )
@@ -56,10 +44,15 @@ class ShapeEditor(Viewer):
                     pn.Row(
                         pn.Column(
                             reset_button,
-                            pn.Param(nice_plotter.param.levels),
-                            pn.Param(nice_params),
+                            pn.Param(self.nice_plotter.param.levels),
+                            pn.Param(
+                                nice_params,
+                                widgets={
+                                    "epsStopInv": {"widget_type": pn.widgets.FloatInput}
+                                },
+                            ),
                         ),
-                        pn.panel(nice_plotter.plot),
+                        pn.panel(self.nice_plotter.plot),
                     ),
                 ),
                 ("NICE settings", settings.panel),
@@ -79,16 +72,27 @@ class ShapeEditor(Viewer):
         return ET.tostring(root, encoding="unicode")
 
     async def submit(self, plot_params, event=None):
+        with imas.DBEntry(
+            "imas:hdf5?path=/home/sebbe/projects/iter_python/Waveform-Editor/data/nice-input-dd4",
+            "r",
+        ) as entry:
+            time = plot_params.time
+            eq = entry.get_slice("equilibrium", time, imas.ids_defs.CLOSEST_INTERP)
+            pfa = entry.get_slice("pf_active", time, imas.ids_defs.CLOSEST_INTERP)
+            pfp = entry.get_slice("pf_passive", time, imas.ids_defs.CLOSEST_INTERP)
+            wall = entry.get_slice("wall", time, imas.ids_defs.CLOSEST_INTERP)
+            iron_core = entry.get_slice("iron_core", time, imas.ids_defs.CLOSEST_INTERP)
+        self.nice_plotter.wall = wall
         updated_xml = self._update_xml_params(self.xml_params, plot_params)
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
             updated_xml,
-            self.eq.serialize(),
-            self.pfa.serialize(),
-            self.pfp.serialize(),
-            self.wall.serialize(),
-            self.iron_core.serialize(),
+            eq.serialize(),
+            pfa.serialize(),
+            pfp.serialize(),
+            wall.serialize(),
+            iron_core.serialize(),
         )
 
     async def start_nice(self, event):
