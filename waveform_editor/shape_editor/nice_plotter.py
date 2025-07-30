@@ -7,7 +7,6 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 
 class NicePlotter(param.Parameterized):
-    levels = param.Integer(default=20, bounds=(1, 200))
     communicator = param.ClassSelector(class_=NiceIntegration)
 
     DEFAULT_OPTS = {
@@ -21,51 +20,52 @@ class NicePlotter(param.Parameterized):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, wall, pf_active, **params):
+    def __init__(self, communicator, wall, pf_active, plotting_params, **params):
         super().__init__(**params)
         self.communicator = communicator
-        coils = self._plot_coil_rectangles(pf_active)
-        wall_plot = self._plot_wall(wall)
-        default_overlay = coils * wall_plot
+        self.plotting_params = plotting_params
 
-        # Create dummy data so a colorbar can be shown for the default plot
-        dummy_data = hv.Contours([{"x": [0], "y": [0], "psi": 0}], vdims="psi").opts(
-            cmap="viridis",
-            colorbar=True,
-            colorbar_opts=self.COLORBAR_OPTS,
-            show_legend=False,
-            alpha=0,
-        )
-        self.default_overlay = (default_overlay * dummy_data).opts(**self.DEFAULT_OPTS)
-        self.default_pane = pn.pane.HoloViews(
-            self.default_overlay,
-            width=self.WIDTH,
-            height=self.HEIGHT,
-        )
+        # Static plot elements
+        self.plot_coils = self._plot_coil_rectangles(pf_active)
+        self.plot_wall = self._plot_wall(wall)
+        self.plot_vacuum_vessel = self._plot_vacuum_vessel(wall)
 
-    @pn.depends("levels", "communicator.processing")
+    @pn.depends("plotting_params.param", "communicator.processing")
     def plot(self):
-        """Generates the equilibrium plot with walls, PF coils, contours,
+        """Generates the equilibrium plot with walls, PF coils, poloidal flux contours,
         separatrix, and critical points.
 
         Returns:
-            Composed Holoviews plot or loading pane.
+            PlotComposed Holoviews plot or loading pane.
         """
-        if not self.communicator.processing and self.communicator.equilibrium:
-            contours = self._plot_contours(self.communicator.equilibrium, self.levels)
-            separatrix = self._plot_separatrix(self.communicator.equilibrium)
-            points = self._plot_xo_points(self.communicator.equilibrium)
-            overlay = self.default_overlay * separatrix * points * contours
-            overlay = overlay.opts(**self.DEFAULT_OPTS)
-            return pn.pane.HoloViews(
-                overlay,
-                width=self.WIDTH,
-                height=self.HEIGHT,
-            )
-        elif self.communicator.processing:
-            return pn.Column(self.default_pane, loading=True)
-        else:
-            return self.default_pane
+        equilibrium = self.communicator.equilibrium
+
+        overlay = hv.Overlay([])
+        if equilibrium:
+            if self.plotting_params.show_contour:
+                overlay *= self._plot_contours(equilibrium, self.plotting_params.levels)
+            if self.plotting_params.show_separatrix:
+                overlay *= self._plot_separatrix(equilibrium)
+            if self.plotting_params.show_xo:
+                overlay *= self._plot_xo_points(equilibrium)
+        if self.plotting_params.show_coils:
+            overlay *= self.plot_coils
+        if self.plotting_params.show_wall:
+            overlay *= self.plot_wall
+        if self.plotting_params.show_vacuum_vessel:
+            overlay *= self.plot_vacuum_vessel
+
+        # We cannot pass an empty overlay, so draw an empty curve in this case
+        if not overlay.data:
+            empty_placeholder = hv.Curve([]).opts(alpha=0)
+            overlay = hv.Overlay([empty_placeholder])
+        overlay = overlay.opts(**self.DEFAULT_OPTS)
+        pane = pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT)
+
+        # Show loading spinner if processing
+        if self.communicator.processing:
+            return pn.Column(pane, loading=True)
+        return pane
 
     def _plot_coil_rectangles(self, pf_active):
         """Creates rectangular and path overlays for PF coils.
@@ -156,18 +156,16 @@ class NicePlotter(param.Parameterized):
         separatrix = hv.Curve((r, z)).opts(color="red", line_width=2, show_legend=False)
         return separatrix
 
-    def _plot_wall(self, wall):
-        """Generates path overlays for vacuum vessel, limiter, and divertor.
+    def _plot_vacuum_vessel(self, wall):
+        """Generates path overlays for inner and outer vacuum vessel.
 
         Args:
             wall: a wall IDS.
 
         Returns:
-            Holoviews overlay containing the wall geometry.
+            Holoviews overlay containing the geometry.
         """
         paths = []
-
-        # Vacuum vessel
         for unit in wall.description_2d[0].vessel.unit:
             r_vals = unit.annular.centreline.r
             z_vals = unit.annular.centreline.z
@@ -175,8 +173,18 @@ class NicePlotter(param.Parameterized):
                 color="black", line_width=2
             )
             paths.append(path)
+        return hv.Overlay(paths)
 
-        # Limiter and Divertor
+    def _plot_wall(self, wall):
+        """Generates path overlays for limiter and divertor.
+
+        Args:
+            wall: a wall IDS.
+
+        Returns:
+            Holoviews overlay containing the geometry.
+        """
+        paths = []
         for unit in wall.description_2d[0].limiter.unit:
             r_vals = unit.outline.r
             z_vals = unit.outline.z
@@ -184,7 +192,6 @@ class NicePlotter(param.Parameterized):
                 color="black", line_width=2
             )
             paths.append(path)
-
         return hv.Overlay(paths)
 
     def _plot_xo_points(self, equilibrium):

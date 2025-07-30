@@ -10,6 +10,7 @@ from panel.viewable import Viewer
 from waveform_editor.settings import settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.shape_editor.plotting_params import PlottingParams
 
 
 # placeholder params class
@@ -37,7 +38,10 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(imas.IDSFactory())
 
         nice_params = NiceParams()
-        nice_plotter = NicePlotter(self.communicator, self.wall, self.pfa)
+        plotting_params = PlottingParams()
+        nice_plotter = NicePlotter(
+            self.communicator, self.wall, self.pfa, plotting_params
+        )
 
         buttons = pn.widgets.Button(
             name="Run",
@@ -46,12 +50,13 @@ class ShapeEditor(Viewer):
 
         # Options placeholders
         options = pn.Accordion(
-            ("Plotting Parameters", None),
+            ("Plotting Parameters", pn.Param(plotting_params, show_name=False)),
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plasma Shape", None),
             ("Plasma Parameters", None),
             ("Coil Currents", None),
             sizing_mode="stretch_width",
+            toggle=True,
         )
 
         menu = pn.Column(
@@ -61,9 +66,8 @@ class ShapeEditor(Viewer):
         self.panel = pn.Row(
             pn.panel(nice_plotter.plot),
             pn.Column(
-                options,
-                pn.layout.Spacer(sizing_mode="stretch_both"),
                 menu,
+                options,
                 sizing_mode="stretch_both",
             ),
         )
