@@ -17,9 +17,6 @@ from ymmsl import Operator
 
 from waveform_editor.settings import settings
 
-pn.extension("terminal")
-
-
 _muscle3_configuration = """
 ymmsl_version: v0.1
 model:
@@ -60,7 +57,12 @@ class NiceIntegration(param.Parameterized):
     def __init__(self, imas_factory):
         super().__init__()
         self.imas_factory = imas_factory
-        self.terminal = pn.widgets.Terminal(sizing_mode="stretch_both")
+        self.terminal = pn.widgets.Terminal(
+            sizing_mode="stretch_width",
+            options={"scrollback": 10000, "wrap": True},
+            height=200,
+            max_width=750,
+        )
         self.running = False
         self.closing = False
         self.equilibrium = None
