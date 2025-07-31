@@ -37,7 +37,6 @@ class NiceSettings(param.Parameterized):
     md_iron_core = param.String(
         label="'iron_core' machine description URI",
     )
-    equilibrium_input = param.String(label="Input 'equilibrium' IDS")
 
     def apply_settings(self, params):
         """Update parameters from a dictionary."""
