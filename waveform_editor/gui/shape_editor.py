@@ -23,7 +23,6 @@ class ShapeEditor(Viewer):
         super().__init__()
         self.shape_params = ShapeParams()
         self.nice_settings = settings.nice
-        self.xml_params = None
 
         # UI Configuration
         buttons = pn.widgets.Button(
@@ -93,7 +92,11 @@ class ShapeEditor(Viewer):
     @param.depends("nice_settings.xml_params", watch=True)
     def _load_xml_params(self):
         if self.nice_settings.xml_params:
-            self.xml_params = Path(settings.nice.xml_params).read_text()
+            try:
+                self.xml_params = Path(self.nice_settings.xml_params).read_text()
+            except Exception:
+                self.xml_params = None
+                self.nice_settings.xml_params = ""
 
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
