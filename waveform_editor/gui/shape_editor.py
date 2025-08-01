@@ -23,7 +23,7 @@ class ShapeEditor(Viewer):
         super().__init__()
         self.shape_params = ShapeParams()
         self.nice_settings = settings.nice
-        self.xml_params = Path(settings.nice.xml_params).read_text()
+        self.xml_params = None
 
         # UI Configuration
         buttons = pn.widgets.Button(
@@ -90,6 +90,11 @@ class ShapeEditor(Viewer):
     def _load_iron_core(self):
         self._load_slice("md_iron_core", "iron_core")
 
+    @param.depends("nice_settings.xml_params", watch=True)
+    def _load_xml_params(self):
+        if self.nice_settings.xml_params:
+            self.xml_params = Path(settings.nice.xml_params).read_text()
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
@@ -100,6 +105,9 @@ class ShapeEditor(Viewer):
             "wall",
             "iron_core",
         ]
+        if not self.xml_params:
+            pn.state.notifications.error("Please provide a path to NICE XML params")
+            return
 
         for name in input_ids_names:
             ids = getattr(self, name)
@@ -125,6 +133,7 @@ class ShapeEditor(Viewer):
         except Exception:
             pn.state.notifications.error("Please provide a valid equilibrium IDS")
             return
+
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
