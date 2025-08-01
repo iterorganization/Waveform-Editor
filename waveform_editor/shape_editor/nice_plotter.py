@@ -75,8 +75,9 @@ class NicePlotter(param.Parameterized):
             Coil geometry overlay.
         """
         rectangles = []
-        paths = []
+        curves = []
         for coil in pf_active.coil:
+            name = str(coil.name)
             for element in coil.element:
                 rect = element.geometry.rectangle
                 outline = element.geometry.outline
@@ -85,19 +86,26 @@ class NicePlotter(param.Parameterized):
                     r1 = rect.r + rect.width / 2
                     z0 = rect.z - rect.height / 2
                     z1 = rect.z + rect.height / 2
-                    rectangles.append((r0, z0, r1, z1))
+                    rectangles.append((r0, z0, r1, z1, name))
                 elif outline.has_value:
                     path = hv.Path([list(zip(outline.r, outline.z))]).opts(
-                        color="black", line_width=1, show_legend=False
+                        color="black",
+                        line_width=1,
+                        show_legend=False,
+                        hover_tooltips=[("", name)],
                     )
-                    paths.append(path)
-                else:
-                    continue
-        rects = hv.Rectangles(rectangles).opts(
-            line_color="black", fill_alpha=0, line_width=2, show_legend=False
+
+                    curves.append(path)
+        rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
+            line_color="black",
+            fill_alpha=0,
+            line_width=2,
+            show_legend=False,
+            tools=["hover"],
+            hover_tooltips=[("", "@name")],
         )
 
-        return rects * hv.Overlay(paths)
+        return rects * hv.Overlay(curves)
 
     def _plot_contours(self, equilibrium, levels):
         """Generates contour plot for poloidal flux.
@@ -151,7 +159,13 @@ class NicePlotter(param.Parameterized):
         """
         r = equilibrium.time_slice[0].boundary.outline.r
         z = equilibrium.time_slice[0].boundary.outline.z
-        separatrix = hv.Curve((r, z)).opts(color="red", line_width=2, show_legend=False)
+        separatrix = hv.Curve((r, z)).opts(
+            color="red",
+            line_width=2,
+            show_legend=False,
+            hover_tooltips=[("", "Separatrix")],
+        )
+
         return separatrix
 
     def _plot_vacuum_vessel(self, wall):
@@ -165,10 +179,13 @@ class NicePlotter(param.Parameterized):
         """
         paths = []
         for unit in wall.description_2d[0].vessel.unit:
+            name = str(unit.name)
             r_vals = unit.annular.centreline.r
             z_vals = unit.annular.centreline.z
-            path = hv.Path([list(zip(r_vals, z_vals))]).opts(
-                color="black", line_width=2
+            path = hv.Path([list(zip(r_vals, z_vals))], label=name).opts(
+                color="black",
+                line_width=2,
+                hover_tooltips=[("", name)],
             )
             paths.append(path)
         return hv.Overlay(paths)
@@ -184,10 +201,13 @@ class NicePlotter(param.Parameterized):
         """
         paths = []
         for unit in wall.description_2d[0].limiter.unit:
+            name = str(unit.name)
             r_vals = unit.outline.r
             z_vals = unit.outline.z
             path = hv.Path([list(zip(r_vals, z_vals))]).opts(
-                color="black", line_width=2
+                color="black",
+                line_width=2,
+                hover_tooltips=[("", name)],
             )
             paths.append(path)
         return hv.Overlay(paths)
@@ -211,9 +231,17 @@ class NicePlotter(param.Parameterized):
                 o_points.append(point)
 
         o_scatter = hv.Scatter(o_points).opts(
-            marker="o", size=10, color="black", show_legend=False
+            marker="o",
+            size=10,
+            color="black",
+            show_legend=False,
+            hover_tooltips=[("", "O-point")],
         )
         x_scatter = hv.Scatter(x_points).opts(
-            marker="x", size=10, color="black", show_legend=False
+            marker="x",
+            size=10,
+            color="black",
+            show_legend=False,
+            hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
