@@ -20,15 +20,12 @@ class NicePlotter(param.Parameterized):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, wall, pf_active, plotting_params, **params):
+    def __init__(self, communicator, plotting_params, **params):
         super().__init__(**params)
         self.communicator = communicator
         self.plotting_params = plotting_params
-
-        # Static plot elements
-        self.plot_coils = self._plot_coil_rectangles(pf_active)
-        self.plot_wall = self._plot_wall(wall)
-        self.plot_vacuum_vessel = self._plot_vacuum_vessel(wall)
+        self.wall = None
+        self.pf_active = None
 
     @pn.depends("plotting_params.param", "communicator.processing")
     def plot(self):
@@ -48,12 +45,13 @@ class NicePlotter(param.Parameterized):
                 overlay *= self._plot_separatrix(equilibrium)
             if self.plotting_params.show_xo:
                 overlay *= self._plot_xo_points(equilibrium)
-        if self.plotting_params.show_coils:
-            overlay *= self.plot_coils
-        if self.plotting_params.show_wall:
-            overlay *= self.plot_wall
-        if self.plotting_params.show_vacuum_vessel:
-            overlay *= self.plot_vacuum_vessel
+        if self.pf_active and self.plotting_params.show_coils:
+            overlay *= self._plot_coil_rectangles(self.pf_active)
+        if self.wall:
+            if self.plotting_params.show_wall:
+                overlay *= self._plot_wall(self.wall)
+            if self.plotting_params.show_vacuum_vessel:
+                overlay *= self._plot_vacuum_vessel(self.wall)
 
         # We cannot pass an empty overlay, so draw an empty curve in this case
         if not overlay.data:
