@@ -24,6 +24,7 @@ class NiceSettings(param.Parameterized):
         label="NICE environment variables",
         doc="Environment variables for NICE",
     )
+    xml_params = param.String(label="Param XML path", doc="Path to NICE XML params")
     md_pf_active = param.String(
         label="'pf_active' machine description URI",
     )
