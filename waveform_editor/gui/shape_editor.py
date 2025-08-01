@@ -25,10 +25,7 @@ class ShapeEditor(Viewer):
         self.nice_settings = settings.nice
 
         # UI Configuration
-        buttons = pn.widgets.Button(
-            name="Run",
-            on_click=lambda event: asyncio.create_task(self.submit(event)),
-        )
+        buttons = pn.widgets.Button(name="Run", on_click=self.submit)
         options = pn.Accordion(
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plotting Parameters", pn.Param(self.plotting_params, show_name=False)),

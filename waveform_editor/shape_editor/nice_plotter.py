@@ -1,9 +1,13 @@
+import logging
+
 import holoviews as hv
 import matplotlib.pyplot as plt
 import panel as pn
 import param
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+
+logger = logging.getLogger(__name__)
 
 
 class NicePlotter(param.Parameterized):
@@ -16,7 +20,7 @@ class NicePlotter(param.Parameterized):
         "xlabel": "r [m]",
         "ylabel": "z [m]",
     }
-    COLORBAR_OPTS = {"title": "ψ [Wb]"}
+    COLORBAR_OPTS = {"title": "Poloidal flux [Wb]"}
     WIDTH = 800
     HEIGHT = 1000
 
@@ -75,7 +79,7 @@ class NicePlotter(param.Parameterized):
             Coil geometry overlay.
         """
         rectangles = []
-        curves = []
+        paths = []
         for coil in pf_active.coil:
             name = str(coil.name)
             for element in coil.element:
@@ -88,24 +92,28 @@ class NicePlotter(param.Parameterized):
                     z1 = rect.z + rect.height / 2
                     rectangles.append((r0, z0, r1, z1, name))
                 elif outline.has_value:
-                    path = hv.Path([list(zip(outline.r, outline.z))]).opts(
-                        color="black",
-                        line_width=1,
-                        show_legend=False,
-                        hover_tooltips=[("", name)],
+                    paths.append((outline.r, outline.z, name))
+                else:
+                    logger.warning(
+                        f"Coil {name} was skipped, as it does not have a filled 'rect' "
+                        "or 'outline' node"
                     )
-
-                    curves.append(path)
+                    continue
         rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
             line_color="black",
             fill_alpha=0,
             line_width=2,
             show_legend=False,
-            tools=["hover"],
+            hover_tooltips=[("", "@name")],
+        )
+        paths = hv.Path(paths, vdims=["name"]).opts(
+            color="black",
+            line_width=1,
+            show_legend=False,
             hover_tooltips=[("", "@name")],
         )
 
-        return rects * hv.Overlay(curves)
+        return rects * paths
 
     def _plot_contours(self, equilibrium, levels):
         """Generates contour plot for poloidal flux.
