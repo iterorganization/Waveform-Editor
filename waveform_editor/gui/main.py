@@ -194,5 +194,6 @@ class WaveformEditorGui(param.Parameterized):
         return self.template.servable()
 
 
-# Run the app
-WaveformEditorGui().serve()
+# Allow serving with `panel serve waveform_editor/gui/main.py`
+if "bokeh" in __name__:
+    WaveformEditorGui().serve()

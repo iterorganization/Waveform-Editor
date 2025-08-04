@@ -74,7 +74,7 @@ def launch_gui():
 
     try:
         app = WaveformEditorGui()
-        pn.serve(app)
+        pn.serve(app, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 
