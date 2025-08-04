@@ -33,7 +33,6 @@ class ShapeEditor(Viewer):
             ("Plasma Parameters", None),
             ("Coil Currents", None),
             sizing_mode="stretch_width",
-            toggle=True,
         )
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"

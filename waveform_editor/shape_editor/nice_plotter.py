@@ -49,6 +49,7 @@ class NicePlotter(param.Parameterized):
             "vacuum_vessel": None,
         }
 
+        # Adding as dependency doesn't trigger it, so manually add watcher
         self.plotting_params.param.watch(lambda event: self._plot_contours(), "levels")
 
     @pn.depends("plotting_params.param", "communicator.processing")
