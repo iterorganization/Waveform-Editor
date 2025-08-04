@@ -72,30 +72,28 @@ class NicePlotter(pn.viewable.Viewer):
         Returns:
             Coil geometry overlay.
         """
-        if not self.show_coils or self.pf_active is None:
-            return hv.Overlay(hv.Rectangles([]))
-
         rectangles = []
         paths = []
-        for coil in self.pf_active.coil:
-            name = str(coil.name)
-            for element in coil.element:
-                rect = element.geometry.rectangle
-                outline = element.geometry.outline
-                if rect.has_value:
-                    r0 = rect.r - rect.width / 2
-                    r1 = rect.r + rect.width / 2
-                    z0 = rect.z - rect.height / 2
-                    z1 = rect.z + rect.height / 2
-                    rectangles.append((r0, z0, r1, z1, name))
-                elif outline.has_value:
-                    paths.append((outline.r, outline.z, name))
-                else:
-                    logger.warning(
-                        f"Coil {name} was skipped, as it does not have a filled 'rect' "
-                        "or 'outline' node"
-                    )
-                    continue
+        if self.show_coils and self.pf_active is not None:
+            for coil in self.pf_active.coil:
+                name = str(coil.name)
+                for element in coil.element:
+                    rect = element.geometry.rectangle
+                    outline = element.geometry.outline
+                    if rect.has_value:
+                        r0 = rect.r - rect.width / 2
+                        r1 = rect.r + rect.width / 2
+                        z0 = rect.z - rect.height / 2
+                        z1 = rect.z + rect.height / 2
+                        rectangles.append((r0, z0, r1, z1, name))
+                    elif outline.has_value:
+                        paths.append((outline.r, outline.z, name))
+                    else:
+                        logger.warning(
+                            f"Coil {name} was skipped, as it does not have a filled 'rect' "
+                            "or 'outline' node"
+                        )
+                        continue
         rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
             line_color="black",
             fill_alpha=0,
