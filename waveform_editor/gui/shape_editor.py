@@ -35,7 +35,7 @@ class ShapeEditor(Viewer):
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            pn.panel(self.nice_plotter),
+            self.nice_plotter,
             pn.Column(
                 menu,
                 options,
