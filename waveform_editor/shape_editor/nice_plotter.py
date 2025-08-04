@@ -13,15 +13,6 @@ logger = logging.getLogger(__name__)
 
 class NicePlotter(param.Parameterized):
     communicator = param.ClassSelector(class_=NiceIntegration)
-
-    DEFAULT_OPTS = {
-        "xlim": (0, 13),
-        "ylim": (-10, 10),
-        "title": "Equilibrium poloidal flux",
-        "xlabel": "r [m]",
-        "ylabel": "z [m]",
-    }
-    COLORBAR_OPTS = {"title": "Poloidal flux [Wb]"}
     WIDTH = 800
     HEIGHT = 1000
 
@@ -31,6 +22,20 @@ class NicePlotter(param.Parameterized):
         self.plotting_params = PlottingParams()
         self.wall = None
         self.pf_active = None
+        self.DEFAULT_OPTS = hv.opts.Overlay(
+            xlim=(0, 13),
+            ylim=(-10, 10),
+            title="Equilibrium poloidal flux",
+            xlabel="r [m]",
+            ylabel="z [m]",
+        )
+        self.CONTOUR_OPTS = hv.opts.Contours(
+            cmap="viridis",
+            colorbar=True,
+            tools=["hover"],
+            colorbar_opts={"title": "Poloidal flux [Wb]"},
+            show_legend=False,
+        )
 
     @pn.depends("plotting_params.param", "communicator.processing")
     def plot(self):
@@ -62,7 +67,7 @@ class NicePlotter(param.Parameterized):
         if not overlay.data:
             empty_placeholder = hv.Curve([]).opts(alpha=0)
             overlay = hv.Overlay([empty_placeholder])
-        overlay = overlay.opts(**self.DEFAULT_OPTS)
+        overlay = overlay.opts(self.DEFAULT_OPTS)
         pane = pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT)
 
         # Show loading spinner if processing
@@ -133,11 +138,7 @@ class NicePlotter(param.Parameterized):
 
         trics = plt.tricontour(r, z, psi, levels=levels)
         contours = hv.Contours(self._extract_contour_segments(trics), vdims="psi").opts(
-            cmap="viridis",
-            colorbar=True,
-            tools=["hover"],
-            colorbar_opts=self.COLORBAR_OPTS,
-            show_legend=False,
+            self.CONTOUR_OPTS
         )
         return contours
 
