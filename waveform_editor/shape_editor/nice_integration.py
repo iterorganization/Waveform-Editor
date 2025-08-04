@@ -11,14 +11,12 @@ import tempfile
 import panel as pn
 import param
 import ymmsl
+from imas.ids_toplevel import IDSToplevel
 from libmuscle import Instance, Message
 from libmuscle.manager.manager import Manager
 from ymmsl import Operator
 
 from waveform_editor.settings import settings
-
-pn.extension("terminal")
-
 
 _muscle3_configuration = """
 ymmsl_version: v0.1
@@ -54,16 +52,22 @@ class NiceIntegration(param.Parameterized):
     communicator_running = param.Boolean(
         doc="The process for communicating with NICE is running"
     )
+    equilibrium = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
 
     def __init__(self, imas_factory):
         super().__init__()
         self.imas_factory = imas_factory
-        self.terminal = pn.widgets.Terminal(sizing_mode="stretch_both")
+        self.terminal = pn.widgets.Terminal(
+            write_to_console=True,
+            sizing_mode="stretch_width",
+            options={"scrollback": 10000, "wrap": True},
+            height=200,
+            max_width=750,
+        )
         self.running = False
         self.closing = False
-        self.equilibrium = None
         self.pf_active = None
 
     async def close(self):
