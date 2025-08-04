@@ -6,6 +6,7 @@ import panel as pn
 import param
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.plotting_params import PlottingParams
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,10 @@ class NicePlotter(param.Parameterized):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, plotting_params, **params):
+    def __init__(self, communicator, **params):
         super().__init__(**params)
         self.communicator = communicator
-        self.plotting_params = plotting_params
+        self.plotting_params = PlottingParams()
         self.wall = None
         self.pf_active = None
 

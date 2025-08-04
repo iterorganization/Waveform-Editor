@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 
 import imas
@@ -9,7 +8,6 @@ from panel.viewable import Viewer
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.shape_editor.plotting_params import PlottingParams
 from waveform_editor.shape_editor.shape_params import ShapeParams
 
 
@@ -19,8 +17,7 @@ class ShapeEditor(Viewer):
     def __init__(self):
         super().__init__()
         self.communicator = NiceIntegration(imas.IDSFactory())
-        self.plotting_params = PlottingParams()
-        self.nice_plotter = NicePlotter(self.communicator, self.plotting_params)
+        self.nice_plotter = NicePlotter(self.communicator)
         self.shape_params = ShapeParams()
         self.nice_settings = settings.nice
 
@@ -28,7 +25,10 @@ class ShapeEditor(Viewer):
         buttons = pn.widgets.Button(name="Run", on_click=self.submit)
         options = pn.Accordion(
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
-            ("Plotting Parameters", pn.Param(self.plotting_params, show_name=False)),
+            (
+                "Plotting Parameters",
+                pn.Param(self.nice_plotter.plotting_params, show_name=False),
+            ),
             ("Plasma Shape", pn.Param(self.shape_params, show_name=False)),
             ("Plasma Parameters", None),
             ("Coil Currents", None),
