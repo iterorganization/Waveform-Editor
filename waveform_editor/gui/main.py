@@ -105,6 +105,8 @@ class WaveformEditorGui(param.Parameterized):
             sidebar=[sidebar],
             sidebar_width=400,
         )
+        # Disable throttling of busy indicator
+        self.template.busy_indicator.throttle = 0
 
     def on_selection_change(self, event):
         """Respond to a changed waveform selection"""
