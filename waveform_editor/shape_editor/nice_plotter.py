@@ -4,6 +4,7 @@ import holoviews as hv
 import matplotlib.pyplot as plt
 import panel as pn
 import param
+from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.plotting_params import PlottingParams
@@ -13,15 +14,17 @@ logger = logging.getLogger(__name__)
 
 class NicePlotter(param.Parameterized):
     communicator = param.ClassSelector(class_=NiceIntegration)
+    wall = param.ClassSelector(class_=IDSToplevel)
+    pf_active = param.ClassSelector(class_=IDSToplevel)
+    plotting_params = param.ClassSelector(
+        class_=PlottingParams, default=PlottingParams()
+    )
     WIDTH = 800
     HEIGHT = 1000
 
     def __init__(self, communicator, **params):
         super().__init__(**params)
         self.communicator = communicator
-        self.plotting_params = PlottingParams()
-        self.wall = None
-        self.pf_active = None
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -37,6 +40,17 @@ class NicePlotter(param.Parameterized):
             show_legend=False,
         )
 
+        self.plot_elements = {
+            "contours": None,
+            "separatrix": None,
+            "xo_points": None,
+            "coils": None,
+            "wall": None,
+            "vacuum_vessel": None,
+        }
+
+        self.plotting_params.param.watch(lambda event: self._plot_contours(), "levels")
+
     @pn.depends("plotting_params.param", "communicator.processing")
     def plot(self):
         """Generates the equilibrium plot with walls, PF coils, poloidal flux contours,
@@ -45,23 +59,26 @@ class NicePlotter(param.Parameterized):
         Returns:
             PlotComposed Holoviews plot or loading pane.
         """
-        equilibrium = self.communicator.equilibrium
-
         overlay = hv.Overlay([])
-        if equilibrium:
-            if self.plotting_params.show_contour:
-                overlay *= self._plot_contours(equilibrium, self.plotting_params.levels)
-            if self.plotting_params.show_separatrix:
-                overlay *= self._plot_separatrix(equilibrium)
-            if self.plotting_params.show_xo:
-                overlay *= self._plot_xo_points(equilibrium)
-        if self.pf_active and self.plotting_params.show_coils:
-            overlay *= self._plot_coil_rectangles(self.pf_active)
-        if self.wall:
-            if self.plotting_params.show_wall:
-                overlay *= self._plot_wall(self.wall)
-            if self.plotting_params.show_vacuum_vessel:
-                overlay *= self._plot_vacuum_vessel(self.wall)
+        if self.plotting_params.show_contour and self.plot_elements["contours"]:
+            overlay *= self.plot_elements["contours"]
+        if self.plotting_params.show_separatrix and self.plot_elements["separatrix"]:
+            overlay *= self.plot_elements["separatrix"]
+        if self.plotting_params.show_xo and self.plot_elements["xo_points"]:
+            overlay *= self.plot_elements["xo_points"]
+        if (
+            self.pf_active
+            and self.plotting_params.show_coils
+            and self.plot_elements["coils"]
+        ):
+            overlay *= self.plot_elements["coils"]
+        if self.plotting_params.show_wall and self.plot_elements["wall"]:
+            overlay *= self.plot_elements["wall"]
+        if (
+            self.plotting_params.show_vacuum_vessel
+            and self.plot_elements["vacuum_vessel"]
+        ):
+            overlay *= self.plot_elements["vacuum_vessel"]
 
         # We cannot pass an empty overlay, so draw an empty curve in this case
         if not overlay.data:
@@ -75,18 +92,16 @@ class NicePlotter(param.Parameterized):
             return pn.Column(pane, loading=True)
         return pane
 
-    def _plot_coil_rectangles(self, pf_active):
+    @pn.depends("pf_active", watch=True)
+    def _plot_coil_rectangles(self):
         """Creates rectangular and path overlays for PF coils.
-
-        Args:
-            pf_active: Poloidal field coil data.
 
         Returns:
             Coil geometry overlay.
         """
         rectangles = []
         paths = []
-        for coil in pf_active.coil:
+        for coil in self.pf_active.coil:
             name = str(coil.name)
             for element in coil.element:
                 rect = element.geometry.rectangle
@@ -119,28 +134,27 @@ class NicePlotter(param.Parameterized):
             hover_tooltips=[("", "@name")],
         )
 
-        return rects * paths
+        self.plot_elements["coils"] = rects * paths
 
-    def _plot_contours(self, equilibrium, levels):
+    @pn.depends("communicator.equilibrium", watch=True)
+    def _plot_contours(self):
         """Generates contour plot for poloidal flux.
-
-        Args:
-            equilibrium: an equilibrium IDS.
-            levels: Number of contour levels.
 
         Returns:
             Contour plot of psi.
         """
+        equilibrium = self.communicator.equilibrium
+        if not equilibrium:
+            return
         eqggd = equilibrium.time_slice[0].ggd[0]
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
 
-        trics = plt.tricontour(r, z, psi, levels=levels)
-        contours = hv.Contours(self._extract_contour_segments(trics), vdims="psi").opts(
-            self.CONTOUR_OPTS
-        )
-        return contours
+        trics = plt.tricontour(r, z, psi, levels=self.plotting_params.levels)
+        self.plot_elements["contours"] = hv.Contours(
+            self._extract_contour_segments(trics), vdims="psi"
+        ).opts(self.CONTOUR_OPTS)
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
@@ -158,15 +172,16 @@ class NicePlotter(param.Parameterized):
                     segments.append({"x": seg[:, 0], "y": seg[:, 1], "psi": level})
         return segments
 
-    def _plot_separatrix(self, equilibrium):
+    @pn.depends("communicator.equilibrium", watch=True)
+    def _plot_separatrix(self):
         """Plots the separatrix from the equilibrium boundary.
-
-        Args:
-            equilibrium: an equilibrium IDS.
 
         Returns:
             Holoviews curve containing the separatrix.
         """
+        equilibrium = self.communicator.equilibrium
+        if not equilibrium:
+            return
         r = equilibrium.time_slice[0].boundary.outline.r
         z = equilibrium.time_slice[0].boundary.outline.z
         separatrix = hv.Curve((r, z)).opts(
@@ -176,19 +191,17 @@ class NicePlotter(param.Parameterized):
             hover_tooltips=[("", "Separatrix")],
         )
 
-        return separatrix
+        self.plot_elements["separatrix"] = separatrix
 
-    def _plot_vacuum_vessel(self, wall):
+    @pn.depends("wall", watch=True)
+    def _plot_vacuum_vessel(self):
         """Generates path overlays for inner and outer vacuum vessel.
-
-        Args:
-            wall: a wall IDS.
 
         Returns:
             Holoviews overlay containing the geometry.
         """
         paths = []
-        for unit in wall.description_2d[0].vessel.unit:
+        for unit in self.wall.description_2d[0].vessel.unit:
             name = str(unit.name)
             r_vals = unit.annular.centreline.r
             z_vals = unit.annular.centreline.z
@@ -198,19 +211,17 @@ class NicePlotter(param.Parameterized):
                 hover_tooltips=[("", name)],
             )
             paths.append(path)
-        return hv.Overlay(paths)
+        self.plot_elements["vacuum_vessel"] = hv.Overlay(paths)
 
-    def _plot_wall(self, wall):
+    @pn.depends("wall", watch=True)
+    def _plot_wall(self):
         """Generates path overlays for limiter and divertor.
-
-        Args:
-            wall: a wall IDS.
 
         Returns:
             Holoviews overlay containing the geometry.
         """
         paths = []
-        for unit in wall.description_2d[0].limiter.unit:
+        for unit in self.wall.description_2d[0].limiter.unit:
             name = str(unit.name)
             r_vals = unit.outline.r
             z_vals = unit.outline.z
@@ -220,17 +231,18 @@ class NicePlotter(param.Parameterized):
                 hover_tooltips=[("", name)],
             )
             paths.append(path)
-        return hv.Overlay(paths)
+        self.plot_elements["wall"] = hv.Overlay(paths)
 
-    def _plot_xo_points(self, equilibrium):
+    @pn.depends("communicator.equilibrium", watch=True)
+    def _plot_xo_points(self):
         """Plots X-points and O-points from the equilibrium.
-
-        Args:
-            equilibrium: an equilibrium IDS.
 
         Returns:
             Scatter plots of X and O points.
         """
+        equilibrium = self.communicator.equilibrium
+        if not equilibrium:
+            return
         o_points = []
         x_points = []
         for node in equilibrium.time_slice[0].contour_tree.node:
@@ -254,4 +266,4 @@ class NicePlotter(param.Parameterized):
             show_legend=False,
             hover_tooltips=[("", "X-point")],
         )
-        return o_scatter * x_scatter
+        self.plot_elements["xo_points"] = o_scatter * x_scatter

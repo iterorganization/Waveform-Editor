@@ -11,6 +11,7 @@ import tempfile
 import panel as pn
 import param
 import ymmsl
+from imas.ids_toplevel import IDSToplevel
 from libmuscle import Instance, Message
 from libmuscle.manager.manager import Manager
 from ymmsl import Operator
@@ -51,6 +52,7 @@ class NiceIntegration(param.Parameterized):
     communicator_running = param.Boolean(
         doc="The process for communicating with NICE is running"
     )
+    equilibrium = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
 
@@ -66,7 +68,6 @@ class NiceIntegration(param.Parameterized):
         )
         self.running = False
         self.closing = False
-        self.equilibrium = None
         self.pf_active = None
 
     async def close(self):
