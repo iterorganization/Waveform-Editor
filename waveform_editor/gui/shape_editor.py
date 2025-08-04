@@ -17,10 +17,10 @@ class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
 
     def __init__(self):
+        super().__init__()
         self.communicator = NiceIntegration(imas.IDSFactory())
         self.plotting_params = PlottingParams()
         self.nice_plotter = NicePlotter(self.communicator, self.plotting_params)
-        super().__init__()
         self.shape_params = ShapeParams()
         self.nice_settings = settings.nice
 
@@ -47,44 +47,47 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def _load_slice(self, nice_settings_uri, ids_name, set_plot_ids=False):
-        """Load an IDS slice from the IMAS database and assign it to attributes.
+    def _load_slice(self, uri, ids_name):
+        """Load an IDS slice and return it.
 
         Args:
-            nice_settings_uri: Name of the IDS attribute of settings.nice that
-                holds the URI.
-            ids_name: Name of the IDS slice to load.
-            set_plot_ids: If True, also assign the loaded IDS slice to
-                `self.nice_plotter.{ids_name}`.
+            uri: the URI to load the slice of.
+            ids_name: The name of the IDS to load.
         """
-        setattr(self, ids_name, None)
-        md_value = getattr(self.nice_settings, nice_settings_uri)
-        if md_value:
+        if uri:
             try:
-                with imas.DBEntry(md_value, "r") as entry:
-                    data = entry.get_slice(ids_name, 0, imas.ids_defs.CLOSEST_INTERP)
-                    setattr(self, ids_name, data)
-                    if set_plot_ids:
-                        setattr(self.nice_plotter, ids_name, data)
+                with imas.DBEntry(uri, "r") as entry:
+                    return entry.get_slice(ids_name, 0, imas.ids_defs.CLOSEST_INTERP)
             except Exception as e:
                 pn.state.notifications.error(str(e))
-                setattr(self.nice_settings, nice_settings_uri, "")
 
     @param.depends("nice_settings.md_pf_active", watch=True)
     def _load_pf_active(self):
-        self._load_slice("md_pf_active", "pf_active", set_plot_ids=True)
+        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
+        self.nice_plotter.pf_active = self.pf_active
+        if not self.pf_active:
+            self.nice_settings.md_pf_active = ""
 
     @param.depends("nice_settings.md_pf_passive", watch=True)
     def _load_pf_passive(self):
-        self._load_slice("md_pf_passive", "pf_passive")
+        self.pf_passive = self._load_slice(
+            self.nice_settings.md_pf_passive, "pf_passive"
+        )
+        if not self.pf_passive:
+            self.nice_settings.md_pf_passive = ""
 
     @param.depends("nice_settings.md_wall", watch=True)
     def _load_wall(self):
-        self._load_slice("md_wall", "wall", set_plot_ids=True)
+        self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
+        self.nice_plotter.wall = self.wall
+        if not self.wall:
+            self.nice_settings.md_wall = ""
 
     @param.depends("nice_settings.md_iron_core", watch=True)
     def _load_iron_core(self):
-        self._load_slice("md_iron_core", "iron_core")
+        self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
+        if not self.iron_core:
+            self.nice_settings.md_iron_core = ""
 
     @param.depends("nice_settings.xml_params", watch=True)
     def _load_xml_params(self):
