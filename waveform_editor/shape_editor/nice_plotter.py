@@ -90,8 +90,8 @@ class NicePlotter(pn.viewable.Viewer):
                         paths.append((outline.r, outline.z, name))
                     else:
                         logger.warning(
-                            f"Coil {name} was skipped, as it does not have a filled 'rect' "
-                            "or 'outline' node"
+                            f"Coil {name} was skipped, as it does not have a filled "
+                            "'rect' or 'outline' node"
                         )
                         continue
         rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
