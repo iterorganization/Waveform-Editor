@@ -25,10 +25,7 @@ class ShapeEditor(Viewer):
         buttons = pn.widgets.Button(name="Run", on_click=self.submit)
         options = pn.Accordion(
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
-            (
-                "Plotting Parameters",
-                pn.Param(self.nice_plotter.plotting_params, show_name=False),
-            ),
+            ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", pn.Param(self.shape_params, show_name=False)),
             ("Plasma Parameters", None),
             ("Coil Currents", None),
@@ -38,7 +35,7 @@ class ShapeEditor(Viewer):
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            pn.panel(self.nice_plotter.plot),
+            self.nice_plotter,
             pn.Column(
                 menu,
                 options,

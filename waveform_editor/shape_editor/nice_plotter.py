@@ -7,18 +7,29 @@ import param
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.plotting_params import PlottingParams
 
 logger = logging.getLogger(__name__)
 
 
-class NicePlotter(param.Parameterized):
-    communicator = param.ClassSelector(class_=NiceIntegration)
-    wall = param.ClassSelector(class_=IDSToplevel)
-    pf_active = param.ClassSelector(class_=IDSToplevel)
-    plotting_params = param.ClassSelector(
-        class_=PlottingParams, default=PlottingParams()
+class NicePlotter(pn.viewable.Viewer):
+    # Input data, use negative precedence to hide from the UI
+    communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
+    wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+
+    # Plot parameters
+    show_contour = param.Boolean(default=True, label="Show contour lines")
+    levels = param.Integer(
+        default=20, bounds=(1, 200), label="Number of contour levels"
     )
+    show_coils = param.Boolean(default=True, label="Show coils")
+    show_wall = param.Boolean(default=True, label="Show limiter and divertor")
+    show_vacuum_vessel = param.Boolean(
+        default=True, label="Show inner and outer vacuum vessel"
+    )
+    show_xo = param.Boolean(default=True, label="Show x-point and o-point")
+    show_separatrix = param.Boolean(default=True, label="Show separatrix")
+
     WIDTH = 800
     HEIGHT = 1000
 
@@ -40,60 +51,21 @@ class NicePlotter(param.Parameterized):
             show_legend=False,
         )
 
-        self.plot_elements = {
-            "contours": None,
-            "separatrix": None,
-            "xo_points": None,
-            "coils": None,
-            "wall": None,
-            "vacuum_vessel": None,
-        }
+        plot_elements = [
+            hv.DynamicMap(self._plot_contours),
+            hv.DynamicMap(self._plot_separatrix),
+            hv.DynamicMap(self._plot_xo_points),
+            hv.DynamicMap(self._plot_coil_rectangles),
+            hv.DynamicMap(self._plot_wall),
+            hv.DynamicMap(self._plot_vacuum_vessel),
+        ]
+        overlay = hv.Overlay(plot_elements).collate().opts(self.DEFAULT_OPTS)
+        self.panel = pn.Column(
+            pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT),
+            loading=self.communicator.param.processing,
+        )
 
-        # Adding as dependency doesn't trigger it, so manually add watcher
-        self.plotting_params.param.watch(lambda event: self._plot_contours(), "levels")
-
-    @pn.depends("plotting_params.param", "communicator.processing")
-    def plot(self):
-        """Generates the equilibrium plot with walls, PF coils, poloidal flux contours,
-        separatrix, and critical points.
-
-        Returns:
-            PlotComposed Holoviews plot or loading pane.
-        """
-        overlay = hv.Overlay([])
-        if self.plotting_params.show_contour and self.plot_elements["contours"]:
-            overlay *= self.plot_elements["contours"]
-        if self.plotting_params.show_separatrix and self.plot_elements["separatrix"]:
-            overlay *= self.plot_elements["separatrix"]
-        if self.plotting_params.show_xo and self.plot_elements["xo_points"]:
-            overlay *= self.plot_elements["xo_points"]
-        if (
-            self.pf_active
-            and self.plotting_params.show_coils
-            and self.plot_elements["coils"]
-        ):
-            overlay *= self.plot_elements["coils"]
-        if self.plotting_params.show_wall and self.plot_elements["wall"]:
-            overlay *= self.plot_elements["wall"]
-        if (
-            self.plotting_params.show_vacuum_vessel
-            and self.plot_elements["vacuum_vessel"]
-        ):
-            overlay *= self.plot_elements["vacuum_vessel"]
-
-        # We cannot pass an empty overlay, so draw an empty curve in this case
-        if not overlay.data:
-            empty_placeholder = hv.Curve([]).opts(alpha=0)
-            overlay = hv.Overlay([empty_placeholder])
-        overlay = overlay.opts(self.DEFAULT_OPTS)
-        pane = pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT)
-
-        # Show loading spinner if processing
-        if self.communicator.processing:
-            return pn.Column(pane, loading=True)
-        return pane
-
-    @pn.depends("pf_active", watch=True)
+    @pn.depends("pf_active", "show_coils")
     def _plot_coil_rectangles(self):
         """Creates rectangular and path overlays for PF coils.
 
@@ -102,25 +74,26 @@ class NicePlotter(param.Parameterized):
         """
         rectangles = []
         paths = []
-        for coil in self.pf_active.coil:
-            name = str(coil.name)
-            for element in coil.element:
-                rect = element.geometry.rectangle
-                outline = element.geometry.outline
-                if rect.has_value:
-                    r0 = rect.r - rect.width / 2
-                    r1 = rect.r + rect.width / 2
-                    z0 = rect.z - rect.height / 2
-                    z1 = rect.z + rect.height / 2
-                    rectangles.append((r0, z0, r1, z1, name))
-                elif outline.has_value:
-                    paths.append((outline.r, outline.z, name))
-                else:
-                    logger.warning(
-                        f"Coil {name} was skipped, as it does not have a filled 'rect' "
-                        "or 'outline' node"
-                    )
-                    continue
+        if self.show_coils and self.pf_active is not None:
+            for coil in self.pf_active.coil:
+                name = str(coil.name)
+                for element in coil.element:
+                    rect = element.geometry.rectangle
+                    outline = element.geometry.outline
+                    if rect.has_value:
+                        r0 = rect.r - rect.width / 2
+                        r1 = rect.r + rect.width / 2
+                        z0 = rect.z - rect.height / 2
+                        z1 = rect.z + rect.height / 2
+                        rectangles.append((r0, z0, r1, z1, name))
+                    elif outline.has_value:
+                        paths.append((outline.r, outline.z, name))
+                    else:
+                        logger.warning(
+                            f"Coil {name} was skipped, as it does not have a filled "
+                            "'rect' or 'outline' node"
+                        )
+                        continue
         rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
             line_color="black",
             fill_alpha=0,
@@ -134,10 +107,9 @@ class NicePlotter(param.Parameterized):
             show_legend=False,
             hover_tooltips=[("", "@name")],
         )
+        return rects * paths
 
-        self.plot_elements["coils"] = rects * paths
-
-    @pn.depends("communicator.equilibrium", watch=True)
+    @pn.depends("communicator.equilibrium", "show_contour", "levels")
     def _plot_contours(self):
         """Generates contour plot for poloidal flux.
 
@@ -145,17 +117,18 @@ class NicePlotter(param.Parameterized):
             Contour plot of psi.
         """
         equilibrium = self.communicator.equilibrium
-        if not equilibrium:
-            return
+        if not self.show_contour or equilibrium is None:
+            return hv.Contours(([0], [0], 0), vdims="psi").opts(self.CONTOUR_OPTS)
+
         eqggd = equilibrium.time_slice[0].ggd[0]
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
 
-        trics = plt.tricontour(r, z, psi, levels=self.plotting_params.levels)
-        self.plot_elements["contours"] = hv.Contours(
-            self._extract_contour_segments(trics), vdims="psi"
-        ).opts(self.CONTOUR_OPTS)
+        trics = plt.tricontour(r, z, psi, levels=self.levels)
+        return hv.Contours(self._extract_contour_segments(trics), vdims="psi").opts(
+            self.CONTOUR_OPTS
+        )
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
@@ -173,7 +146,7 @@ class NicePlotter(param.Parameterized):
                     segments.append({"x": seg[:, 0], "y": seg[:, 1], "psi": level})
         return segments
 
-    @pn.depends("communicator.equilibrium", watch=True)
+    @pn.depends("communicator.equilibrium", "show_separatrix")
     def _plot_separatrix(self):
         """Plots the separatrix from the equilibrium boundary.
 
@@ -181,77 +154,75 @@ class NicePlotter(param.Parameterized):
             Holoviews curve containing the separatrix.
         """
         equilibrium = self.communicator.equilibrium
-        if not equilibrium:
-            return
-        r = equilibrium.time_slice[0].boundary.outline.r
-        z = equilibrium.time_slice[0].boundary.outline.z
-        separatrix = hv.Curve((r, z)).opts(
+        if not self.show_separatrix or equilibrium is None:
+            r = z = []
+        else:
+            r = equilibrium.time_slice[0].boundary.outline.r
+            z = equilibrium.time_slice[0].boundary.outline.z
+        return hv.Curve((r, z)).opts(
             color="red",
             line_width=2,
             show_legend=False,
             hover_tooltips=[("", "Separatrix")],
         )
 
-        self.plot_elements["separatrix"] = separatrix
-
-    @pn.depends("wall", watch=True)
+    @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
-        """Generates path overlays for inner and outer vacuum vessel.
+        """Generates path for inner and outer vacuum vessel.
 
         Returns:
-            Holoviews overlay containing the geometry.
+            Holoviews path containing the geometry.
         """
         paths = []
-        for unit in self.wall.description_2d[0].vessel.unit:
-            name = str(unit.name)
-            r_vals = unit.annular.centreline.r
-            z_vals = unit.annular.centreline.z
-            path = hv.Path([list(zip(r_vals, z_vals))], label=name).opts(
-                color="black",
-                line_width=2,
-                hover_tooltips=[("", name)],
-            )
-            paths.append(path)
-        self.plot_elements["vacuum_vessel"] = hv.Overlay(paths)
+        if self.show_vacuum_vessel and self.wall is not None:
+            for unit in self.wall.description_2d[0].vessel.unit:
+                name = str(unit.name)
+                r_vals = unit.annular.centreline.r
+                z_vals = unit.annular.centreline.z
+                paths.append((r_vals, z_vals, name))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="black",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
 
-    @pn.depends("wall", watch=True)
+    @pn.depends("wall", "show_wall")
     def _plot_wall(self):
-        """Generates path overlays for limiter and divertor.
+        """Generates path for limiter and divertor.
 
         Returns:
-            Holoviews overlay containing the geometry.
+            Holoviews path containing the geometry.
         """
         paths = []
-        for unit in self.wall.description_2d[0].limiter.unit:
-            name = str(unit.name)
-            r_vals = unit.outline.r
-            z_vals = unit.outline.z
-            path = hv.Path([list(zip(r_vals, z_vals))]).opts(
-                color="black",
-                line_width=2,
-                hover_tooltips=[("", name)],
-            )
-            paths.append(path)
-        self.plot_elements["wall"] = hv.Overlay(paths)
+        if self.show_wall and self.wall is not None:
+            for unit in self.wall.description_2d[0].limiter.unit:
+                name = str(unit.name)
+                r_vals = unit.outline.r
+                z_vals = unit.outline.z
+                paths.append((r_vals, z_vals, name))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="black",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
 
-    @pn.depends("communicator.equilibrium", watch=True)
+    @pn.depends("communicator.equilibrium", "show_xo")
     def _plot_xo_points(self):
         """Plots X-points and O-points from the equilibrium.
 
         Returns:
             Scatter plots of X and O points.
         """
-        equilibrium = self.communicator.equilibrium
-        if not equilibrium:
-            return
         o_points = []
         x_points = []
-        for node in equilibrium.time_slice[0].contour_tree.node:
-            point = (node.r, node.z)
-            if node.critical_type == 1:
-                x_points.append(point)
-            elif node.critical_type == 0 or node.critical_type == 2:
-                o_points.append(point)
+        equilibrium = self.communicator.equilibrium
+        if self.show_xo and equilibrium is not None:
+            for node in equilibrium.time_slice[0].contour_tree.node:
+                point = (node.r, node.z)
+                if node.critical_type == 1:
+                    x_points.append(point)
+                elif node.critical_type == 0 or node.critical_type == 2:
+                    o_points.append(point)
 
         o_scatter = hv.Scatter(o_points).opts(
             marker="o",
@@ -267,4 +238,7 @@ class NicePlotter(param.Parameterized):
             show_legend=False,
             hover_tooltips=[("", "X-point")],
         )
-        self.plot_elements["xo_points"] = o_scatter * x_scatter
+        return o_scatter * x_scatter
+
+    def __panel__(self):
+        return self.panel
