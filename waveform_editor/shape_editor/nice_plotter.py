@@ -120,15 +120,27 @@ class NicePlotter(pn.viewable.Viewer):
         if not self.show_contour or equilibrium is None:
             return hv.Contours(([0], [0], 0), vdims="psi").opts(self.CONTOUR_OPTS)
 
+        return self._calc_contours(equilibrium, self.levels).opts(self.CONTOUR_OPTS)
+
+    def _calc_contours(self, equilibrium, levels):
+        """Calculates the contours of the psi grid of an equilibrium IDS.
+
+        Args:
+            equilibrium: The equilibrium IDS to load psi grid from.
+            levels: Determines the number of contour lines. Either an integer for total
+                number of contour lines, or a list of specified levels.
+
+        Returns:
+            Holoviews contours object
+        """
+
         eqggd = equilibrium.time_slice[0].ggd[0]
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
 
-        trics = plt.tricontour(r, z, psi, levels=self.levels)
-        return hv.Contours(self._extract_contour_segments(trics), vdims="psi").opts(
-            self.CONTOUR_OPTS
-        )
+        trics = plt.tricontour(r, z, psi, levels=levels)
+        return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
@@ -156,15 +168,19 @@ class NicePlotter(pn.viewable.Viewer):
         equilibrium = self.communicator.equilibrium
         if not self.show_separatrix or equilibrium is None:
             r = z = []
+            contour = hv.Contours(([0], [0], 0), vdims="psi")
         else:
             r = equilibrium.time_slice[0].boundary.outline.r
             z = equilibrium.time_slice[0].boundary.outline.z
+
+            boundary_psi = equilibrium.time_slice[0].boundary.psi
+            contour = self._calc_contours(equilibrium, [boundary_psi])
         return hv.Curve((r, z)).opts(
             color="red",
-            line_width=2,
+            line_width=4,
             show_legend=False,
             hover_tooltips=[("", "Separatrix")],
-        )
+        ) * contour.opts(self.CONTOUR_OPTS)
 
     @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
