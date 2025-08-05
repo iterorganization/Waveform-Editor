@@ -6,6 +6,13 @@ YAML File Format
 
 The Waveform Editor uses YAML files to define the desired waveforms, their organization, and global settings for export. This page describes the structure and syntax of these files.
 
+An example configuration file is provided on the following page:
+
+.. toctree::
+   :maxdepth: 1
+   
+   example_yaml
+
 Overall Structure
 -----------------
 
@@ -91,7 +98,7 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
 
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
-    2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time. This is shorthand for: ``{type: constant, value: <number>}``.
+    2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time.
 
         .. code-block:: yaml
 
@@ -105,8 +112,8 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
           # This is equal to:
           some_ids/data: 0
 
-    4.  **Reference:** TODO: add referenced/derived waveforms and link to that section here.
-
+    4.  **Derived Waveform:** Waveforms may contain calculations or be derived from other waveforms.
+        For more information, see :ref:`Derived Waveforms <derived-waveforms>`.
 
 Slice Notation
 --------------
