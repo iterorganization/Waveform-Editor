@@ -40,6 +40,7 @@ class WaveformEditor(Viewer):
             active_icon="check",
             description="Save waveform",
             on_click=self.save_waveform,
+            visible=self.param.waveform.rx.pipe(bool),
         )
         self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
 
