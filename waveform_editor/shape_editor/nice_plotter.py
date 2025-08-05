@@ -169,23 +169,20 @@ class NicePlotter(pn.viewable.Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_separatrix or equilibrium is None:
-            empty_contours = hv.Contours(([0], [0], 0), vdims="psi").opts(
-                self.CONTOUR_OPTS
-            )
-            return hv.Curve([]) * empty_contours
+            r = z = []
+            contour = hv.Contours(([0], [0], 0), vdims="psi")
         else:
             r = equilibrium.time_slice[0].boundary.outline.r
             z = equilibrium.time_slice[0].boundary.outline.z
-            curve = hv.Curve((r, z)).opts(
-                color="red",
-                line_width=4,
-                show_legend=False,
-                hover_tooltips=[("", "Separatrix")],
-            )
 
             boundary_psi = equilibrium.time_slice[0].boundary.psi
             contour = self._calc_contours(equilibrium, [boundary_psi])
-            return curve * contour.opts(self.CONTOUR_OPTS)
+        return hv.Curve((r, z)).opts(
+            color="red",
+            line_width=4,
+            show_legend=False,
+            hover_tooltips=[("", "Separatrix")],
+        ) * contour.opts(self.CONTOUR_OPTS)
 
     @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
