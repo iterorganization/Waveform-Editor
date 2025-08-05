@@ -15,15 +15,19 @@ class WaveformEditor(Viewer):
         class_=(Waveform, DerivedWaveform),
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
+    code_editor = param.ClassSelector(class_=pn.widgets.CodeEditor)
+    error_alert = param.ClassSelector(class_=pn.pane.Alert, default=pn.pane.Alert())
+    has_changed = param.Boolean(doc="Whether there are unsaved changes in the editor.")
+    stored_string = param.String(
+        default=None,
+        doc="Contains the waveform text before any changes were made in the editor.",
+    )
 
     def __init__(self, config):
         super().__init__()
         self.config = config
-        # Contains the waveform text before any changes were made in the editor
-        self.stored_string = None
 
         # Code editor UI
-        self.error_alert = pn.pane.Alert()
         # Show error alert when object is set:
         self.error_alert.visible = self.error_alert.param.object.rx.bool()
 
@@ -34,13 +38,13 @@ class WaveformEditor(Viewer):
         )
         self.code_editor.param.watch(self.on_value_change, "value")
 
-        save_button = pn.widgets.ButtonIcon(
-            icon="device-floppy",
-            size="30px",
-            active_icon="check",
-            description="Save waveform",
+        save_button = pn.widgets.Button(
+            name="Save Waveform",
             on_click=self.save_waveform,
-            visible=self.param.waveform.rx.pipe(bool),
+            disabled=(
+                self.param.has_changed.rx.not_()
+                | self.error_alert.param.visible.rx.bool()
+            ),
         )
         self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
 
@@ -124,17 +128,16 @@ class WaveformEditor(Viewer):
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration."""
-        if self.error_alert.visible:
-            pn.state.notifications.error("Cannot save YAML with errors.")
-            return
-
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
         pn.state.notifications.success("Succesfully saved waveform!")
 
-    def has_changed(self):
-        """Return whether the code editor value was changed from its stored value"""
-        return self.stored_string and self.code_editor.value != self.stored_string
+    @param.depends("stored_string", "code_editor.value", watch=True)
+    def set_has_changed(self):
+        """Set whether the code editor value was changed from its stored value"""
+        self.has_changed = bool(
+            self.stored_string and self.code_editor.value != self.stored_string
+        )
 
     def __panel__(self):
         """Return the editor panel UI."""
