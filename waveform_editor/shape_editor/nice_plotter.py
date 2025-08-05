@@ -120,7 +120,7 @@ class NicePlotter(pn.viewable.Viewer):
         if not self.show_contour or equilibrium is None:
             return hv.Contours(([0], [0], 0), vdims="psi").opts(self.CONTOUR_OPTS)
 
-        return self._calc_contours(equilibrium, self.levels)
+        return self._calc_contours(equilibrium, self.levels).opts(self.CONTOUR_OPTS)
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -140,9 +140,7 @@ class NicePlotter(pn.viewable.Viewer):
         psi = eqggd.psi[0].values
 
         trics = plt.tricontour(r, z, psi, levels=levels)
-        return hv.Contours(self._extract_contour_segments(trics), vdims="psi").opts(
-            self.CONTOUR_OPTS
-        )
+        return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
