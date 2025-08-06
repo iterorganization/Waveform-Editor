@@ -10,16 +10,16 @@ H&CD:
   Powers:
     ec_launchers/beam(1)/power_launched/data: '"w/1"'
     ic_antennas/antenna(1)/power_launched/data: '"w/1"'
-    nbi/unit(1)/power_launched/data: '"w/1"'
+    nbi/unit(1)/power_launched/data: '"nbi/unit(1)/energy/data" ** 2.5'
   Strap phase:
-    ic_antennas/antenna(1)/module(1)/strap(1)/phase/data: '"w/1"'
+    ic_antennas/antenna(1)/module(1)/strap(1)/phase/data: 1.5708
   Beam energy:
     nbi/unit(1)/energy/data: '"w/1"'
   Wave polarization:
     ec_launchers/beam(1)/phase/angle: '"w/1"'
   Wave frequency:
-    ic_antennas/antenna(1)/frequency/data: '"w/1"'
-    ec_launchers/beam(1)/frequency/data: '"w/1"'
+    ic_antennas/antenna(1)/frequency/data: 40e6
+    ec_launchers/beam(1)/frequency/data: 170e9
   Steering angles:
     ec_launchers/beam(1)/steering_angle_pol: '"w/1"'
     ec_launchers/beam(1)/steering_angle_tor: '"w/1"'

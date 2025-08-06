@@ -665,15 +665,15 @@ def test_example_yaml(tmp_path):
     for i, ts in enumerate(equilibrium.time_slice):
         assert ts.global_quantities.ip == values[i]
 
-    assert np.all(ic_antennas.antenna[0].frequency.data == values)
+    assert np.all(ic_antennas.antenna[0].frequency.data == 40e6)
     assert np.all(ic_antennas.antenna[0].power_launched.data == values)
-    assert np.all(ic_antennas.antenna[0].module[0].strap[0].phase.data == values)
+    assert np.all(ic_antennas.antenna[0].module[0].strap[0].phase.data == 1.5708)
 
     for i, ts in enumerate(pellets.time_slice):
         assert ts.pellet[0].velocity_initial == values[i]
 
     assert np.all(ec_launchers.beam[0].power_launched.data == values)
-    assert np.all(ec_launchers.beam[0].frequency.data == values)
+    assert np.all(ec_launchers.beam[0].frequency.data == 170e9)
     assert np.all(ec_launchers.beam[0].steering_angle_pol == values)
     assert np.all(ec_launchers.beam[0].steering_angle_tor == values)
     assert np.all(ec_launchers.beam[0].phase.angle == values)
@@ -684,5 +684,5 @@ def test_example_yaml(tmp_path):
 
     assert np.all(interferometer.channel[0].n_e_line.data == values)
 
-    assert np.all(nbi.unit[0].power_launched.data == values)
+    assert np.all(nbi.unit[0].power_launched.data == values**2.5)
     assert np.all(nbi.unit[0].energy.data == values)
