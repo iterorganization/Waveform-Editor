@@ -3,6 +3,7 @@ import io
 
 import imas
 import numpy as np
+import panel as pn
 
 AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
 LATEST_DD_VERSION = imas.dd_zip.latest_dd_version()
@@ -40,6 +41,22 @@ def times_from_csv(source, from_file_path=True):
     # Convert string values to floats
     time_array = [float(value) for value in rows[0]]
     return np.array(time_array)
+
+
+def load_slice(uri, ids_name, time=0):
+    """Load an IDS slice and return it.
+
+    Args:
+        uri: the URI to load the slice of.
+        ids_name: The name of the IDS to load.
+        time: the time step to load slice of.
+    """
+    if uri:
+        try:
+            with imas.DBEntry(uri, "r") as entry:
+                return entry.get_slice(ids_name, time, imas.ids_defs.CLOSEST_INTERP)
+        except Exception as e:
+            pn.state.notifications.error(str(e))
 
 
 class State:

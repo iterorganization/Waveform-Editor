@@ -1,5 +1,4 @@
 import logging
-import math
 
 import holoviews as hv
 import matplotlib.pyplot as plt
@@ -72,93 +71,9 @@ class NicePlotter(pn.viewable.Viewer):
             loading=self.communicator.param.processing,
         )
 
-    @pn.depends(
-        "shape_params.equilibrium_input",
-        "shape_params.time_input",
-        "shape_params.input_mode",
-        "shape_params.a",
-        "shape_params.center_r",
-        "shape_params.center_z",
-        "shape_params.kappa",
-        "shape_params.delta",
-        "shape_params.rx",
-        "shape_params.zx",
-        "shape_params.n_desired_bnd_points",
-        "shape_params.input_mode",
-    )
+    @pn.depends("shape_params.shape_curve")
     def _plot_desired_shape(self):
-        if self.shape_params.input_mode == self.shape_params.EQUILIBRIUM_INPUT:
-            if self.equilibrium:
-                r = self.equilibrium.time_slice[0].boundary.outline.r
-                z = self.equilibrium.time_slice[0].boundary.outline.z
-                curve = hv.Curve((r, z))
-            else:
-                curve = hv.Curve([])
-        elif self.shape_params.input_mode == self.shape_params.PARAMETERIZED_INPUT:
-            curve = self._calc_parameterized_shape()
-        return curve.opts(color="blue")
-
-    def _calc_parameterized_shape(self):
-        desired_r = []
-        desired_z = []
-
-        nb_desired_point = self.shape_params.n_desired_bnd_points
-        r0 = self.shape_params.center_r
-        z0 = self.shape_params.center_z
-        a = self.shape_params.a
-        kappa = self.shape_params.kappa
-        delta = self.shape_params.delta
-        rx = self.shape_params.rx
-        zx = self.shape_params.zx
-
-        nb_point1 = (nb_desired_point - 1) // 2
-        rem1 = (nb_desired_point - 1) % 2
-        nb_point2 = (rem1 + nb_point1) // 2
-        nb_point3 = nb_point2
-        if (rem1 + nb_point1) % 2 == 1:
-            nb_point1 += 1
-
-        theta1 = math.pi / (nb_point1 - 1)
-        for i in range(nb_point1):
-            theta = i * theta1
-            desired_r.append(
-                r0 + a * math.cos(theta + math.asin(delta) * math.sin(theta))
-            )
-            desired_z.append(z0 + a * kappa * math.sin(theta))
-
-        ri = ((rx + r0 - a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 + a))
-        ai = ri - r0 + a
-        theta2 = math.asin((z0 - zx) / ai) / (nb_point2 + 1)
-        for i in range(nb_point2):
-            theta = (i + 1) * theta2
-            desired_r.append(ri - ai * math.cos(theta))
-            desired_z.append(z0 - ai * math.sin(theta))
-
-        re = ((rx + r0 + a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 - a))
-        ae = r0 + a - re
-        theta3 = math.asin((z0 - zx) / ae) / (nb_point3 + 1)
-        for i in range(nb_point3):
-            theta = (i + 1) * theta3
-            desired_r.append(re + ae * math.cos(theta))
-            desired_z.append(z0 - ae * math.sin(theta))
-
-        desired_r.append(rx)
-        desired_z.append(zx)
-
-        points = list(zip(desired_r, desired_z))
-        mean_r = sum(desired_r) / len(desired_r)
-        mean_z = sum(desired_z) / len(desired_z)
-
-        def angle_from_mean(p):
-            return math.atan2(p[1] - mean_z, p[0] - mean_r)
-
-        p_sorted = sorted(points, key=angle_from_mean)
-        desired_bnd_r = [p[0] for p in p_sorted]
-        desired_bnd_z = [p[1] for p in p_sorted]
-        desired_bnd_r.append(desired_bnd_r[0])
-        desired_bnd_z.append(desired_bnd_z[0])
-
-        return hv.Curve((desired_bnd_r, desired_bnd_z))
+        return self.shape_params.shape_curve.opts(color="blue")
 
     @pn.depends("pf_active", "show_coils")
     def _plot_coil_rectangles(self):
