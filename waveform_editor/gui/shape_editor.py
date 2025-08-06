@@ -20,10 +20,14 @@ class ShapeEditor(Viewer):
 
     def __init__(self):
         super().__init__()
-        self.communicator = NiceIntegration(imas.IDSFactory())
+        factory = imas.IDSFactory()
+        self.communicator = NiceIntegration(factory)
         self.shape_params = ShapeParams()
         self.plasma_properties = PlasmaProperties()
-        self.nice_plotter = NicePlotter(self.communicator, self.shape_params)
+        self.equilibrium = self.create_empty_equilibrium()
+        self.nice_plotter = NicePlotter(
+            self.communicator, self.shape_params, self.equilibrium
+        )
         self.nice_settings = settings.nice
 
         # UI Configuration
@@ -96,16 +100,16 @@ class ShapeEditor(Viewer):
     @param.depends(
         "shape_params.equilibrium_input", "shape_params.time_input", watch=True
     )
-    def _load_equilibrium(self):
-        self.equilibrium = self._load_slice(
+    def _load_shape(self):
+        equilibrium = self._load_slice(
             self.shape_params.equilibrium_input,
             "equilibrium",
             self.shape_params.time_input,
         )
-        if hasattr(self, "nice_plotter"):
-            self.nice_plotter.equilibrium = self.equilibrium
-        if not self.equilibrium:
-            self.shape_params.equilibrium_input = ""
+
+        outline = equilibrium.time_slice[0].boundary.outline
+        self.equilibrium.time_slice[0].boundary.outline.r = outline.r
+        self.equilibrium.time_slice[0].boundary.outline.z = outline.z
 
     @param.depends("nice_settings.xml_params", watch=True)
     def _load_xml_params(self):
@@ -176,11 +180,13 @@ class ShapeEditor(Viewer):
         equilibrium = imas.IDSFactory().new("equilibrium")
         equilibrium.time = [0]
         equilibrium.time_slice.resize(1)
+        equilibrium.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        )
         equilibrium.time_slice[0].global_quantities.ip = -1.5e7
         equilibrium.vacuum_toroidal_field.r0 = 6.2
         equilibrium.vacuum_toroidal_field.b0.resize(1)
         equilibrium.vacuum_toroidal_field.b0[0] = -5.3
-        equilibrium.ids_properties.homogeneous_time = 1
         # TODO: NICE does not read from p'/ff' from parametrisation (alpha, beta, gamma)
         # yet, so these are taken from the equilibrium IDS for now
         equilibrium.time_slice[0].profiles_1d.dpressure_dpsi = np.array(

@@ -37,8 +37,9 @@ class NicePlotter(pn.viewable.Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, shape_params, **params):
+    def __init__(self, communicator, shape_params, equilibrium, **params):
         super().__init__(**params)
+        self.equilibrium = equilibrium
         self.communicator = communicator
         self.shape_params = shape_params
         self.DEFAULT_OPTS = hv.opts.Overlay(
