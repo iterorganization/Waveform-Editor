@@ -10,6 +10,7 @@ from panel.viewable import Viewer
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.shape_params import ShapeParams
 
 
@@ -21,6 +22,7 @@ class ShapeEditor(Viewer):
         super().__init__()
         self.communicator = NiceIntegration(imas.IDSFactory())
         self.shape_params = ShapeParams()
+        self.plasma_properties = PlasmaProperties()
         self.nice_plotter = NicePlotter(self.communicator, self.shape_params)
         self.nice_settings = settings.nice
 
@@ -32,7 +34,7 @@ class ShapeEditor(Viewer):
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.shape_params),
-            ("Plasma Parameters", None),
+            ("Plasma Parameters", self.plasma_properties),
             ("Coil Currents", None),
             sizing_mode="stretch_width",
         )
