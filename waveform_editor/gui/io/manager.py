@@ -57,7 +57,7 @@ class IOManager(Viewer):
         self.open_file = None
 
     def _confirm_unsaved_changes(self, action, message):
-        if self.main_gui.config.has_changed or self.main_gui.editor.has_changed():
+        if self.main_gui.config.has_changed or self.main_gui.editor.has_changed:
             message = f"""\
             ### ⚠️ **You have unsaved changes**
             {message}  

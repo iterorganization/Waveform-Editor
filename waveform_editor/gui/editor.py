@@ -15,9 +15,10 @@ class WaveformEditor(Viewer):
         class_=(Waveform, DerivedWaveform),
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
-    code_editor = param.ClassSelector(class_=pn.widgets.CodeEditor)
     error_alert = param.ClassSelector(class_=pn.pane.Alert, default=pn.pane.Alert())
-    has_changed = param.Boolean(doc="Whether there are unsaved changes in the editor.")
+    has_changed = param.Boolean(
+        allow_refs=True, doc="Whether there are unsaved changes in the editor."
+    )
     stored_string = param.String(
         default=None,
         doc="Contains the waveform text before any changes were made in the editor.",
@@ -38,6 +39,9 @@ class WaveformEditor(Viewer):
         )
         self.code_editor.param.watch(self.on_value_change, "value")
 
+        self.has_changed = self.param.stored_string.rx.bool() & (
+            self.code_editor.param.value.rx() != self.param.stored_string.rx()
+        )
         save_button = pn.widgets.Button(
             name="Save Waveform",
             on_click=self.save_waveform,
@@ -131,13 +135,6 @@ class WaveformEditor(Viewer):
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
         pn.state.notifications.success("Succesfully saved waveform!")
-
-    @param.depends("stored_string", "code_editor.value", watch=True)
-    def set_has_changed(self):
-        """Set whether the code editor value was changed from its stored value"""
-        self.has_changed = bool(
-            self.stored_string and self.code_editor.value != self.stored_string
-        )
 
     def __panel__(self):
         """Return the editor panel UI."""
