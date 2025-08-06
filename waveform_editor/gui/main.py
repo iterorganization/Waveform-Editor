@@ -114,7 +114,7 @@ class WaveformEditorGui(param.Parameterized):
             return  # ignore this event when we revert to the editor
         if (
             self.tabs.active == self.EDIT_WAVEFORMS_TAB
-            and self.editor.has_changed()
+            and self.editor.has_changed
             # Check if current waveform is being removed. The user already confirmed
             # they want to remove the waveform, so we don't ask again:
             and not self.selector.is_removing_waveform
@@ -131,7 +131,7 @@ class WaveformEditorGui(param.Parameterized):
         """Respond to a tab change"""
         if self._skip_editor_change_check:
             return  # ignore this event when we revert to the editor
-        if event.old == self.EDIT_WAVEFORMS_TAB and self.editor.has_changed():
+        if event.old == self.EDIT_WAVEFORMS_TAB and self.editor.has_changed:
             self.confirm_modal.show(
                 self.DISCARD_CHANGES_MESSAGE,
                 on_confirm=self.update_selection,

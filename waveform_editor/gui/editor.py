@@ -15,17 +15,27 @@ class WaveformEditor(Viewer):
         class_=(Waveform, DerivedWaveform),
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
+    stored_string = param.String(
+        default=None,
+        doc="Contains the waveform text before any changes were made in the editor.",
+    )
+    error_message = param.String(doc="Error or warning message to show in alert.")
+    alert_type = param.String(default="danger")
+    has_changed = param.Boolean(
+        allow_refs=True, doc="Whether there are unsaved changes in the editor."
+    )
 
     def __init__(self, config):
         super().__init__()
         self.config = config
-        # Contains the waveform text before any changes were made in the editor
-        self.stored_string = None
 
-        # Code editor UI
-        self.error_alert = pn.pane.Alert()
-        # Show error alert when object is set:
-        self.error_alert.visible = self.error_alert.param.object.rx.bool()
+        has_error = self.param.error_message.rx.bool()
+
+        self.error_alert = pn.pane.Alert(
+            object=self.param.error_message,
+            alert_type=self.param.alert_type,
+            visible=has_error,
+        )
 
         self.code_editor = pn.widgets.CodeEditor(
             sizing_mode="stretch_both",
@@ -34,12 +44,13 @@ class WaveformEditor(Viewer):
         )
         self.code_editor.param.watch(self.on_value_change, "value")
 
-        save_button = pn.widgets.ButtonIcon(
-            icon="device-floppy",
-            size="30px",
-            active_icon="check",
-            description="Save waveform",
+        self.has_changed = self.param.stored_string.rx.bool() & (
+            self.code_editor.param.value.rx() != self.param.stored_string.rx()
+        )
+        save_button = pn.widgets.Button(
+            name="Save Waveform",
             on_click=self.save_waveform,
+            disabled=self.param.has_changed.rx.not_() | has_error,
         )
         self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
 
@@ -54,7 +65,7 @@ class WaveformEditor(Viewer):
                 editor.
         """
         self.waveform = None if waveform is None else self.config[waveform]
-        self.error_alert.object = ""  # clear any errors
+        self.error_message = ""
         if self.waveform is None:
             self.code_editor.value = "Select a waveform to edit"
             self.stored_string = None
@@ -85,55 +96,38 @@ class WaveformEditor(Viewer):
             waveform_yaml = f"{name}: {editor_text}"
         waveform = self.config.parse_waveform(waveform_yaml)
         self.handle_exceptions(waveform)
-        if not self.error_alert.object:
+        if not self.error_message:
             self.waveform = waveform
 
     def handle_exceptions(self, waveform):
         annotations = waveform.annotations
         self.code_editor.annotations = list(annotations)
         if self.config.parser.parse_errors:  # Handle errors
-            self.create_error_alert(
-                "The YAML did not parse correctly\n  "
-                + f"{self.config.parser.parse_errors[0]}",
-                "danger",
+            self.error_message = (
+                "### The YAML did not parse correctly\n  "
+                + f"{self.config.parser.parse_errors[0]}"
             )
-        elif self.code_editor.annotations:
-            self.create_error_alert(
-                "There was an error in the YAML configuration\n" + f"{annotations}",
-                "warning",
+            self.alert_type = "danger"
+        elif annotations:
+            self.error_message = (
+                "### There was an error in the YAML configuration\n" + f"{annotations}"
             )
+            self.alert_type = "warning"
         else:
             if isinstance(waveform, DerivedWaveform):
                 try:
                     self.config.check_safe_to_replace(waveform)
                 except Exception as e:
-                    self.create_error_alert(str(e), "danger")
+                    self.error_message = f"### {str(e)}"
+                    self.alert_type = "danger"
                     return
-            self.error_alert.object = ""  # Clear any previous errors or warnings
-
-    def create_error_alert(self, message, alert_type):
-        """Create a formatted error or warning alert.
-
-        Args:
-            message: The alert message content.
-            alert_type: Type of alert
-        """
-        self.error_alert.object = f"### {message}"
-        self.error_alert.alert_type = alert_type
+            self.error_message = ""  # Clear any previous errors or warnings
 
     def save_waveform(self, event=None):
         """Store the waveform into the WaveformConfiguration."""
-        if self.error_alert.visible:
-            pn.state.notifications.error("Cannot save YAML with errors.")
-            return
-
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
         pn.state.notifications.success("Succesfully saved waveform!")
-
-    def has_changed(self):
-        """Return whether the code editor value was changed from its stored value"""
-        return self.stored_string and self.code_editor.value != self.stored_string
 
     def __panel__(self):
         """Return the editor panel UI."""
