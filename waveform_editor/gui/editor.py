@@ -21,6 +21,9 @@ class WaveformEditor(Viewer):
     )
     error_message = param.String(doc="Error or warning message to show in alert.")
     alert_type = param.String(default="danger")
+    has_changed = param.Boolean(
+        allow_refs=True, doc="Whether there are unsaved changes in the editor."
+    )
 
     def __init__(self, config):
         super().__init__()
@@ -47,7 +50,7 @@ class WaveformEditor(Viewer):
         save_button = pn.widgets.Button(
             name="Save Waveform",
             on_click=self.save_waveform,
-            disabled=self.has_changed.rx.not_() | has_error,
+            disabled=self.param.has_changed.rx.not_() | has_error,
         )
         self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
 
@@ -93,7 +96,7 @@ class WaveformEditor(Viewer):
             waveform_yaml = f"{name}: {editor_text}"
         waveform = self.config.parse_waveform(waveform_yaml)
         self.handle_exceptions(waveform)
-        if not self.param.error_message.rx.bool().rx.value:
+        if not self.error_message:
             self.waveform = waveform
 
     def handle_exceptions(self, waveform):
