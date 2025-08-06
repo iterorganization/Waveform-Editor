@@ -626,3 +626,22 @@ def test_increasing_times():
         ConfigurationExporter(config, np.array([0, 0, 1]))
     with pytest.raises(ValueError):
         ConfigurationExporter(config, np.array([0, 2, 1]))
+
+
+def test_export_constant(tmp_path):
+    """Check if constant waveforms are exported correctly"""
+
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1
+      ec_launchers/beam(2)/phase/angle: 2.2
+      ec_launchers/beam(3)/phase/angle: 3.3e3
+    """
+    file_path = f"{tmp_path}/test.nc"
+    times = np.array([0, 1, 2])
+    _export_ids(file_path, yaml_str, times)
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.array_equal(ids.beam[0].phase.angle, [1] * 3)
+        assert np.array_equal(ids.beam[1].phase.angle, [2.2] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [3.3e3] * 3)
