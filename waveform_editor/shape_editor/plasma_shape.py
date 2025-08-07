@@ -21,7 +21,7 @@ class PlasmaShapeParams(param.Parameterized):
     kappa = param.Number(default=1.8, bounds=[0, 3], label="Elongation")
     delta = param.Number(default=0.43, bounds=[-1, 1], label="Triangularity")
     rx = param.Number(default=5.089, bounds=[4.5, 6], label="X-point radius")
-    zx = param.Number(default=-3.346, bounds=[-4, -2], label="X-pointl height")
+    zx = param.Number(default=-3.346, bounds=[-4, -2], label="X-point height")
     n_desired_bnd_points = param.Integer(
         default=96, bounds=[1, 200], label="Number of boundary points"
     )
