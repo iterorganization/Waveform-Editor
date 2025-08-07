@@ -7,12 +7,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-
-class EquilibriumInput(param.Parameterized):
-    """Helper class containing equilibrium URI and time input."""
-
-    equilibrium = param.String(label="Input 'equilibrium' IDS")
-    time = param.Number(label="Time for input equilibrium")
+from waveform_editor.util import EquilibriumInput
 
 
 class PlasmaShapeParams(param.Parameterized):

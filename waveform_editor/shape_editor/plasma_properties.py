@@ -3,10 +3,12 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.shape_editor.plasma_shape import EquilibriumInput
+from waveform_editor.util import EquilibriumInput
 
 
 class PlasmaPropertiesParams(param.Parameterized):
+    """Helper class containing parameters defining the plasma properties."""
+
     ip = param.Number(default=-1.5e7)
     r0 = param.Number(default=6.2)
     b0 = param.Number(default=-5.3)
@@ -28,7 +30,7 @@ class PlasmaProperties(Viewer):
     properties_params = param.ClassSelector(
         class_=PlasmaPropertiesParams, default=PlasmaPropertiesParams()
     )
-    has_properties = param.Boolean(doc="Whether a plasma shape is loaded.")
+    has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
     def __init__(self, equilibrium):
         super().__init__()
@@ -39,6 +41,7 @@ class PlasmaProperties(Viewer):
 
     @param.depends("properties_params.param", "input.param", "input_mode", watch=True)
     def _load_plasma_properties(self):
+        """Update plasma properties based on input mode."""
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             self._load_properties_from_ids()
         elif self.input_mode == self.MANUAL_INPUT:
@@ -48,6 +51,7 @@ class PlasmaProperties(Viewer):
             self.has_properties = False
 
     def _load_properties_from_ids(self):
+        """Load plasma properties from IDS equilibrium input."""
         if not self.input.equilibrium:
             return
         try:
@@ -56,9 +60,10 @@ class PlasmaProperties(Viewer):
                     "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
-            self.equilibrium.time_slice[
-                0
-            ].global_quantities.ip = equilibrium.time_slice[0].global_quantities.ip
+            eq_time_slice = equilibrium.time_slice[0]
+            self_time_slice = self.equilibrium.time_slice[0]
+
+            self_time_slice.global_quantities.ip = eq_time_slice.global_quantities.ip
 
             self.equilibrium.vacuum_toroidal_field.r0 = (
                 equilibrium.vacuum_toroidal_field.r0
@@ -66,12 +71,13 @@ class PlasmaProperties(Viewer):
             self.equilibrium.vacuum_toroidal_field.b0[0] = (
                 equilibrium.vacuum_toroidal_field.b0[0]
             )
-            profiles_1d = equilibrium.time_slice[0].profiles_1d
-            self.equilibrium.time_slice[
-                0
-            ].profiles_1d.dpressure_dpsi = profiles_1d.dpressure_dpsi
-            self.equilibrium.time_slice[0].profiles_1d.f_df_dpsi = profiles_1d.f_df_dpsi
-            self.equilibrium.time_slice[0].profiles_1d.psi = profiles_1d.psi
+
+            eq_profiles = eq_time_slice.profiles_1d
+            self_profiles = self_time_slice.profiles_1d
+            self_profiles.dpressure_dpsi = eq_profiles.dpressure_dpsi
+            self_profiles.f_df_dpsi = eq_profiles.f_df_dpsi
+            self_profiles.psi = eq_profiles.psi
+
             self.has_properties = True
         except Exception as e:
             pn.state.notifications.error(
