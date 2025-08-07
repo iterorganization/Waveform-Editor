@@ -82,7 +82,7 @@ class ShapeEditor(Viewer):
         equilibrium.ids_properties.homogeneous_time = (
             imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
         )
-        equilibrium.time = [0]
+        equilibrium.time = [0.0]
         equilibrium.time_slice.resize(1)
         equilibrium.vacuum_toroidal_field.b0.resize(1)
         return equilibrium

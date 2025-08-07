@@ -36,7 +36,7 @@ class PlasmaProperties(Viewer):
         super().__init__()
         self.equilibrium = equilibrium
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
-            self.param.input_mode, inline=True, margin=20
+            self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
 
     @param.depends("properties_params.param", "input.param", "input_mode", watch=True)

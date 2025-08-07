@@ -13,15 +13,17 @@ from waveform_editor.util import EquilibriumInput
 class PlasmaShapeParams(param.Parameterized):
     """Helper class containing parameters to parameterize the plasma shape."""
 
-    a = param.Number(default=1.9, bounds=[1, 2], label="a")
-    center_r = param.Number(default=6.2, bounds=[5, 7], label="center_r")
-    center_z = param.Number(default=0.545, bounds=[0, 1.5], label="center_z")
-    kappa = param.Number(default=1.8, bounds=[0, 3], label="kappa")
-    delta = param.Number(default=0.43, bounds=[-1, 1], label="delta")
-    rx = param.Number(default=5.089, bounds=[4.5, 6], label="rx")
-    zx = param.Number(default=-3.346, bounds=[-4, -2], label="zx")
+    a = param.Number(default=1.9, bounds=[1, 2], label="Minor Radius")
+    center_r = param.Number(default=6.2, bounds=[5, 7], label="Plasma center radius")
+    center_z = param.Number(
+        default=0.545, bounds=[0, 1.5], label="Plasma center height"
+    )
+    kappa = param.Number(default=1.8, bounds=[0, 3], label="Elongation")
+    delta = param.Number(default=0.43, bounds=[-1, 1], label="Triangularity")
+    rx = param.Number(default=5.089, bounds=[4.5, 6], label="X-point radius")
+    zx = param.Number(default=-3.346, bounds=[-4, -2], label="X-pointl height")
     n_desired_bnd_points = param.Integer(
-        default=96, bounds=[1, 200], label="n_desired_bnd_points"
+        default=96, bounds=[1, 200], label="Number of boundary points"
     )
 
 
@@ -47,7 +49,7 @@ class PlasmaShape(Viewer):
         super().__init__()
         self.equilibrium = equilibrium
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
-            self.param.input_mode, inline=True, margin=20
+            self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
 
     @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
