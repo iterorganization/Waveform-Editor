@@ -8,7 +8,7 @@ import param
 from panel.viewable import Viewer
 
 
-class PlasmaShapeInput(param.Parameterized):
+class EquilibriumInput(param.Parameterized):
     equilibrium = param.String(label="Input 'equilibrium' IDS")
     time = param.Number(label="Time for input equilibrium")
 
@@ -36,7 +36,7 @@ class PlasmaShape(Viewer):
         objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT],
         label="Shape input mode",
     )
-    input = param.ClassSelector(class_=PlasmaShapeInput, default=PlasmaShapeInput())
+    input = param.ClassSelector(class_=EquilibriumInput, default=EquilibriumInput())
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
@@ -167,4 +167,4 @@ class PlasmaShape(Viewer):
         return parameters
 
     def __panel__(self):
-        return pn.Column(self._panel_shape_options)
+        return self._panel_shape_options

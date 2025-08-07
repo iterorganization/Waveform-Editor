@@ -1,9 +1,9 @@
-import xml.etree.ElementTree as ET
-from pathlib import Path
+import importlib.resources
 
 import imas
 import panel as pn
 import param
+from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.settings import NiceSettings, settings
@@ -19,22 +19,40 @@ class ShapeEditor(Viewer):
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
 
+    pf_active = param.ClassSelector(class_=IDSToplevel)
+    pf_passive = param.ClassSelector(class_=IDSToplevel)
+    wall = param.ClassSelector(class_=IDSToplevel)
+    iron_core = param.ClassSelector(class_=IDSToplevel)
+
     def __init__(self):
         super().__init__()
         factory = imas.IDSFactory()
         self.communicator = NiceIntegration(factory)
         self.equilibrium = self.create_empty_equilibrium()
         self.plasma_shape = PlasmaShape(self.equilibrium)
-        self.plasma_properties = PlasmaProperties()
+        self.plasma_properties = PlasmaProperties(self.equilibrium)
         self.nice_plotter = NicePlotter(
             self.communicator, self.plasma_shape, self.equilibrium
         )
-        self.has_plasma_properties = False
         self.nice_settings = settings.nice
+
+        with (
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath("param.xml")
+            .open("r") as f
+        ):
+            self.xml_params = f.read()
 
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
-        button_start.disabled = self.plasma_shape.param.has_shape.rx.not_()
+        button_start.disabled = (
+            self.plasma_shape.param.has_shape.rx.not_()
+            | self.plasma_properties.param.has_properties.rx.not_()
+            | self.param.pf_active.rx.not_()
+            | self.param.pf_passive.rx.not_()
+            | self.param.iron_core.rx.not_()
+            | self.param.wall.rx.not_()
+        )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
         options = pn.Accordion(
@@ -56,6 +74,16 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
+
+    def create_empty_equilibrium(self):
+        equilibrium = imas.IDSFactory().new("equilibrium")
+        equilibrium.time = [0]
+        equilibrium.time_slice.resize(1)
+        equilibrium.vacuum_toroidal_field.b0.resize(1)
+        equilibrium.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        )
+        return equilibrium
 
     @param.depends("nice_settings.md_pf_active", watch=True)
     def _load_pf_active(self):
@@ -83,76 +111,9 @@ class ShapeEditor(Viewer):
         if not self.iron_core:
             self.nice_settings.md_iron_core = ""
 
-    @param.depends(
-        "plasma_properties.equilibrium_input",
-        "plasma_properties.time_input",
-        watch=True,
-    )
-    def _load_plasma_properties(self):
-        equilibrium = load_slice(
-            self.plasma_properties.equilibrium_input,
-            "equilibrium",
-            self.plasma_properties.time_input,
-        )
-        if not equilibrium:
-            self.has_plasma_properties = False
-            return
-
-        self.equilibrium.time_slice[0].global_quantities.ip = equilibrium.time_slice[
-            0
-        ].global_quantities.ip
-
-        self.equilibrium.vacuum_toroidal_field.r0 = equilibrium.vacuum_toroidal_field.r0
-        self.equilibrium.vacuum_toroidal_field.b0[0] = (
-            equilibrium.vacuum_toroidal_field.b0[0]
-        )
-        profiles_1d = equilibrium.time_slice[0].profiles_1d
-        self.equilibrium.time_slice[
-            0
-        ].profiles_1d.dpressure_dpsi = profiles_1d.dpressure_dpsi
-        self.equilibrium.time_slice[0].profiles_1d.f_df_dpsi = profiles_1d.f_df_dpsi
-        self.equilibrium.time_slice[0].profiles_1d.psi = profiles_1d.psi
-        self.has_plasma_properties = True
-
-    @param.depends("nice_settings.xml_params", watch=True)
-    def _load_xml_params(self):
-        if self.nice_settings.xml_params:
-            try:
-                self.xml_params = Path(self.nice_settings.xml_params).read_text()
-            except Exception:
-                self.xml_params = None
-                self.nice_settings.xml_params = ""
-
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
-
-        if not self.xml_params:
-            pn.state.notifications.error("Please provide a path to NICE XML params")
-            return
-
-        input_ids_names = ["pf_active", "pf_passive", "wall", "iron_core"]
-        for name in input_ids_names:
-            ids = getattr(self, name)
-            if not ids:
-                pn.state.notifications.error(f"Please provide a valid {name} IDS")
-                return
-
-        # TODO: should be done reactively
-        if self.plasma_properties.input_mode == self.plasma_properties.MANUAL_INPUT:
-            pn.state.notifications.error(
-                "Manual plasma property input is not yet implemented"
-            )
-            return
-        elif (
-            self.plasma_properties.input_mode
-            == self.plasma_properties.EQUILIBRIUM_INPUT
-            and not self.has_plasma_properties
-        ):
-            pn.state.notifications.error(
-                "Please provide a valid equilibrium IDS plasma properties"
-            )
-            return
 
         if not self.communicator.running:
             await self.communicator.run()
@@ -164,16 +125,6 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
-
-    def create_empty_equilibrium(self):
-        equilibrium = imas.IDSFactory().new("equilibrium")
-        equilibrium.time = [0]
-        equilibrium.time_slice.resize(1)
-        equilibrium.vacuum_toroidal_field.b0.resize(1)
-        equilibrium.ids_properties.homogeneous_time = (
-            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-        )
-        return equilibrium
 
     async def stop_nice(self, event):
         await self.communicator.close()
