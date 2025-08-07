@@ -17,7 +17,6 @@ class NicePlotter(pn.viewable.Viewer):
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
-    equilibrium = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
 
     # Plot parameters
@@ -36,9 +35,8 @@ class NicePlotter(pn.viewable.Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, plasma_shape, equilibrium, **params):
+    def __init__(self, communicator, plasma_shape, **params):
         super().__init__(**params)
-        self.equilibrium = equilibrium
         self.communicator = communicator
         self.plasma_shape = plasma_shape
         self.DEFAULT_OPTS = hv.opts.Overlay(

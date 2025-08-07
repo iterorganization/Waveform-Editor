@@ -11,7 +11,6 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
-from waveform_editor.util import load_slice
 
 
 class ShapeEditor(Viewer):
@@ -26,14 +25,12 @@ class ShapeEditor(Viewer):
 
     def __init__(self):
         super().__init__()
-        factory = imas.IDSFactory()
-        self.communicator = NiceIntegration(factory)
-        self.equilibrium = self.create_empty_equilibrium()
+        self.factory = imas.IDSFactory()
+        self.communicator = NiceIntegration(self.factory)
+        self.equilibrium = self.create_init_equilibrium()
         self.plasma_shape = PlasmaShape(self.equilibrium)
         self.plasma_properties = PlasmaProperties(self.equilibrium)
-        self.nice_plotter = NicePlotter(
-            self.communicator, self.plasma_shape, self.equilibrium
-        )
+        self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
         with (
@@ -75,39 +72,61 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def create_empty_equilibrium(self):
-        equilibrium = imas.IDSFactory().new("equilibrium")
-        equilibrium.time = [0]
-        equilibrium.time_slice.resize(1)
-        equilibrium.vacuum_toroidal_field.b0.resize(1)
+    def create_init_equilibrium(self):
+        """Create a new equilibrium IDS, resizing relevant arrays of structures.
+
+        Returns:
+            The created equilibrium IDS.
+        """
+        equilibrium = self.factory.new("equilibrium")
         equilibrium.ids_properties.homogeneous_time = (
             imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
         )
+        equilibrium.time = [0]
+        equilibrium.time_slice.resize(1)
+        equilibrium.vacuum_toroidal_field.b0.resize(1)
         return equilibrium
+
+    def _load_slice(self, uri, ids_name, time=0):
+        """Load an IDS slice and return it.
+
+        Args:
+            uri: the URI to load the slice of.
+            ids_name: The name of the IDS to load.
+            time: the time step to load slice of.
+        """
+        if uri:
+            try:
+                with imas.DBEntry(uri, "r") as entry:
+                    return entry.get_slice(ids_name, time, imas.ids_defs.CLOSEST_INTERP)
+            except Exception as e:
+                pn.state.notifications.error(str(e))
 
     @param.depends("nice_settings.md_pf_active", watch=True)
     def _load_pf_active(self):
-        self.pf_active = load_slice(self.nice_settings.md_pf_active, "pf_active")
+        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
     @param.depends("nice_settings.md_pf_passive", watch=True)
     def _load_pf_passive(self):
-        self.pf_passive = load_slice(self.nice_settings.md_pf_passive, "pf_passive")
+        self.pf_passive = self._load_slice(
+            self.nice_settings.md_pf_passive, "pf_passive"
+        )
         if not self.pf_passive:
             self.nice_settings.md_pf_passive = ""
 
     @param.depends("nice_settings.md_wall", watch=True)
     def _load_wall(self):
-        self.wall = load_slice(self.nice_settings.md_wall, "wall")
+        self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
         self.nice_plotter.wall = self.wall
         if not self.wall:
             self.nice_settings.md_wall = ""
 
     @param.depends("nice_settings.md_iron_core", watch=True)
     def _load_iron_core(self):
-        self.iron_core = load_slice(self.nice_settings.md_iron_core, "iron_core")
+        self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
         if not self.iron_core:
             self.nice_settings.md_iron_core = ""
 

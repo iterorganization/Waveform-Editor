@@ -1,4 +1,8 @@
 <?xml version="1.0"?>
+<!-- Taken from: https://gitlab.inria.fr/blfauger/nice
+     Path: nice/run/iwrap/param/inv/iter/param.xml
+     Author: Blaise Faugeras
+     License: LGPL -->
 <parameters>
 	<verbose>1</verbose>
 	<outputTxtFiles>0</outputTxtFiles>
