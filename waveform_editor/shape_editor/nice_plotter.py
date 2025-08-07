@@ -7,7 +7,7 @@ import param
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.shape_params import ShapeParams
+from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class NicePlotter(pn.viewable.Viewer):
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     equilibrium = param.ClassSelector(class_=IDSToplevel, precedence=-1)
-    shape_params = param.ClassSelector(class_=ShapeParams, precedence=-1)
+    plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -36,11 +36,11 @@ class NicePlotter(pn.viewable.Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, shape_params, equilibrium, **params):
+    def __init__(self, communicator, plasma_shape, equilibrium, **params):
         super().__init__(**params)
         self.equilibrium = equilibrium
         self.communicator = communicator
-        self.shape_params = shape_params
+        self.plasma_shape = plasma_shape
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -71,9 +71,9 @@ class NicePlotter(pn.viewable.Viewer):
             loading=self.communicator.param.processing,
         )
 
-    @pn.depends("shape_params.shape_curve")
+    @pn.depends("plasma_shape.shape_curve")
     def _plot_desired_shape(self):
-        return self.shape_params.shape_curve.opts(color="blue")
+        return self.plasma_shape.shape_curve.opts(color="blue")
 
     @pn.depends("pf_active", "show_coils")
     def _plot_coil_rectangles(self):

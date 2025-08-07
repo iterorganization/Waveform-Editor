@@ -7,28 +7,13 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import load_slice
+
+class PlasmaShapeInput(param.Parameterized):
+    equilibrium = param.String(label="Input 'equilibrium' IDS")
+    time = param.Number(label="Time for input equilibrium")
 
 
-class ShapeParams(Viewer):
-    """Parameters related to plasma shape"""
-
-    PARAMETERIZED_INPUT = "Parameterized"
-    EQUILIBRIUM_INPUT = "Equilibrium IDS"
-    input_mode = param.ObjectSelector(
-        default=EQUILIBRIUM_INPUT,
-        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT],
-        label="Shape input mode",
-    )
-
-    shape_curve = param.Parameter(
-        default=hv.Curve([]), doc="Holoviews curve of the plasma shape"
-    )
-    has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
-
-    equilibrium_input = param.String(label="Input 'equilibrium' IDS")
-    time_input = param.Number(label="Time for input equilibrium")
-
+class PlasmaShapeParams(param.Parameterized):
     a = param.Number(default=1.9, bounds=[1, 2], label="a")
     center_r = param.Number(default=6.2, bounds=[5, 7], label="center_r")
     center_z = param.Number(default=0.545, bounds=[0, 1.5], label="center_z")
@@ -40,14 +25,36 @@ class ShapeParams(Viewer):
         default=96, bounds=[1, 200], label="n_desired_bnd_points"
     )
 
+
+class PlasmaShape(Viewer):
+    """Parameters related to plasma shape"""
+
+    PARAMETERIZED_INPUT = "Parameterized"
+    EQUILIBRIUM_INPUT = "Equilibrium IDS"
+    input_mode = param.ObjectSelector(
+        default=EQUILIBRIUM_INPUT,
+        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT],
+        label="Shape input mode",
+    )
+    input = param.ClassSelector(class_=PlasmaShapeInput, default=PlasmaShapeInput())
+    shape_params = param.ClassSelector(
+        class_=PlasmaShapeParams, default=PlasmaShapeParams()
+    )
+
+    shape_curve = param.Parameter(
+        default=hv.Curve([]), doc="Holoviews curve of the plasma shape"
+    )
+    has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
+
     def __init__(self, equilibrium):
         super().__init__()
         self.equilibrium = equilibrium
-        for p in self.param:
-            if p != "shape_curve" and p != "has_shape":
-                self.param.watch(self._set_plasma_shape, p)
+        self.radio_box = pn.widgets.RadioBoxGroup.from_param(
+            self.param.input_mode, inline=True, margin=20
+        )
 
-    def _set_plasma_shape(self, event):
+    @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
+    def _set_plasma_shape(self):
         outline_r = outline_z = None
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             outline_r, outline_z = self._load_shape_from_ids()
@@ -66,10 +73,12 @@ class ShapeParams(Viewer):
             self.has_shape = False
 
     def _load_shape_from_ids(self):
+        if not self.input.equilibrium:
+            return None, None
         try:
-            with imas.DBEntry(self.equilibrium_input, "r") as entry:
+            with imas.DBEntry(self.input.equilibrium, "r") as entry:
                 equilibrium = entry.get_slice(
-                    "equilibrium", self.time_input, imas.ids_defs.CLOSEST_INTERP
+                    "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
             outline_r = equilibrium.time_slice[0].boundary.outline.r
@@ -77,7 +86,7 @@ class ShapeParams(Viewer):
             return outline_r, outline_z
         except Exception as e:
             pn.state.notifications.error(
-                f"Could not load plasma boundary outline from {self.equilibrium_input}:"
+                f"Could not load plasma boundary outline from {self.input.equilibrium}:"
                 f" {str(e)}"
             )
             return None, None
@@ -86,14 +95,14 @@ class ShapeParams(Viewer):
         desired_r = []
         desired_z = []
 
-        nb_desired_point = self.n_desired_bnd_points
-        r0 = self.center_r
-        z0 = self.center_z
-        a = self.a
-        kappa = self.kappa
-        delta = self.delta
-        rx = self.rx
-        zx = self.zx
+        nb_desired_point = self.shape_params.n_desired_bnd_points
+        r0 = self.shape_params.center_r
+        z0 = self.shape_params.center_z
+        a = self.shape_params.a
+        kappa = self.shape_params.kappa
+        delta = self.shape_params.delta
+        rx = self.shape_params.rx
+        zx = self.shape_params.zx
 
         nb_point1 = (nb_desired_point - 1) // 2
         rem1 = (nb_desired_point - 1) % 2
@@ -145,40 +154,17 @@ class ShapeParams(Viewer):
         return desired_bnd_r, desired_bnd_z
 
     @param.depends("input_mode")
-    def _dynamic_panel(self):
-        widgets = {
-            "input_mode": {"widget_type": pn.widgets.RadioBoxGroup, "inline": True}
-        }
+    def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            parameters = pn.Param(
-                self,
-                parameters=[
-                    "input_mode",
-                    "a",
-                    "center_r",
-                    "center_z",
-                    "kappa",
-                    "delta",
-                    "rx",
-                    "zx",
-                    "n_desired_bnd_points",
-                ],
-                widgets=widgets,
-                show_name=False,
+            parameters = pn.Column(
+                self.radio_box, pn.Param(self.shape_params, show_name=False)
             )
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            parameters = pn.Param(
-                self,
-                parameters=[
-                    "input_mode",
-                    "equilibrium_input",
-                    "time_input",
-                ],
-                widgets=widgets,
-                show_name=False,
+            parameters = pn.Column(
+                self.radio_box, pn.Param(self.input, show_name=False)
             )
 
         return parameters
 
     def __panel__(self):
-        return pn.Column(self._dynamic_panel)
+        return pn.Column(self._panel_shape_options)

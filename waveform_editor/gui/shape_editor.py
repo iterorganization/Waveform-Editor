@@ -10,13 +10,13 @@ from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.shape_editor.shape_params import ShapeParams
+from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.util import load_slice
 
 
 class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
-    shape_params = param.ClassSelector(class_=ShapeParams)
+    plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
 
     def __init__(self):
@@ -24,23 +24,23 @@ class ShapeEditor(Viewer):
         factory = imas.IDSFactory()
         self.communicator = NiceIntegration(factory)
         self.equilibrium = self.create_empty_equilibrium()
-        self.shape_params = ShapeParams(self.equilibrium)
+        self.plasma_shape = PlasmaShape(self.equilibrium)
         self.plasma_properties = PlasmaProperties()
         self.nice_plotter = NicePlotter(
-            self.communicator, self.shape_params, self.equilibrium
+            self.communicator, self.plasma_shape, self.equilibrium
         )
         self.has_plasma_properties = False
         self.nice_settings = settings.nice
 
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
-        button_start.disabled = self.shape_params.param.has_shape.rx.not_()
+        button_start.disabled = self.plasma_shape.param.has_shape.rx.not_()
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
         options = pn.Accordion(
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
-            ("Plasma Shape", self.shape_params),
+            ("Plasma Shape", self.plasma_shape),
             ("Plasma Parameters", self.plasma_properties),
             ("Coil Currents", None),
             sizing_mode="stretch_width",
