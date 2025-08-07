@@ -9,11 +9,15 @@ from panel.viewable import Viewer
 
 
 class EquilibriumInput(param.Parameterized):
+    """Helper class containing equilibrium URI and time input."""
+
     equilibrium = param.String(label="Input 'equilibrium' IDS")
     time = param.Number(label="Time for input equilibrium")
 
 
 class PlasmaShapeParams(param.Parameterized):
+    """Helper class containing parameters to parameterize the plasma shape."""
+
     a = param.Number(default=1.9, bounds=[1, 2], label="a")
     center_r = param.Number(default=6.2, bounds=[5, 7], label="center_r")
     center_z = param.Number(default=0.545, bounds=[0, 1.5], label="center_z")
@@ -27,8 +31,6 @@ class PlasmaShapeParams(param.Parameterized):
 
 
 class PlasmaShape(Viewer):
-    """Parameters related to plasma shape"""
-
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS"
     input_mode = param.ObjectSelector(
@@ -55,6 +57,8 @@ class PlasmaShape(Viewer):
 
     @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
     def _set_plasma_shape(self):
+        """Update plasma boundary shape based on input mode."""
+
         outline_r = outline_z = None
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             outline_r, outline_z = self._load_shape_from_ids()
@@ -73,6 +77,12 @@ class PlasmaShape(Viewer):
             self.has_shape = False
 
     def _load_shape_from_ids(self):
+        """Load plasma boundary outline from IDS equilibrium input.
+
+        Returns:
+            Tuple containing radial and vertical coordinates of the plasma boundary
+                outline, or (None, None) if unavailable.
+        """
         if not self.input.equilibrium:
             return None, None
         try:
@@ -92,18 +102,24 @@ class PlasmaShape(Viewer):
             return None, None
 
     def _load_shape_from_params(self):
-        desired_r = []
-        desired_z = []
+        """Compute plasma boundary outline from parameterized shape inputs.
 
+        Adapted from NICE, by Blaise Faugeras:
+        https://gitlab.inria.fr/blfauger/nice
+
+        Returns:
+            Tuple containing radial and vertical coordinates of the plasma boundary
+                outline
+        """
+        points = []
         nb_desired_point = self.shape_params.n_desired_bnd_points
-        r0 = self.shape_params.center_r
-        z0 = self.shape_params.center_z
+        r0, z0 = self.shape_params.center_r, self.shape_params.center_z
         a = self.shape_params.a
         kappa = self.shape_params.kappa
         delta = self.shape_params.delta
-        rx = self.shape_params.rx
-        zx = self.shape_params.zx
+        rx, zx = self.shape_params.rx, self.shape_params.zx
 
+        # Calculate point distribution
         nb_point1 = (nb_desired_point - 1) // 2
         rem1 = (nb_desired_point - 1) % 2
         nb_point2 = (rem1 + nb_point1) // 2
@@ -111,43 +127,44 @@ class PlasmaShape(Viewer):
         if (rem1 + nb_point1) % 2 == 1:
             nb_point1 += 1
 
+        # First segment: main plasma shape
         theta1 = math.pi / (nb_point1 - 1)
+        asin_delta = math.asin(delta)
         for i in range(nb_point1):
             theta = i * theta1
-            desired_r.append(
-                r0 + a * math.cos(theta + math.asin(delta) * math.sin(theta))
-            )
-            desired_z.append(z0 + a * kappa * math.sin(theta))
+            r = r0 + a * math.cos(theta + asin_delta * math.sin(theta))
+            z = z0 + a * kappa * math.sin(theta)
+            points.append((r, z))
 
+        # Second arc: inner divertor leg
         ri = ((rx + r0 - a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 + a))
         ai = ri - r0 + a
         theta2 = math.asin((z0 - zx) / ai) / (nb_point2 + 1)
         for i in range(nb_point2):
             theta = (i + 1) * theta2
-            desired_r.append(ri - ai * math.cos(theta))
-            desired_z.append(z0 - ai * math.sin(theta))
+            r = ri - ai * math.cos(theta)
+            z = z0 - ai * math.sin(theta)
+            points.append((r, z))
 
+        # Third arc: outer divertor leg
         re = ((rx + r0 + a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 - a))
         ae = r0 + a - re
         theta3 = math.asin((z0 - zx) / ae) / (nb_point3 + 1)
         for i in range(nb_point3):
             theta = (i + 1) * theta3
-            desired_r.append(re + ae * math.cos(theta))
-            desired_z.append(z0 - ae * math.sin(theta))
+            r = re + ae * math.cos(theta)
+            z = z0 - ae * math.sin(theta)
+            points.append((r, z))
 
-        desired_r.append(rx)
-        desired_z.append(zx)
+        points.append((rx, zx))
 
-        points = list(zip(desired_r, desired_z))
-        mean_r = sum(desired_r) / len(desired_r)
-        mean_z = sum(desired_z) / len(desired_z)
+        # Sort points by angle from centroid
+        mean_r = sum(p[0] for p in points) / len(points)
+        mean_z = sum(p[1] for p in points) / len(points)
+        points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
 
-        def angle_from_mean(p):
-            return math.atan2(p[1] - mean_z, p[0] - mean_r)
-
-        p_sorted = sorted(points, key=angle_from_mean)
-        desired_bnd_r = [p[0] for p in p_sorted]
-        desired_bnd_z = [p[1] for p in p_sorted]
+        desired_bnd_r = [p[0] for p in points]
+        desired_bnd_z = [p[1] for p in points]
         desired_bnd_r.append(desired_bnd_r[0])
         desired_bnd_z.append(desired_bnd_z[0])
 
