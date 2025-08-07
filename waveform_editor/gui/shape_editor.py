@@ -140,7 +140,9 @@ class ShapeEditor(Viewer):
 
         # TODO: should be done reactively
         if self.plasma_properties.input_mode == self.plasma_properties.MANUAL_INPUT:
-            pn.state.notifications.error("Not yet implemented")
+            pn.state.notifications.error(
+                "Manual plasma property input is not yet implemented"
+            )
             return
         elif (
             self.plasma_properties.input_mode

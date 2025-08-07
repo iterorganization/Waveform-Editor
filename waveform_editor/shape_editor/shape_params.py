@@ -1,6 +1,7 @@
 import math
 
 import holoviews as hv
+import imas
 import numpy as np
 import panel as pn
 import param
@@ -20,12 +21,14 @@ class ShapeParams(Viewer):
         label="Shape input mode",
     )
 
-    shape_curve = param.Parameter(default=hv.Curve([]), doc="Current boundary shape")
+    shape_curve = param.Parameter(
+        default=hv.Curve([]), doc="Holoviews curve of the plasma shape"
+    )
+    has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
+
     equilibrium_input = param.String(label="Input 'equilibrium' IDS")
-    has_shape = param.Boolean(doc="Whether a boundary shape is loaded.")
     time_input = param.Number(label="Time for input equilibrium")
 
-    parametric_bnd = param.Boolean(label="Use parameterized boundary")
     a = param.Number(default=1.9, bounds=[1, 2], label="a")
     center_r = param.Number(default=6.2, bounds=[5, 7], label="center_r")
     center_z = param.Number(default=0.545, bounds=[0, 1.5], label="center_z")
@@ -41,7 +44,7 @@ class ShapeParams(Viewer):
         super().__init__()
         self.equilibrium = equilibrium
         for p in self.param:
-            if p != "shape_curve":
+            if p != "shape_curve" and p != "has_shape":
                 self.param.watch(self._set_plasma_shape, p)
 
     def _set_plasma_shape(self, event):
@@ -63,13 +66,21 @@ class ShapeParams(Viewer):
             self.has_shape = False
 
     def _load_shape_from_ids(self):
-        equilibrium = load_slice(self.equilibrium_input, "equilibrium", self.time_input)
+        try:
+            with imas.DBEntry(self.equilibrium_input, "r") as entry:
+                equilibrium = entry.get_slice(
+                    "equilibrium", self.time_input, imas.ids_defs.CLOSEST_INTERP
+                )
 
-        if not equilibrium:
+            outline_r = equilibrium.time_slice[0].boundary.outline.r
+            outline_z = equilibrium.time_slice[0].boundary.outline.z
+            return outline_r, outline_z
+        except Exception as e:
+            pn.state.notifications.error(
+                f"Could not load plasma boundary outline from {self.equilibrium_input}:"
+                f" {str(e)}"
+            )
             return None, None
-
-        outline = equilibrium.time_slice[0].boundary.outline
-        return outline.r, outline.z
 
     def _load_shape_from_params(self):
         desired_r = []
@@ -139,7 +150,6 @@ class ShapeParams(Viewer):
             "input_mode": {"widget_type": pn.widgets.RadioBoxGroup, "inline": True}
         }
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            self.parametric_bnd = True
             parameters = pn.Param(
                 self,
                 parameters=[
@@ -157,7 +167,6 @@ class ShapeParams(Viewer):
                 show_name=False,
             )
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            self.parametric_bnd = False
             parameters = pn.Param(
                 self,
                 parameters=[
