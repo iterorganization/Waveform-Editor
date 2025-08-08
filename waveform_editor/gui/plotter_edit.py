@@ -46,7 +46,8 @@ class PlotterEdit(Viewer):
             try:
                 self.pane.object = self.main_curve()
             except Exception as e:
-                self.editor.create_error_alert(e, "danger")
+                self.editor.error_message = str(e)
+                self.editor.alert_type = "danger"
             return
 
         if self.plotted_waveform is None or not self.plotted_waveform.tendencies:
