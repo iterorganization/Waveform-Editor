@@ -703,5 +703,7 @@ def test_example_yaml(tmp_path):
 
     assert np.all(interferometer.channel[0].n_e_line.data == values)
 
-    assert np.all(nbi.unit[0].power_launched.data == values**2.5)
+    assert np.all(
+        nbi.unit[0].power_launched.data == 16.5e6 * (values**2.5) / (870e3**2.5)
+    )
     assert np.all(nbi.unit[0].energy.data == values)
