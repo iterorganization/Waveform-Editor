@@ -11,7 +11,8 @@ H&CD:
     ec_launchers/beam(1)/power_launched/data: '"w/1"'
     ic_antennas/antenna(1)/power_launched/data: '"w/1"'
     nbi/unit(1)/power_launched/data: |
-      16.5e6 * ("nbi/unit(1)/energy/data" ** 2.5) / (870e3 ** 2.5)
+      # limits for H or He:
+      16.5e6 * ("nbi/unit(1)/energy/data" / 870e3) ** 2.5
   Strap phase:
     ic_antennas/antenna(1)/module(1)/strap(1)/phase/data: 1.5708
   Beam energy:
