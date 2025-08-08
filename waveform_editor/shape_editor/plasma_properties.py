@@ -38,6 +38,7 @@ class PlasmaProperties(Viewer):
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
+        self.panel = pn.Column(self.radio_box, self._panel_property_options)
 
     @param.depends("properties_params.param", "input.param", "input_mode", watch=True)
     def _load_plasma_properties(self):
@@ -86,17 +87,11 @@ class PlasmaProperties(Viewer):
             )
             self.has_properties = False
 
-    @param.depends("input_mode")
-    def _panel_shape_options(self):
+    def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
-            parameters = pn.Column(
-                self.radio_box, pn.Param(self.properties_params, show_name=False)
-            )
+            return pn.Param(self.properties_params, show_name=False)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            parameters = pn.Column(
-                self.radio_box, pn.Param(self.input, show_name=False)
-            )
-        return parameters
+            return pn.Param(self.input, show_name=False)
 
     def __panel__(self):
-        return self._panel_shape_options
+        return self.panel

@@ -51,6 +51,7 @@ class PlasmaShape(Viewer):
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
+        self.panel = pn.Column(self.radio_box, self._panel_shape_options)
 
     @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
     def _set_plasma_shape(self):
@@ -167,18 +168,11 @@ class PlasmaShape(Viewer):
 
         return desired_bnd_r, desired_bnd_z
 
-    @param.depends("input_mode")
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            parameters = pn.Column(
-                self.radio_box, pn.Param(self.shape_params, show_name=False)
-            )
+            return pn.Param(self.shape_params, show_name=False)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            parameters = pn.Column(
-                self.radio_box, pn.Param(self.input, show_name=False)
-            )
-
-        return parameters
+            return pn.Param(self.input, show_name=False)
 
     def __panel__(self):
-        return self._panel_shape_options
+        return self.panel
