@@ -7,6 +7,7 @@ import param
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class NicePlotter(pn.viewable.Viewer):
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -29,13 +31,13 @@ class NicePlotter(pn.viewable.Viewer):
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
+    show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, **params):
-        super().__init__(**params)
-        self.communicator = communicator
+    def __init__(self, communicator, plasma_shape, **params):
+        super().__init__(**params, communicator=communicator, plasma_shape=plasma_shape)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -58,12 +60,21 @@ class NicePlotter(pn.viewable.Viewer):
             hv.DynamicMap(self._plot_coil_rectangles),
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_vacuum_vessel),
+            hv.DynamicMap(self._plot_desired_shape),
         ]
         overlay = hv.Overlay(plot_elements).collate().opts(self.DEFAULT_OPTS)
         self.panel = pn.Column(
             pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT),
             loading=self.communicator.param.processing,
         )
+
+    @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
+    def _plot_desired_shape(self):
+        if self.show_desired_shape:
+            curve = self.plasma_shape.shape_curve
+        else:
+            curve = hv.Curve([])
+        return curve.opts(color="blue")
 
     @pn.depends("pf_active", "show_coils")
     def _plot_coil_rectangles(self):
