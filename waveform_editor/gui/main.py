@@ -43,7 +43,7 @@ class WaveformEditorGui(param.Parameterized):
     EDIT_YAML_GLOBALS_TAB = 2
 
     DISCARD_CHANGES_MESSAGE = (
-        "# **⚠️ Warning**  \nYou did not save your changes. "
+        "# **⚠️ Warning**  \nYou did not create a valid waveform. "
         "Leaving now will discard any changes you made to this waveform."
         "   \n\n**Are you sure you want to continue?**"
     )

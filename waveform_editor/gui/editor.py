@@ -48,12 +48,7 @@ class WaveformEditor(Viewer):
         self.has_changed = self.param.stored_string.rx.bool() & (
             self.code_editor.param.value.rx() != self.param.stored_string.rx()
         )
-        save_button = pn.widgets.Button(
-            name="Save Waveform",
-            on_click=self.save_waveform,
-            disabled=self.param.has_changed.rx.not_() | has_error,
-        )
-        self.layout = pn.Column(save_button, self.code_editor, self.error_alert)
+        self.layout = pn.Column(self.code_editor, self.error_alert)
 
         # Initialize empty
         self.set_waveform(None)
@@ -100,6 +95,7 @@ class WaveformEditor(Viewer):
         self.handle_exceptions(waveform)
         if not self.error_message:
             self.waveform = waveform
+            self.save_waveform()
 
     def handle_exceptions(self, waveform):
         annotations = waveform.annotations
@@ -125,11 +121,10 @@ class WaveformEditor(Viewer):
                     return
             self.error_message = ""  # Clear any previous errors or warnings
 
-    def save_waveform(self, event=None):
+    def save_waveform(self):
         """Store the waveform into the WaveformConfiguration."""
         self.config.replace_waveform(self.waveform)
         self.stored_string = self.code_editor.value
-        pn.state.notifications.success("Succesfully saved waveform!")
 
     def __panel__(self):
         """Return the editor panel UI."""
