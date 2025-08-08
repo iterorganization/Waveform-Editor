@@ -33,12 +33,11 @@ class ShapeEditor(Viewer):
         self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
-        with (
+        self.xml_params = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
             .joinpath("param.xml")
-            .open("r") as f
-        ):
-            self.xml_params = f.read()
+            .read_text()
+        )
 
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
