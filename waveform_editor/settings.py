@@ -39,7 +39,11 @@ class NiceSettings(param.Parameterized):
     )
 
     def apply_settings(self, params):
-        """Update parameters from a dictionary."""
+        """Update parameters from a dictionary, skipping unknown keys."""
+        for key in list(params):
+            if key not in self.param or key == "name":
+                logger.warning(f"Removing unknown NICE setting: {key}")
+                params.pop(key)
         self.param.update(**params)
 
     def to_dict(self):
@@ -71,6 +75,10 @@ class UserSettings(param.Parameterized):
             self.nice.apply_settings(settings["nice"])
 
         base_settings = {k: v for k, v in settings.items() if k != "nice"}
+        for key in list(base_settings):
+            if key not in self.param or key in ("name", "nice"):
+                logger.warning(f"Removing unknown setting: {key}")
+                base_settings.pop(key)
         self.param.update(**base_settings)
 
     def _save_settings(self, event=None):
