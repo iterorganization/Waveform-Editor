@@ -46,8 +46,8 @@ def times_from_csv(source, from_file_path=True):
 class EquilibriumInput(param.Parameterized):
     """Parameterized class containing an equilibrium URI and time input."""
 
-    equilibrium = param.String(label="Input 'equilibrium' IDS")
-    time = param.Number(label="Time for input equilibrium")
+    uri = param.String(label="URI of the equilibrium IDS")
+    time = param.Number(label="Time slice of the input equilibrium IDS")
 
 
 class State:
