@@ -31,6 +31,7 @@ class NicePlotter(pn.viewable.Viewer):
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
+    show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
     WIDTH = 800
     HEIGHT = 1000
@@ -69,9 +70,13 @@ class NicePlotter(pn.viewable.Viewer):
             loading=self.communicator.param.processing,
         )
 
-    @pn.depends("plasma_shape.shape_curve")
+    @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
     def _plot_desired_shape(self):
-        return self.plasma_shape.shape_curve.opts(color="blue")
+        if self.show_desired_shape:
+            curve = self.plasma_shape.shape_curve.opts(color="blue")
+        else:
+            curve = hv.Curve([])
+        return curve.opts(color="blue")
 
     @pn.depends("pf_active", "show_coils")
     def _plot_coil_rectangles(self):
