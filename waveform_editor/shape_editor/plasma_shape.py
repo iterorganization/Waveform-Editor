@@ -45,13 +45,14 @@ class PlasmaShape(Viewer):
     )
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
 
-    def __init__(self, equilibrium):
+    def __init__(self):
         super().__init__()
-        self.equilibrium = equilibrium
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
         self.panel = pn.Column(self.radio_box, self._panel_shape_options)
+        self.outline_r = None
+        self.outline_z = None
 
     @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
     def _set_plasma_shape(self):
@@ -64,13 +65,12 @@ class PlasmaShape(Viewer):
             outline_r, outline_z = self._load_shape_from_params()
 
         if outline_r and outline_z:
-            self.equilibrium.time_slice[0].boundary.outline.r = outline_r
-            self.equilibrium.time_slice[0].boundary.outline.z = outline_z
+            self.outline_r = outline_r
+            self.outline_z = outline_z
             self.shape_curve = hv.Curve((outline_r, outline_z))
             self.has_shape = True
         else:
-            self.equilibrium.time_slice[0].boundary.outline.r.value = np.empty(0)
-            self.equilibrium.time_slice[0].boundary.outline.z.value = np.empty(0)
+            self.outline_r = self.outline_z = np.empty(0)
             self.shape_curve = hv.Curve([])
             self.has_shape = False
 

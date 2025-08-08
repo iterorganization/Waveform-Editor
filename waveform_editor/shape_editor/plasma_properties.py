@@ -32,13 +32,18 @@ class PlasmaProperties(Viewer):
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
-    def __init__(self, equilibrium):
+    def __init__(self):
         super().__init__()
-        self.equilibrium = equilibrium
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
         self.panel = pn.Column(self.radio_box, self._panel_property_options)
+        self.p_prime = None
+        self.ff_prime = None
+        self.psi = None
+        self.ip = None
+        self.r0 = None
+        self.b0 = None
 
     @param.depends("properties_params.param", "input.param", "input_mode", watch=True)
     def _load_plasma_properties(self):
@@ -60,25 +65,13 @@ class PlasmaProperties(Viewer):
                 equilibrium = entry.get_slice(
                     "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
                 )
+            self.ip = equilibrium.time_slice[0].global_quantities.ip
+            self.r0 = equilibrium.vacuum_toroidal_field.r0
+            self.b0 = equilibrium.vacuum_toroidal_field.b0[0]
 
-            eq_time_slice = equilibrium.time_slice[0]
-            self_time_slice = self.equilibrium.time_slice[0]
-
-            self_time_slice.global_quantities.ip = eq_time_slice.global_quantities.ip
-
-            self.equilibrium.vacuum_toroidal_field.r0 = (
-                equilibrium.vacuum_toroidal_field.r0
-            )
-            self.equilibrium.vacuum_toroidal_field.b0[0] = (
-                equilibrium.vacuum_toroidal_field.b0[0]
-            )
-
-            eq_profiles = eq_time_slice.profiles_1d
-            self_profiles = self_time_slice.profiles_1d
-            self_profiles.dpressure_dpsi = eq_profiles.dpressure_dpsi
-            self_profiles.f_df_dpsi = eq_profiles.f_df_dpsi
-            self_profiles.psi = eq_profiles.psi
-
+            self.p_prime = equilibrium.time_slice[0].profiles_1d.dpressure_dpsi
+            self.ff_prime = equilibrium.time_slice[0].profiles_1d.f_df_dpsi
+            self.psi = equilibrium.time_slice[0].profiles_1d.psi
             self.has_properties = True
         except Exception as e:
             pn.state.notifications.error(

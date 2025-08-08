@@ -27,9 +27,8 @@ class ShapeEditor(Viewer):
         super().__init__()
         self.factory = imas.IDSFactory()
         self.communicator = NiceIntegration(self.factory)
-        self.equilibrium = self.create_init_equilibrium()
-        self.plasma_shape = PlasmaShape(self.equilibrium)
-        self.plasma_properties = PlasmaProperties(self.equilibrium)
+        self.plasma_shape = PlasmaShape()
+        self.plasma_properties = PlasmaProperties()
         self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
@@ -70,21 +69,6 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
-
-    def create_init_equilibrium(self):
-        """Create a new equilibrium IDS, resizing relevant arrays of structures.
-
-        Returns:
-            The created equilibrium IDS.
-        """
-        equilibrium = self.factory.new("equilibrium")
-        equilibrium.ids_properties.homogeneous_time = (
-            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-        )
-        equilibrium.time = [0.0]
-        equilibrium.time_slice.resize(1)
-        equilibrium.vacuum_toroidal_field.b0.resize(1)
-        return equilibrium
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
@@ -129,15 +113,45 @@ class ShapeEditor(Viewer):
         if not self.iron_core:
             self.nice_settings.md_iron_core = ""
 
+    def _create_equilibrium(self):
+        """Create an empty equilibrium IDS and fill the plasma shape parameters and
+        plasma properties.
+
+        Returns:
+            The filled equilibrium IDS
+        """
+        equilibrium = self.factory.new("equilibrium")
+        equilibrium.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        )
+        equilibrium.time = [0.0]
+        equilibrium.time_slice.resize(1)
+        equilibrium.vacuum_toroidal_field.b0.resize(1)
+
+        # Fill plasma shape
+        equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
+        equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
+
+        # Fill plasma properties
+        equilibrium.vacuum_toroidal_field.r0 = self.plasma_properties.r0
+        equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
+        slice = equilibrium.time_slice[0]
+        slice.global_quantities.ip = self.plasma_properties.ip
+        slice.profiles_1d.dpressure_dpsi = self.plasma_properties.p_prime
+        slice.profiles_1d.f_df_dpsi = self.plasma_properties.ff_prime
+        slice.profiles_1d.psi = self.plasma_properties.psi
+        return equilibrium
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
+        equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
             self.xml_params,
-            self.equilibrium.serialize(),
+            equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
             self.wall.serialize(),
