@@ -37,9 +37,7 @@ class NicePlotter(pn.viewable.Viewer):
     HEIGHT = 1000
 
     def __init__(self, communicator, plasma_shape, **params):
-        super().__init__(**params)
-        self.communicator = communicator
-        self.plasma_shape = plasma_shape
+        super().__init__(**params, communicator=communicator, plasma_shape=plasma_shape)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
