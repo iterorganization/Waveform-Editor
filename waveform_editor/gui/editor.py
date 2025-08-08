@@ -1,3 +1,4 @@
+import textwrap
 from typing import Optional
 
 import panel as pn
@@ -91,7 +92,8 @@ class WaveformEditor(Viewer):
             waveform_yaml = f"{name}:\n{editor_text}"
         # Derived waveforms are parsed as YAML block strings
         elif "'" in editor_text or '"' in editor_text:
-            waveform_yaml = f"{name}: |\n  {editor_text}"
+            indented_text = textwrap.indent(editor_text, "  ")
+            waveform_yaml = f"{name}: |\n{indented_text}"
         else:
             waveform_yaml = f"{name}: {editor_text}"
         waveform = self.config.parse_waveform(waveform_yaml)
