@@ -52,10 +52,10 @@ class PlasmaProperties(Viewer):
 
     def _load_properties_from_ids(self):
         """Load plasma properties from IDS equilibrium input."""
-        if not self.input.equilibrium:
+        if not self.input.uri:
             return
         try:
-            with imas.DBEntry(self.input.equilibrium, "r") as entry:
+            with imas.DBEntry(self.input.uri, "r") as entry:
                 equilibrium = entry.get_slice(
                     "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
                 )
@@ -81,7 +81,7 @@ class PlasmaProperties(Viewer):
             self.has_properties = True
         except Exception as e:
             pn.state.notifications.error(
-                f"Could not load plasma property outline from {self.input.equilibrium}:"
+                f"Could not load plasma property outline from {self.input.uri}:"
                 f" {str(e)}"
             )
             self.has_properties = False

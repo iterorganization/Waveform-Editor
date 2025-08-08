@@ -80,10 +80,10 @@ class PlasmaShape(Viewer):
             Tuple containing radial and vertical coordinates of the plasma boundary
                 outline, or (None, None) if unavailable.
         """
-        if not self.input.equilibrium:
+        if not self.input.uri:
             return None, None
         try:
-            with imas.DBEntry(self.input.equilibrium, "r") as entry:
+            with imas.DBEntry(self.input.uri, "r") as entry:
                 equilibrium = entry.get_slice(
                     "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
                 )
@@ -93,7 +93,7 @@ class PlasmaShape(Viewer):
             return outline_r, outline_z
         except Exception as e:
             pn.state.notifications.error(
-                f"Could not load plasma boundary outline from {self.input.equilibrium}:"
+                f"Could not load plasma boundary outline from {self.input.uri}:"
                 f" {str(e)}"
             )
             return None, None
