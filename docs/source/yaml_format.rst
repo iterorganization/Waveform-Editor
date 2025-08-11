@@ -18,7 +18,7 @@ Overall Structure
 
 A Waveform Editor YAML file is a standard YAML dictionary containing two main types of top-level keys:
 
-1.  **globals:** An optional key holding settings that apply to the entire configuration.
+1.  **globals:** A key holding settings that apply to the entire configuration.
 2.  **Groups:** These represent logical groupings for organizing waveforms. They can be nested to create a hierarchy.
 
 .. code-block:: yaml
@@ -35,10 +35,11 @@ A Waveform Editor YAML file is a standard YAML dictionary containing two main ty
        # More waveforms/groups...
      # More waveforms/groups...
 
-Global Settings
----------------
+Global Properties
+-----------------
 
-The optional ``globals`` section defines parameters applicable to the entire waveform configuration.
+The ``globals`` section defines parameters applicable to the entire waveform configuration.
+These parameters can be changed under the "Edit Global Properties" tab in the GUI.
 
 *   **dd_version:** Specifies the IMAS Data Dictionary version to be used when handling this configuration.
 
@@ -47,12 +48,17 @@ The optional ``globals`` section defines parameters applicable to the entire wav
        globals:
          dd_version: 3.42.0
 
-*   **machine_description:** Provides URIs for IMAS machine description entries. This allows the exporter to copy existing static data from a machine description before adding the defined waveforms. To specify machine descriptions for a target IDS, use a dictionary where keys are the IDS names and values are their corresponding machine description URIs.
+*   **machine_description:** Provides URIs for IMAS machine description entries.
+    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
+    When exporting, any existing data from the given machine description will be copied
+    to the new IDS, before the waveforms from the configuration are added.
+    To specify machine descriptions for a target IDS, use a dictionary where keys are 
+    the IDS names and values are their corresponding machine description URIs.
 
     .. code-block:: yaml
 
        globals:
-         DD_version: 3.42.0
+         dd_version: 3.42.0
          machine_description:
            ec_launchers: imas:hdf5?path=machine_description1
            nbi: imas:hdf5?path=machine_description2
