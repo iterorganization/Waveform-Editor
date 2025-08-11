@@ -49,15 +49,12 @@ class WaveformConfiguration(param.Parameterized):
         Returns:
             The requested waveform or group.
         """
-        if "/" in key:
-            if key in self.waveform_map:
-                group = self.waveform_map[key]
-                return group[key]
-            raise KeyError(f"{key!r} not found in waveform map.")
-        else:
-            if key in self.groups:
-                return self.groups[key]
-            raise KeyError(f"{key!r} not found in groups")
+        if key in self.waveform_map:
+            group = self.waveform_map[key]
+            return group[key]
+        elif key in self.groups:
+            return self.groups[key]
+        raise KeyError(f"{key!r} not found in waveforms/groups")
 
     def load_yaml(self, yaml_str):
         """Parses a YAML string and populates configuration.
@@ -90,10 +87,14 @@ class WaveformConfiguration(param.Parameterized):
         if not path:
             raise ValueError("Waveforms must be added at a specific group path.")
 
+        group = self.traverse(path)
+        if waveform.name in group:
+            raise ValueError(
+                f"The group {group.name!r} already contains {waveform.name!r}."
+            )
+
         if isinstance(waveform, DerivedWaveform):
             self.dependency_graph.add_node(waveform.name, waveform.dependencies)
-
-        group = self.traverse(path)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         self._calculate_bounds()
@@ -113,7 +114,11 @@ class WaveformConfiguration(param.Parameterized):
                 f"Waveform '{old_name}' does not exist in the configuration."
             )
 
-        group = self.waveform_map.pop(old_name)
+        group = self.waveform_map[old_name]
+        if new_name in group:
+            raise ValueError(f"The group {group.name!r} already contains {new_name!r}.")
+
+        del self.waveform_map[old_name]
         waveform = group.waveforms.pop(old_name)
 
         waveform.name = new_name
@@ -143,16 +148,11 @@ class WaveformConfiguration(param.Parameterized):
                 )
 
     def _validate_name(self, name):
-        """Check that name contains a '/' and doesn't exist already. If not, a
-        ValueError is raised.
+        """Check that name doesn't exist already. If it does a ValueError is raised.
 
         Args:
             name: The waveform name to validate.
         """
-        if "/" not in name:
-            raise ValueError(
-                "Waveforms in configurations must contain '/' in their name."
-            )
         if name in self.waveform_map:
             raise ValueError("The waveform already exists in this configuration.")
 
@@ -264,15 +264,20 @@ class WaveformConfiguration(param.Parameterized):
         Returns:
             The newly created waveform group.
         """
-        if "/" in name:
-            raise ValueError("Group name may not contain '/'.")
         if not name:
             raise ValueError("Group name may not be empty.")
 
-        group = self.traverse(path).groups if path else self.groups
-
-        if name in group:
-            raise ValueError(f"{name} already exists at path: {path or 'root'}.")
+        if path:
+            group = self.traverse(path)
+            if name in group:
+                raise ValueError(f"The group {group.name!r} already contains {name!r}.")
+            group = group.groups
+        else:
+            group = self.groups
+            if name in group:
+                raise ValueError(
+                    f"The group {name!r} already exists at the root level."
+                )
 
         group[name] = WaveformGroup(name)
         self.has_changed = True
