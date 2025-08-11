@@ -34,6 +34,11 @@ class PlasmaShapeParams(param.Parameterized):
     )
 
 
+class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
+    def __init__(self, **params):
+        super().__init__(format="1[.]000", **params)
+
+
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS"
@@ -182,7 +187,7 @@ class PlasmaShape(Viewer):
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             params = pn.Param(self.input, show_name=False)
 
-        params.mapping[param.Number] = pn.widgets.EditableFloatSlider
+        params.mapping[param.Number] = FormattedEditableFloatSlider
         params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         return params
 
