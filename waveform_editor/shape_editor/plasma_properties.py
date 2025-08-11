@@ -38,8 +38,8 @@ class PlasmaProperties(Viewer):
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
         self.panel = pn.Column(self.radio_box, self._panel_property_options)
-        self.p_prime = None
-        self.ff_prime = None
+        self.dpressure_dpsi = None
+        self.f_df_dpsi = None
         self.psi = None
         self.ip = None
         self.r0 = None
@@ -69,8 +69,8 @@ class PlasmaProperties(Viewer):
             self.r0 = equilibrium.vacuum_toroidal_field.r0
             self.b0 = equilibrium.vacuum_toroidal_field.b0[0]
 
-            self.p_prime = equilibrium.time_slice[0].profiles_1d.dpressure_dpsi
-            self.ff_prime = equilibrium.time_slice[0].profiles_1d.f_df_dpsi
+            self.dpressure_dpsi = equilibrium.time_slice[0].profiles_1d.dpressure_dpsi
+            self.f_df_dpsi = equilibrium.time_slice[0].profiles_1d.f_df_dpsi
             self.psi = equilibrium.time_slice[0].profiles_1d.psi
             self.has_properties = True
         except Exception as e:

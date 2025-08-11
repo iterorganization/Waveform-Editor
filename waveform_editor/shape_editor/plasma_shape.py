@@ -2,7 +2,6 @@ import math
 
 import holoviews as hv
 import imas
-import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -74,7 +73,7 @@ class PlasmaShape(Viewer):
             self.shape_curve = hv.Curve((outline_r, outline_z))
             self.has_shape = True
         else:
-            self.outline_r = self.outline_z = np.empty(0)
+            self.outline_r = self.outline_z = None
             self.shape_curve = hv.Curve([])
             self.has_shape = False
 

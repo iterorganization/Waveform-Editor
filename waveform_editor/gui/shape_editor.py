@@ -137,8 +137,8 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
         slice = equilibrium.time_slice[0]
         slice.global_quantities.ip = self.plasma_properties.ip
-        slice.profiles_1d.dpressure_dpsi = self.plasma_properties.p_prime
-        slice.profiles_1d.f_df_dpsi = self.plasma_properties.ff_prime
+        slice.profiles_1d.dpressure_dpsi = self.plasma_properties.dpressure_dpsi
+        slice.profiles_1d.f_df_dpsi = self.plasma_properties.f_df_dpsi
         slice.profiles_1d.psi = self.plasma_properties.psi
         return equilibrium
 
