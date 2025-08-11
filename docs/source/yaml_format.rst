@@ -49,8 +49,9 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
          dd_version: 3.42.0
 
 *   **machine_description:** Provides URIs for IMAS machine description entries.
-    When you :ref:`export to an IDS<export-ids>`, any existing data from the machine
-    description will be copied to the new IDS, before adding the defined waveforms.
+    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
+    When exporting, any existing data from the given machine description will be copied
+    to the new IDS, before the waveforms from the configuration are added.
     To specify machine descriptions for a target IDS, use a dictionary where keys are 
     the IDS names and values are their corresponding machine description URIs.
 
