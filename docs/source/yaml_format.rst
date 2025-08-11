@@ -52,7 +52,7 @@ The optional ``globals`` section defines parameters applicable to the entire wav
     .. code-block:: yaml
 
        globals:
-         DD_version: 3.42.0
+         dd_version: 3.42.0
          machine_description:
            ec_launchers: imas:hdf5?path=machine_description1
            nbi: imas:hdf5?path=machine_description2
