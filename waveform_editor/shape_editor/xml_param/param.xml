@@ -1,0 +1,320 @@
+<?xml version="1.0"?>
+<!-- Taken from: https://gitlab.inria.fr/blfauger/nice
+     Path: nice/run/iwrap/param/inv/iter/param.xml
+     Author: Blaise Faugeras
+     License: LGPL -->
+<parameters>
+	<verbose>1</verbose>
+	<outputTxtFiles>0</outputTxtFiles>
+	<outputRestartFiles>0</outputRestartFiles>
+	<algoMode>31</algoMode>
+	<algoMeshDomain>2</algoMeshDomain>
+	<algoVacTHLRSolver>0</algoVacTHLRSolver>
+	<algoVacTHonly>0</algoVacTHonly>
+	<algoDirect>1</algoDirect>
+	<algoIpFreeScaleInitLambda>0</algoIpFreeScaleInitLambda>
+	<algoRecon>2</algoRecon>
+	<algoReconUseInputIp>1</algoReconUseInputIp>
+	<algoReconInterf>0</algoReconInterf>
+	<algoReconPolar>0</algoReconPolar>
+	<algoReconPressure>0</algoReconPressure>
+	<algoReconMSE>0</algoReconMSE>
+	<algoStartFromScratch>1</algoStartFromScratch>
+	<algoStartFromScratchReconAB>1</algoStartFromScratchReconAB>
+	<algoStartPsiFromInData>0</algoStartPsiFromInData>
+	<algoWithIp>1</algoWithIp>
+	<iterMaxDir>40</iterMaxDir>
+	<epsStopDir>1.0e-10</epsStopDir>
+	<iterMaxDirInitRecon>2</iterMaxDirInitRecon>
+	<iterMaxDirInitInv>0</iterMaxDirInitInv>
+	<iterMaxRecon>20</iterMaxRecon>
+	<epsStopRecon>1.0e-10</epsStopRecon>
+	<iterMaxInv>40</iterMaxInv>
+	<epsStopInv>1.0e-10</epsStopInv>
+	<iterMaxEvo>50</iterMaxEvo>
+	<epsStopEvo>1.0e-10</epsStopEvo>
+    	<useDefaultDirectInit>1</useDefaultDirectInit>
+    	<radiusInit>2.25</radiusInit>
+    	<rcenterInit>6.2</rcenterInit>
+    	<zcenterInit>0.0</zcenterInit>
+
+    	<useMobileWall>0</useMobileWall>
+
+    <refinedZone1>1</refinedZone1>
+    <nPointsZone1>4</nPointsZone1>
+    <rPointsZone1>4.45 5.39 5.78 4.70</rPointsZone1>
+    <zPointsZone1>-3.5 -3.86 -3.20 -2.81</zPointsZone1>
+    <rInPointZone1>5.1</rInPointZone1>
+    <zInPointZone1>-3.3</zInPointZone1>
+    <zone1TriangleArea>0.0005</zone1TriangleArea>
+    
+    <refinedZone2>0</refinedZone2>
+    <nPointsZone2>4</nPointsZone2>
+    <rPointsZone2>2.44 1.91 1.94 2.44</rPointsZone2>
+    <zPointsZone2>0.79 0.573 0.49 0.66</zPointsZone2>
+    <rInPointZone2>2.18</rInPointZone2>
+    <zInPointZone2>0.6</zInPointZone2>
+    <zone2TriangleArea>0.00003</zone2TriangleArea>
+    
+    <refinedZone3>1</refinedZone3>
+    <nPointsZone3>10</nPointsZone3>
+    <rPointsZone3>6.0 6.2 6.2 6.4 6.6 6.6 6.4 6.4 6.2 6.0</rPointsZone3>
+    <zPointsZone3>0.2 0.2 0.4 0.2 0.2 1.0 1.0 0.8 1.0 1.0</zPointsZone3>
+    <rInPointZone3>6.1</rInPointZone3>
+    <zInPointZone3>0.3</zInPointZone3>
+    <zone3TriangleArea>0.0005</zone3TriangleArea>
+
+	<vacuumTriangleArea>0.002</vacuumTriangleArea>
+	<airTriangleArea>0.04</airTriangleArea>
+	<airInTriangleArea>0.01</airInTriangleArea>
+	<ironTriangleArea>0.005</ironTriangleArea>
+	<coilTriangleArea>0.005</coilTriangleArea>
+	<vesselTriangleArea>0.005</vesselTriangleArea>
+	<passiveStructTriangleArea>0.005</passiveStructTriangleArea>
+
+    	<useNewCOCOSManager>1</useNewCOCOSManager>
+	<inoutCOCOS>17</inoutCOCOS>
+
+	<change_coil_sign>1</change_coil_sign>
+	<change_psimeas_sign>0</change_psimeas_sign>
+	<change_bmeas_sign>0</change_bmeas_sign>
+	<change_BpSensorAngle_sign>0</change_BpSensorAngle_sign>
+	<change_polarmeas_sign>0</change_polarmeas_sign>
+	<change_dirichlet_sign>0</change_dirichlet_sign>
+	<change_dpressure_dpsi_sign>0</change_dpressure_dpsi_sign>
+	<change_f_df_dpsi_sign>0</change_f_df_dpsi_sign>
+	<change_TPI>0</change_TPI>
+	<change_psi_sign>0</change_psi_sign>
+
+	<inCOCOS>17</inCOCOS>
+	<outCOCOS>17</outCOCOS>
+	
+	<profile_method>1</profile_method>
+
+	<n_profile_1d>50</n_profile_1d>
+	<allErrorBar>0</allErrorBar>
+
+    <r0>6.2</r0>
+
+<!-- plasma current density  -->
+	<Afunc>0</Afunc>
+	<Aknots_n>11</Aknots_n>
+	<Aknots>0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1</Aknots>
+	<Aabg>2 0.6 1.4</Aabg>
+
+	<Bfunc>0</Bfunc>
+	<Bknots_n>11</Bknots_n>
+	<Bknots>0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1</Bknots>
+	<Babg>2 0.4 1.4</Babg>
+
+	<useInputAB>1</useInputAB>
+
+<!-- electron density  -->
+	<Cfunc>0</Cfunc>
+	<Cknots_n>11</Cknots_n>
+	<Cknots>0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1</Cknots>
+	<lambdaNe>1e20</lambdaNe>
+	<Cparam_n>4</Cparam_n>
+	<Cparam>3 1 0 1</Cparam>
+
+<!-- electron temperature  -->
+	<Dfunc>0</Dfunc>
+	<Dknots_n>11</Dknots_n>
+	<Dknots>0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1</Dknots>
+	<lambdaTe>25</lambdaTe>
+	<agmM_Te>1 1.5 0 1</agmM_Te>
+
+
+<!--   -->
+	<epsA>1.0e-1</epsA>
+	<sA>1 1 1 1 1 1 1 1 1 1 1</sA>
+	<penalA>1.0e12</penalA>
+	<penalNegativeA>0.0e10</penalNegativeA>
+
+	<epsB>1.0e-1</epsB>
+	<sB>1 1 1 1 1 1 1 1 1 1 1</sB>
+	<penalB>1.0e12</penalB>
+
+	<epsC>1.0e-1</epsC>
+	<sC>1 1 1 1 1 1 1 1 1 1 1</sC>
+	<penalC>1.0e12</penalC>
+	<epsCparam>1.0e3 1.0e3 1.0e0 1.0e12 1.0e0</epsCparam>
+
+    <epsD>1.0e-1</epsD>
+	<sD>1 1 1 1 1 1 1 1 1 1 1 1</sD>
+	<penalD>0.0e20</penalD>
+	<penalD0>0.0e0</penalD0>
+
+<!-- magnetics -->
+	<neumannPercent>0.1</neumannPercent>
+
+	<abserrB>1e-3</abserrB>
+	<relerrB>0.01</relerrB>
+	<force_default_errB>0</force_default_errB>
+	<n_B_special_weight>0</n_B_special_weight>
+	<B_special_weight_index>0</B_special_weight_index>
+	<B_special_weight>0</B_special_weight>
+
+	<abserrF>0.01</abserrF>
+	<relerrF>0.01</relerrF>
+	<force_default_errF>0</force_default_errF>
+	<n_F_special_weight>0</n_F_special_weight>
+	<F_special_weight_index>0</F_special_weight_index>
+	<F_special_weight>0</F_special_weight>
+	<add_fictitious_full_loop_if_not_exist>0</add_fictitious_full_loop_if_not_exist>
+
+
+<!-- interferometry -->
+	<chord_dl>0.01</chord_dl>
+	<constructLOS>0</constructLOS>
+
+	<abserrNe>1e18</abserrNe>
+	<relerrNe>0.1</relerrNe>
+	<force_default_errNe>0</force_default_errNe>
+	<n_Ne_special_weight>0</n_Ne_special_weight>
+	<Ne_special_weight_index>0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</Ne_special_weight_index>
+	<!--Ne_special_weight>1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</Ne_special_weight-->
+	<Ne_special_weight>0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1</Ne_special_weight>
+	<!--Ne_special_weight>0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01</Ne_special_weight-->
+
+<!-- polarimetry -->
+	<wavelength>0.195</wavelength>
+	<C1>2.42e-20</C1>
+	<C3>5.23e-19</C3>
+
+	<abserrPolar>0.001</abserrPolar>
+	<relerrPolar>0.1</relerrPolar>
+	<force_default_errPolar>0</force_default_errPolar>
+	<n_Polar_special_weight>0</n_Polar_special_weight>
+	<Polar_special_weight_index>0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</Polar_special_weight_index>
+	<!--Polar_special_weight>1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</Polar_special_weight-->
+	<Polar_special_weight>0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1</Polar_special_weight>
+
+	<abserrS>0.001</abserrS>
+	<relerrS>0.1</relerrS>
+	<force_default_errS>0</force_default_errS>
+	<n_S_special_weight>0</n_S_special_weight>
+	<S_special_weight_index>0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</S_special_weight_index>
+	<!--S_special_weight>0</S_special_weight-->
+	<!--S_special_weight>0.1 0 0 0 0 0 0 0 0 0 0 0 0 0 0</S_special_weight-->
+	<S_special_weight>0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1</S_special_weight>
+	<!--S_special_weight>0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01</S_special_weight-->
+	<!--S_special_weight>0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001 0.001</S_special_weight-->
+	<S012_weight>1 1 1</S012_weight>
+
+<!-- pressure -->
+	<abserrPressure>1.0e3</abserrPressure>
+	<relerrPressure>0.1</relerrPressure>
+	<force_default_errPressure>0</force_default_errPressure>
+	<n_Pressure_special_weight>0</n_Pressure_special_weight>
+	<Pressure_special_weight_index>0</Pressure_special_weight_index>
+	<Pressure_special_weight>0</Pressure_special_weight>
+
+<!-- mse -->
+	<abserrMSE>0.001</abserrMSE>
+	<relerrMSE>0.1</relerrMSE>
+	<force_default_errMSE>0</force_default_errMSE>
+	<n_MSE_special_weight>25</n_MSE_special_weight>
+	<MSE_special_weight_index>0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24</MSE_special_weight_index>
+	<MSE_special_weight>0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 0 1 1 1 0 0</MSE_special_weight>
+
+
+
+<!-- vacth --> 
+	<n_points_eqx_contour>13</n_points_eqx_contour>
+	<!--r_eqx_contour>3.88 4.00 5.55 7.36 8.04 8.45 8.66 8.44 7.62 5.80 4.87 4.18 3.88</r_eqx_contour-->
+	<!--z_eqx_contour>-2.53 -3.92 -4.65 -2.45 -1.42 -0.47 0.66 1.65 3.21 4.65 4.85 4.39 3.58</z_eqx_contour-->
+	<r_eqx_contour>3.88 4.00 5.55 7.36 8.0 8.45 8.66 8.44 7.62 5.80 4.87 4.18 3.88</r_eqx_contour>
+	<z_eqx_contour>-2.53 -3.92 -4.65 -2.45 -1.4 -0.47 0.66 1.65 3.21 4.65 4.85 4.39 3.58</z_eqx_contour>
+
+    	<max_segment_length_eqx_contour>0.05</max_segment_length_eqx_contour>
+	<vacth_contour_choice>0</vacth_contour_choice>
+
+	<deltar>0.15</deltar>
+	<deltaz>0.15</deltaz>
+	<d_filament>0.05</d_filament>
+
+	<use_pfcoils>1</use_pfcoils>
+
+	<use_same_order>0</use_same_order>
+	<nqc>8</nqc>          
+	<qc>0 1 2 3 4 5 6 7</qc> 
+	<nqs>7</nqs>          
+	<qs>1 2 3 4 5 6 7</qs>     
+	<npc>8</npc>
+	<pc>0 1 2 3 4 5 6 7</pc>
+	<nps>7</nps>
+	<ps>1 2 3 4 5 6 7</ps> 
+	<manip>1</manip>          
+	<maxdist>0.05</maxdist>    
+             
+    	<vacth_regularization>3</vacth_regularization>         
+    	<vacth_fracofdeltar_regularization>0.1</vacth_fracofdeltar_regularization>   
+    	<vacth_eps_regularization>1.0e-6</vacth_eps_regularization>   
+    	<fep_eps_regularization>1.0e-3</fep_eps_regularization>   
+
+	<compute_plasma_boundary>1</compute_plasma_boundary>          
+	<n_plasma_boundary_points>60</n_plasma_boundary_points>          
+	<output_vacth_files>1</output_vacth_files>          
+
+<!-- static inverse -->
+	<parametric_bnd>0</parametric_bnd>
+	<a>1.9</a>
+	<center_r>6.2</center_r>
+	<center_z>0.545</center_z>
+	<kappa>1.8</kappa>
+	<delta>0.43</delta>
+	<rx>5.089</rx>
+	<zx>-3.346</zx>
+	<n_desired_bnd_points>96</n_desired_bnd_points>
+
+	<use_desired_psib>0</use_desired_psib>
+	
+	<!-- InverseSQP2  -->
+	<!-- Inverse old with turns  -->
+	<!--abserrIg>3e7</abserrIg-->
+	<!-- Inverse new  -->
+	<abserrIg>3e5</abserrIg>
+	<relerrIg>0</relerrIg>
+    	<n_coil_group_index>14</n_coil_group_index>
+    	<coil_group_index>0 1 2 2 3 4 5 6 7 8 9 10 11 12</coil_group_index>
+    	<n_group_current_index>13</n_group_current_index>
+    	<group_current_index>0 1 2 4 5 6 7 8 9 10 11 12 13</group_current_index>
+    	<n_group_fixed_index>2</n_group_fixed_index>
+	<group_fixed_index>11 12</group_fixed_index>
+    	<n_group_penalized_to_zero_index>0</n_group_penalized_to_zero_index>
+	<group_penalized_to_zero_index>0 1 2 3 4 5 6 7 8 9 10</group_penalized_to_zero_index>
+
+
+<!-- evolution inverse -->
+        
+<!-- same basis representation for all voltages  -->
+	<Vfunc>2</Vfunc>
+	<Vknots_n>6</Vknots_n>
+	<Vknots>0 0.2 0.4 0.6 0.8 1</Vknots>
+        
+    <ws>1.0</ws>
+    <wR1>1.0e-3</wR1>
+    <wPVmax>0.0e12</wPVmax>
+    <wPVmin>0.0e12</wPVmin>
+    <wPinduced>1.0e-3</wPinduced>
+
+<!-- for Clough Tocher  -->
+	<ct_profile_method>0</ct_profile_method>
+	<ct_approx_n_by_triangle>5</ct_approx_n_by_triangle>
+
+<!-- control outputs, interpolated magaxis, xpoint, gaps  -->
+	<outputForControl>0</outputForControl>
+
+   <rd_basis_choice>2</rd_basis_choice>
+   <rd_n_dof>10</rd_n_dof> 
+    <rd_basis_choice_petajnib>1</rd_basis_choice_petajnib>
+    <rd_n_dof_petajnib>20</rd_n_dof_petajnib>
+    
+    <dt>1.0e-3</dt>
+
+<!-- inverse (psi, theta) grid  -->
+    <n_theta_grid>101</n_theta_grid>
+
+</parameters>
+

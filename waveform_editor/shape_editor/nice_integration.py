@@ -108,6 +108,7 @@ class NiceIntegration(param.Parameterized):
             self.manager.kill()
 
         # Cleanup
+        self.processing = False
         self.communicator_pipe.close()
         self.manager_pipe.close()
         if self.pn_callback is not None:

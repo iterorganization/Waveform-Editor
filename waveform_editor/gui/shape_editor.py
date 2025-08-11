@@ -1,33 +1,60 @@
-from pathlib import Path
+import importlib.resources
 
 import imas
 import panel as pn
 import param
+from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.shape_editor.shape_params import ShapeParams
+from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
+from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 
 class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
+    plasma_shape = param.ClassSelector(class_=PlasmaShape)
+    plasma_properties = param.ClassSelector(class_=PlasmaProperties)
+
+    pf_active = param.ClassSelector(class_=IDSToplevel)
+    pf_passive = param.ClassSelector(class_=IDSToplevel)
+    wall = param.ClassSelector(class_=IDSToplevel)
+    iron_core = param.ClassSelector(class_=IDSToplevel)
 
     def __init__(self):
         super().__init__()
-        self.communicator = NiceIntegration(imas.IDSFactory())
-        self.nice_plotter = NicePlotter(self.communicator)
-        self.shape_params = ShapeParams()
+        self.factory = imas.IDSFactory()
+        self.communicator = NiceIntegration(self.factory)
+        self.plasma_shape = PlasmaShape()
+        self.plasma_properties = PlasmaProperties()
+        self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
+        self.xml_params = (
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath("param.xml")
+            .read_text()
+        )
+
         # UI Configuration
-        buttons = pn.widgets.Button(name="Run", on_click=self.submit)
+        button_start = pn.widgets.Button(name="Run", on_click=self.submit)
+        button_start.disabled = (
+            self.plasma_shape.param.has_shape.rx.not_()
+            | self.plasma_properties.param.has_properties.rx.not_()
+            | self.param.pf_active.rx.not_()
+            | self.param.pf_passive.rx.not_()
+            | self.param.iron_core.rx.not_()
+            | self.param.wall.rx.not_()
+        )
+        button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
+        buttons = pn.Row(button_start, button_stop)
         options = pn.Accordion(
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
-            ("Plasma Shape", pn.Param(self.shape_params, show_name=False)),
-            ("Plasma Parameters", None),
+            ("Plasma Shape", self.plasma_shape),
+            ("Plasma Parameters", self.plasma_properties),
             ("Coil Currents", None),
             sizing_mode="stretch_width",
         )
@@ -43,17 +70,18 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def _load_slice(self, uri, ids_name):
+    def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
 
         Args:
             uri: the URI to load the slice of.
             ids_name: The name of the IDS to load.
+            time: the time step to load slice of.
         """
         if uri:
             try:
                 with imas.DBEntry(uri, "r") as entry:
-                    return entry.get_slice(ids_name, 0, imas.ids_defs.CLOSEST_INTERP)
+                    return entry.get_slice(ids_name, time, imas.ids_defs.CLOSEST_INTERP)
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
@@ -85,64 +113,53 @@ class ShapeEditor(Viewer):
         if not self.iron_core:
             self.nice_settings.md_iron_core = ""
 
-    @param.depends("nice_settings.xml_params", watch=True)
-    def _load_xml_params(self):
-        if self.nice_settings.xml_params:
-            try:
-                self.xml_params = Path(self.nice_settings.xml_params).read_text()
-            except Exception:
-                self.xml_params = None
-                self.nice_settings.xml_params = ""
+    def _create_equilibrium(self):
+        """Create an empty equilibrium IDS and fill the plasma shape parameters and
+        plasma properties.
+
+        Returns:
+            The filled equilibrium IDS
+        """
+        equilibrium = self.factory.new("equilibrium")
+        equilibrium.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        )
+        equilibrium.time = [0.0]
+        equilibrium.time_slice.resize(1)
+        equilibrium.vacuum_toroidal_field.b0.resize(1)
+
+        # Fill plasma shape
+        equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
+        equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
+
+        # Fill plasma properties
+        equilibrium.vacuum_toroidal_field.r0 = self.plasma_properties.r0
+        equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
+        slice = equilibrium.time_slice[0]
+        slice.global_quantities.ip = self.plasma_properties.ip
+        slice.profiles_1d.dpressure_dpsi = self.plasma_properties.dpressure_dpsi
+        slice.profiles_1d.f_df_dpsi = self.plasma_properties.f_df_dpsi
+        slice.profiles_1d.psi = self.plasma_properties.psi
+        return equilibrium
 
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
-        input_ids_names = [
-            "pf_active",
-            "pf_passive",
-            "wall",
-            "iron_core",
-        ]
-        if not self.xml_params:
-            pn.state.notifications.error("Please provide a path to NICE XML params")
-            return
-
-        for name in input_ids_names:
-            ids = getattr(self, name)
-            if not ids:
-                pn.state.notifications.error(f"Please provide a valid {name} IDS")
-                return
-
-        # TODO:NICE requires an input equilibrium IDS with the following parameters
-        # filled:
-        # - time_slice[0].global_quantities.ip
-        # - vacuum_toroidal_field.r0
-        # - vacuum_toroidal_field.b0
-        # - time_slice[0].profiles_1d.dpressure_dpsi
-        # - time_slice[0].profiles_1d.f_df_dpsi
-        # - time_slice[0].profiles_1d.psi
-        try:
-            with imas.DBEntry(self.shape_params.equilibrium_input, "r") as entry:
-                self.equilibrium = entry.get_slice(
-                    "equilibrium",
-                    self.shape_params.time_input,
-                    imas.ids_defs.CLOSEST_INTERP,
-                )
-        except Exception:
-            pn.state.notifications.error("Please provide a valid equilibrium IDS")
-            return
-
+        equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
             self.xml_params,
-            self.equilibrium.serialize(),
+            equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
+
+    async def stop_nice(self, event):
+        await self.communicator.close()
 
     def __panel__(self):
         return self.panel
