@@ -12,21 +12,25 @@ from waveform_editor.util import EquilibriumInput
 class PlasmaShapeParams(param.Parameterized):
     """Helper class containing parameters to parameterize the plasma shape."""
 
-    a = param.Number(default=1.9, step=0.01, bounds=[1, 2], label="Minor Radius")
+    a = param.Number(default=1.9, step=0.01, softbounds=[1, 2], label="Minor Radius")
     center_r = param.Number(
-        default=6.2, step=0.01, bounds=[5, 7], label="Plasma center radius"
+        default=6.2, step=0.01, softbounds=[5, 7], label="Plasma center radius"
     )
     center_z = param.Number(
-        default=0.545, step=0.01, bounds=[0, 1.5], label="Plasma center height"
+        default=0.545, step=0.01, softbounds=[0, 1.5], label="Plasma center height"
     )
-    kappa = param.Number(default=1.8, step=0.01, bounds=[0, 3], label="Elongation")
-    delta = param.Number(default=0.43, step=0.01, bounds=[-1, 1], label="Triangularity")
-    rx = param.Number(default=5.089, step=0.01, bounds=[4.5, 6], label="X-point radius")
+    kappa = param.Number(default=1.8, step=0.01, softbounds=[0, 3], label="Elongation")
+    delta = param.Number(
+        default=0.43, step=0.01, softbounds=[-1, 1], label="Triangularity"
+    )
+    rx = param.Number(
+        default=5.089, step=0.01, softbounds=[4.5, 6], label="X-point radius"
+    )
     zx = param.Number(
-        default=-3.346, step=0.01, bounds=[-4, -2], label="X-point height"
+        default=-3.346, step=0.01, softbounds=[-4, -2], label="X-point height"
     )
     n_desired_bnd_points = param.Integer(
-        default=96, bounds=[1, 200], label="Number of boundary points"
+        default=96, softbounds=[3, 200], label="Number of boundary points"
     )
 
 
@@ -174,9 +178,13 @@ class PlasmaShape(Viewer):
     @param.depends("input_mode")
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            return pn.Param(self.shape_params, show_name=False)
+            params = pn.Param(self.shape_params, show_name=False)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Param(self.input, show_name=False)
+            params = pn.Param(self.input, show_name=False)
+
+        params.mapping[param.Number] = pn.widgets.EditableFloatSlider
+        params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+        return params
 
     def __panel__(self):
         return self.panel
