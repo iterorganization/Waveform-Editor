@@ -190,8 +190,7 @@ class BaseTendency(param.Parameterized):
             elif self.prev_tendency.end < self.start:
                 error_msg = (
                     "Previous tendency ends before the start of the current tendency.\n"
-                    "The values inbetween the tendencies will be linearly interpolated."
-                    "\n"
+                    "Please ensure there are no gaps in the waveform.\n"
                 )
                 self.annotations.add(self.line_number, error_msg, is_warning=True)
 
