@@ -1,8 +1,9 @@
 MUSCLE3 IMAS Actor
 ==================
 
-The waveform editor includes an actor that can be included in an IMAS `MUSCLE3
-<https://muscle3.readthedocs.io/>`__ simulation.
+The waveform editor includes an actor that can be included in an IMAS MUSCLE3 simulation.
+This page assumes you are familiar with `MUSCLE3 <https://muscle3.readthedocs.io/>`__ and 
+`IMAS <https://imas-data-dictionary.readthedocs.io/en/latest/>`__ coupled simulations.
 
 .. caution::
     The IMAS MUSCLE3 actor requires the following packages:
@@ -10,10 +11,6 @@ The waveform editor includes an actor that can be included in an IMAS `MUSCLE3
     - `muscle3 <https://pypi.org/project/muscle3>`__
     - `imas_core <https://git.iter.org/projects/IMAS/repos/al-core/browse>`__ which is
       not (yet) publicly available.
-
-
-This page assumes you are familiar with MUSCLE3 and IMAS coupled simulations.
-
 
 Actor details
 -------------
