@@ -172,6 +172,7 @@ class PlasmaShape(Viewer):
 
         return desired_bnd_r, desired_bnd_z
 
+    @param.depends("input_mode")
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
             return pn.Param(self.shape_params, show_name=False)

@@ -80,6 +80,7 @@ class PlasmaProperties(Viewer):
             )
             self.has_properties = False
 
+    @param.depends("input_mode")
     def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
             return pn.Param(self.properties_params, show_name=False)
