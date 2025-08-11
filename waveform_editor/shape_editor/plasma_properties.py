@@ -1,4 +1,5 @@
 import imas
+import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -12,9 +13,13 @@ class PlasmaPropertiesParams(param.Parameterized):
     ip = param.Number(default=-1.5e7)
     r0 = param.Number(default=6.2)
     b0 = param.Number(default=-5.3)
-    alpha = param.Number()
-    beta = param.Number()
-    gamma = param.Number()
+
+    dpressure_dpsi_alpha = param.Number(default=2)
+    dpressure_dpsi_beta = param.Number(default=0.6)
+    dpressure_dpsi_gamma = param.Number(default=1.4)
+    f_df_dpsi_alpha = param.Number(default=2)
+    f_df_dpsi_beta = param.Number(default=0.4)
+    f_df_dpsi_gamma = param.Number(default=1.4)
 
 
 class PlasmaProperties(Viewer):
@@ -51,10 +56,46 @@ class PlasmaProperties(Viewer):
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             self._load_properties_from_ids()
         elif self.input_mode == self.MANUAL_INPUT:
-            pn.state.notifications.error(
-                "Manual plasma properties input is not yet supported"
-            )
-            self.has_properties = False
+            self._load_properties_from_params()
+
+    def _load_properties_from_params(self):
+        self.ip = self.properties_params.ip
+        self.r0 = self.properties_params.r0
+        self.b0 = self.properties_params.b0
+
+        self.psi = np.linspace(0, 1, 1000)  # taking 1000 points for now
+        self.dpressure_dpsi = self._calculate_parametric_profile(
+            self.psi,
+            self.properties_params.dpressure_dpsi_alpha,
+            self.properties_params.dpressure_dpsi_beta,
+            self.properties_params.dpressure_dpsi_gamma,
+        )
+        self.f_df_dpsi = self._calculate_parametric_profile(
+            self.psi,
+            self.properties_params.f_df_dpsi_alpha,
+            self.properties_params.f_df_dpsi_beta,
+            self.properties_params.f_df_dpsi_gamma,
+        )
+        self.has_properties = True
+
+    def _calculate_parametric_profile(self, psi_n_points, alpha, beta, gamma):
+        """Calculates a plasma profile based on the parametric alpha-beta-gamma formula.
+
+        Adapted from NICE, by Blaise Faugeras:
+        https://gitlab.inria.fr/blfauger/nice
+
+        Args:
+            psi_n_points: An array of normalized poloidal flux points (from 0 to 1).
+            alpha: The alpha parameter.
+            beta: The beta parameter.
+            gamma: The gamma parameter.
+
+        Returns:
+            The calculated profile values at each psi_n point.
+        """
+        base = 1.0 - np.power(psi_n_points, alpha)
+        profile = beta * np.power(base, gamma)
+        return profile
 
     def _load_properties_from_ids(self):
         """Load plasma properties from IDS equilibrium input."""
