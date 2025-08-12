@@ -3,6 +3,7 @@ import io
 
 import imas
 import numpy as np
+import panel as pn
 import param
 
 AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
@@ -41,6 +42,11 @@ def times_from_csv(source, from_file_path=True):
     # Convert string values to floats
     time_array = [float(value) for value in rows[0]]
     return np.array(time_array)
+
+
+class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
+    def __init__(self, format="1[.]000", **params):
+        super().__init__(format=format, **params)
 
 
 class EquilibriumInput(param.Parameterized):

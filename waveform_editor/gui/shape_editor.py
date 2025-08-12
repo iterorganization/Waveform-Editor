@@ -31,7 +31,9 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
-        self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
+        self.nice_plotter = NicePlotter(
+            self.communicator, self.plasma_shape, self.plasma_properties
+        )
         self.nice_settings = settings.nice
 
         self.xml_params = (

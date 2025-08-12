@@ -8,6 +8,7 @@ import param
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 matplotlib.use("Agg")
@@ -20,6 +21,7 @@ class NicePlotter(pn.viewable.Viewer):
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
+    plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -38,14 +40,12 @@ class NicePlotter(pn.viewable.Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, plasma_shape, **params):
-        super().__init__(**params, communicator=communicator, plasma_shape=plasma_shape)
-        self.DEFAULT_OPTS = hv.opts.Overlay(
-            xlim=(0, 13),
-            ylim=(-10, 10),
-            title="Equilibrium poloidal flux",
-            xlabel="r [m]",
-            ylabel="z [m]",
+    def __init__(self, communicator, plasma_shape, plasma_properties, **params):
+        super().__init__(
+            **params,
+            communicator=communicator,
+            plasma_shape=plasma_shape,
+            plasma_properties=plasma_properties,
         )
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
@@ -55,7 +55,14 @@ class NicePlotter(pn.viewable.Viewer):
             show_legend=False,
         )
 
-        plot_elements = [
+        self.DEFAULT_OPTS = hv.opts.Overlay(
+            xlim=(0, 13),
+            ylim=(-10, 10),
+            title="Equilibrium poloidal flux",
+            xlabel="r [m]",
+            ylabel="z [m]",
+        )
+        flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
             hv.DynamicMap(self._plot_xo_points),
@@ -64,10 +71,25 @@ class NicePlotter(pn.viewable.Viewer):
             hv.DynamicMap(self._plot_vacuum_vessel),
             hv.DynamicMap(self._plot_desired_shape),
         ]
-        overlay = hv.Overlay(plot_elements).collate().opts(self.DEFAULT_OPTS)
-        self.panel = pn.Column(
-            pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT),
+        flux_map_overlay = (
+            hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
+        )
+        flux_map_pane = pn.Column(
+            pn.pane.HoloViews(flux_map_overlay, width=self.WIDTH, height=self.HEIGHT),
             loading=self.communicator.param.processing,
+        )
+
+        profiles_plot = hv.DynamicMap(self._plot_profiles)
+
+        self.panel = pn.Tabs(
+            ("Flux Map", flux_map_pane),
+            ("Profiles", profiles_plot),
+        )
+
+    @pn.depends("plasma_properties.profile_overlay")
+    def _plot_profiles(self):
+        return self.plasma_properties.profile_overlay.opts(
+            width=self.WIDTH, height=self.HEIGHT, framewise=True
         )
 
     @pn.depends("plasma_shape.shape_curve", "show_desired_shape")

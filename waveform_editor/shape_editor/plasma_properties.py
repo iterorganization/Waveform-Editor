@@ -1,25 +1,43 @@
+import holoviews as hv
 import imas
 import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import EquilibriumInput
+from waveform_editor.util import EquilibriumInput, FormattedEditableFloatSlider
 
 
 class PlasmaPropertiesParams(param.Parameterized):
     """Helper class containing parameters defining the plasma properties."""
 
-    ip = param.Number(default=-1.5e7)
-    r0 = param.Number(default=6.2)
-    b0 = param.Number(default=-5.3)
-
-    dpressure_dpsi_alpha = param.Number(default=2)
-    dpressure_dpsi_beta = param.Number(default=0.6)
-    dpressure_dpsi_gamma = param.Number(default=1.4)
-    f_df_dpsi_alpha = param.Number(default=2)
-    f_df_dpsi_beta = param.Number(default=0.4)
-    f_df_dpsi_gamma = param.Number(default=1.4)
+    ip = param.Number(
+        default=-1.5e7, softbounds=[-1.7e7, 0], label="Plasma current [A]"
+    )
+    r0 = param.Number(
+        default=6.2, softbounds=[5, 7], label="Reference major radius [m]"
+    )
+    b0 = param.Number(
+        default=-5.3, softbounds=[-10, 10], label="Toroidal field at R0 [T]"
+    )
+    dpressure_dpsi_alpha = param.Integer(
+        default=2, softbounds=[0, 10], label="dpressure_dpsi alpha"
+    )
+    dpressure_dpsi_beta = param.Number(
+        default=0.6, step=0.01, softbounds=[-10, 10], label="dpressure_dpsi beta"
+    )
+    dpressure_dpsi_gamma = param.Number(
+        default=1.4, softbounds=[0, 10], label="dpressure_dpsi gamma"
+    )
+    f_df_dpsi_alpha = param.Integer(
+        default=2, softbounds=[0, 10], label="f_df_dpsi alpha"
+    )
+    f_df_dpsi_beta = param.Number(
+        default=0.4, softbounds=[-10, 10], label="f_df_dpsi beta"
+    )
+    f_df_dpsi_gamma = param.Number(
+        default=1.4, softbounds=[0, 10], label="f_df_dpsi gamma"
+    )
 
 
 class PlasmaProperties(Viewer):
@@ -34,6 +52,11 @@ class PlasmaProperties(Viewer):
     input = param.ClassSelector(class_=EquilibriumInput, default=EquilibriumInput())
     properties_params = param.ClassSelector(
         class_=PlasmaPropertiesParams, default=PlasmaPropertiesParams()
+    )
+
+    profile_overlay = param.Parameter(
+        default=hv.Overlay([hv.Curve([])]),
+        doc="Holoviews overlay of the p' and ff' profiles",
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
@@ -58,12 +81,24 @@ class PlasmaProperties(Viewer):
         elif self.input_mode == self.MANUAL_INPUT:
             self._load_properties_from_params()
 
+        if self.has_properties:
+            p_prime_curve = hv.Curve(
+                (self.psi, self.dpressure_dpsi), "Poloidal flux", "p'"
+            )
+            ff_prime_curve = hv.Curve(
+                (self.psi, self.f_df_dpsi), "Poloidal flux", "ff'"
+            )
+            self.profile_overlay = (p_prime_curve * ff_prime_curve).opts(
+                hv.opts.Overlay(title="Plasma Profiles")
+            )
+        else:
+            self.profile_overlay = hv.Overlay([hv.Curve([])])
+
     def _load_properties_from_params(self):
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
-
-        self.psi = np.linspace(0, 1, 1000)  # taking 1000 points for now
+        self.psi = np.linspace(-1, 0, 200)
         self.dpressure_dpsi = self._calculate_parametric_profile(
             self.psi,
             self.properties_params.dpressure_dpsi_alpha,
@@ -78,28 +113,15 @@ class PlasmaProperties(Viewer):
         )
         self.has_properties = True
 
-    def _calculate_parametric_profile(self, psi_n_points, alpha, beta, gamma):
-        """Calculates a plasma profile based on the parametric alpha-beta-gamma formula.
-
-        Adapted from NICE, by Blaise Faugeras:
-        https://gitlab.inria.fr/blfauger/nice
-
-        Args:
-            psi_n_points: An array of normalized poloidal flux points (from 0 to 1).
-            alpha: The alpha parameter.
-            beta: The beta parameter.
-            gamma: The gamma parameter.
-
-        Returns:
-            The calculated profile values at each psi_n point.
-        """
-        base = 1.0 - np.power(psi_n_points, alpha)
+    def _calculate_parametric_profile(self, psi, alpha, beta, gamma):
+        base = 1.0 - np.power(psi, alpha)
         profile = beta * np.power(base, gamma)
         return profile
 
     def _load_properties_from_ids(self):
         """Load plasma properties from IDS equilibrium input."""
         if not self.input.uri:
+            self.has_properties = False
             return
         try:
             with imas.DBEntry(self.input.uri, "r") as entry:
@@ -124,9 +146,14 @@ class PlasmaProperties(Viewer):
     @param.depends("input_mode")
     def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
-            return pn.Param(self.properties_params, show_name=False)
+            params = pn.Param(self.properties_params, show_name=False)
+            params.mapping[param.Number] = FormattedEditableFloatSlider
+            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+            params = pn.GridBox(*params, ncols=3)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Param(self.input, show_name=False)
+            params = pn.Param(self.input, show_name=False)
+
+        return params
 
     def __panel__(self):
         return self.panel
