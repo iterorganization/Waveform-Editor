@@ -8,17 +8,15 @@ class WaveformGroup:
         self.waveforms = {}
 
     def __getitem__(self, key):
-        if "/" in key:
-            if key in self.waveforms:
-                return self.waveforms[key]
-        else:
-            if key in self.groups:
-                return self.groups[key]
+        if key in self.waveforms:
+            return self.waveforms[key]
+        elif key in self.groups:
+            return self.groups[key]
         raise KeyError(f"'{key}' not found in groups or waveforms")
 
     def __contains__(self, key):
-        if "/" in key:
-            return key in self.waveforms
+        if key in self.waveforms:
+            return True
         return key in self.groups
 
     def to_commented_map(self):
