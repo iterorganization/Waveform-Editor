@@ -64,8 +64,14 @@ def parse_linspace(ctx, param, value):
 
 
 @cli.command("gui")
-def launch_gui():
-    """Launch the Waveform Editor GUI using Panel."""
+@click.argument("file", type=click.Path(exists=True, dir_okay=False), required=False)
+def launch_gui(file):
+    """Launch the Waveform Editor GUI using Panel.
+
+    \b
+    Arguments:
+      file: Waveform file to load on startup.
+    """
     # Use local imports to avoid loading the full GUI dependencies for the other CLI use
     # cases:
     import panel as pn
@@ -74,6 +80,8 @@ def launch_gui():
 
     try:
         app = WaveformEditorGui()
+        if file is not None:
+            app.load_yaml_from_file(Path(file))
         pn.serve(app, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
