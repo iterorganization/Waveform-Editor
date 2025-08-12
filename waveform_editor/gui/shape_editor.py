@@ -7,6 +7,7 @@ from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
@@ -29,6 +30,7 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
+        self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
@@ -55,14 +57,15 @@ class ShapeEditor(Viewer):
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.plasma_shape),
             ("Plasma Parameters", self.plasma_properties),
-            ("Coil Currents", None),
+            ("Coil Currents", self.coil_currents),
             sizing_mode="stretch_width",
         )
+        self.coil_currents_text = pn.pane.Markdown("", sizing_mode="stretch_width")
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            self.nice_plotter,
+            pn.Column(self.nice_plotter, self.coil_currents_text),
             pn.Column(
                 menu,
                 options,
@@ -89,6 +92,7 @@ class ShapeEditor(Viewer):
     def _load_pf_active(self):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
+        self.coil_currents.update_coils(self.pf_active)
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
@@ -142,10 +146,21 @@ class ShapeEditor(Viewer):
         slice.profiles_1d.psi = self.plasma_properties.psi
         return equilibrium
 
+    def update_coil_currents_text(self, pf_active):
+        if not pf_active or not hasattr(pf_active, "coil"):
+            self.coil_currents_text.object = ""
+            return
+        lines = []
+        for coil in pf_active.coil:
+            lines.append(f"**{coil.name}:** {coil.current.data[0]:.2f}")
+        self.coil_currents_text.object = "\n\n".join(lines)
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
+        self.coil_currents.set_coil_currents(self.pf_active)
+        self.xml_params = self.coil_currents.set_fixed_coils(self.xml_params)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
@@ -157,6 +172,7 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
+        self.update_coil_currents_text(self.communicator.pf_active)
 
     async def stop_nice(self, event):
         await self.communicator.close()
