@@ -67,7 +67,8 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
 Grouping Waveforms
 ------------------
 
-Keys at any level that **do not** contain a forward slash (`/`) define logical groups. These are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
+Keys at any level that contain a dictionary represent logical groups. 
+These are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
 
 .. code-block:: yaml
 
@@ -84,7 +85,8 @@ Keys at any level that **do not** contain a forward slash (`/`) define logical g
 Defining Waveforms
 ------------------
 
-Waveforms are defined by key-value pairs where the key **contains** at least one forward slash (`/`).
+Waveforms are defined by key-value pairs where the key contains a string, 
+a list of waveforms, or a single number (float or integer).
 
 *   **Waveform Name:** The waveform name represents the unique identifier for the waveform. In order to export the waveform to an IDS the following naming structure must be used. The first segment should refer to the **IDS name** and the second part should refer to the **path** in that IDS the waveform applies to, e.g., ``ec_launchers/beam(1)/phase/angle``. It is allowed to not adhere to this format, but in this case the waveforms will not be saved to an IDS during export.
 
