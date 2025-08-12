@@ -82,14 +82,14 @@ class PlotterEdit(Viewer):
             self.point_stream.add_subscriber(self.piecewise_click_and_drag)
 
             edit_points = hv.DynamicMap(
-                lambda data: hv.Points(data, [self.xlabel, self.ylabel], label="edit"),
+                lambda data: hv.Points(data, [self.xlabel, self.ylabel]),
                 streams=[self.point_stream],
-            ).opts(color="black", size=10)
+            )
 
             overlay = hv.DynamicMap(self.main_curve, streams=[self.pipe]) * edit_points
             self.pane.object = overlay.opts(
                 opts.Curve(line_width=2, color=hv.Cycle().values[0]),
-                opts.Curve("edit", alpha=0.2),
+                opts.Points(color="black", size=10, tools=["box_select"]),
             ).opts(
                 framewise=True,
                 show_legend=False,
