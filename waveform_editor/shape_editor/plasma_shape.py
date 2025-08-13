@@ -35,8 +35,8 @@ class PlasmaShapeParams(param.Parameterized):
 
 
 class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
-    def __init__(self, format="1[.]000", **params):
-        super().__init__(format=format, **params)
+    def __init__(self, **params):
+        super().__init__(format="1[.]000", **params)
 
 
 class PlasmaShape(Viewer):

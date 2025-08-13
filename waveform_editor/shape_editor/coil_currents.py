@@ -13,11 +13,17 @@ class CoilCurrents(Viewer):
     def __init__(self):
         super().__init__()
         self.slider_grid = pn.GridBox(ncols=2, visible=self.param.coil_ui.rx.bool())
-        self.empty_message = pn.pane.Markdown(
-            "Please load a valid 'pf_active' IDS",
+
+        guide_message = pn.pane.Markdown(
+            "_To fix a coil to a specific current, enable the checkbox and provide the desired current value._",
+            visible=self.param.coil_ui.rx.bool(),
+            margin=(0, 10),
+        )
+        no_ids_message = pn.pane.Markdown(
+            "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
             visible=self.param.coil_ui.rx.not_(),
         )
-        self.panel = pn.Column(self.empty_message, self.slider_grid)
+        self.panel = pn.Column(no_ids_message, guide_message, self.slider_grid)
 
     def create_ui(self, pf_active):
         if not pf_active:
@@ -26,6 +32,7 @@ class CoilCurrents(Viewer):
             new_coil_ui = []
             for coil in pf_active.coil:
                 coil_current = coil.current
+                checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
                 slider = pn.widgets.EditableFloatSlider(
                     name=f"{coil.name}",
                     value=coil_current.data[0],
@@ -37,10 +44,9 @@ class CoilCurrents(Viewer):
                     ),
                     width=450,
                 )
-                checkbox = pn.widgets.Checkbox(margin=(30, 10, 10, 10))
 
-                def toggle_slider(event, s=slider):
-                    s.disabled = not event.new
+                def toggle_slider(event, slider=slider):
+                    slider.disabled = not event.new
 
                 checkbox.param.watch(toggle_slider, "value")
                 row = pn.Row(checkbox, slider)
@@ -75,7 +81,6 @@ class CoilCurrents(Viewer):
             "n_group_fixed_index": n_group_fixed_index,
             "group_fixed_index": str(group_fixed_index),
         }
-        print(params)
         return self._update_xml_params(xml_string, params)
 
     def _update_xml_params(self, xml_string, params):
