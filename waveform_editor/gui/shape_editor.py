@@ -149,8 +149,8 @@ class ShapeEditor(Viewer):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
-        self.coil_currents.fill_coil_currents(self.pf_active)
-        self.xml_params = self.coil_currents.set_fixed_coils(self.xml_params)
+        self.coil_currents.fill_pf_active(self.pf_active)
+        self.xml_params = self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
@@ -162,7 +162,7 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
-        self.coil_currents.set_coil_current_ui(self.communicator.pf_active)
+        self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
     async def stop_nice(self, event):
         await self.communicator.close()
