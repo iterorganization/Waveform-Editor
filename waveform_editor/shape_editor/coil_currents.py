@@ -47,21 +47,14 @@ class CoilCurrents(Viewer):
             coil_current = coil.current
             checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
             slider = pn.widgets.EditableFloatSlider(
-                name=f"{coil.name}",
+                name=f"{coil.name} Current [{coil_current.metadata.units}]",
                 value=coil_current.data[0],
                 start=-5e4,
                 end=5e4,
-                disabled=True,
-                format=PrintfTickFormatter(
-                    format=f"%.0f {coil_current.metadata.units}"
-                ),
+                disabled=checkbox.param.value.rx.not_(),
+                format=PrintfTickFormatter(format=f"%.0f"),
                 width=450,
             )
-
-            def toggle_slider(event, slider=slider):
-                slider.disabled = not event.new
-
-            checkbox.param.watch(toggle_slider, "value")
             row = pn.Row(checkbox, slider)
             new_coil_ui.append(row)
 
