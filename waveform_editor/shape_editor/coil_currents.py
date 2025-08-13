@@ -33,7 +33,7 @@ class CoilCurrents(Viewer):
                     end=5e4,
                     disabled=True,
                     format=PrintfTickFormatter(
-                        format=f"%.3f {coil_current.metadata.units}"
+                        format=f"%.0f {coil_current.metadata.units}"
                     ),
                     width=450,
                 )
@@ -50,11 +50,16 @@ class CoilCurrents(Viewer):
 
         self.slider_grid.objects = self.coil_ui
 
-    def set_coil_currents(self, pf_active):
+    def fill_coil_currents(self, pf_active):
         for i, coil_ui in enumerate(self.coil_ui):
             checkbox, slider = coil_ui.objects
             if checkbox.value:
                 pf_active.coil[i].current.data = np.array([slider.value])
+
+    def set_coil_current_ui(self, pf_active):
+        for i, coil in enumerate(pf_active.coil):
+            _, slider = self.coil_ui[i].objects
+            slider.value = coil.current.data[0]
 
     def set_fixed_coils(self, xml_string):
         n_group_fixed_index = sum(
