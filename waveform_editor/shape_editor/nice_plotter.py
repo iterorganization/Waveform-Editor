@@ -76,7 +76,7 @@ class NicePlotter(pn.viewable.Viewer):
             curve = hv.Curve([])
         return curve.opts(color="blue")
 
-    @pn.depends("pf_active", "show_coils")
+    @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):
         """Creates rectangular and path overlays for PF coils.
 
@@ -86,8 +86,12 @@ class NicePlotter(pn.viewable.Viewer):
         rectangles = []
         paths = []
         if self.show_coils and self.pf_active is not None:
-            for coil in self.pf_active.coil:
+            for idx, coil in enumerate(self.pf_active.coil):
                 name = str(coil.name)
+                if self.communicator.pf_active:
+                    current = self.communicator.pf_active.coil[idx].current.data[0]
+                    units = self.communicator.pf_active.coil[idx].current.metadata.units
+                    name = f"{name} | {current:.3f} [{units}]"
                 for element in coil.element:
                     rect = element.geometry.rectangle
                     outline = element.geometry.outline

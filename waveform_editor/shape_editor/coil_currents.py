@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import panel as pn
+from bokeh.models.formatters import PrintfTickFormatter
 from panel.viewable import Viewer
 
 
@@ -20,12 +21,16 @@ class CoilCurrents(Viewer):
             return
 
         for coil in pf_active.coil:
+            coil_current = coil.current
             slider = pn.widgets.FloatSlider(
                 name=str(coil.name),
-                value=coil.current.data[0],
+                value=coil_current.data[0],
                 start=-5e4,
                 end=5e4,
                 disabled=True,
+                format=PrintfTickFormatter(
+                    format=f"%.3f [{coil_current.metadata.units}]"
+                ),
             )
             checkbox = pn.widgets.Checkbox()
 

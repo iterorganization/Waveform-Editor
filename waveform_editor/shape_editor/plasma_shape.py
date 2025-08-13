@@ -6,7 +6,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import EquilibriumInput, FormattedEditableFloatSlider
+from waveform_editor.util import EquilibriumInput
 
 
 class PlasmaShapeParams(param.Parameterized):
@@ -32,6 +32,11 @@ class PlasmaShapeParams(param.Parameterized):
     n_desired_bnd_points = param.Integer(
         default=96, softbounds=[3, 200], label="Number of boundary points"
     )
+
+
+class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
+    def __init__(self, format="1[.]000", **params):
+        super().__init__(format=format, **params)
 
 
 class PlasmaShape(Viewer):

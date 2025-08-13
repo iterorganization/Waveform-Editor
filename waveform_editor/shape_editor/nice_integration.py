@@ -53,6 +53,7 @@ class NiceIntegration(param.Parameterized):
         doc="The process for communicating with NICE is running"
     )
     equilibrium = param.ClassSelector(class_=IDSToplevel)
+    pf_active = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
 

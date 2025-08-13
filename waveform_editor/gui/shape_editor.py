@@ -60,12 +60,11 @@ class ShapeEditor(Viewer):
             ("Coil Currents", self.coil_currents),
             sizing_mode="stretch_width",
         )
-        self.coil_currents_text = pn.pane.Markdown("", sizing_mode="stretch_width")
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            pn.Column(self.nice_plotter, self.coil_currents_text),
+            self.nice_plotter,
             pn.Column(
                 menu,
                 options,
@@ -146,15 +145,6 @@ class ShapeEditor(Viewer):
         slice.profiles_1d.psi = self.plasma_properties.psi
         return equilibrium
 
-    def update_coil_currents_text(self, pf_active):
-        if not pf_active or not hasattr(pf_active, "coil"):
-            self.coil_currents_text.object = ""
-            return
-        lines = []
-        for coil in pf_active.coil:
-            lines.append(f"**{coil.name}:** {coil.current.data[0]:.2f}")
-        self.coil_currents_text.object = "\n\n".join(lines)
-
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
@@ -172,7 +162,6 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
-        self.update_coil_currents_text(self.communicator.pf_active)
 
     async def stop_nice(self, event):
         await self.communicator.close()
