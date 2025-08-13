@@ -61,6 +61,7 @@ class NicePlotter(pn.viewable.Viewer):
             title="Equilibrium poloidal flux",
             xlabel="r [m]",
             ylabel="z [m]",
+            shared_axes=False,
         )
         flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
@@ -80,17 +81,18 @@ class NicePlotter(pn.viewable.Viewer):
         )
 
         profiles_plot = hv.DynamicMap(self._plot_profiles)
+        profiles_pane = pn.pane.HoloViews(
+            profiles_plot, width=self.WIDTH, height=self.HEIGHT
+        )
 
         self.panel = pn.Tabs(
             ("Flux Map", flux_map_pane),
-            ("Profiles", profiles_plot),
+            ("Profiles", profiles_pane),
         )
 
     @pn.depends("plasma_properties.profile_overlay")
     def _plot_profiles(self):
-        return self.plasma_properties.profile_overlay.opts(
-            width=self.WIDTH, height=self.HEIGHT, framewise=True
-        )
+        return self.plasma_properties.profile_overlay
 
     @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
     def _plot_desired_shape(self):

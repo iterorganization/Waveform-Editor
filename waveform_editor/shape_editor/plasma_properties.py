@@ -83,11 +83,12 @@ class PlasmaProperties(Viewer):
 
         if self.has_properties:
             p_prime_curve = hv.Curve(
-                (self.psi, self.dpressure_dpsi), "Poloidal flux", "p'"
+                (self.psi, self.dpressure_dpsi), kdims="Poloidal flux", label="p'"
             )
             ff_prime_curve = hv.Curve(
-                (self.psi, self.f_df_dpsi), "Poloidal flux", "ff'"
+                (self.psi, self.f_df_dpsi), kdims="Poloidal flux", label="ff'"
             )
+
             self.profile_overlay = (p_prime_curve * ff_prime_curve).opts(
                 hv.opts.Overlay(title="Plasma Profiles")
             )
