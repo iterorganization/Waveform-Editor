@@ -100,39 +100,44 @@ class CoilCurrents(Viewer):
             Updated XML string with the `n_group_fixed_index` and `group_fixed_index`
                 elements modified.
         """
-        n_group_fixed_index = sum(
-            cb.value for cb, _ in (row.objects for row in self.coil_ui)
-        )
+        root = ET.fromstring(xml_string)
+        coil_groups = list(map(int, root.find("coil_group_index").text.split()))
+
+        fixed_coils = [i for i, row in enumerate(self.coil_ui) if row.objects[0].value]
+
+        target_groups = {coil_groups[coil_idx] for coil_idx in fixed_coils}
+        fixed_groups = sorted(list(target_groups))
+
+        n_group_fixed_index = len(fixed_groups)
         if n_group_fixed_index == 0:
             # NICE requires group_fixed_index to be filled even when there are no fixed
             # coils, so set to invalid index
-            group_fixed_index = str(-1)
+            group_fixed_index = "-1"
         else:
-            group_fixed_index = " ".join(
-                str(i) for i, row in enumerate(self.coil_ui) if row.objects[0].value
-            )
+            group_fixed_index = " ".join(map(str, fixed_groups))
+
         params = {
             "n_group_fixed_index": n_group_fixed_index,
             "group_fixed_index": group_fixed_index,
         }
-        return self._update_xml_params(xml_string, params)
 
-    def _update_xml_params(self, xml_string, params):
+        return self._update_xml_params(root, params)
+
+    def _update_xml_params(self, xml_root, params):
         """Update XML elements with specified parameter values.
 
         Args:
-            xml_string: Original XML configuration as a string.
+            xml_root: XML root element of the NICE parameters.
             params: Dictionary mapping XML element names to new values.
 
         Returns:
             Updated XML as a string.
         """
-        root = ET.fromstring(xml_string)
         for key, val in params.items():
-            elem = root.find(key)
+            elem = xml_root.find(key)
             if elem is not None:
                 elem.text = str(val)
-        return ET.tostring(root, encoding="unicode")
+        return ET.tostring(xml_root, encoding="unicode")
 
     def __panel__(self):
         return self.panel
