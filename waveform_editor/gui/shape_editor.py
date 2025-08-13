@@ -91,7 +91,7 @@ class ShapeEditor(Viewer):
     def _load_pf_active(self):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
-        self.coil_currents.update_coils(self.pf_active)
+        self.coil_currents.create_ui(self.pf_active)
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
