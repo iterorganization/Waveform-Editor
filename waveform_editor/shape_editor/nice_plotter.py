@@ -1,6 +1,7 @@
 import logging
 
 import holoviews as hv
+import matplotlib
 import matplotlib.pyplot as plt
 import panel as pn
 import param
@@ -9,6 +10,7 @@ from imas.ids_toplevel import IDSToplevel
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
+matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
