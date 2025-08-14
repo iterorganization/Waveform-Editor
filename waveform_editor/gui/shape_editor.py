@@ -7,6 +7,7 @@ from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
@@ -29,6 +30,7 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
+        self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
@@ -55,7 +57,7 @@ class ShapeEditor(Viewer):
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.plasma_shape),
             ("Plasma Parameters", self.plasma_properties),
-            ("Coil Currents", None),
+            ("Coil Currents", self.coil_currents),
             sizing_mode="stretch_width",
         )
         menu = pn.Column(
@@ -89,6 +91,7 @@ class ShapeEditor(Viewer):
     def _load_pf_active(self):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
+        self.coil_currents.create_ui(self.pf_active)
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
@@ -146,6 +149,8 @@ class ShapeEditor(Viewer):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
+        self.coil_currents.fill_pf_active(self.pf_active)
+        self.xml_params = self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
@@ -157,6 +162,7 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
+        self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
     async def stop_nice(self, event):
         await self.communicator.close()
