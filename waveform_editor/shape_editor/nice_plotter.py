@@ -74,8 +74,10 @@ class NicePlotter(pn.viewable.Viewer):
         flux_map_overlay = (
             hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
         )
-        flux_map_pane = pn.Column(
-            pn.pane.HoloViews(flux_map_overlay, width=self.WIDTH, height=self.HEIGHT),
+        flux_map_pane = pn.pane.HoloViews(
+            flux_map_overlay,
+            width=self.WIDTH,
+            height=self.HEIGHT,
             loading=self.communicator.param.processing,
         )
 
@@ -113,7 +115,9 @@ class NicePlotter(pn.viewable.Viewer):
         if self.show_coils and self.pf_active is not None:
             for idx, coil in enumerate(self.pf_active.coil):
                 name = str(coil.name)
-                if self.communicator.pf_active:
+                if self.communicator.pf_active and len(
+                    self.communicator.pf_active.coil
+                ) == len(self.pf_active.coil):
                     current = self.communicator.pf_active.coil[idx].current.data[0]
                     units = self.communicator.pf_active.coil[idx].current.metadata.units
                     name = f"{name} | {current:.3f} [{units}]"
@@ -158,9 +162,11 @@ class NicePlotter(pn.viewable.Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_contour or equilibrium is None:
-            return hv.Contours(([0], [0], 0), vdims="psi").opts(self.CONTOUR_OPTS)
+            contours = hv.Contours(([0], [0], 0), vdims="psi")
+        else:
+            contours = self._calc_contours(equilibrium, self.levels)
 
-        return self._calc_contours(equilibrium, self.levels).opts(self.CONTOUR_OPTS)
+        return contours.opts(self.CONTOUR_OPTS)
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -178,6 +184,12 @@ class NicePlotter(pn.viewable.Viewer):
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
+
+        if not r or not z or not psi:
+            pn.state.notifications.error(
+                "NICE did not produce a valid poloidal flux field"
+            )
+            return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = plt.tricontour(r, z, psi, levels=levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")

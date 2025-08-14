@@ -154,10 +154,11 @@ class PlasmaProperties(Viewer):
 
             return pn.Column(
                 *params[0:3],
-                pn.pane.Markdown("#### f_df_dpsi Parameterization", margin=0),
-                *params[3:6],
                 pn.pane.Markdown("#### dpressure_dpsi Parameterization", margin=0),
+                *params[3:6],
+                pn.pane.Markdown("#### f_df_dpsi Parameterization", margin=0),
                 *params[6:9],
+                margin=(5, 10),
             )
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             return pn.Param(self.input, show_name=False)
