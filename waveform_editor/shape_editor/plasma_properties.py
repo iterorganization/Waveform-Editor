@@ -56,7 +56,7 @@ class PlasmaProperties(Viewer):
 
     profile_overlay = param.Parameter(
         default=hv.Overlay([hv.Curve([])]),
-        doc="Holoviews overlay of the p' and ff' profiles",
+        doc="Holoviews overlay of the dpressure_dpsi and f_df_dpsi profiles",
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
@@ -73,7 +73,9 @@ class PlasmaProperties(Viewer):
         self.r0 = None
         self.b0 = None
 
-    @param.depends("properties_params.param", "input.param", "input_mode", watch=True)
+    @param.depends(
+        "properties_params.param", "input.param", "input_mode", watch=True, on_init=True
+    )
     def _load_plasma_properties(self):
         """Update plasma properties based on input mode."""
         if self.input_mode == self.EQUILIBRIUM_INPUT:
@@ -82,18 +84,27 @@ class PlasmaProperties(Viewer):
             self._load_properties_from_params()
 
         if self.has_properties:
-            p_prime_curve = hv.Curve(
-                (self.psi, self.dpressure_dpsi), kdims="Poloidal flux", label="p'"
+            dpressure_dpsi_curve = hv.Curve(
+                (self.psi, self.dpressure_dpsi),
+                label="dpressure_dpsi",
             )
-            ff_prime_curve = hv.Curve(
-                (self.psi, self.f_df_dpsi), kdims="Poloidal flux", label="ff'"
+            f_df_dpsi_curve = hv.Curve(
+                (self.psi, self.f_df_dpsi),
+                label="f_df_dpsi",
             )
 
-            self.profile_overlay = (p_prime_curve * ff_prime_curve).opts(
-                hv.opts.Overlay(title="Plasma Profiles")
-            )
+            overlay = dpressure_dpsi_curve * f_df_dpsi_curve
         else:
-            self.profile_overlay = hv.Overlay([hv.Curve([])])
+            overlay = hv.Overlay([hv.Curve([])])
+
+        self.profile_overlay = overlay.opts(
+            hv.opts.Overlay(
+                title="Plasma Profiles",
+                xlabel="Normalized poloidal flux",
+                ylabel="Profile value",
+            ),
+            hv.opts.Curve(framewise=True),
+        )
 
     def _load_properties_from_params(self):
         self.ip = self.properties_params.ip

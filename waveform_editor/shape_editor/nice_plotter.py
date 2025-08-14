@@ -47,14 +47,6 @@ class NicePlotter(pn.viewable.Viewer):
             plasma_shape=plasma_shape,
             plasma_properties=plasma_properties,
         )
-        self.CONTOUR_OPTS = hv.opts.Contours(
-            cmap="viridis",
-            colorbar=True,
-            tools=["hover"],
-            colorbar_opts={"title": "Poloidal flux [Wb]"},
-            show_legend=False,
-        )
-
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -62,6 +54,13 @@ class NicePlotter(pn.viewable.Viewer):
             xlabel="r [m]",
             ylabel="z [m]",
             shared_axes=False,
+        )
+        self.CONTOUR_OPTS = hv.opts.Contours(
+            cmap="viridis",
+            colorbar=True,
+            tools=["hover"],
+            colorbar_opts={"title": "Poloidal flux [Wb]"},
+            show_legend=False,
         )
         flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
@@ -87,7 +86,7 @@ class NicePlotter(pn.viewable.Viewer):
 
         self.panel = pn.Tabs(
             ("Flux Map", flux_map_pane),
-            ("Profiles", profiles_pane),
+            ("Plasma Profiles", profiles_pane),
         )
 
     @pn.depends("plasma_properties.profile_overlay")
