@@ -73,26 +73,30 @@ class PlasmaProperties(Viewer):
         elif self.input_mode == self.MANUAL_INPUT:
             self._load_properties_from_params()
 
+        # Define kdims/vdims otherwise Holoviews will link axes with flux map
+        kdims = "Normalized Poloidal Flux"
+        vdims = "Profile Value"
+
         if self.has_properties:
             dpressure_dpsi_curve = hv.Curve(
                 (self.psi, self.dpressure_dpsi),
+                kdims=kdims,
+                vdims=vdims,
                 label="dpressure_dpsi",
             )
             f_df_dpsi_curve = hv.Curve(
                 (self.psi, self.f_df_dpsi),
+                kdims=kdims,
+                vdims=vdims,
                 label="f_df_dpsi",
             )
 
             overlay = dpressure_dpsi_curve * f_df_dpsi_curve
         else:
-            overlay = hv.Overlay([hv.Curve([])])
+            overlay = hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
 
         self.profile_overlay = overlay.opts(
-            hv.opts.Overlay(
-                title="Plasma Profiles",
-                xlabel="Normalized poloidal flux",
-                ylabel="Profile value",
-            ),
+            hv.opts.Overlay(title="Plasma Profiles"),
             hv.opts.Curve(framewise=True),
         )
 

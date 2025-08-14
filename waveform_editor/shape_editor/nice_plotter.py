@@ -53,7 +53,6 @@ class NicePlotter(pn.viewable.Viewer):
             title="Equilibrium poloidal flux",
             xlabel="r [m]",
             ylabel="z [m]",
-            shared_axes=False,
         )
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
