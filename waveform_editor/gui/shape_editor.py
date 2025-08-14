@@ -24,6 +24,8 @@ class ShapeEditor(Viewer):
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
 
+    accordion = param.ClassSelector(class_=pn.Accordion)
+
     def __init__(self):
         super().__init__()
         self.factory = imas.IDSFactory()
@@ -45,19 +47,15 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             self.plasma_shape.param.has_shape.rx.not_()
             | self.plasma_properties.param.has_properties.rx.not_()
-            | self.nice_settings.param.executable.rx.not_()
-            | self.param.pf_active.rx.not_()
-            | self.param.pf_passive.rx.not_()
-            | self.param.iron_core.rx.not_()
-            | self.param.wall.rx.not_()
+            | self.nice_settings.param.are_filled.rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
-        options = pn.Accordion(
-            ("NICE Configuration", self._nice_config),
+        self.accordion = pn.Accordion(
+            ("NICE Configuration", self.nice_settings.panel),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.plasma_shape),
-            ("Plasma Parameters", self.plasma_properties),
+            ("Plasma Properties", self.plasma_properties),
             ("Coil Currents", self.coil_currents),
             sizing_mode="stretch_width",
         )
@@ -68,31 +66,45 @@ class ShapeEditor(Viewer):
             self.nice_plotter,
             pn.Column(
                 menu,
-                options,
+                self.accordion,
                 sizing_mode="stretch_both",
             ),
         )
+        self._update_accordion()
 
-    def _nice_config(self):
-        items = []
-        for p in settings.nice.param:
-            if p == "name":
-                continue
-            if p == "environment":
-                indicator = ""
-            else:
-                indicator = "⚠️"
-            items.append(
-                pn.Row(
-                    pn.Param(settings.nice.param[p], show_name=False),
-                    pn.widgets.StaticText(
-                        value=indicator,
-                        margin=(40, 0, 0, 0),
-                        visible=settings.nice.param[p].rx.not_(),
-                    ),
-                )
-            )
-        return pn.Column(*items)
+    def _update_accordion(self):
+        self._update_accordion_plasma_shape()
+        self._update_accordion_plasma_properties()
+        self._update_accordion_nice_settings()
+
+    @param.depends("nice_settings.are_filled", watch=True)
+    def _update_accordion_nice_settings(self):
+        if not self.accordion:
+            return
+
+        if self.nice_settings.are_filled:
+            self.accordion[0] = ("NICE Configuration", self.accordion[0])
+        else:
+            self.accordion[0] = ("NICE Configuration ⚠️", self.accordion[0])
+
+    @param.depends("plasma_shape.has_shape", watch=True)
+    def _update_accordion_plasma_shape(self):
+        if not self.accordion:
+            return
+
+        if self.plasma_shape.has_shape:
+            self.accordion[2] = ("Plasma Shape", self.accordion[2])
+        else:
+            self.accordion[2] = ("Plasma Shape ⚠️", self.accordion[2])
+
+    @param.depends("plasma_properties.has_properties", watch=True)
+    def _update_accordion_plasma_properties(self):
+        if not self.accordion:
+            return
+        if self.plasma_properties.has_properties:
+            self.accordion[3] = ("Plasma Properties", self.accordion[3])
+        else:
+            self.accordion[3] = ("Plasma Properties ⚠️", self.accordion[3])
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.

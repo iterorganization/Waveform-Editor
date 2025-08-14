@@ -193,7 +193,7 @@ class PlasmaShape(Viewer):
                 pn.widgets.StaticText(
                     value="⚠️",
                     margin=(40, 0, 0, 0),
-                    visible=self.input.param.uri.rx.not_(),
+                    visible=self.param.has_shape.rx.not_(),
                 ),
             )
         return params

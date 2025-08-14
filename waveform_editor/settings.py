@@ -14,8 +14,8 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
-    executable = param.Path(
-        check_exists=True,
+    are_filled = param.Boolean()
+    executable = param.String(
         label="NICE executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
@@ -37,6 +37,25 @@ class NiceSettings(param.Parameterized):
         label="'iron_core' machine description URI",
     )
 
+    @param.depends(
+        "executable",
+        "md_pf_active",
+        "md_pf_passive",
+        "md_wall",
+        "md_iron_core",
+        watch=True,
+    )
+    def _update_are_filled(self):
+        self.are_filled = all(
+            [
+                bool(self.executable),
+                bool(self.md_pf_active),
+                bool(self.md_pf_passive),
+                bool(self.md_wall),
+                bool(self.md_iron_core),
+            ]
+        )
+
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
         for key in list(params):
@@ -48,6 +67,30 @@ class NiceSettings(param.Parameterized):
     def to_dict(self):
         """Returns a dictionary representation of current parameter values."""
         return {p: getattr(self, p) for p in self.param if p != "name"}
+
+    def panel(self):
+        items = []
+
+        for p in self.param:
+            if p == "name" or p == "are_filled":
+                continue
+            if p == "environment":
+                indicator = ""
+            else:
+                indicator = "⚠️"
+
+            items.append(
+                pn.Row(
+                    pn.Param(self.param[p], show_name=False),
+                    pn.widgets.StaticText(
+                        value=indicator,
+                        margin=(40, 0, 0, 0),
+                        visible=self.param[p].rx.not_(),
+                    ),
+                )
+            )
+
+        return pn.Column(*items)
 
 
 class UserSettings(param.Parameterized):
