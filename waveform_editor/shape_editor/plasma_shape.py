@@ -184,11 +184,18 @@ class PlasmaShape(Viewer):
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
             params = pn.Param(self.shape_params, show_name=False)
+            params.mapping[param.Number] = FormattedEditableFloatSlider
+            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             params = pn.Param(self.input, show_name=False)
-
-        params.mapping[param.Number] = FormattedEditableFloatSlider
-        params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+            params = pn.Row(
+                params,
+                pn.widgets.StaticText(
+                    value="⚠️",
+                    margin=(40, 0, 0, 0),
+                    visible=self.input.param.uri.rx.not_(),
+                ),
+            )
         return params
 
     def __panel__(self):

@@ -54,7 +54,7 @@ class ShapeEditor(Viewer):
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
         options = pn.Accordion(
-            ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
+            ("NICE Configuration", self._nice_config),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.plasma_shape),
             ("Plasma Parameters", self.plasma_properties),
@@ -72,6 +72,27 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
+
+    def _nice_config(self):
+        items = []
+        for p in settings.nice.param:
+            if p == "name":
+                continue
+            if p == "environment":
+                indicator = ""
+            else:
+                indicator = "⚠️"
+            items.append(
+                pn.Row(
+                    pn.Param(settings.nice.param[p], show_name=False),
+                    pn.widgets.StaticText(
+                        value=indicator,
+                        margin=(40, 0, 0, 0),
+                        visible=settings.nice.param[p].rx.not_(),
+                    ),
+                )
+            )
+        return pn.Column(*items)
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.

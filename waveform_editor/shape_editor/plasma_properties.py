@@ -85,7 +85,14 @@ class PlasmaProperties(Viewer):
         if self.input_mode == self.MANUAL_INPUT:
             return pn.Param(self.properties_params, show_name=False)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Param(self.input, show_name=False)
+            return pn.Row(
+                pn.Param(self.input, show_name=False),
+                pn.widgets.StaticText(
+                    value="⚠️",
+                    margin=(40, 0, 0, 0),
+                    visible=self.input.param.uri.rx.not_(),
+                ),
+            )
 
     def __panel__(self):
         return self.panel
