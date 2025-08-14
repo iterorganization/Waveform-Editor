@@ -3,7 +3,6 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import panel as pn
 import param
-from bokeh.models.formatters import PrintfTickFormatter
 from panel.viewable import Viewer
 
 
@@ -52,7 +51,7 @@ class CoilCurrents(Viewer):
                 start=-5e4,
                 end=5e4,
                 disabled=checkbox.param.value.rx.not_(),
-                format=PrintfTickFormatter(format=f"%.0f"),
+                format="0",
                 width=450,
             )
             row = pn.Row(checkbox, slider)
