@@ -104,7 +104,7 @@ class PlasmaProperties(Viewer):
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
-        self.psi = np.linspace(-1, 0, 200)
+        self.psi = np.linspace(0, 1, 200)
         self.dpressure_dpsi = self._calculate_parametric_profile(
             self.psi,
             self.properties_params.dpressure_dpsi_alpha,
@@ -121,7 +121,7 @@ class PlasmaProperties(Viewer):
 
     def _calculate_parametric_profile(self, psi, alpha, beta, gamma):
         base = 1.0 - np.power(psi, alpha)
-        profile = beta * np.power(base, gamma)
+        profile = -1 * beta * np.power(base, gamma)
         return profile
 
     def _load_properties_from_ids(self):
