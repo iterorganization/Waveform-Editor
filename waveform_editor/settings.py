@@ -14,8 +14,8 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
-    executable = param.String(
-        default="nice_imas_inv_muscle3",
+    executable = param.Path(
+        check_exists=True,
         label="NICE executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )

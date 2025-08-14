@@ -45,6 +45,7 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             self.plasma_shape.param.has_shape.rx.not_()
             | self.plasma_properties.param.has_properties.rx.not_()
+            | self.nice_settings.param.executable.rx.not_()
             | self.param.pf_active.rx.not_()
             | self.param.pf_passive.rx.not_()
             | self.param.iron_core.rx.not_()
