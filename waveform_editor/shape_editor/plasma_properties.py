@@ -20,24 +20,14 @@ class PlasmaPropertiesParams(param.Parameterized):
     b0 = param.Number(
         default=-5.3, softbounds=[-10, 10], label="Toroidal field at R0 [T]"
     )
-    dpressure_dpsi_alpha = param.Integer(
-        default=2, softbounds=[0, 10], label="dpressure_dpsi alpha"
-    )
+    dpressure_dpsi_alpha = param.Integer(default=2, softbounds=[0, 10], label="Alpha")
     dpressure_dpsi_beta = param.Number(
-        default=0.6, step=0.01, softbounds=[-10, 10], label="dpressure_dpsi beta"
+        default=0.6, step=0.01, softbounds=[-10, 10], label="Beta"
     )
-    dpressure_dpsi_gamma = param.Number(
-        default=1.4, softbounds=[0, 10], label="dpressure_dpsi gamma"
-    )
-    f_df_dpsi_alpha = param.Integer(
-        default=2, softbounds=[0, 10], label="f_df_dpsi alpha"
-    )
-    f_df_dpsi_beta = param.Number(
-        default=0.4, softbounds=[-10, 10], label="f_df_dpsi beta"
-    )
-    f_df_dpsi_gamma = param.Number(
-        default=1.4, softbounds=[0, 10], label="f_df_dpsi gamma"
-    )
+    dpressure_dpsi_gamma = param.Number(default=1.4, softbounds=[0, 10], label="Gamma")
+    f_df_dpsi_alpha = param.Integer(default=2, softbounds=[0, 10], label="Alpha")
+    f_df_dpsi_beta = param.Number(default=0.4, softbounds=[-10, 10], label="Beta")
+    f_df_dpsi_gamma = param.Number(default=1.4, softbounds=[0, 10], label="Gamma")
 
 
 class PlasmaProperties(Viewer):
@@ -161,11 +151,16 @@ class PlasmaProperties(Viewer):
             params = pn.Param(self.properties_params, show_name=False)
             params.mapping[param.Number] = FormattedEditableFloatSlider
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
-            params = pn.GridBox(*params, ncols=3)
-        elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            params = pn.Param(self.input, show_name=False)
 
-        return params
+            return pn.Column(
+                *params[0:3],
+                pn.pane.Markdown("#### f_df_dpsi Parameterization", margin=0),
+                *params[3:6],
+                pn.pane.Markdown("#### dpressure_dpsi Parameterization", margin=0),
+                *params[6:9],
+            )
+        elif self.input_mode == self.EQUILIBRIUM_INPUT:
+            return pn.Param(self.input, show_name=False)
 
     def __panel__(self):
         return self.panel
