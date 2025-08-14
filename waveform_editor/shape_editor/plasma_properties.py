@@ -67,16 +67,23 @@ class PlasmaProperties(Viewer):
         "properties_params.param", "input.param", "input_mode", watch=True, on_init=True
     )
     def _load_plasma_properties(self):
-        """Update plasma properties based on input mode."""
+        """Update plasma properties based on input mode, and update the profile
+        holoviews overlay."""
+
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             self._load_properties_from_ids()
         elif self.input_mode == self.MANUAL_INPUT:
             self._load_properties_from_params()
 
+        self._update_holoviews_overlay()
+
+    def _update_holoviews_overlay(self):
+        """Update the Holoviews overlay containing the profiles from the parameters,
+        or to an empty overlay."""
+
         # Define kdims/vdims otherwise Holoviews will link axes with flux map
         kdims = "Normalized Poloidal Flux"
         vdims = "Profile Value"
-
         if self.has_properties:
             dpressure_dpsi_curve = hv.Curve(
                 (self.psi, self.dpressure_dpsi),
@@ -101,6 +108,9 @@ class PlasmaProperties(Viewer):
         )
 
     def _load_properties_from_params(self):
+        """Load the plasma properties from the properties parameters. Calculate
+        dpressure_dpsi and f_df_dpsi from the parameteric alpha, beta, and gamma
+        parameters."""
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
@@ -120,6 +130,20 @@ class PlasmaProperties(Viewer):
         self.has_properties = True
 
     def _calculate_parametric_profile(self, psi, alpha, beta, gamma):
+        """Compute parameterized profiles for dpressure_dpsi and f_df_dpsi.
+
+        Adapted from NICE, by Blaise Faugeras:
+        https://gitlab.inria.fr/blfauger/nice
+
+        Args:
+            psi: Normalized poloidal flux.
+            alpha: Exponent controlling profile steepness near ψ = 0.
+            beta: Scaling coefficient for the profile amplitude.
+            gamma: Exponent controlling the shape near ψ = 1.
+
+        returns:
+            ndarray for the evaluated profile for each psi.
+        """
         base = 1.0 - np.power(psi, alpha)
         profile = -1 * beta * np.power(base, gamma)
         return profile
