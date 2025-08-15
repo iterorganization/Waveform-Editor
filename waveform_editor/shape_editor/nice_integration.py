@@ -38,6 +38,7 @@ model:
         nice_inv.pf_active_out: shape_editor.pf_active_in
 
 settings:
+    muscle_profile_level: none  # Disable profiling
     nice_inv.xml_path: {xml_path}
 """
 
@@ -61,7 +62,7 @@ class NiceIntegration(param.Parameterized):
         super().__init__()
         self.imas_factory = imas_factory
         self.terminal = pn.widgets.Terminal(
-            write_to_console=True,
+            # write_to_console=True,
             sizing_mode="stretch_width",
             options={"scrollback": 10000, "wrap": True},
             height=200,
