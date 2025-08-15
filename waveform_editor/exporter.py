@@ -10,7 +10,6 @@ from imas.ids_path import IDSPath
 from waveform_editor.pcssp_exporter import PCSSPExporter
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 class ConfigurationExporter:
