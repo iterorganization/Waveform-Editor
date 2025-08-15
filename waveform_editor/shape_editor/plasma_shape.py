@@ -59,6 +59,11 @@ class PlasmaShape(Viewer):
 
     def __init__(self):
         super().__init__()
+        self.indicator = pn.widgets.StaticText(
+            value="⚠️",
+            margin=(40, 0, 0, 0),
+            visible=self.param.has_shape.rx.not_(),
+        )
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
@@ -188,14 +193,7 @@ class PlasmaShape(Viewer):
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             params = pn.Param(self.input, show_name=False)
-            params = pn.Row(
-                params,
-                pn.widgets.StaticText(
-                    value="⚠️",
-                    margin=(40, 0, 0, 0),
-                    visible=self.param.has_shape.rx.not_(),
-                ),
-            )
+            params = pn.Row(params, self.indicator)
         return params
 
     def __panel__(self):

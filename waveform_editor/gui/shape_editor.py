@@ -24,8 +24,6 @@ class ShapeEditor(Viewer):
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
 
-    accordion = param.ClassSelector(class_=pn.Accordion)
-
     def __init__(self):
         super().__init__()
         self.factory = imas.IDSFactory()
@@ -51,13 +49,56 @@ class ShapeEditor(Viewer):
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
-        self.accordion = pn.Accordion(
-            ("NICE Configuration", self.nice_settings.panel),
-            ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
-            ("Plasma Shape", self.plasma_shape),
-            ("Plasma Properties", self.plasma_properties),
-            ("Coil Currents", self.coil_currents),
+
+        # Accordion does not allow dynamic titles, so use separate card for each option
+        nice_settings_card = pn.Card(
+            self.nice_settings.panel,
+            title=param.bind(
+                self._reactive_title,
+                title="NICE Configuration",
+                is_valid=self.nice_settings.param.are_filled,
+            ),
             sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        nice_plotter_card = pn.Card(
+            pn.Param(self.nice_plotter, show_name=False),
+            title="Plotting Parameters",
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        plasma_shape_card = pn.Card(
+            self.plasma_shape,
+            title=param.bind(
+                self._reactive_title,
+                title="Plasma Shape",
+                is_valid=self.plasma_shape.param.has_shape,
+            ),
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        plasma_properties_card = pn.Card(
+            self.plasma_properties,
+            title=param.bind(
+                self._reactive_title,
+                title="Plasma Properties",
+                is_valid=self.plasma_properties.param.has_properties,
+            ),
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        coil_currents_card = pn.Card(
+            self.coil_currents,
+            title="Coil Currents",
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        options = pn.Column(
+            nice_settings_card,
+            nice_plotter_card,
+            plasma_shape_card,
+            plasma_properties_card,
+            coil_currents_card,
         )
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
@@ -66,45 +107,13 @@ class ShapeEditor(Viewer):
             self.nice_plotter,
             pn.Column(
                 menu,
-                self.accordion,
+                options,
                 sizing_mode="stretch_both",
             ),
         )
-        self._update_accordion()
 
-    def _update_accordion(self):
-        self._update_accordion_plasma_shape()
-        self._update_accordion_plasma_properties()
-        self._update_accordion_nice_settings()
-
-    @param.depends("nice_settings.are_filled", watch=True)
-    def _update_accordion_nice_settings(self):
-        if not self.accordion:
-            return
-
-        if self.nice_settings.are_filled:
-            self.accordion[0] = ("NICE Configuration", self.accordion[0])
-        else:
-            self.accordion[0] = ("NICE Configuration ⚠️", self.accordion[0])
-
-    @param.depends("plasma_shape.has_shape", watch=True)
-    def _update_accordion_plasma_shape(self):
-        if not self.accordion:
-            return
-
-        if self.plasma_shape.has_shape:
-            self.accordion[2] = ("Plasma Shape", self.accordion[2])
-        else:
-            self.accordion[2] = ("Plasma Shape ⚠️", self.accordion[2])
-
-    @param.depends("plasma_properties.has_properties", watch=True)
-    def _update_accordion_plasma_properties(self):
-        if not self.accordion:
-            return
-        if self.plasma_properties.has_properties:
-            self.accordion[3] = ("Plasma Properties", self.accordion[3])
-        else:
-            self.accordion[3] = ("Plasma Properties ⚠️", self.accordion[3])
+    def _reactive_title(self, title, is_valid):
+        return title if is_valid else f"{title} ⚠️"
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
