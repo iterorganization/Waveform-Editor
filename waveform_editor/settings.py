@@ -24,18 +24,11 @@ class NiceSettings(param.Parameterized):
         label="NICE environment variables",
         doc="Environment variables for NICE",
     )
-    md_pf_active = param.String(
-        label="'pf_active' machine description URI",
-    )
-    md_pf_passive = param.String(
-        label="'pf_passive' machine description URI",
-    )
-    md_wall = param.String(
-        label="'wall' machine description URI",
-    )
-    md_iron_core = param.String(
-        label="'iron_core' machine description URI",
-    )
+    md_pf_active = param.String(label="'pf_active' machine description URI")
+    md_pf_passive = param.String(label="'pf_passive' machine description URI")
+    md_wall = param.String(label="'wall' machine description URI")
+    md_iron_core = param.String(label="'iron_core' machine description URI")
+    verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
