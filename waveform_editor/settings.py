@@ -23,9 +23,6 @@ class NiceSettings(param.Parameterized):
         "md_wall",
         "md_iron_core",
     )
-    are_filled = param.Boolean(
-        doc="Whether all required settings to run NICE are filled."
-    )
     executable = param.String(
         label="NICE executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
@@ -48,24 +45,12 @@ class NiceSettings(param.Parameterized):
         label="'iron_core' machine description URI",
     )
 
-    @param.depends(
-        "executable",
-        "md_pf_active",
-        "md_pf_passive",
-        "md_wall",
-        "md_iron_core",
-        watch=True,
-    )
-    def _update_are_filled(self):
-        self.are_filled = all(
-            [
-                bool(self.executable),
-                bool(self.md_pf_active),
-                bool(self.md_pf_passive),
-                bool(self.md_wall),
-                bool(self.md_iron_core),
-            ]
-        )
+    @param.depends(*REQUIRED)
+    def required_params_filled(self):
+        for required in self.REQUIRED:
+            if not getattr(self, required):
+                return False
+        return True
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
@@ -83,7 +68,7 @@ class NiceSettings(param.Parameterized):
         items = []
 
         for p in self.param:
-            if p == "name" or p == "are_filled":
+            if p == "name":
                 pass
             elif p in self.REQUIRED:
                 items.append(

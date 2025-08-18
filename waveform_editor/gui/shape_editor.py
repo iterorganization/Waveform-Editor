@@ -49,7 +49,7 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             self.plasma_shape.param.has_shape.rx.not_()
             | self.plasma_properties.param.has_properties.rx.not_()
-            | self.nice_settings.param.are_filled.rx.not_()
+            | param.rx(self.nice_settings.required_params_filled).rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
@@ -59,7 +59,7 @@ class ShapeEditor(Viewer):
             self._create_card(
                 self.nice_settings.panel,
                 "NICE Configuration",
-                is_valid=self.nice_settings.param.are_filled,
+                is_valid=param.rx(self.nice_settings.required_params_filled),
             ),
             self._create_card(
                 pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
