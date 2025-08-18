@@ -6,6 +6,8 @@ import panel as pn
 import param
 import yaml
 
+from waveform_editor.util import WarningIndicator
+
 logger = logging.getLogger(__name__)
 
 _xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -76,21 +78,16 @@ class NiceSettings(param.Parameterized):
         for p in self.param:
             if p == "name" or p == "are_filled":
                 continue
-            if p == "environment":
-                indicator = ""
-            else:
-                indicator = "⚠️"
 
-            items.append(
-                pn.Row(
-                    pn.Param(self.param[p], show_name=False),
-                    pn.widgets.StaticText(
-                        value=indicator,
-                        margin=(40, 0, 0, 0),
-                        visible=self.param[p].rx.not_(),
-                    ),
+            if p == "environment":
+                items.append(pn.Param(self.param[p], show_name=False))
+            else:
+                items.append(
+                    pn.Row(
+                        pn.Param(self.param[p], show_name=False),
+                        WarningIndicator(visible=self.param[p].rx.not_()),
+                    )
                 )
-            )
 
         return pn.Column(*items)
 

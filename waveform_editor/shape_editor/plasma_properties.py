@@ -3,7 +3,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import EquilibriumInput
+from waveform_editor.util import EquilibriumInput, WarningIndicator
 
 
 class PlasmaPropertiesParams(param.Parameterized):
@@ -34,11 +34,7 @@ class PlasmaProperties(Viewer):
 
     def __init__(self):
         super().__init__()
-        self.indicator = pn.widgets.StaticText(
-            value="⚠️",
-            margin=(40, 0, 0, 0),
-            visible=self.param.has_properties.rx.not_(),
-        )
+        self.indicator = WarningIndicator(visible=self.param.has_properties.rx.not_())
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
