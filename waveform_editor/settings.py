@@ -16,6 +16,13 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
+    REQUIRED = (
+        "executable",
+        "md_pf_active",
+        "md_pf_passive",
+        "md_wall",
+        "md_iron_core",
+    )
     are_filled = param.Boolean(
         doc="Whether all required settings to run NICE are filled."
     )
@@ -77,17 +84,16 @@ class NiceSettings(param.Parameterized):
 
         for p in self.param:
             if p == "name" or p == "are_filled":
-                continue
-
-            if p == "environment":
-                items.append(pn.Param(self.param[p], show_name=False))
-            else:
+                pass
+            elif p in self.REQUIRED:
                 items.append(
                     pn.Row(
                         pn.Param(self.param[p], show_name=False),
                         WarningIndicator(visible=self.param[p].rx.not_()),
                     )
                 )
+            else:
+                items.append(pn.Param(self.param[p], show_name=False))
 
         return pn.Column(*items)
 
