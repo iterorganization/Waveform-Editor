@@ -47,10 +47,7 @@ class NiceSettings(param.Parameterized):
 
     @param.depends(*REQUIRED)
     def required_params_filled(self):
-        for required in self.REQUIRED:
-            if not getattr(self, required):
-                return False
-        return True
+        return all(getattr(self, required) for required in self.REQUIRED)
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
