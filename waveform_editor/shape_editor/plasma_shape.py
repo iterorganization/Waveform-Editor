@@ -6,7 +6,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import EquilibriumInput, WarningIndicator
+from waveform_editor.gui.util import EquilibriumInput, WarningIndicator
 
 
 class PlasmaShapeParams(param.Parameterized):

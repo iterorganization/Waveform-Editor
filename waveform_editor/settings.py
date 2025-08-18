@@ -6,7 +6,7 @@ import panel as pn
 import param
 import yaml
 
-from waveform_editor.util import WarningIndicator
+from waveform_editor.gui.util import WarningIndicator
 
 logger = logging.getLogger(__name__)
 
