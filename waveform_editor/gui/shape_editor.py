@@ -1,4 +1,5 @@
 import importlib.resources
+import xml.etree.ElementTree as ET
 
 import imas
 import panel as pn
@@ -34,7 +35,7 @@ class ShapeEditor(Viewer):
         self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
         self.nice_settings = settings.nice
 
-        self.xml_params = (
+        self.xml_params = ET.fromstring(
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
             .joinpath("param.xml")
             .read_text()
@@ -150,12 +151,14 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        self.xml_params = self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
+        # Update XML parameters:
+        self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
+        self.xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
-            self.xml_params,
+            ET.tostring(self.xml_params, encoding="unicode"),
             equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
