@@ -47,7 +47,7 @@ class CoilCurrents(Viewer):
             checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
-                value=coil_current.data[0],
+                value=coil_current.data[0] if coil_current.data.has_value else 0.0,
                 start=-5e4,
                 end=5e4,
                 disabled=checkbox.param.value.rx.not_(),
