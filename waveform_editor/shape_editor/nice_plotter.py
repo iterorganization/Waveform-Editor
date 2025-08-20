@@ -71,10 +71,10 @@ class NicePlotter(pn.viewable.Viewer):
             loading=self.communicator.param.processing,
         )
 
-    @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
+    @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
     def _plot_desired_shape(self):
         if self.show_desired_shape:
-            curve = self.plasma_shape.shape_curve
+            curve = hv.Curve((self.plasma_shape.outline_r, self.plasma_shape.outline_z))
         else:
             curve = hv.Curve([])
         return curve.opts(color="blue")

@@ -1,6 +1,5 @@
 import math
 
-import holoviews as hv
 import imas
 import panel as pn
 import param
@@ -58,10 +57,8 @@ class PlasmaShape(Viewer):
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
 
-    shape_curve = param.Parameter(
-        default=hv.Curve([]), doc="Holoviews curve of the plasma shape"
-    )
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
+    shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
 
     def __init__(self):
         super().__init__()
@@ -94,12 +91,11 @@ class PlasmaShape(Viewer):
         if outline_r and outline_z:
             self.outline_r = outline_r
             self.outline_z = outline_z
-            self.shape_curve = hv.Curve((outline_r, outline_z))
             self.has_shape = True
         else:
             self.outline_r = self.outline_z = None
-            self.shape_curve = hv.Curve([])
             self.has_shape = False
+        self.param.trigger("shape_updated")
 
     def _load_shape_from_ids(self):
         """Load plasma boundary outline from IDS equilibrium input.
