@@ -35,6 +35,8 @@ A Waveform Editor YAML file is a standard YAML dictionary containing two main ty
        # More waveforms/groups...
      # More waveforms/groups...
 
+.. _global_properties:
+   
 Global Properties
 -----------------
 
