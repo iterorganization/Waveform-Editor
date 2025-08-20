@@ -22,6 +22,9 @@ The GUI can be launched using the following command in your terminal:
 
     waveform-editor gui
 
+This normally opens automatically in your default web browser. If it does not, 
+you can manually enter the address printed in the terminal (e.g. ``http://localhost:12345``) to access the app.
+
 You can also optionally specify a YAML file to load on startup:
 
 .. code-block:: bash
