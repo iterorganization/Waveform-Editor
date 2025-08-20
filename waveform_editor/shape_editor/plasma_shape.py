@@ -41,13 +41,19 @@ class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
 
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
-    EQUILIBRIUM_INPUT = "Equilibrium IDS"
+    EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
+    GAP_INPUT = "Equilibrium IDS Gaps"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
-        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT],
+        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT, GAP_INPUT],
         label="Shape input mode",
     )
-    input = param.ClassSelector(class_=EquilibriumInput, default=EquilibriumInput())
+    input_outline = param.ClassSelector(
+        class_=EquilibriumInput, default=EquilibriumInput()
+    )
+    input_gaps = param.ClassSelector(
+        class_=EquilibriumInput, default=EquilibriumInput()
+    )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
@@ -67,7 +73,13 @@ class PlasmaShape(Viewer):
         self.outline_r = None
         self.outline_z = None
 
-    @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
+    @pn.depends(
+        "shape_params.param",
+        "input_outline.param",
+        "input_gaps.param",
+        "input_mode",
+        watch=True,
+    )
     def _set_plasma_shape(self):
         """Update plasma boundary shape based on input mode."""
 
@@ -76,6 +88,8 @@ class PlasmaShape(Viewer):
             outline_r, outline_z = self._load_shape_from_ids()
         elif self.input_mode == self.PARAMETERIZED_INPUT:
             outline_r, outline_z = self._load_shape_from_params()
+        elif self.input_mode == self.GAP_INPUT:
+            outline_r, outline_z = self._load_shape_from_gaps()
 
         if outline_r and outline_z:
             self.outline_r = outline_r
@@ -94,12 +108,12 @@ class PlasmaShape(Viewer):
             Tuple containing radial and vertical coordinates of the plasma boundary
                 outline, or (None, None) if unavailable.
         """
-        if not self.input.uri:
+        if not self.input_outline.uri:
             return None, None
         try:
-            with imas.DBEntry(self.input.uri, "r") as entry:
+            with imas.DBEntry(self.input_outline.uri, "r") as entry:
                 equilibrium = entry.get_slice(
-                    "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
+                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
             outline_r = equilibrium.time_slice[0].boundary.outline.r
@@ -107,8 +121,46 @@ class PlasmaShape(Viewer):
             return outline_r, outline_z
         except Exception as e:
             pn.state.notifications.error(
-                f"Could not load plasma boundary outline from {self.input.uri}:"
+                f"Could not load plasma boundary outline from {self.input_outline.uri}:"
                 f" {str(e)}"
+            )
+            return None, None
+
+    def _load_shape_from_gaps(self):
+        """Load plasma boundary outline from IDS equilibrium gap definitions.
+
+        Returns:
+            Tuple containing radial and vertical coordinates of the plasma boundary
+            outline, or (None, None) if unavailable.
+        """
+        if not self.input_gaps.uri:
+            return None, None
+        try:
+            with imas.DBEntry(self.input_gaps.uri, "r") as entry:
+                equilibrium = entry.get_slice(
+                    "equilibrium", self.input_gaps.time, imas.ids_defs.CLOSEST_INTERP
+                )
+
+            gaps = equilibrium.time_slice[0].boundary.gap
+            if not gaps:
+                return None, None
+
+            outline_r, outline_z = [], []
+            for g in gaps:
+                r0, z0 = g.r, g.z
+                angle = g.angle
+                dist = g.value
+
+                r_sep = r0 + dist * math.cos(angle)
+                z_sep = z0 + dist * math.sin(angle)
+
+                outline_r.append(r_sep)
+                outline_z.append(z_sep)
+
+            return outline_r, outline_z
+        except Exception as e:
+            pn.state.notifications.error(
+                f"Could not load plasma boundary from {self.input_gaps.uri}: {str(e)}"
             )
             return None, None
 
@@ -188,7 +240,10 @@ class PlasmaShape(Viewer):
             params.mapping[param.Number] = FormattedEditableFloatSlider
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            params = pn.Param(self.input, show_name=False)
+            params = pn.Param(self.input_outline, show_name=False)
+            params = pn.Row(params, self.indicator)
+        elif self.input_mode == self.GAP_INPUT:
+            params = pn.Param(self.input_gaps, show_name=False)
             params = pn.Row(params, self.indicator)
         return params
 
