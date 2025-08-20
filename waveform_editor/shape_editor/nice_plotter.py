@@ -84,9 +84,18 @@ class NicePlotter(pn.viewable.Viewer):
                 )
                 elements.append(
                     hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(
-                        color="blue"
+                        color="black"
                     )
                 )
+                # Ensure the desired shape is closed
+                r = np.append(
+                    self.plasma_shape.outline_r, self.plasma_shape.outline_r[0]
+                )
+                z = np.append(
+                    self.plasma_shape.outline_z, self.plasma_shape.outline_z[0]
+                )
+
+                elements.append(hv.Curve((r, z)).opts(color="blue"))
             return hv.Overlay(elements)
         else:
             return hv.Overlay(
