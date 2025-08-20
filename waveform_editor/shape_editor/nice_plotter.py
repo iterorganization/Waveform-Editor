@@ -73,15 +73,29 @@ class NicePlotter(pn.viewable.Viewer):
 
     @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
     def _plot_desired_shape(self):
-        if self.show_desired_shape and self.plasma_shape.has_shape:
-            r, z = self.plasma_shape.outline_r, self.plasma_shape.outline_z
-            # Close the desired shape loop
-            if r[0] != r[-1] or z[0] != z[-1]:
-                r, z = r + r[:1], z + z[:1]
-            curve = hv.Curve((r, z))
+        if not self.show_desired_shape or not self.plasma_shape.has_shape:
+            return hv.Overlay([hv.Curve([]).opts(color="blue")])
+
+        if self.plasma_shape.input_mode == self.plasma_shape.GAP_INPUT:
+            elements = []
+            for gap in self.plasma_shape.gaps:
+                elements.append(
+                    hv.Scatter(([gap.r], [gap.z])).opts(color="red", size=6)
+                )
+                elements.append(
+                    hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(
+                        color="blue"
+                    )
+                )
+            return hv.Overlay(elements)
         else:
-            curve = hv.Curve([])
-        return curve.opts(color="blue")
+            return hv.Overlay(
+                [
+                    hv.Curve(
+                        (self.plasma_shape.outline_r, self.plasma_shape.outline_z)
+                    ).opts(color="blue")
+                ]
+            )
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):

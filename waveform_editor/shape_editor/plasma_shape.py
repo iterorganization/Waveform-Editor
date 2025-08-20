@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 
 import imas
 import panel as pn
@@ -38,6 +39,16 @@ class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
         super().__init__(format="1[.]000", **params)
 
 
+@dataclass
+class Gap:
+    """Helper dataclass representing the geometric properties of a gap."""
+
+    r: float  # Major radius of the reference point
+    z: float  # Height of the reference point
+    r_sep: float  # Major radius of the point on the desired separatrix
+    z_sep: float  # Height of the point on the desired separatrix
+
+
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
@@ -69,6 +80,7 @@ class PlasmaShape(Viewer):
         self.panel = pn.Column(self.radio_box, self._panel_shape_options)
         self.outline_r = None
         self.outline_z = None
+        self.gaps = []
 
     @pn.depends(
         "shape_params.param",
@@ -79,86 +91,79 @@ class PlasmaShape(Viewer):
     )
     def _set_plasma_shape(self):
         """Update plasma boundary shape based on input mode."""
+        self.outline_r = self.outline_z = None
+        self.gaps = []
 
-        outline_r = outline_z = None
         if self.input_mode == self.EQUILIBRIUM_INPUT:
-            outline_r, outline_z = self._load_shape_from_ids()
+            self._load_shape_from_ids()
         elif self.input_mode == self.PARAMETERIZED_INPUT:
-            outline_r, outline_z = self._load_shape_from_params()
+            self._load_shape_from_params()
         elif self.input_mode == self.GAP_INPUT:
-            outline_r, outline_z = self._load_shape_from_gaps()
+            self._load_shape_from_gaps()
 
-        if outline_r and outline_z:
-            self.outline_r = outline_r
-            self.outline_z = outline_z
+        if self.outline_r and self.outline_z:
             self.has_shape = True
         else:
-            self.outline_r = self.outline_z = None
             self.has_shape = False
         self.param.trigger("shape_updated")
 
     def _load_shape_from_ids(self):
-        """Load plasma boundary outline from IDS equilibrium input.
-
-        Returns:
-            Tuple containing radial and vertical coordinates of the plasma boundary
-                outline, or (None, None) if unavailable.
-        """
+        """Load plasma boundary outline from IDS equilibrium input."""
         if not self.input_outline.uri:
-            return None, None
+            return
         try:
             with imas.DBEntry(self.input_outline.uri, "r") as entry:
                 equilibrium = entry.get_slice(
                     "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
-            outline_r = equilibrium.time_slice[0].boundary.outline.r
-            outline_z = equilibrium.time_slice[0].boundary.outline.z
-            return outline_r, outline_z
+            self.outline_r = equilibrium.time_slice[0].boundary.outline.r
+            self.outline_z = equilibrium.time_slice[0].boundary.outline.z
         except Exception as e:
             pn.state.notifications.error(
                 f"Could not load plasma boundary outline from {self.input_outline.uri}:"
                 f" {str(e)}"
             )
-            return None, None
+            self.outline_r = self.outline_z = None
 
     def _load_shape_from_gaps(self):
-        """Load plasma boundary outline from IDS equilibrium gap definitions.
-
-        Returns:
-            Tuple containing radial and vertical coordinates of the plasma boundary
-            outline, or (None, None) if unavailable.
-        """
+        """Load plasma boundary outline from IDS equilibrium gap definitions."""
         if not self.input_gaps.uri:
-            return None, None
+            return
         try:
             with imas.DBEntry(self.input_gaps.uri, "r") as entry:
                 equilibrium = entry.get_slice(
                     "equilibrium", self.input_gaps.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
-            gaps = equilibrium.time_slice[0].boundary.gap
-            if not gaps:
-                return None, None
+            input_gaps = equilibrium.time_slice[0].boundary.gap
+            if not input_gaps:
+                return
 
-            outline_r, outline_z = [], []
-            for g in gaps:
-                r0, z0 = g.r, g.z
-                angle = g.angle
-                dist = g.value
+            self.outline_r = []
+            self.outline_z = []
+            self.gaps = []
+            for gap in input_gaps:
+                r_sep = gap.r + gap.value * math.cos(-gap.angle)
+                z_sep = gap.z + gap.value * math.sin(-gap.angle)
 
-                r_sep = r0 + dist * math.cos(angle)
-                z_sep = z0 + dist * math.sin(angle)
+                self.outline_r.append(r_sep)
+                self.outline_z.append(z_sep)
+                self.gaps.append(
+                    Gap(
+                        r=gap.r,
+                        z=gap.z,
+                        r_sep=r_sep,
+                        z_sep=z_sep,
+                    )
+                )
 
-                outline_r.append(r_sep)
-                outline_z.append(z_sep)
-
-            return outline_r, outline_z
         except Exception as e:
             pn.state.notifications.error(
                 f"Could not load plasma boundary from {self.input_gaps.uri}: {str(e)}"
             )
-            return None, None
+            self.gaps = []
+            self.outline_r = self.outline_z = None
 
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs.
@@ -222,12 +227,8 @@ class PlasmaShape(Viewer):
         mean_z = sum(p[1] for p in points) / len(points)
         points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
 
-        desired_bnd_r = [p[0] for p in points]
-        desired_bnd_z = [p[1] for p in points]
-        desired_bnd_r.append(desired_bnd_r[0])
-        desired_bnd_z.append(desired_bnd_z[0])
-
-        return desired_bnd_r, desired_bnd_z
+        self.outline_r = [p[0] for p in points] + [points[0][0]]
+        self.outline_z = [p[1] for p in points] + [points[0][1]]
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
