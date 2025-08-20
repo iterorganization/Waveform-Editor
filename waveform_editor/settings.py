@@ -6,6 +6,8 @@ import panel as pn
 import param
 import yaml
 
+from waveform_editor.gui.util import WarningIndicator
+
 logger = logging.getLogger(__name__)
 
 _xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -14,8 +16,14 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
+    REQUIRED = (
+        "executable",
+        "md_pf_active",
+        "md_pf_passive",
+        "md_wall",
+        "md_iron_core",
+    )
     executable = param.String(
-        default="nice_imas_inv_muscle3",
         label="NICE executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
@@ -30,6 +38,10 @@ class NiceSettings(param.Parameterized):
     md_iron_core = param.String(label="'iron_core' machine description URI")
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
 
+    @param.depends(*REQUIRED)
+    def required_params_filled(self):
+        return all(getattr(self, required) for required in self.REQUIRED)
+
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
         for key in list(params):
@@ -41,6 +53,24 @@ class NiceSettings(param.Parameterized):
     def to_dict(self):
         """Returns a dictionary representation of current parameter values."""
         return {p: getattr(self, p) for p in self.param if p != "name"}
+
+    def panel(self):
+        items = []
+
+        for p in self.param:
+            if p == "name":
+                pass
+            elif p in self.REQUIRED:
+                items.append(
+                    pn.Row(
+                        pn.Param(self.param[p], show_name=False),
+                        WarningIndicator(visible=self.param[p].rx.not_()),
+                    )
+                )
+            else:
+                items.append(pn.Param(self.param[p], show_name=False))
+
+        return pn.Column(*items)
 
 
 class UserSettings(param.Parameterized):

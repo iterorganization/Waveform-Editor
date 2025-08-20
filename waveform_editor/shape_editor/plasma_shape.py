@@ -6,7 +6,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.util import EquilibriumInput
+from waveform_editor.gui.util import EquilibriumInput, WarningIndicator
 
 
 class PlasmaShapeParams(param.Parameterized):
@@ -59,6 +59,7 @@ class PlasmaShape(Viewer):
 
     def __init__(self):
         super().__init__()
+        self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
@@ -184,11 +185,11 @@ class PlasmaShape(Viewer):
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
             params = pn.Param(self.shape_params, show_name=False)
+            params.mapping[param.Number] = FormattedEditableFloatSlider
+            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             params = pn.Param(self.input, show_name=False)
-
-        params.mapping[param.Number] = FormattedEditableFloatSlider
-        params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+            params = pn.Row(params, self.indicator)
         return params
 
     def __panel__(self):

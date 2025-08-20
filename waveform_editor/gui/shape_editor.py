@@ -15,6 +15,10 @@ from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 
+def _reactive_title(title, is_valid):
+    return title if is_valid else f"{title} ⚠️"
+
+
 class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
@@ -46,20 +50,32 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             self.plasma_shape.param.has_shape.rx.not_()
             | self.plasma_properties.param.has_properties.rx.not_()
-            | self.param.pf_active.rx.not_()
-            | self.param.pf_passive.rx.not_()
-            | self.param.iron_core.rx.not_()
-            | self.param.wall.rx.not_()
+            | param.rx(self.nice_settings.required_params_filled).rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
-        options = pn.Accordion(
-            ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
-            ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
-            ("Plasma Shape", self.plasma_shape),
-            ("Plasma Parameters", self.plasma_properties),
-            ("Coil Currents", self.coil_currents),
-            sizing_mode="stretch_width",
+
+        # Accordion does not allow dynamic titles, so use separate card for each option
+        options = pn.Column(
+            self._create_card(
+                self.nice_settings.panel,
+                "NICE Configuration",
+                is_valid=param.rx(self.nice_settings.required_params_filled),
+            ),
+            self._create_card(
+                pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
+            ),
+            self._create_card(
+                self.plasma_shape,
+                "Plasma Shape",
+                is_valid=self.plasma_shape.param.has_shape,
+            ),
+            self._create_card(
+                self.plasma_properties,
+                "Plasma Properties",
+                is_valid=self.plasma_properties.param.has_properties,
+            ),
+            self._create_card(self.coil_currents, "Coil Currents"),
         )
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
@@ -72,6 +88,25 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
+
+    def _create_card(self, panel_object, title, is_valid=None):
+        """Create a collapsed card containing a panel object and a title.
+
+        Args:
+            panel_object: The panel object to place into the card.
+            title: The title to give the card.
+            is_valid: If supplied, binds the card title to update reactively using
+                `_reactive_title`.
+        """
+        if is_valid:
+            title = param.bind(_reactive_title, title=title, is_valid=is_valid)
+        card = pn.Card(
+            panel_object,
+            title=title,
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        return card
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.

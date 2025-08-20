@@ -3,7 +3,6 @@ import io
 
 import imas
 import numpy as np
-import param
 
 AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
 LATEST_DD_VERSION = imas.dd_zip.latest_dd_version()
@@ -41,13 +40,6 @@ def times_from_csv(source, from_file_path=True):
     # Convert string values to floats
     time_array = [float(value) for value in rows[0]]
     return np.array(time_array)
-
-
-class EquilibriumInput(param.Parameterized):
-    """Parameterized class containing an equilibrium URI and time input."""
-
-    uri = param.String(label="URI of the equilibrium IDS")
-    time = param.Number(label="Time slice of the input equilibrium IDS")
 
 
 class State:
