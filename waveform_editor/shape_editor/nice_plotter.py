@@ -73,8 +73,12 @@ class NicePlotter(pn.viewable.Viewer):
 
     @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
     def _plot_desired_shape(self):
-        if self.show_desired_shape:
-            curve = hv.Curve((self.plasma_shape.outline_r, self.plasma_shape.outline_z))
+        if self.show_desired_shape and self.plasma_shape.has_shape:
+            r, z = self.plasma_shape.outline_r, self.plasma_shape.outline_z
+            # Close the desired shape loop
+            if r[0] != r[-1] or z[0] != z[-1]:
+                r, z = r + r[:1], z + z[:1]
+            curve = hv.Curve((r, z))
         else:
             curve = hv.Curve([])
         return curve.opts(color="blue")
