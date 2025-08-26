@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import panel as pn
 import param
+import scipy
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
@@ -94,13 +95,17 @@ class NicePlotter(pn.viewable.Viewer):
     def _plot_profiles(self):
         # Define kdims/vdims otherwise Holoviews will link axes with flux map
         kdims = "Normalized Poloidal Flux"
-        vdims = "Profile Value"
+        vdims = "Profile Value [A.U.]"
         if not self.plasma_properties.has_properties:
             return hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
 
         psi = self.plasma_properties.psi_norm
-        d_pressure_dpsi = self.plasma_properties.dpressure_dpsi
-        f_df_dpsi = self.plasma_properties.f_df_dpsi
+
+        # Scale profiles
+        r0 = self.plasma_properties.r0
+        d_pressure_dpsi = self.plasma_properties.dpressure_dpsi * r0
+        f_df_dpsi = self.plasma_properties.f_df_dpsi / (scipy.constants.mu_0 * r0)
+
         dpressure_dpsi_curve = hv.Curve(
             (psi, d_pressure_dpsi), kdims=kdims, vdims=vdims, label="dpressure_dpsi"
         )
