@@ -90,9 +90,28 @@ class NicePlotter(pn.viewable.Viewer):
             ("Plasma Profiles", profiles_pane),
         )
 
-    @pn.depends("plasma_properties.profile_overlay")
+    @pn.depends("plasma_properties.profile_updated")
     def _plot_profiles(self):
-        return self.plasma_properties.profile_overlay
+        # Define kdims/vdims otherwise Holoviews will link axes with flux map
+        kdims = "Normalized Poloidal Flux"
+        vdims = "Profile Value"
+        if not self.plasma_properties.has_properties:
+            return hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
+
+        psi = self.plasma_properties.psi
+        d_pressure_dpsi = self.plasma_properties.dpressure_dpsi
+        f_df_dpsi = self.plasma_properties.f_df_dpsi
+        dpressure_dpsi_curve = hv.Curve(
+            (psi, d_pressure_dpsi), kdims=kdims, vdims=vdims, label="dpressure_dpsi"
+        )
+        f_df_dpsi_curve = hv.Curve(
+            (psi, f_df_dpsi), kdims=kdims, vdims=vdims, label="f_df_dpsi"
+        )
+        overlay = dpressure_dpsi_curve * f_df_dpsi_curve
+
+        return overlay.opts(
+            hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
+        )
 
     @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
     def _plot_desired_shape(self):

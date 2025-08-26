@@ -44,9 +44,8 @@ class PlasmaProperties(Viewer):
         class_=PlasmaPropertiesParams, default=PlasmaPropertiesParams()
     )
 
-    profile_overlay = param.Parameter(
-        default=hv.Overlay([hv.Curve([])]),
-        doc="Holoviews overlay of the dpressure_dpsi and f_df_dpsi profiles",
+    profile_updated = param.Event(
+        doc="Triggered whenever the dpressure_dpsi and f_df_dpsi are updated."
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
@@ -67,45 +66,14 @@ class PlasmaProperties(Viewer):
         "properties_params.param", "input.param", "input_mode", watch=True, on_init=True
     )
     def _load_plasma_properties(self):
-        """Update plasma properties based on input mode, and update the profile
-        holoviews overlay."""
+        """Update plasma properties based on input mode."""
 
         if self.input_mode == self.EQUILIBRIUM_INPUT:
             self._load_properties_from_ids()
         elif self.input_mode == self.MANUAL_INPUT:
             self._load_properties_from_params()
 
-        self._update_holoviews_overlay()
-
-    def _update_holoviews_overlay(self):
-        """Update the Holoviews overlay containing the profiles from the parameters,
-        or to an empty overlay."""
-
-        # Define kdims/vdims otherwise Holoviews will link axes with flux map
-        kdims = "Normalized Poloidal Flux"
-        vdims = "Profile Value"
-        if self.has_properties:
-            dpressure_dpsi_curve = hv.Curve(
-                (self.psi, self.dpressure_dpsi),
-                kdims=kdims,
-                vdims=vdims,
-                label="dpressure_dpsi",
-            )
-            f_df_dpsi_curve = hv.Curve(
-                (self.psi, self.f_df_dpsi),
-                kdims=kdims,
-                vdims=vdims,
-                label="f_df_dpsi",
-            )
-
-            overlay = dpressure_dpsi_curve * f_df_dpsi_curve
-        else:
-            overlay = hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
-
-        self.profile_overlay = overlay.opts(
-            hv.opts.Overlay(title="Plasma Profiles"),
-            hv.opts.Curve(framewise=True),
-        )
+        self.param.trigger("profile_updated")
 
     def _load_properties_from_params(self):
         """Load the plasma properties from the properties parameters. Calculate
