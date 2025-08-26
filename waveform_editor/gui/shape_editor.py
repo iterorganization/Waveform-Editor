@@ -58,7 +58,10 @@ class ShapeEditor(Viewer):
             ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
             ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
             ("Plasma Shape", self.plasma_shape),
-            ("Plasma Parameters", self.plasma_properties),
+            (
+                "Plasma Parameters",
+                pn.Row(self.plasma_properties, self.nice_plotter.profiles_pane),
+            ),
             ("Coil Currents", self.coil_currents),
             sizing_mode="stretch_width",
         )
@@ -66,7 +69,7 @@ class ShapeEditor(Viewer):
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            self.nice_plotter,
+            self.nice_plotter.flux_map_pane,
             pn.Column(
                 menu,
                 options,

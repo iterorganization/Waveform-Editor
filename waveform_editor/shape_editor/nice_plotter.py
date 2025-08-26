@@ -16,7 +16,7 @@ matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
-class NicePlotter(pn.viewable.Viewer):
+class NicePlotter(param.Parameterized):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
@@ -40,6 +40,9 @@ class NicePlotter(pn.viewable.Viewer):
 
     WIDTH = 800
     HEIGHT = 1000
+
+    PROFILE_WIDTH = 500
+    PROFILE_HEIGHT = 500
 
     def __init__(self, communicator, plasma_shape, plasma_properties, **params):
         super().__init__(
@@ -74,7 +77,7 @@ class NicePlotter(pn.viewable.Viewer):
         flux_map_overlay = (
             hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
         )
-        flux_map_pane = pn.pane.HoloViews(
+        self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
             width=self.WIDTH,
             height=self.HEIGHT,
@@ -82,13 +85,8 @@ class NicePlotter(pn.viewable.Viewer):
         )
 
         profiles_plot = hv.DynamicMap(self._plot_profiles)
-        profiles_pane = pn.pane.HoloViews(
-            profiles_plot, width=self.WIDTH, height=self.HEIGHT
-        )
-
-        self.panel = pn.Tabs(
-            ("Flux Map", flux_map_pane),
-            ("Plasma Profiles", profiles_pane),
+        self.profiles_pane = pn.pane.HoloViews(
+            profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
         )
 
     @pn.depends("plasma_properties.profile_updated")
@@ -97,22 +95,25 @@ class NicePlotter(pn.viewable.Viewer):
         kdims = "Normalized Poloidal Flux"
         vdims = "Profile Value [A.U.]"
         if not self.plasma_properties.has_properties:
-            return hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
+            overlay = hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
+        else:
+            psi_norm = self.plasma_properties.psi_norm
 
-        psi = self.plasma_properties.psi_norm
+            # Scale profiles
+            r0 = self.plasma_properties.r0
+            dpressure_dpsi = self.plasma_properties.dpressure_dpsi * r0
+            f_df_dpsi = self.plasma_properties.f_df_dpsi / (scipy.constants.mu_0 * r0)
 
-        # Scale profiles
-        r0 = self.plasma_properties.r0
-        d_pressure_dpsi = self.plasma_properties.dpressure_dpsi * r0
-        f_df_dpsi = self.plasma_properties.f_df_dpsi / (scipy.constants.mu_0 * r0)
-
-        dpressure_dpsi_curve = hv.Curve(
-            (psi, d_pressure_dpsi), kdims=kdims, vdims=vdims, label="dpressure_dpsi"
-        )
-        f_df_dpsi_curve = hv.Curve(
-            (psi, f_df_dpsi), kdims=kdims, vdims=vdims, label="f_df_dpsi"
-        )
-        overlay = dpressure_dpsi_curve * f_df_dpsi_curve
+            dpressure_dpsi_curve = hv.Curve(
+                (psi_norm, dpressure_dpsi),
+                kdims=kdims,
+                vdims=vdims,
+                label="dpressure_dpsi",
+            )
+            f_df_dpsi_curve = hv.Curve(
+                (psi_norm, f_df_dpsi), kdims=kdims, vdims=vdims, label="f_df_dpsi"
+            )
+            overlay = dpressure_dpsi_curve * f_df_dpsi_curve
 
         return overlay.opts(
             hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
@@ -330,6 +331,3 @@ class NicePlotter(pn.viewable.Viewer):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
-
-    def __panel__(self):
-        return self.panel

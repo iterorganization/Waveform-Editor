@@ -83,11 +83,9 @@ class PlasmaProperties(Viewer):
 
         self.psi_norm = np.linspace(0, 1, 200)
         self.dpressure_dpsi = beta / self.r0 * (1 - self.psi_norm**alpha) ** gamma
+        mu_0 = scipy.constants.mu_0
         self.f_df_dpsi = (
-            (1 - beta)
-            * scipy.constants.mu_0
-            * self.r0
-            * (1 - self.psi_norm**alpha) ** gamma
+            (1 - beta) * mu_0 * self.r0 * (1 - self.psi_norm**alpha) ** gamma
         )
         self.has_properties = True
 
