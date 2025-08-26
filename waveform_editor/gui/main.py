@@ -32,6 +32,7 @@ pn.extension(
     "codeeditor",
     "tabulator",
     "terminal",
+    "katex",
     notifications=True,
     exception_handler=exception_handler,
 )
