@@ -1,4 +1,5 @@
 import importlib.resources
+import xml.etree.ElementTree as ET
 
 import imas
 import panel as pn
@@ -12,6 +13,10 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
+
+
+def _reactive_title(title, is_valid):
+    return title if is_valid else f"{title} ⚠️"
 
 
 class ShapeEditor(Viewer):
@@ -36,7 +41,7 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings = settings.nice
 
-        self.xml_params = (
+        self.xml_params = ET.fromstring(
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
             .joinpath("param.xml")
             .read_text()
@@ -47,23 +52,32 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             self.plasma_shape.param.has_shape.rx.not_()
             | self.plasma_properties.param.has_properties.rx.not_()
-            | self.param.pf_active.rx.not_()
-            | self.param.pf_passive.rx.not_()
-            | self.param.iron_core.rx.not_()
-            | self.param.wall.rx.not_()
+            | param.rx(self.nice_settings.required_params_filled).rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         buttons = pn.Row(button_start, button_stop)
-        options = pn.Accordion(
-            ("NICE Configuration", pn.Param(settings.nice, show_name=False)),
-            ("Plotting Parameters", pn.Param(self.nice_plotter, show_name=False)),
-            ("Plasma Shape", self.plasma_shape),
-            (
-                "Plasma Parameters",
-                pn.Row(self.plasma_properties, self.nice_plotter.profiles_pane),
+
+        # Accordion does not allow dynamic titles, so use separate card for each option
+        options = pn.Column(
+            self._create_card(
+                self.nice_settings.panel,
+                "NICE Configuration",
+                is_valid=param.rx(self.nice_settings.required_params_filled),
             ),
-            ("Coil Currents", self.coil_currents),
-            sizing_mode="stretch_width",
+            self._create_card(
+                pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
+            ),
+            self._create_card(
+                self.plasma_shape,
+                "Plasma Shape",
+                is_valid=self.plasma_shape.param.has_shape,
+            ),
+            self._create_card(
+                pn.Row(self.plasma_properties, self.nice_plotter.profiles_pane),
+                "Plasma Properties",
+                is_valid=self.plasma_properties.param.has_properties,
+            ),
+            self._create_card(self.coil_currents, "Coil Currents"),
         )
         menu = pn.Column(
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
@@ -76,6 +90,25 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
+
+    def _create_card(self, panel_object, title, is_valid=None):
+        """Create a collapsed card containing a panel object and a title.
+
+        Args:
+            panel_object: The panel object to place into the card.
+            title: The title to give the card.
+            is_valid: If supplied, binds the card title to update reactively using
+                `_reactive_title`.
+        """
+        if is_valid:
+            title = param.bind(_reactive_title, title=title, is_valid=is_valid)
+        card = pn.Card(
+            panel_object,
+            title=title,
+            sizing_mode="stretch_width",
+            collapsed=True,
+        )
+        return card
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
@@ -161,12 +194,14 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        self.xml_params = self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
+        # Update XML parameters:
+        self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
+        self.xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run()
         await self.communicator.submit(
-            self.xml_params,
+            ET.tostring(self.xml_params, encoding="unicode"),
             equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),

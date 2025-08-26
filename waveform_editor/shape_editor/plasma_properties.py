@@ -5,7 +5,11 @@ import param
 import scipy
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import EquilibriumInput, FormattedEditableFloatSlider
+from waveform_editor.gui.util import (
+    EquilibriumInput,
+    FormattedEditableFloatSlider,
+    WarningIndicator,
+)
 
 
 class PlasmaPropertiesParams(param.Parameterized):
@@ -46,6 +50,7 @@ class PlasmaProperties(Viewer):
 
     def __init__(self):
         super().__init__()
+        self.indicator = WarningIndicator(visible=self.param.has_properties.rx.not_())
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
@@ -56,7 +61,7 @@ class PlasmaProperties(Viewer):
                 r"""
             $\begin{aligned}
                 p'(\psi_N) =& \frac{\beta}{r_0} \big(1 - \psi_N^\alpha\big)^\gamma \\
-                ff'(\psi_N) =& (1 - \beta) \, \mu_0 \, r_0 \big(1 - \psi_N^\alpha\big)^\gamma
+                ff'(\psi_N) =& (1 - \beta) \mu_0 r_0 \big(1 - \psi_N^\alpha\big)^\gamma
             \end{aligned}$
             """
             ),
@@ -135,7 +140,7 @@ class PlasmaProperties(Viewer):
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
             layout = pn.Column(params, self.param_equation)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            layout = pn.Param(self.input, show_name=False)
+            layout = pn.Row(pn.Param(self.input, show_name=False), self.indicator)
         return layout
 
     def __panel__(self):

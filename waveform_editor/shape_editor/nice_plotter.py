@@ -3,6 +3,7 @@ import logging
 import holoviews as hv
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import panel as pn
 import param
 import scipy
@@ -148,6 +149,7 @@ class NicePlotter(param.Parameterized):
                 for element in coil.element:
                     rect = element.geometry.rectangle
                     outline = element.geometry.outline
+                    annulus = element.geometry.annulus
                     if rect.has_value:
                         r0 = rect.r - rect.width / 2
                         r1 = rect.r + rect.width / 2
@@ -156,6 +158,16 @@ class NicePlotter(param.Parameterized):
                         rectangles.append((r0, z0, r1, z1, name))
                     elif outline.has_value:
                         paths.append((outline.r, outline.z, name))
+                    elif annulus.r.has_value:
+                        # Just plot outer radius for now
+                        phi = np.linspace(0, 2 * np.pi, 17)
+                        paths.append(
+                            (
+                                (annulus.r + annulus.radius_outer * np.cos(phi)),
+                                (annulus.z + annulus.radius_outer * np.sin(phi)),
+                                name,
+                            )
+                        )
                     else:
                         logger.warning(
                             f"Coil {name} was skipped, as it does not have a filled "

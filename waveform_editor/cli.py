@@ -26,7 +26,7 @@ def _excepthook(type_, value, tb):
 
 @click.group("waveform-editor", invoke_without_command=True, no_args_is_help=True)
 @click.option("--version", is_flag=True, help="Show version information")
-@click.option("-v", "--verbose", is_flag=True, help="Show more verbose output")
+@click.option("-v", "--verbose", count=True, help="Show verbose output")
 def cli(version, verbose):
     """The Waveform Editor command line interface.
 
@@ -35,11 +35,17 @@ def cli(version, verbose):
 
         waveform-editor <command> --help
     """
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    # Limit the traceback to 1 item: avoid scaring CLI users with long traceback prints
-    # and let them focus on the actual error message
-    sys.excepthook = _excepthook
+    loglevel = logging.WARNING
+    if verbose == 1:
+        loglevel = logging.INFO
+    elif verbose > 1:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel)
+
+    if verbose <= 1:
+        # Limit the traceback to 1 item: avoid scaring CLI users with long traceback
+        # prints and let them focus on the actual error message
+        sys.excepthook = _excepthook
 
     if version:
         print_version()

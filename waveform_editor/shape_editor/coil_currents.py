@@ -47,7 +47,7 @@ class CoilCurrents(Viewer):
             checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
-                value=coil_current.data[0],
+                value=coil_current.data[0] if coil_current.data.has_value else 0.0,
                 start=-5e4,
                 end=5e4,
                 disabled=checkbox.param.value.rx.not_(),
@@ -81,29 +81,23 @@ class CoilCurrents(Viewer):
             _, slider = self.coil_ui[i].objects
             slider.value = coil.current.data[0]
 
-    def update_fixed_coils_in_xml(self, xml_string):
-        """Generate XML parameters indicating which coils are fixed based on
+    def update_fixed_coils_in_xml(self, xml_params: ET.Element):
+        """Update XML parameters indicating which coils are fixed based on
         UI checkboxes.
 
         Args:
-            xml_string: XML string representing configuration parameters.
-
-        Returns:
-            Updated XML string with the `n_group_fixed_index` and `group_fixed_index`
-                elements modified.
+            xml_params: XML representing configuration parameters, which are updated
+                in-place.
         """
-        root = ET.fromstring(xml_string)
-
-        coil_groups = root.find("coil_group_index").text.split()
+        coil_groups = xml_params.find("coil_group_index").text.split()
         fixed_coils = [i for i, row in enumerate(self.coil_ui) if row.objects[0].value]
         target_groups = {coil_groups[coil_idx] for coil_idx in fixed_coils}
         fixed_groups = sorted(list(target_groups), key=int)
 
-        root.find("n_group_fixed_index").text = str(len(fixed_groups))
+        xml_params.find("n_group_fixed_index").text = str(len(fixed_groups))
         # NICE requires group_fixed_index to be filled even when there are no fixed
         # coils
-        root.find("group_fixed_index").text = " ".join(fixed_groups) or "-1"
-        return ET.tostring(root, encoding="unicode")
+        xml_params.find("group_fixed_index").text = " ".join(fixed_groups) or "-1"
 
     def __panel__(self):
         return self.panel
