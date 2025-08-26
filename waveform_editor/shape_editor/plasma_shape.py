@@ -45,6 +45,9 @@ class Gap:
 
     r: float  # Major radius of the reference point
     z: float  # Height of the reference point
+    name: str
+    angle: float
+    value: float
     r_sep: float  # Major radius of the point on the desired separatrix
     z_sep: float  # Height of the point on the desired separatrix
 
@@ -70,17 +73,24 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
+    gap_ui = param.List(doc="List of UI rows containing the gap controls")
 
     def __init__(self):
         super().__init__()
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
+        self.gap_grid = pn.Column(visible=self.param.gap_ui.rx.bool())
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options)
+        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_grid)
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
+
+    @param.depends("gap_ui", watch=True)
+    def _update_gap_grid(self):
+        """Update the gap grid when gap_ui changes."""
+        self.gap_grid.objects = self.gap_ui
 
     @pn.depends(
         "shape_params.param",
@@ -140,23 +150,25 @@ class PlasmaShape(Viewer):
             if not input_gaps:
                 return
 
-            self.outline_r = []
-            self.outline_z = []
             self.gaps = []
             for gap in input_gaps:
                 r_sep = gap.r + gap.value * math.cos(-gap.angle)
                 z_sep = gap.z + gap.value * math.sin(-gap.angle)
 
-                self.outline_r.append(r_sep)
-                self.outline_z.append(z_sep)
                 self.gaps.append(
                     Gap(
                         r=gap.r,
                         z=gap.z,
+                        name=gap.name,
+                        angle=gap.angle,
+                        value=gap.value,
                         r_sep=r_sep,
                         z_sep=z_sep,
                     )
                 )
+
+            self._update_outline_from_gaps()
+            self._create_gap_ui()
 
         except Exception as e:
             pn.state.notifications.error(
@@ -164,6 +176,73 @@ class PlasmaShape(Viewer):
             )
             self.gaps = []
             self.outline_r = self.outline_z = None
+
+    def _update_outline_from_gaps(self):
+        """Update outline coordinates from current gap data."""
+        if not self.gaps:
+            self.outline_r = self.outline_z = None
+            return
+
+        self.outline_r = []
+        self.outline_z = []
+        for gap in self.gaps:
+            self.outline_r.append(gap.r_sep)
+            self.outline_z.append(gap.z_sep)
+
+    def _on_gap_change(self, event):
+        """Callback function triggered when gap UI values change."""
+        self._sync_gaps_with_ui()
+        self._update_outline_from_gaps()
+        self.param.trigger("shape_updated")
+
+    def _sync_gaps_with_ui(self):
+        """Synchronize gap data with UI widget values."""
+        for i, gap_row in enumerate(self.gap_ui):
+            if i < len(self.gaps):
+                _, input_row = gap_row.objects
+                angle_widget, value_widget = input_row.objects
+                self.gaps[i].angle = angle_widget.value
+                self.gaps[i].value = value_widget.value
+
+                self.gaps[i].r_sep = self.gaps[i].r + self.gaps[i].value * math.cos(
+                    -self.gaps[i].angle
+                )
+                self.gaps[i].z_sep = self.gaps[i].z + self.gaps[i].value * math.sin(
+                    -self.gaps[i].angle
+                )
+
+    def _create_gap_ui(self):
+        """Create the UI for each gap and populate the gap_ui list."""
+        if not self.gaps:
+            self.gap_ui = []
+            return
+
+        new_gap_ui = []
+        for i, gap in enumerate(self.gaps):
+            label = pn.widgets.StaticText(value=f"Gap {i}: {gap.name}")
+            angle_input = FormattedEditableFloatSlider(
+                name="Angle [rad]",
+                value=float(gap.angle),
+                start=0,
+                end=2 * math.pi,
+                step=0.01,
+                width=450,
+            )
+            value_input = FormattedEditableFloatSlider(
+                name="Value [m]",
+                value=float(gap.value),
+                start=0,
+                end=1,
+                step=0.01,
+                width=450,
+            )
+            angle_input.param.watch(self._on_gap_change, "value")
+            value_input.param.watch(self._on_gap_change, "value")
+
+            row = pn.Column(label, pn.Row(angle_input, value_input))
+            new_gap_ui.append(row)
+
+        self.gap_ui = new_gap_ui
 
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs.
