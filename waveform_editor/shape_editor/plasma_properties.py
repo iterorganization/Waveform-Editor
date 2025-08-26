@@ -107,8 +107,9 @@ class PlasmaProperties(Viewer):
 
             self.dpressure_dpsi = equilibrium.time_slice[0].profiles_1d.dpressure_dpsi
             self.f_df_dpsi = equilibrium.time_slice[0].profiles_1d.f_df_dpsi
-            # TODO: SCALE
-            self.psi_norm = equilibrium.time_slice[0].profiles_1d.psi
+            psi = equilibrium.time_slice[0].profiles_1d.psi
+            self.psi_norm = (psi - psi[0]) / (psi[-1] - psi[0])
+
             self.has_properties = True
         except Exception as e:
             pn.state.notifications.error(

@@ -142,8 +142,14 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
         slice = equilibrium.time_slice[0]
         slice.global_quantities.ip = self.plasma_properties.ip
+
+        # These are not the p'/ff' profiles per se, the equilibrium solver will scale
+        # these to maintain the total plasma current Ip
         slice.profiles_1d.dpressure_dpsi = self.plasma_properties.dpressure_dpsi
         slice.profiles_1d.f_df_dpsi = self.plasma_properties.f_df_dpsi
+
+        # N.B. We fill psi with psi_norm. This works for NICE, but is not adhering to
+        # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
         return equilibrium
 
