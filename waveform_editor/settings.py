@@ -17,15 +17,20 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 class NiceSettings(param.Parameterized):
     REQUIRED = (
-        "executable",
+        "inv_executable",
+        "dir_executable",
         "md_pf_active",
         "md_pf_passive",
         "md_wall",
         "md_iron_core",
     )
-    executable = param.String(
-        label="NICE executable path",
+    inv_executable = param.String(
+        label="NICE inverse executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
+    )
+    dir_executable = param.String(
+        label="NICE direct executable path",
+        doc="Path to NICE direct IMAS MUSCLE3 executable",
     )
     environment = param.Dict(
         default={},

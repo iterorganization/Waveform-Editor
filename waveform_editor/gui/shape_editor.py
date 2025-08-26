@@ -20,6 +20,8 @@ def _reactive_title(title, is_valid):
 
 
 class ShapeEditor(Viewer):
+    INVERSE_MODE = "NICE Inverse"
+    DIRECT_MODE = "NICE Direct"
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
@@ -28,6 +30,9 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
+    nice_mode = param.Selector(
+        objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE
+    )
 
     def __init__(self):
         super().__init__()
@@ -50,12 +55,18 @@ class ShapeEditor(Viewer):
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
         button_start.disabled = (
-            self.plasma_shape.param.has_shape.rx.not_()
+            (
+                self.plasma_shape.param.has_shape.rx.not_()
+                & (self.param.nice_mode.rx() != self.DIRECT_MODE)
+            )
             | self.plasma_properties.param.has_properties.rx.not_()
             | param.rx(self.nice_settings.required_params_filled).rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
-        buttons = pn.Row(button_start, button_stop)
+        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
+            self.param.nice_mode, inline=True, margin=(15, 20, 0, 20)
+        )
+        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
@@ -71,6 +82,7 @@ class ShapeEditor(Viewer):
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
+                visible=self.param.nice_mode.rx.pipe(lambda m: m != self.DIRECT_MODE),
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -91,7 +103,7 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def _create_card(self, panel_object, title, is_valid=None):
+    def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
 
         Args:
@@ -99,6 +111,7 @@ class ShapeEditor(Viewer):
             title: The title to give the card.
             is_valid: If supplied, binds the card title to update reactively using
                 `_reactive_title`.
+            visible: Whether the card is visible.
         """
         if is_valid:
             title = param.bind(_reactive_title, title=title, is_valid=is_valid)
@@ -107,6 +120,7 @@ class ShapeEditor(Viewer):
             title=title,
             sizing_mode="stretch_width",
             collapsed=True,
+            visible=visible,
         )
         return card
 
@@ -125,11 +139,13 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
-    @param.depends("nice_settings.md_pf_active", watch=True)
+    @param.depends("nice_settings.md_pf_active", "nice_mode", watch=True)
     def _load_pf_active(self):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
-        self.coil_currents.create_ui(self.pf_active)
+        self.coil_currents.create_ui(
+            self.pf_active, self.nice_mode == self.INVERSE_MODE
+        )
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
@@ -169,9 +185,10 @@ class ShapeEditor(Viewer):
         equilibrium.time_slice.resize(1)
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
-        # Fill plasma shape
-        equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
-        equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
+        # Only fill plasma shape for NICE inverse mode
+        if self.nice_mode == self.INVERSE_MODE:
+            equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
+            equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
 
         # Fill plasma properties
         equilibrium.vacuum_toroidal_field.r0 = self.plasma_properties.r0

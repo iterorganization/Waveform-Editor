@@ -151,12 +151,12 @@ class NiceIntegration(param.Parameterized):
         nice_env["MUSCLE_INSTANCE"] = "nice_inv"
         nice_env["MUSCLE_MANAGER"] = manager_location
 
-        self.terminal.write(f"{os.getcwd()}$ {settings.nice.executable}\n")
+        self.terminal.write(f"{os.getcwd()}$ {settings.nice.inv_executable}\n")
         loop = asyncio.get_running_loop()
         try:
             self.nice_transport, self.nice_protocol = await loop.subprocess_exec(
                 self.create_communicator_protocol,
-                settings.nice.executable,
+                settings.nice.inv_executable,
                 env=nice_env,
                 stdin=subprocess.DEVNULL,
             )

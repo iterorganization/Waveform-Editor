@@ -30,12 +30,14 @@ class CoilCurrents(Viewer):
     def _update_slider_grid(self):
         self.sliders_ui.objects = self.coil_ui
 
-    def create_ui(self, pf_active):
+    def create_ui(self, pf_active, is_inverse):
         """Create the UI for each coil in the provided pf_active IDS. For each coil a
         checkbox and slider are added to fix, and set the current value, respectively.
 
         Args:
             pf_active: pf_active IDS containing coils with current values.
+            is_inverse: Whether it is being run in inverse mode. If it is not in inverse
+                mode, no checkboxes are drawn, and sliders are always enabled.
         """
         if not pf_active:
             self.coil_ui = []
@@ -44,7 +46,9 @@ class CoilCurrents(Viewer):
         new_coil_ui = []
         for coil in pf_active.coil:
             coil_current = coil.current
-            checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
+            checkbox = pn.widgets.Checkbox(
+                value=not is_inverse, margin=(30, 10, 10, 10), visible=is_inverse
+            )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
                 value=coil_current.data[0] if coil_current.data.has_value else 0.0,
