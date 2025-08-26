@@ -1,8 +1,8 @@
-import holoviews as hv
 import imas
 import numpy as np
 import panel as pn
 import param
+import scipy
 from panel.viewable import Viewer
 
 from waveform_editor.gui.util import EquilibriumInput, FormattedEditableFloatSlider
@@ -20,14 +20,9 @@ class PlasmaPropertiesParams(param.Parameterized):
     b0 = param.Number(
         default=-5.3, softbounds=[-10, 10], label="Toroidal field at R0 [T]"
     )
-    dpressure_dpsi_alpha = param.Integer(default=2, softbounds=[0, 10], label="Alpha")
-    dpressure_dpsi_beta = param.Number(
-        default=0.6, step=0.01, softbounds=[-10, 10], label="Beta"
-    )
-    dpressure_dpsi_gamma = param.Number(default=1.4, softbounds=[0, 10], label="Gamma")
-    f_df_dpsi_alpha = param.Integer(default=2, softbounds=[0, 10], label="Alpha")
-    f_df_dpsi_beta = param.Number(default=0.4, softbounds=[-10, 10], label="Beta")
-    f_df_dpsi_gamma = param.Number(default=1.4, softbounds=[0, 10], label="Gamma")
+    alpha = param.Number(default=2, softbounds=[0, 10], label="Alpha")
+    beta = param.Number(default=0.6, step=0.01, softbounds=[-10, 10], label="Beta")
+    gamma = param.Number(default=1.4, softbounds=[0, 10], label="Gamma")
 
 
 class PlasmaProperties(Viewer):
@@ -57,7 +52,7 @@ class PlasmaProperties(Viewer):
         self.panel = pn.Column(self.radio_box, self._panel_property_options)
         self.dpressure_dpsi = None
         self.f_df_dpsi = None
-        self.psi = None
+        self.psi_norm = None
         self.ip = None
         self.r0 = None
         self.b0 = None
@@ -82,39 +77,19 @@ class PlasmaProperties(Viewer):
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
-        self.psi = np.linspace(0, 1, 200)
-        self.dpressure_dpsi = self._calculate_parametric_profile(
-            self.psi,
-            self.properties_params.dpressure_dpsi_alpha,
-            self.properties_params.dpressure_dpsi_beta,
-            self.properties_params.dpressure_dpsi_gamma,
-        )
-        self.f_df_dpsi = self._calculate_parametric_profile(
-            self.psi,
-            self.properties_params.f_df_dpsi_alpha,
-            self.properties_params.f_df_dpsi_beta,
-            self.properties_params.f_df_dpsi_gamma,
+        alpha = self.properties_params.alpha
+        beta = self.properties_params.beta
+        gamma = self.properties_params.gamma
+
+        self.psi_norm = np.linspace(0, 1, 200)
+        self.dpressure_dpsi = beta / self.r0 * (1 - self.psi_norm**alpha) ** gamma
+        self.f_df_dpsi = (
+            (1 - beta)
+            * scipy.constants.mu_0
+            * self.r0
+            * (1 - self.psi_norm**alpha) ** gamma
         )
         self.has_properties = True
-
-    def _calculate_parametric_profile(self, psi, alpha, beta, gamma):
-        """Compute parameterized profiles for dpressure_dpsi and f_df_dpsi.
-
-        Adapted from NICE, by Blaise Faugeras:
-        https://gitlab.inria.fr/blfauger/nice
-
-        Args:
-            psi: Normalized poloidal flux.
-            alpha: Exponent controlling profile steepness near ψ = 0.
-            beta: Scaling coefficient for the profile amplitude.
-            gamma: Exponent controlling the shape near ψ = 1.
-
-        returns:
-            ndarray for the evaluated profile for each psi.
-        """
-        base = 1.0 - np.power(psi, alpha)
-        profile = -1 * beta * np.power(base, gamma)
-        return profile
 
     def _load_properties_from_ids(self):
         """Load plasma properties from IDS equilibrium input."""
@@ -132,7 +107,8 @@ class PlasmaProperties(Viewer):
 
             self.dpressure_dpsi = equilibrium.time_slice[0].profiles_1d.dpressure_dpsi
             self.f_df_dpsi = equilibrium.time_slice[0].profiles_1d.f_df_dpsi
-            self.psi = equilibrium.time_slice[0].profiles_1d.psi
+            # TODO: SCALE
+            self.psi_norm = equilibrium.time_slice[0].profiles_1d.psi
             self.has_properties = True
         except Exception as e:
             pn.state.notifications.error(
@@ -147,17 +123,9 @@ class PlasmaProperties(Viewer):
             params = pn.Param(self.properties_params, show_name=False)
             params.mapping[param.Number] = FormattedEditableFloatSlider
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
-
-            return pn.Column(
-                *params[0:3],
-                pn.pane.Markdown("#### dpressure_dpsi Parameterization", margin=0),
-                *params[3:6],
-                pn.pane.Markdown("#### f_df_dpsi Parameterization", margin=0),
-                *params[6:9],
-                margin=(5, 10),
-            )
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Param(self.input, show_name=False)
+            params = pn.Param(self.input, show_name=False)
+        return params
 
     def __panel__(self):
         return self.panel

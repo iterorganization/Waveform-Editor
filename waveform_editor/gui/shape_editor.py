@@ -144,7 +144,7 @@ class ShapeEditor(Viewer):
         slice.global_quantities.ip = self.plasma_properties.ip
         slice.profiles_1d.dpressure_dpsi = self.plasma_properties.dpressure_dpsi
         slice.profiles_1d.f_df_dpsi = self.plasma_properties.f_df_dpsi
-        slice.profiles_1d.psi = self.plasma_properties.psi
+        slice.profiles_1d.psi = self.plasma_properties.psi_norm
         return equilibrium
 
     async def submit(self, event=None):

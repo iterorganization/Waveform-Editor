@@ -98,7 +98,7 @@ class NicePlotter(pn.viewable.Viewer):
         if not self.plasma_properties.has_properties:
             return hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
 
-        psi = self.plasma_properties.psi
+        psi = self.plasma_properties.psi_norm
         d_pressure_dpsi = self.plasma_properties.dpressure_dpsi
         f_df_dpsi = self.plasma_properties.f_df_dpsi
         dpressure_dpsi_curve = hv.Curve(
