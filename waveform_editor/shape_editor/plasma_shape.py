@@ -41,11 +41,11 @@ class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
 
 @dataclass
 class Gap:
-    """Helper dataclass representing the geometric properties of a gap."""
+    """Helper dataclass representing the properties of a gap."""
 
+    name: str
     r: float  # Major radius of the reference point
     z: float  # Height of the reference point
-    name: str
     angle: float
     value: float
     r_sep: float  # Major radius of the point on the desired separatrix
@@ -73,7 +73,7 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
-    gap_ui = param.List(doc="List of UI rows containing the gap controls")
+    gap_ui = param.List(doc="List of UI elements containing the gap controls")
 
     def __init__(self):
         super().__init__()
@@ -198,18 +198,17 @@ class PlasmaShape(Viewer):
     def _sync_gaps_with_ui(self):
         """Synchronize gap data with UI widget values."""
         for i, gap_row in enumerate(self.gap_ui):
-            if i < len(self.gaps):
-                _, input_row = gap_row.objects
-                angle_widget, value_widget = input_row.objects
-                self.gaps[i].angle = angle_widget.value
-                self.gaps[i].value = value_widget.value
+            _, input_row = gap_row.objects
+            angle_widget, value_widget = input_row.objects
+            self.gaps[i].angle = angle_widget.value
+            self.gaps[i].value = value_widget.value
 
-                self.gaps[i].r_sep = self.gaps[i].r + self.gaps[i].value * math.cos(
-                    -self.gaps[i].angle
-                )
-                self.gaps[i].z_sep = self.gaps[i].z + self.gaps[i].value * math.sin(
-                    -self.gaps[i].angle
-                )
+            self.gaps[i].r_sep = self.gaps[i].r + self.gaps[i].value * math.cos(
+                -self.gaps[i].angle
+            )
+            self.gaps[i].z_sep = self.gaps[i].z + self.gaps[i].value * math.sin(
+                -self.gaps[i].angle
+            )
 
     def _create_gap_ui(self):
         """Create the UI for each gap and populate the gap_ui list."""
