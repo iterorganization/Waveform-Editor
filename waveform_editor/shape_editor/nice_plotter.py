@@ -42,8 +42,8 @@ class NicePlotter(param.Parameterized):
     WIDTH = 800
     HEIGHT = 1000
 
-    PROFILE_WIDTH = 700
-    PROFILE_HEIGHT = 700
+    PROFILE_WIDTH = 350
+    PROFILE_HEIGHT = 350
 
     def __init__(self, communicator, plasma_shape, plasma_properties, **params):
         super().__init__(

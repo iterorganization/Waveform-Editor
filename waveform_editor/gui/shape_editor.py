@@ -73,7 +73,7 @@ class ShapeEditor(Viewer):
                 is_valid=self.plasma_shape.param.has_shape,
             ),
             self._create_card(
-                pn.Row(self.plasma_properties, self.nice_plotter.profiles_pane),
+                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
                 "Plasma Properties",
                 is_valid=self.plasma_properties.param.has_properties,
             ),
