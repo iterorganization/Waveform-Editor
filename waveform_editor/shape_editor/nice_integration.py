@@ -1,4 +1,4 @@
-"""Module that enables running the NICE inverse equilibrium solver through MUSCLE3."""
+"""Module that enables running the NICE equilibrium solver through MUSCLE3."""
 
 import asyncio
 import multiprocessing
@@ -18,7 +18,8 @@ from ymmsl import Operator
 
 from waveform_editor.settings import settings
 
-_muscle3_configuration = """
+# YMMSL configuration for NICE inverse mode
+_muscle3_inv_configuration = """
 ymmsl_version: v0.1
 model:
     name: shape_editor
@@ -42,9 +43,33 @@ settings:
     nice_inv.xml_path: {xml_path}
 """
 
+# YMMSL configuration for NICE direct mode
+_muscle3_dir_configuration = """
+ymmsl_version: v0.1
+model:
+    name: shape_editor
+    components:
+        shape_editor:
+            implementation: shape_editor
+        nice_dir:
+            implementation: nice_dir
+
+    conduits:
+        shape_editor.equilibrium_out: nice_dir.equilibrium_in
+        shape_editor.pf_passive_out: nice_dir.pf_passive_in
+        shape_editor.pf_active_out: nice_dir.pf_active_in
+        shape_editor.iron_core_out: nice_dir.iron_core_in
+        shape_editor.wall_out: nice_dir.wall_in
+        nice_dir.equilibrium_out: shape_editor.equilibrium_in
+
+settings:
+    muscle_profile_level: none  # Disable profiling
+    nice_dir.xml_path: {xml_path}
+"""
+
 
 class NiceIntegration(param.Parameterized):
-    """Main API for running NICE, submitting inverse problems and getting the resulting
+    """Main API for running NICE, submitting problems and getting the resulting
     equilibrium back.
     """
 
@@ -118,7 +143,7 @@ class NiceIntegration(param.Parameterized):
         self.closing = self.running = False
         self._update_state()
 
-    async def run(self):
+    async def run(self, is_direct_mode=False):
         """Start NICE and the controlling processes."""
         if self.running:
             raise RuntimeError("Already running!")
@@ -126,11 +151,16 @@ class NiceIntegration(param.Parameterized):
 
         self.xml_config_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
 
+        # Select configuration based on mode
+        config_str = (
+            _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
+        )
+
         # MUSCLE manager
         self.manager_pipe, pipe = multiprocessing.Pipe()
         self.manager = multiprocessing.Process(
             target=run_muscle_manager,
-            args=[pipe, self.xml_config_file.name],
+            args=[pipe, self.xml_config_file.name, config_str],
             name="MUSCLE Manager",
         )
         self.manager.start()
@@ -140,7 +170,7 @@ class NiceIntegration(param.Parameterized):
         self.communicator_pipe, pipe = multiprocessing.Pipe()
         self.communicator = multiprocessing.Process(
             target=run_muscle3_communicator,
-            args=[manager_location, pipe],
+            args=[manager_location, pipe, is_direct_mode],
             name="NICE Communicator",
         )
         self.communicator.start()
@@ -148,15 +178,24 @@ class NiceIntegration(param.Parameterized):
         # NICE
         nice_env = os.environ.copy()
         nice_env.update(settings.nice.environment)
-        nice_env["MUSCLE_INSTANCE"] = "nice_inv"
         nice_env["MUSCLE_MANAGER"] = manager_location
 
-        self.terminal.write(f"{os.getcwd()}$ {settings.nice.inv_executable}\n")
+        if is_direct_mode:
+            self.terminal.write("Running NICE in DIRECT mode.\n")
+            executable = settings.nice.dir_executable
+            nice_env["MUSCLE_INSTANCE"] = "nice_dir"
+        else:
+            self.terminal.write("Running NICE in INVERSE mode.\n")
+            executable = settings.nice.inv_executable
+            nice_env["MUSCLE_INSTANCE"] = "nice_inv"
+
+        self.terminal.write(f"{os.getcwd()}$ {executable}\n")
+
         loop = asyncio.get_running_loop()
         try:
             self.nice_transport, self.nice_protocol = await loop.subprocess_exec(
                 self.create_communicator_protocol,
-                settings.nice.inv_executable,
+                executable,
                 env=nice_env,
                 stdin=subprocess.DEVNULL,
             )
@@ -267,21 +306,34 @@ class TerminalCommunicatorProtocol(asyncio.SubprocessProtocol):
 def run_muscle3_communicator(
     server_location: str,
     pipe: multiprocessing.connection.Connection,
+    is_direct_mode: bool,
 ):
     """Run MUSCLE3 actor for communicating with NICE."""
     os.environ["MUSCLE_INSTANCE"] = "shape_editor"
     os.environ["MUSCLE_MANAGER"] = server_location
 
-    ports = {
-        Operator.O_I: [
-            "equilibrium_out",
-            "pf_active_out",
-            "pf_passive_out",
-            "wall_out",
-            "iron_core_out",
-        ],
-        Operator.S: ["equilibrium_in", "pf_active_in"],
-    }
+    if is_direct_mode:
+        ports = {
+            Operator.O_I: [
+                "equilibrium_out",
+                "pf_active_out",
+                "pf_passive_out",
+                "wall_out",
+                "iron_core_out",
+            ],
+            Operator.S: ["equilibrium_in"],
+        }
+    else:  # Inverse mode
+        ports = {
+            Operator.O_I: [
+                "equilibrium_out",
+                "pf_active_out",
+                "pf_passive_out",
+                "wall_out",
+                "iron_core_out",
+            ],
+            Operator.S: ["equilibrium_in", "pf_active_in"],
+        }
     instance = Instance(ports)
 
     while instance.reuse_instance():
@@ -299,13 +351,16 @@ def run_muscle3_communicator(
 
             # Wait for nice to process
             eq = instance.receive("equilibrium_in").data
-            pfa = instance.receive("pf_active_in").data
+            if not is_direct_mode:
+                pfa = instance.receive("pf_active_in").data
             pipe.send((eq, pfa))
 
 
-def run_muscle_manager(pipe: multiprocessing.connection.Connection, xml_path: str):
-    """Run the muscle_manager"""
-    config = ymmsl.load(_muscle3_configuration.format(xml_path=xml_path))
+def run_muscle_manager(
+    pipe: multiprocessing.connection.Connection, xml_path: str, config_str: str
+):
+    """Run the muscle_manager with a given configuration."""
+    config = ymmsl.load(config_str.format(xml_path=xml_path))
     manager = Manager(config)
     server_location = manager.get_server_location()
     pipe.send(server_location)

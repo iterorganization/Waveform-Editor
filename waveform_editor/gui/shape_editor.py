@@ -103,6 +103,8 @@ class ShapeEditor(Viewer):
             ),
         )
 
+        self.param.watch(self.stop_nice, "nice_mode")
+
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
 
@@ -143,6 +145,13 @@ class ShapeEditor(Viewer):
     def _load_pf_active(self):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
+
+        if self.communicator.pf_active:
+            self.coil_currents.create_ui(
+                self.communicator.pf_active, self.nice_mode == self.INVERSE_MODE
+            )
+            return
+
         self.coil_currents.create_ui(
             self.pf_active, self.nice_mode == self.INVERSE_MODE
         )
@@ -216,7 +225,9 @@ class ShapeEditor(Viewer):
         self.xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
-            await self.communicator.run()
+            await self.communicator.run(
+                is_direct_mode=(self.nice_mode == self.DIRECT_MODE)
+            )
         await self.communicator.submit(
             ET.tostring(self.xml_params, encoding="unicode"),
             equilibrium.serialize(),
@@ -228,6 +239,7 @@ class ShapeEditor(Viewer):
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
     async def stop_nice(self, event):
+        print("stopping nice")
         await self.communicator.close()
 
     def __panel__(self):
