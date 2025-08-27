@@ -195,14 +195,10 @@ class PlasmaShape(Viewer):
 
     def _on_gap_change(self, event):
         """Callback function triggered when gap UI values change."""
-        self._sync_gaps_with_ui()
-        self._update_outline_from_gaps()
-        self.param.trigger("shape_updated")
-
-    def _sync_gaps_with_ui(self):
-        """Synchronize gap data with UI widget values."""
         for i, value_widget in enumerate(self.gap_ui):
             self.gaps[i].value = value_widget.value
+        self._update_outline_from_gaps()
+        self.param.trigger("shape_updated")
 
     def _create_gap_ui(self):
         """Create the UI for each gap and populate the gap_ui list."""
