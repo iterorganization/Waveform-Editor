@@ -147,39 +147,39 @@ class PlasmaShape(Viewer):
 
     def _load_shape_from_gaps(self):
         """Load plasma boundary outline from IDS equilibrium gap definitions."""
-        if not self.input_gaps.uri:
-            return
-        try:
-            with imas.DBEntry(self.input_gaps.uri, "r") as entry:
-                equilibrium = entry.get_slice(
-                    "equilibrium", self.input_gaps.time, imas.ids_defs.CLOSEST_INTERP
-                )
+        self.gaps = []
 
-            input_gaps = equilibrium.time_slice[0].boundary.gap
-            if not input_gaps:
-                return
-
-            self.gaps = []
-            for gap in input_gaps:
-                self.gaps.append(
-                    Gap(
-                        r=gap.r,
-                        z=gap.z,
-                        name=gap.name,
-                        angle=gap.angle,
-                        value=gap.value,
+        if self.input_gaps.uri:
+            try:
+                with imas.DBEntry(self.input_gaps.uri, "r") as entry:
+                    equilibrium = entry.get_slice(
+                        "equilibrium",
+                        self.input_gaps.time,
+                        imas.ids_defs.CLOSEST_INTERP,
                     )
+                input_gaps = equilibrium.time_slice[0].boundary.gap
+                if not input_gaps:
+                    pn.state.notifications.error(
+                        "The equilibrium IDS does not have any gaps"
+                    )
+                else:
+                    for gap in input_gaps:
+                        self.gaps.append(
+                            Gap(
+                                r=gap.r,
+                                z=gap.z,
+                                name=gap.name,
+                                angle=gap.angle,
+                                value=gap.value,
+                            )
+                        )
+            except Exception as e:
+                pn.state.notifications.error(
+                    f"Could not load gaps from {self.input_gaps.uri}: {str(e)}"
                 )
 
-            self._update_outline_from_gaps()
-            self._create_gap_ui()
-
-        except Exception as e:
-            pn.state.notifications.error(
-                f"Could not load plasma boundary from {self.input_gaps.uri}: {str(e)}"
-            )
-            self.gaps = []
-            self.outline_r = self.outline_z = None
+        self._update_outline_from_gaps()
+        self._create_gap_ui()
 
     def _update_outline_from_gaps(self):
         """Update outline coordinates from current gap data."""

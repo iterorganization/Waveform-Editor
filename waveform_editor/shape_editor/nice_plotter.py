@@ -90,7 +90,7 @@ class NicePlotter(pn.viewable.Viewer):
 
         Args:
             r: Radial coordinates of the outline.
-            z: Vertical coordinates of the outline.
+            z: Height coordinates of the outline.
 
         Returns:
             Holoviews overlay with the outline curve.
@@ -106,7 +106,7 @@ class NicePlotter(pn.viewable.Viewer):
 
         Args:
             r: Radial coordinates of the outline.
-            z: Vertical coordinates of the outline.
+            z: Height coordinates of the outline.
 
         Returns:
             Holoviews overlay containing gap representation.
