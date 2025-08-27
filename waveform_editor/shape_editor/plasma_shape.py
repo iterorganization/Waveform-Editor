@@ -8,6 +8,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
     EquilibriumInput,
+    FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
     WarningIndicator,
 )
@@ -281,9 +282,10 @@ class PlasmaShape(Viewer):
     @param.depends("input_mode")
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            params = pn.Param(self.shape_params, show_name=False)
+            params = pn.Param(show_name=False)
             params.mapping[param.Number] = FormattedEditableFloatSlider
-            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+            params.mapping[param.Integer] = FixedWidthEditableIntSlider
+            params.object = self.shape_params
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             params = pn.Param(self.input_outline, show_name=False)
             params = pn.Row(params, self.indicator)

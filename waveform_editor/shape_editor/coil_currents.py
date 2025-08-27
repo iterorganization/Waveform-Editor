@@ -13,7 +13,7 @@ class CoilCurrents(Viewer):
 
     def __init__(self):
         super().__init__()
-        self.grid_box = pn.GridBox(ncols=2, visible=self.param.coil_ui.rx.bool())
+        self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
             " the desired current value._",
@@ -24,11 +24,11 @@ class CoilCurrents(Viewer):
             "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
             visible=self.param.coil_ui.rx.not_(),
         )
-        self.panel = pn.Column(no_ids_message, guide_message, self.grid_box)
+        self.panel = pn.Column(no_ids_message, guide_message, self.sliders_ui)
 
     @param.depends("coil_ui", watch=True)
     def _update_slider_grid(self):
-        self.grid_box.objects = self.coil_ui
+        self.sliders_ui.objects = self.coil_ui
 
     def create_ui(self, pf_active):
         """Create the UI for each coil in the provided pf_active IDS. For each coil a
