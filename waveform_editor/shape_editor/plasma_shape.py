@@ -201,10 +201,7 @@ class PlasmaShape(Viewer):
 
     def _sync_gaps_with_ui(self):
         """Synchronize gap data with UI widget values."""
-        for i, gap_row in enumerate(self.gap_ui):
-            _, input_row = gap_row.objects
-            angle_widget, value_widget = input_row.objects
-            self.gaps[i].angle = angle_widget.value
+        for i, value_widget in enumerate(self.gap_ui):
             self.gaps[i].value = value_widget.value
 
     def _create_gap_ui(self):
@@ -215,28 +212,16 @@ class PlasmaShape(Viewer):
 
         new_gap_ui = []
         for i, gap in enumerate(self.gaps):
-            label = pn.widgets.StaticText(value=f"Gap {i}: {gap.name}")
-            angle_input = FormattedEditableFloatSlider(
-                name="Angle [rad]",
-                value=float(gap.angle),
-                start=0,
-                end=2 * math.pi,
-                step=0.01,
-                width=450,
-            )
             value_input = FormattedEditableFloatSlider(
-                name="Value [m]",
+                name=f"Gap {i}: {gap.name} Value [m]",
                 value=float(gap.value),
                 start=0,
                 end=1,
                 step=0.01,
                 width=450,
             )
-            angle_input.param.watch(self._on_gap_change, "value")
             value_input.param.watch(self._on_gap_change, "value")
-
-            row = pn.Column(label, pn.Row(angle_input, value_input))
-            new_gap_ui.append(row)
+            new_gap_ui.append(value_input)
 
         self.gap_ui = new_gap_ui
 
@@ -302,8 +287,8 @@ class PlasmaShape(Viewer):
         mean_z = sum(p[1] for p in points) / len(points)
         points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
 
-        self.outline_r = [p[0] for p in points] + [points[0][0]]
-        self.outline_z = [p[1] for p in points] + [points[0][1]]
+        self.outline_r = [p[0] for p in points]
+        self.outline_z = [p[1] for p in points]
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
