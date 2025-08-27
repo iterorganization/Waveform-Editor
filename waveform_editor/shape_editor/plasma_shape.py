@@ -81,25 +81,18 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
-    gap_ui = param.List(doc="List of UI elements containing the gap controls")
 
     def __init__(self):
         super().__init__()
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
-        self.gap_grid = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
+        self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_grid)
+        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
-
-    @param.depends("gap_ui", watch=True)
-    def _update_gap_grid(self):
-        """Update the gap grid when gap_ui changes."""
-        self.gap_grid.clear()
-        self.gap_grid.extend(self.gap_ui)
 
     @pn.depends(
         "shape_params.param",
@@ -202,8 +195,8 @@ class PlasmaShape(Viewer):
 
     def _create_gap_ui(self):
         """Create the UI for each gap and populate the gap_ui list."""
+        self.gap_ui.clear()
         if not self.gaps:
-            self.gap_ui = []
             return
 
         new_gap_ui = []
@@ -219,7 +212,7 @@ class PlasmaShape(Viewer):
             value_input.param.watch(self._on_gap_change, "value")
             new_gap_ui.append(value_input)
 
-        self.gap_ui = new_gap_ui
+        self.gap_ui.extend(new_gap_ui)
 
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs.
