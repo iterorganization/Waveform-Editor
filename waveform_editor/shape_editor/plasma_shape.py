@@ -1,6 +1,6 @@
 import math
+from dataclasses import dataclass
 
-import holoviews as hv
 import imas
 import panel as pn
 import param
@@ -39,78 +39,180 @@ class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
         super().__init__(format="1[.]000", **params)
 
 
+@dataclass
+class Gap:
+    """Helper dataclass representing the properties of a gap."""
+
+    name: str
+    r: float  # Major radius of the reference point
+    z: float  # Height of the reference point
+    angle: float
+    value: float
+
+    @property
+    def r_sep(self):
+        """Major radius of the point on the desired separatrix"""
+        return self.r + self.value * math.cos(-self.angle)
+
+    @property
+    def z_sep(self):
+        """Height of the point on the desired separatrix"""
+        return self.z + self.value * math.sin(-self.angle)
+
+
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
-    EQUILIBRIUM_INPUT = "Equilibrium IDS"
+    EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
+    GAP_INPUT = "Equilibrium IDS Gaps"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
-        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT],
+        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT, GAP_INPUT],
         label="Shape input mode",
     )
-    input = param.ClassSelector(class_=EquilibriumInput, default=EquilibriumInput())
+    input_outline = param.ClassSelector(
+        class_=EquilibriumInput, default=EquilibriumInput()
+    )
+    input_gaps = param.ClassSelector(
+        class_=EquilibriumInput, default=EquilibriumInput()
+    )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
 
-    shape_curve = param.Parameter(
-        default=hv.Curve([]), doc="Holoviews curve of the plasma shape"
-    )
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
+    shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
 
     def __init__(self):
         super().__init__()
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
+        self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options)
+        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
         self.outline_r = None
         self.outline_z = None
+        self.gaps = []
 
-    @pn.depends("shape_params.param", "input.param", "input_mode", watch=True)
+    @pn.depends(
+        "shape_params.param",
+        "input_outline.param",
+        "input_gaps.param",
+        "input_mode",
+        watch=True,
+    )
     def _set_plasma_shape(self):
         """Update plasma boundary shape based on input mode."""
+        self.outline_r = self.outline_z = None
+        self.gaps = []
 
-        outline_r = outline_z = None
         if self.input_mode == self.EQUILIBRIUM_INPUT:
-            outline_r, outline_z = self._load_shape_from_ids()
+            self._load_shape_from_ids()
         elif self.input_mode == self.PARAMETERIZED_INPUT:
-            outline_r, outline_z = self._load_shape_from_params()
+            self._load_shape_from_params()
+        elif self.input_mode == self.GAP_INPUT:
+            self._load_shape_from_gaps()
 
-        if outline_r and outline_z:
-            self.outline_r = outline_r
-            self.outline_z = outline_z
-            self.shape_curve = hv.Curve((outline_r, outline_z))
+        if self.outline_r and self.outline_z:
             self.has_shape = True
         else:
-            self.outline_r = self.outline_z = None
-            self.shape_curve = hv.Curve([])
             self.has_shape = False
+        self.param.trigger("shape_updated")
 
     def _load_shape_from_ids(self):
-        """Load plasma boundary outline from IDS equilibrium input.
-
-        Returns:
-            Tuple containing radial and vertical coordinates of the plasma boundary
-                outline, or (None, None) if unavailable.
-        """
-        if not self.input.uri:
-            return None, None
+        """Load plasma boundary outline from IDS equilibrium input."""
+        if not self.input_outline.uri:
+            return
         try:
-            with imas.DBEntry(self.input.uri, "r") as entry:
+            with imas.DBEntry(self.input_outline.uri, "r") as entry:
                 equilibrium = entry.get_slice(
-                    "equilibrium", self.input.time, imas.ids_defs.CLOSEST_INTERP
+                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
                 )
 
-            outline_r = equilibrium.time_slice[0].boundary.outline.r
-            outline_z = equilibrium.time_slice[0].boundary.outline.z
-            return outline_r, outline_z
+            self.outline_r = equilibrium.time_slice[0].boundary.outline.r
+            self.outline_z = equilibrium.time_slice[0].boundary.outline.z
         except Exception as e:
             pn.state.notifications.error(
-                f"Could not load plasma boundary outline from {self.input.uri}:"
+                f"Could not load plasma boundary outline from {self.input_outline.uri}:"
                 f" {str(e)}"
             )
-            return None, None
+            self.outline_r = self.outline_z = None
+
+    def _load_shape_from_gaps(self):
+        """Load plasma boundary outline from IDS equilibrium gap definitions."""
+        self.gaps = []
+
+        if self.input_gaps.uri:
+            try:
+                with imas.DBEntry(self.input_gaps.uri, "r") as entry:
+                    equilibrium = entry.get_slice(
+                        "equilibrium",
+                        self.input_gaps.time,
+                        imas.ids_defs.CLOSEST_INTERP,
+                    )
+                input_gaps = equilibrium.time_slice[0].boundary.gap
+                if not input_gaps:
+                    pn.state.notifications.error(
+                        "The equilibrium IDS does not have any gaps"
+                    )
+                else:
+                    for gap in input_gaps:
+                        self.gaps.append(
+                            Gap(
+                                r=gap.r,
+                                z=gap.z,
+                                name=gap.name,
+                                angle=gap.angle,
+                                value=gap.value,
+                            )
+                        )
+            except Exception as e:
+                pn.state.notifications.error(
+                    f"Could not load gaps from {self.input_gaps.uri}: {str(e)}"
+                )
+
+        self._update_outline_from_gaps()
+        self._create_gap_ui()
+
+    def _update_outline_from_gaps(self):
+        """Update outline coordinates from current gap data."""
+        if not self.gaps:
+            self.outline_r = self.outline_z = None
+            return
+
+        self.outline_r = []
+        self.outline_z = []
+        for gap in self.gaps:
+            self.outline_r.append(gap.r_sep)
+            self.outline_z.append(gap.z_sep)
+
+    def _on_gap_change(self, event):
+        """Callback function triggered when gap UI values change."""
+        for i, value_widget in enumerate(self.gap_ui):
+            self.gaps[i].value = value_widget.value
+        self._update_outline_from_gaps()
+        self.param.trigger("shape_updated")
+
+    def _create_gap_ui(self):
+        """Create the UI for each gap and populate the gap_ui list."""
+        self.gap_ui.clear()
+        if not self.gaps:
+            return
+
+        new_gap_ui = []
+        for i, gap in enumerate(self.gaps):
+            value_input = FormattedEditableFloatSlider(
+                name=f"Gap {i}: {gap.name} Value [m]",
+                value=float(gap.value),
+                start=0,
+                end=1,
+                step=0.01,
+                width=450,
+            )
+            value_input.param.watch(self._on_gap_change, "value")
+            new_gap_ui.append(value_input)
+
+        self.gap_ui.extend(new_gap_ui)
 
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs.
@@ -174,12 +276,8 @@ class PlasmaShape(Viewer):
         mean_z = sum(p[1] for p in points) / len(points)
         points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
 
-        desired_bnd_r = [p[0] for p in points]
-        desired_bnd_z = [p[1] for p in points]
-        desired_bnd_r.append(desired_bnd_r[0])
-        desired_bnd_z.append(desired_bnd_z[0])
-
-        return desired_bnd_r, desired_bnd_z
+        self.outline_r = [p[0] for p in points]
+        self.outline_z = [p[1] for p in points]
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
@@ -188,7 +286,10 @@ class PlasmaShape(Viewer):
             params.mapping[param.Number] = FormattedEditableFloatSlider
             params.mapping[param.Integer] = pn.widgets.EditableIntSlider
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            params = pn.Param(self.input, show_name=False)
+            params = pn.Param(self.input_outline, show_name=False)
+            params = pn.Row(params, self.indicator)
+        elif self.input_mode == self.GAP_INPUT:
+            params = pn.Param(self.input_gaps, show_name=False)
             params = pn.Row(params, self.indicator)
         return params
 
