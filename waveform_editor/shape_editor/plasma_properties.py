@@ -135,8 +135,9 @@ class PlasmaProperties(Viewer):
     @param.depends("input_mode")
     def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
-            params = pn.Param(self.properties_params, show_name=False)
+            params = pn.Param(show_name=False)
             params.mapping[param.Number] = FormattedEditableFloatSlider
+            params.object = self.properties_params
             layout = pn.Column(params, self.param_equation)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             layout = pn.Row(pn.Param(self.input, show_name=False), self.indicator)
