@@ -112,7 +112,10 @@ class NicePlotter(param.Parameterized):
                 label="dpressure_dpsi * r₀",
             )
             f_df_dpsi_curve = hv.Curve(
-                (psi_norm, f_df_dpsi), kdims=kdims, vdims=vdims, label="f_df_dpsi / (μ₀ * r₀)"
+                (psi_norm, f_df_dpsi),
+                kdims=kdims,
+                vdims=vdims,
+                label="f_df_dpsi / (μ₀ * r₀)",
             )
             overlay = dpressure_dpsi_curve * f_df_dpsi_curve
 

@@ -59,11 +59,11 @@ class PlasmaProperties(Viewer):
             pn.pane.Markdown("### p' and ff' parameterizations:"),
             pn.pane.LaTeX(
                 r"""
-            $\begin{aligned}
-                p'(\psi_N) =& \frac{\beta}{r_0} \big(1 - \psi_N^\alpha\big)^\gamma \\
-                ff'(\psi_N) =& (1 - \beta) \mu_0 r_0 \big(1 - \psi_N^\alpha\big)^\gamma
-            \end{aligned}$
-            """
+        $\begin{aligned}
+        p'(\psi_N) \propto& \frac{\beta}{r_0} \big(1 - \psi_N^\alpha\big)^\gamma \\
+        ff'(\psi_N) \propto& (1 - \beta) \mu_0 r_0 \big(1 - \psi_N^\alpha\big)^\gamma
+        \end{aligned}$
+        """
             ),
         )
         self.dpressure_dpsi = None
@@ -137,7 +137,6 @@ class PlasmaProperties(Viewer):
         if self.input_mode == self.MANUAL_INPUT:
             params = pn.Param(self.properties_params, show_name=False)
             params.mapping[param.Number] = FormattedEditableFloatSlider
-            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
             layout = pn.Column(params, self.param_equation)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             layout = pn.Row(pn.Param(self.input, show_name=False), self.indicator)
