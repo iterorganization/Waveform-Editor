@@ -86,7 +86,7 @@ class PlasmaShape(Viewer):
     def __init__(self):
         super().__init__()
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
-        self.gap_grid = pn.Column(visible=self.param.gap_ui.rx.bool())
+        self.gap_grid = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
