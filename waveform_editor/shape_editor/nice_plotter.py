@@ -66,6 +66,7 @@ class NicePlotter(param.Parameterized):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
+        self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
         flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
@@ -73,7 +74,7 @@ class NicePlotter(param.Parameterized):
             hv.DynamicMap(self._plot_coil_rectangles),
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_vacuum_vessel),
-            hv.DynamicMap(self._plot_desired_shape),
+            hv.DynamicMap(self._plot_plasma_shape),
         ]
         flux_map_overlay = (
             hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
@@ -123,13 +124,54 @@ class NicePlotter(param.Parameterized):
             hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
-    @pn.depends("plasma_shape.shape_curve", "show_desired_shape")
-    def _plot_desired_shape(self):
-        if self.show_desired_shape:
-            curve = self.plasma_shape.shape_curve
+    @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
+    def _plot_plasma_shape(self):
+        if not self.show_desired_shape or not self.plasma_shape.has_shape:
+            return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
+
+        r = self.plasma_shape.outline_r
+        z = self.plasma_shape.outline_z
+
+        if self.plasma_shape.input_mode == self.plasma_shape.GAP_INPUT:
+            return self._plot_gaps(r, z)
         else:
-            curve = hv.Curve([])
-        return curve.opts(color="blue")
+            return self._plot_outline_shape(r, z)
+
+    def _plot_outline_shape(self, r, z):
+        """Plots closed plasma outline curve.
+
+        Args:
+            r: Radial coordinates of the outline.
+            z: Height coordinates of the outline.
+
+        Returns:
+            Holoviews overlay with the outline curve.
+        """
+        if r[0] != r[-1] or z[0] != z[-1]:
+            r = np.append(r, r[0])
+            z = np.append(z, z[0])
+
+        return hv.Overlay([hv.Curve((r, z)).opts(self.DESIRED_SHAPE_OPTS)])
+
+    def _plot_gaps(self, r, z):
+        """Plots the reference point, value and the desired boundary point of the gaps.
+
+        Args:
+            r: Radial coordinates of the outline.
+            z: Height coordinates of the outline.
+
+        Returns:
+            Holoviews overlay containing gap representation.
+        """
+        plot_elements = [hv.Scatter((r, z)).opts(color="blue", size=4)]
+        for gap in self.plasma_shape.gaps:
+            plot_elements.append(
+                hv.Scatter(([gap.r], [gap.z])).opts(color="red", size=6)
+            )
+            plot_elements.append(
+                hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(color="black")
+            )
+        return hv.Overlay(plot_elements)
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):
