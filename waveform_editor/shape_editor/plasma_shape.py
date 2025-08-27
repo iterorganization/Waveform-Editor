@@ -48,8 +48,16 @@ class Gap:
     z: float  # Height of the reference point
     angle: float
     value: float
-    r_sep: float  # Major radius of the point on the desired separatrix
-    z_sep: float  # Height of the point on the desired separatrix
+
+    @property
+    def r_sep(self):
+        """Major radius of the point on the desired separatrix"""
+        return self.r + self.value * math.cos(-self.angle)
+
+    @property
+    def z_sep(self):
+        """Height of the point on the desired separatrix"""
+        return self.z + self.value * math.sin(-self.angle)
 
 
 class PlasmaShape(Viewer):
@@ -90,7 +98,8 @@ class PlasmaShape(Viewer):
     @param.depends("gap_ui", watch=True)
     def _update_gap_grid(self):
         """Update the gap grid when gap_ui changes."""
-        self.gap_grid.objects = self.gap_ui
+        self.gap_grid.clear()
+        self.gap_grid.extend(self.gap_ui)
 
     @pn.depends(
         "shape_params.param",
@@ -152,9 +161,6 @@ class PlasmaShape(Viewer):
 
             self.gaps = []
             for gap in input_gaps:
-                r_sep = gap.r + gap.value * math.cos(-gap.angle)
-                z_sep = gap.z + gap.value * math.sin(-gap.angle)
-
                 self.gaps.append(
                     Gap(
                         r=gap.r,
@@ -162,8 +168,6 @@ class PlasmaShape(Viewer):
                         name=gap.name,
                         angle=gap.angle,
                         value=gap.value,
-                        r_sep=r_sep,
-                        z_sep=z_sep,
                     )
                 )
 
@@ -202,13 +206,6 @@ class PlasmaShape(Viewer):
             angle_widget, value_widget = input_row.objects
             self.gaps[i].angle = angle_widget.value
             self.gaps[i].value = value_widget.value
-
-            self.gaps[i].r_sep = self.gaps[i].r + self.gaps[i].value * math.cos(
-                -self.gaps[i].angle
-            )
-            self.gaps[i].z_sep = self.gaps[i].z + self.gaps[i].value * math.sin(
-                -self.gaps[i].angle
-            )
 
     def _create_gap_ui(self):
         """Create the UI for each gap and populate the gap_ui list."""
