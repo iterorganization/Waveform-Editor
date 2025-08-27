@@ -46,9 +46,14 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings = settings.nice
 
-        self.xml_params = ET.fromstring(
+        self.xml_params_inv = ET.fromstring(
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("param.xml")
+            .joinpath("inverse_param.xml")
+            .read_text()
+        )
+        self.xml_params_dir = ET.fromstring(
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath("direct_param.xml")
             .read_text()
         )
 
@@ -220,16 +225,21 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
+        if self.nice_mode == self.DIRECT_MODE:
+            xml_params = self.xml_params_dir
+        else:
+            xml_params = self.xml_params_inv
+
         # Update XML parameters:
-        self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
-        self.xml_params.find("verbose").text = str(self.nice_settings.verbose)
+        self.coil_currents.update_fixed_coils_in_xml(xml_params)
+        xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run(
                 is_direct_mode=(self.nice_mode == self.DIRECT_MODE)
             )
         await self.communicator.submit(
-            ET.tostring(self.xml_params, encoding="unicode"),
+            ET.tostring(xml_params, encoding="unicode"),
             equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
@@ -239,7 +249,6 @@ class ShapeEditor(Viewer):
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
     async def stop_nice(self, event):
-        print("stopping nice")
         await self.communicator.close()
 
     def __panel__(self):
