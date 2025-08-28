@@ -1,4 +1,8 @@
 <?xml version="1.0"?>
+<!-- Taken from: https://gitlab.inria.fr/blfauger/nice
+     Path: nice/run/iwrap/param/dir/param.xml
+     Author: Blaise Faugeras
+     License: LGPL -->
 <parameters>
   <verbose>1</verbose>
   <!-- overwritten by shape editor -->
