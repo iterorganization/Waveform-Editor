@@ -16,9 +16,10 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
-    REQUIRED = (
-        "inv_executable",
-        "dir_executable",
+    INVERSE_MODE = "NICE Inverse"
+    DIRECT_MODE = "NICE Direct"
+
+    BASE_REQUIRED = (
         "md_pf_active",
         "md_pf_passive",
         "md_wall",
@@ -43,10 +44,6 @@ class NiceSettings(param.Parameterized):
     md_iron_core = param.String(label="'iron_core' machine description URI")
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
 
-    @param.depends(*REQUIRED)
-    def required_params_filled(self):
-        return all(getattr(self, required) for required in self.REQUIRED)
-
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
         for key in list(params):
@@ -59,21 +56,23 @@ class NiceSettings(param.Parameterized):
         """Returns a dictionary representation of current parameter values."""
         return {p: getattr(self, p) for p in self.param if p != "name"}
 
-    def panel(self):
+    def panel(self, nice_mode):
         items = []
 
         for p in self.param:
             if p == "name":
-                pass
-            elif p in self.REQUIRED:
-                items.append(
-                    pn.Row(
-                        pn.Param(self.param[p], show_name=False),
-                        WarningIndicator(visible=self.param[p].rx.not_()),
-                    )
-                )
-            else:
-                items.append(pn.Param(self.param[p], show_name=False))
+                continue
+
+            is_inv_required = p == "inv_executable" and nice_mode == self.INVERSE_MODE
+            is_dir_required = p == "dir_executable" and nice_mode == self.DIRECT_MODE
+            is_base_required = p in self.BASE_REQUIRED
+
+            row_content = [pn.Param(self.param[p], show_name=False)]
+            if is_inv_required or is_dir_required or is_base_required:
+                warning = WarningIndicator(visible=self.param[p].rx.not_())
+                row_content.append(warning)
+
+            items.append(pn.Row(*row_content))
 
         return pn.Column(*items)
 

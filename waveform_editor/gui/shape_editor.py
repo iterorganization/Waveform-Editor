@@ -20,8 +20,6 @@ def _reactive_title(title, is_valid):
 
 
 class ShapeEditor(Viewer):
-    INVERSE_MODE = "NICE Inverse"
-    DIRECT_MODE = "NICE Direct"
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
@@ -31,7 +29,8 @@ class ShapeEditor(Viewer):
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
     nice_mode = param.Selector(
-        objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE
+        objects=[NiceSettings.INVERSE_MODE, NiceSettings.DIRECT_MODE],
+        default=NiceSettings.INVERSE_MODE,
     )
 
     def __init__(self):
@@ -62,10 +61,10 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
-                & (self.param.nice_mode.rx() != self.DIRECT_MODE)
+                & (self.param.nice_mode.rx() != NiceSettings.DIRECT_MODE)
             )
             | self.plasma_properties.param.has_properties.rx.not_()
-            | param.rx(self.nice_settings.required_params_filled).rx.not_()
+            | param.rx(self.required_nice_settings_filled).rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
@@ -76,9 +75,9 @@ class ShapeEditor(Viewer):
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
-                self.nice_settings.panel,
+                pn.bind(self.nice_settings.panel, nice_mode=self.param.nice_mode),
                 "NICE Configuration",
-                is_valid=param.rx(self.nice_settings.required_params_filled),
+                is_valid=param.rx(self.required_nice_settings_filled),
             ),
             self._create_card(
                 pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
@@ -87,7 +86,9 @@ class ShapeEditor(Viewer):
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
-                visible=self.param.nice_mode.rx.pipe(lambda m: m != self.DIRECT_MODE),
+                visible=self.param.nice_mode.rx.pipe(
+                    lambda m: m != NiceSettings.DIRECT_MODE
+                ),
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -109,6 +110,28 @@ class ShapeEditor(Viewer):
         )
 
         self.param.watch(self.stop_nice, "nice_mode")
+
+    @param.depends(
+        "nice_mode",
+        *(f"nice_settings.{p}" for p in NiceSettings.BASE_REQUIRED),
+        "nice_settings.inv_executable",
+        "nice_settings.dir_executable",
+    )
+    def required_nice_settings_filled(self):
+        """Checks if all required base settings and the mode-specific
+        executable are filled."""
+        base_ready = all(
+            getattr(self.nice_settings, p) for p in self.nice_settings.BASE_REQUIRED
+        )
+        if not base_ready:
+            return False
+
+        if self.nice_mode == NiceSettings.INVERSE_MODE:
+            return bool(self.nice_settings.inv_executable)
+        elif self.nice_mode == NiceSettings.DIRECT_MODE:
+            return bool(self.nice_settings.dir_executable)
+
+        return False
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
@@ -153,12 +176,12 @@ class ShapeEditor(Viewer):
 
         if self.communicator.pf_active:
             self.coil_currents.create_ui(
-                self.communicator.pf_active, self.nice_mode == self.INVERSE_MODE
+                self.communicator.pf_active, self.nice_mode == NiceSettings.INVERSE_MODE
             )
             return
 
         self.coil_currents.create_ui(
-            self.pf_active, self.nice_mode == self.INVERSE_MODE
+            self.pf_active, self.nice_mode == NiceSettings.INVERSE_MODE
         )
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
