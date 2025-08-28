@@ -11,13 +11,13 @@ class CoilCurrents(Viewer):
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
 
-    def __init__(self):
+    def __init__(self, guide_msg_visible=True):
         super().__init__()
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
             " the desired current value._",
-            visible=self.param.coil_ui.rx.bool(),
+            visible=self.param.coil_ui.rx.bool() & guide_msg_visible,
             margin=(0, 10),
         )
         no_ids_message = pn.pane.Markdown(
@@ -30,13 +30,13 @@ class CoilCurrents(Viewer):
     def _update_slider_grid(self):
         self.sliders_ui.objects = self.coil_ui
 
-    def create_ui(self, pf_active, is_inverse):
+    def create_ui(self, pf_active, is_direct_mode):
         """Create the UI for each coil in the provided pf_active IDS. For each coil a
         checkbox and slider are added to fix, and set the current value, respectively.
 
         Args:
             pf_active: pf_active IDS containing coils with current values.
-            is_inverse: Whether it is being run in inverse mode. If it is not in inverse
+            is_direct_mode: Whether it is being run in direct mode. If it is in direct
                 mode, no checkboxes are drawn, and sliders are always enabled.
         """
         if not pf_active:
@@ -47,7 +47,9 @@ class CoilCurrents(Viewer):
         for coil in pf_active.coil:
             coil_current = coil.current
             checkbox = pn.widgets.Checkbox(
-                value=not is_inverse, margin=(30, 10, 10, 10), visible=is_inverse
+                value=is_direct_mode,
+                margin=(30, 10, 10, 10),
+                visible=not is_direct_mode,
             )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",

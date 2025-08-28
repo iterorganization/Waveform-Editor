@@ -181,11 +181,9 @@ class NiceIntegration(param.Parameterized):
         nice_env["MUSCLE_MANAGER"] = manager_location
 
         if is_direct_mode:
-            self.terminal.write("Running NICE in DIRECT mode.\n")
             executable = settings.nice.dir_executable
             nice_env["MUSCLE_INSTANCE"] = "nice_dir"
         else:
-            self.terminal.write("Running NICE in INVERSE mode.\n")
             executable = settings.nice.inv_executable
             nice_env["MUSCLE_INSTANCE"] = "nice_inv"
 

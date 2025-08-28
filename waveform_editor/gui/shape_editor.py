@@ -1,4 +1,5 @@
 import importlib.resources
+import logging
 import xml.etree.ElementTree as ET
 
 import imas
@@ -13,6 +14,8 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
+
+logger = logging.getLogger(__name__)
 
 
 def _reactive_title(title, is_valid):
@@ -39,7 +42,9 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents()
+        self.coil_currents = CoilCurrents(
+            guide_msg_visible=self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
+        )
         self.nice_plotter = NicePlotter(
             self.communicator, self.plasma_shape, self.plasma_properties
         )
@@ -61,7 +66,7 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
-                & (self.param.nice_mode.rx() != NiceSettings.DIRECT_MODE)
+                & (self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE)
             )
             | self.plasma_properties.param.has_properties.rx.not_()
             | param.rx(self.required_nice_settings_filled).rx.not_()
@@ -86,9 +91,7 @@ class ShapeEditor(Viewer):
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
-                visible=self.param.nice_mode.rx.pipe(
-                    lambda m: m != NiceSettings.DIRECT_MODE
-                ),
+                visible=self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE,
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -109,8 +112,6 @@ class ShapeEditor(Viewer):
             ),
         )
 
-        self.param.watch(self.stop_nice, "nice_mode")
-
     @param.depends(
         "nice_mode",
         *(f"nice_settings.{p}" for p in NiceSettings.BASE_REQUIRED),
@@ -128,10 +129,8 @@ class ShapeEditor(Viewer):
 
         if self.nice_mode == NiceSettings.INVERSE_MODE:
             return bool(self.nice_settings.inv_executable)
-        elif self.nice_mode == NiceSettings.DIRECT_MODE:
+        else:
             return bool(self.nice_settings.dir_executable)
-
-        return False
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
@@ -169,20 +168,25 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
-    @param.depends("nice_settings.md_pf_active", "nice_mode", watch=True)
+    @param.depends("nice_mode", "pf_active", watch=True)
+    def _update_coil_currents_ui(self):
+        is_direct_mode = self.nice_mode == NiceSettings.DIRECT_MODE
+
+        # Set the coil current sliders to previous result, if possible
+        pf_active = self.communicator.pf_active or self.pf_active
+        self.coil_currents.create_ui(pf_active, is_direct_mode)
+
+    @param.depends("nice_settings.md_pf_active", watch=True)
     def _load_pf_active(self):
-        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
+        new_pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
+
+        # Clear the old result
+        if new_pf_active:
+            self.communicator.pf_active = None
+
+        self.pf_active = new_pf_active
         self.nice_plotter.pf_active = self.pf_active
 
-        if self.communicator.pf_active:
-            self.coil_currents.create_ui(
-                self.communicator.pf_active, self.nice_mode == NiceSettings.INVERSE_MODE
-            )
-            return
-
-        self.coil_currents.create_ui(
-            self.pf_active, self.nice_mode == NiceSettings.INVERSE_MODE
-        )
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
@@ -223,7 +227,7 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
         # Only fill plasma shape for NICE inverse mode
-        if self.nice_mode == self.INVERSE_MODE:
+        if self.nice_mode == NiceSettings.INVERSE_MODE:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
             equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
 
@@ -248,7 +252,7 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        if self.nice_mode == self.DIRECT_MODE:
+        if self.nice_mode == NiceSettings.DIRECT_MODE:
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
@@ -259,7 +263,7 @@ class ShapeEditor(Viewer):
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run(
-                is_direct_mode=(self.nice_mode == self.DIRECT_MODE)
+                is_direct_mode=(self.nice_mode == NiceSettings.DIRECT_MODE)
             )
         await self.communicator.submit(
             ET.tostring(xml_params, encoding="unicode"),
@@ -271,7 +275,9 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
-    async def stop_nice(self, event):
+    @param.depends("nice_mode", watch=True)
+    async def stop_nice(self, event=None):
+        logger.info("Stopping NICE...")
         await self.communicator.close()
 
     def __panel__(self):
