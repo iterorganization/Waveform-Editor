@@ -310,28 +310,19 @@ def run_muscle3_communicator(
     os.environ["MUSCLE_INSTANCE"] = "shape_editor"
     os.environ["MUSCLE_MANAGER"] = server_location
 
-    if is_direct_mode:
-        ports = {
-            Operator.O_I: [
-                "equilibrium_out",
-                "pf_active_out",
-                "pf_passive_out",
-                "wall_out",
-                "iron_core_out",
-            ],
-            Operator.S: ["equilibrium_in"],
-        }
-    else:  # Inverse mode
-        ports = {
-            Operator.O_I: [
-                "equilibrium_out",
-                "pf_active_out",
-                "pf_passive_out",
-                "wall_out",
-                "iron_core_out",
-            ],
-            Operator.S: ["equilibrium_in", "pf_active_in"],
-        }
+    ports = {
+        Operator.O_I: [
+            "equilibrium_out",
+            "pf_active_out",
+            "pf_passive_out",
+            "wall_out",
+            "iron_core_out",
+        ],
+        Operator.S: ["equilibrium_in"],
+    }
+    if not is_direct_mode:
+        ports[Operator.S].append("pf_active_in")
+
     instance = Instance(ports)
 
     while instance.reuse_instance():
