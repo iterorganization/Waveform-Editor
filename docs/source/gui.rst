@@ -248,11 +248,5 @@ The following parameterizations are used:
 Here, :math:`\psi_N` is the normalized poloidal magnetic flux, :math:`r_0` is the major 
 radius of the vacuum chamber, and :math:`\mu_0` is constant magnetic permeability of vacuum.
 
-Interpretations of the parameters:
-
-* **alpha**: Depends on plasma confinement mode (Ramp up/L-mode: 1; H-mode: 0.5; End of ramp down/runaway beam: 2).
-* **beta**: Approximately proportional to poloidal beta (typically 0.5-2). (set to 0.5 if don’t know).
-* **gamma**: Related to internal inductance (typically 0.5-2, generally near 1).
-
-For a detailed explanation, please refer to the following paper (eq 2.11): `B. Cédric, et al. "CÉDRÈS: a free-boundary solver 
+The parameter **beta** is related to the poloidal beta, whereas **alpha** and **gamma** describe the peakage of the current profile. See equation 2.11 in `B. Cédric, et al. "CÉDRÈS: a free-boundary solver 
 for the Grad–Shafranov equation." (2014) <https://inria.hal.science/hal-01088772/file/CedresRefPaper.pdf>`_
