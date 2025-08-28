@@ -8,7 +8,9 @@ import panel as pn
 import param
 import scipy
 from imas.ids_toplevel import IDSToplevel
+from panel.viewable import Viewer
 
+from waveform_editor.settings import NiceSettings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
@@ -17,13 +19,14 @@ matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
-class NicePlotter(param.Parameterized):
+class NicePlotter(Viewer):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
+    nice_mode = param.Parameter(precedence=-1, allow_refs=True)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -45,12 +48,15 @@ class NicePlotter(param.Parameterized):
     PROFILE_WIDTH = 350
     PROFILE_HEIGHT = 350
 
-    def __init__(self, communicator, plasma_shape, plasma_properties, **params):
+    def __init__(
+        self, communicator, plasma_shape, plasma_properties, nice_mode, **params
+    ):
         super().__init__(
             **params,
             communicator=communicator,
             plasma_shape=plasma_shape,
             plasma_properties=plasma_properties,
+            nice_mode=nice_mode,
         )
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
@@ -124,9 +130,13 @@ class NicePlotter(param.Parameterized):
             hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
-    @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
+    @pn.depends("plasma_shape.shape_updated", "show_desired_shape", "nice_mode")
     def _plot_plasma_shape(self):
-        if not self.show_desired_shape or not self.plasma_shape.has_shape:
+        if (
+            self.nice_mode == NiceSettings.DIRECT_MODE
+            or not self.show_desired_shape
+            or not self.plasma_shape.has_shape
+        ):
             return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
         r = self.plasma_shape.outline_r
@@ -388,3 +398,17 @@ class NicePlotter(param.Parameterized):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
+
+    def __panel__(self):
+        return (
+            pn.Param(
+                self.param,
+                show_name=False,
+                widgets={
+                    "show_desired_shape": {
+                        "visible": self.param.nice_mode.rx()
+                        == NiceSettings.INVERSE_MODE
+                    }
+                },
+            ),
+        )

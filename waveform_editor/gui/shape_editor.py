@@ -42,11 +42,12 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents(
-            guide_msg_visible=self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
-        )
+        self.coil_currents = CoilCurrents(self.param.nice_mode.rx())
         self.nice_plotter = NicePlotter(
-            self.communicator, self.plasma_shape, self.plasma_properties
+            self.communicator,
+            self.plasma_shape,
+            self.plasma_properties,
+            self.param.nice_mode,
         )
         self.nice_settings = settings.nice
 
@@ -84,9 +85,7 @@ class ShapeEditor(Viewer):
                 "NICE Configuration",
                 is_valid=param.rx(self.required_nice_settings_filled),
             ),
-            self._create_card(
-                pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
-            ),
+            self._create_card(self.nice_plotter, "Plotting Parameters"),
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
