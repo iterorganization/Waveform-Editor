@@ -24,9 +24,9 @@ class PlasmaPropertiesParams(param.Parameterized):
     b0 = param.Number(
         default=-5.3, softbounds=[-10, 10], label="Toroidal field at R0 [T]"
     )
-    alpha = param.Number(default=0.5, softbounds=[0.5, 2], label="Alpha")
-    beta = param.Number(default=0.5, step=0.01, softbounds=[0.5, 2], label="Beta")
-    gamma = param.Number(default=1.0, softbounds=[0.5, 2], label="Gamma")
+    alpha = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01, label="Alpha")
+    beta = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01, label="Beta")
+    gamma = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01, label="Gamma")
 
 
 class PlasmaProperties(Viewer):
