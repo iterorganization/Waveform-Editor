@@ -12,7 +12,7 @@ from waveform_editor.gui.util import (
 )
 
 
-class PlasmaPropertiesParams(param.Parameterized):
+class PlasmaPropertiesParams(Viewer):
     """Helper class containing parameters defining the plasma properties."""
 
     ip = param.Number(
@@ -27,6 +27,13 @@ class PlasmaPropertiesParams(param.Parameterized):
     alpha = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01, label="Alpha")
     beta = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01, label="Beta")
     gamma = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01, label="Gamma")
+
+    def __panel__(self):
+        widgets = {}
+        for name in self.param:
+            if isinstance(self.param[name], param.Number):
+                widgets[name] = FormattedEditableFloatSlider
+        return pn.Param(self.param, widgets=widgets, show_name=False)
 
 
 class PlasmaProperties(Viewer):
@@ -135,13 +142,9 @@ class PlasmaProperties(Viewer):
     @param.depends("input_mode")
     def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
-            params = pn.Param(show_name=False)
-            params.mapping[param.Number] = FormattedEditableFloatSlider
-            params.object = self.properties_params
-            layout = pn.Column(params, self.param_equation)
+            return pn.Column(self.properties_params, self.param_equation)
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            layout = pn.Row(pn.Param(self.input, show_name=False), self.indicator)
-        return layout
+            return pn.Row(pn.Param(self.input, show_name=False), self.indicator)
 
     def __panel__(self):
         return self.panel
