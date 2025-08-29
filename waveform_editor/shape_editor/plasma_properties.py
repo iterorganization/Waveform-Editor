@@ -62,17 +62,6 @@ class PlasmaProperties(Viewer):
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
         self.panel = pn.Column(self.radio_box, self._panel_property_options)
-        self.param_equation = pn.Column(
-            pn.pane.Markdown("### p' and ff' parameterizations:"),
-            pn.pane.LaTeX(
-                r"""
-        $\begin{aligned}
-        p'(\psi_N) \propto& \frac{\beta}{r_0} \big(1 - \psi_N^\alpha\big)^\gamma \\
-        ff'(\psi_N) \propto& (1 - \beta) \mu_0 r_0 \big(1 - \psi_N^\alpha\big)^\gamma
-        \end{aligned}$
-        """
-            ),
-        )
         self.dpressure_dpsi = None
         self.f_df_dpsi = None
         self.psi_norm = None
@@ -142,7 +131,7 @@ class PlasmaProperties(Viewer):
     @param.depends("input_mode")
     def _panel_property_options(self):
         if self.input_mode == self.MANUAL_INPUT:
-            return pn.Column(self.properties_params, self.param_equation)
+            return self.properties_params
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
             return pn.Row(pn.Param(self.input, show_name=False), self.indicator)
 
