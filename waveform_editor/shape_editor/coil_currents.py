@@ -14,8 +14,8 @@ class CoilCurrents(Viewer):
     )
     nice_mode = param.Parameter(allow_refs=True)
 
-    def __init__(self, nice_mode):
-        super().__init__(nice_mode=nice_mode)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "

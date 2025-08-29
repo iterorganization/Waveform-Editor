@@ -42,12 +42,12 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents(self.param.nice_mode)
+        self.coil_currents = CoilCurrents(nice_mode=self.param.nice_mode)
         self.nice_plotter = NicePlotter(
-            self.communicator,
-            self.plasma_shape,
-            self.plasma_properties,
-            self.param.nice_mode,
+            communicator=self.communicator,
+            plasma_shape=self.plasma_shape,
+            plasma_properties=self.plasma_properties,
+            nice_mode=self.param.nice_mode,
         )
         self.nice_settings = settings.nice
 

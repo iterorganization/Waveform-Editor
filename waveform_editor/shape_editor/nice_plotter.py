@@ -48,16 +48,8 @@ class NicePlotter(Viewer):
     PROFILE_WIDTH = 350
     PROFILE_HEIGHT = 350
 
-    def __init__(
-        self, communicator, plasma_shape, plasma_properties, nice_mode, **params
-    ):
-        super().__init__(
-            **params,
-            communicator=communicator,
-            plasma_shape=plasma_shape,
-            plasma_properties=plasma_properties,
-            nice_mode=nice_mode,
-        )
+    def __init__(self, **params):
+        super().__init__(**params)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
