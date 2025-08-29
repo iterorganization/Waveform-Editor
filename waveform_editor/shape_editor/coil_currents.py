@@ -5,22 +5,19 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.settings import NiceSettings
-
 
 class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
 
-    def __init__(self, nice_mode):
+    def __init__(self):
         super().__init__()
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
             " the desired current value._",
-            visible=self.param.coil_ui.rx.bool()
-            & (nice_mode == NiceSettings.INVERSE_MODE),
+            visible=self.param.coil_ui.rx.bool(),
             margin=(0, 10),
         )
         no_ids_message = pn.pane.Markdown(
@@ -52,7 +49,7 @@ class CoilCurrents(Viewer):
             checkbox = pn.widgets.Checkbox(
                 value=is_direct_mode,
                 margin=(30, 10, 10, 10),
-                visible=not is_direct_mode,
+                disabled=is_direct_mode,
             )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
