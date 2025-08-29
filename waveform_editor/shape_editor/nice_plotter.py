@@ -400,15 +400,12 @@ class NicePlotter(Viewer):
         return o_scatter * x_scatter
 
     def __panel__(self):
-        return (
-            pn.Param(
-                self.param,
-                show_name=False,
-                widgets={
-                    "show_desired_shape": {
-                        "visible": self.param.nice_mode.rx()
-                        == NiceSettings.INVERSE_MODE
-                    }
-                },
-            ),
+        return pn.Param(
+            self.param,
+            show_name=False,
+            widgets={
+                "show_desired_shape": {
+                    "visible": self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
+                }
+            },
         )
