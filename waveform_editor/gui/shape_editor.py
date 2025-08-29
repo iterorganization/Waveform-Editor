@@ -42,7 +42,7 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents()
+        self.coil_currents = CoilCurrents(self.param.nice_mode)
         self.nice_plotter = NicePlotter(
             self.communicator,
             self.plasma_shape,
@@ -167,25 +167,11 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
-    @param.depends("nice_mode", "pf_active", watch=True)
-    def _update_coil_currents_ui(self):
-        is_direct_mode = self.nice_mode == NiceSettings.DIRECT_MODE
-
-        # Set the coil current sliders to previous result, if possible
-        pf_active = self.communicator.pf_active or self.pf_active
-        self.coil_currents.create_ui(pf_active, is_direct_mode)
-
     @param.depends("nice_settings.md_pf_active", watch=True)
     def _load_pf_active(self):
-        new_pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
-
-        # Clear the old result
-        if new_pf_active:
-            self.communicator.pf_active = None
-
-        self.pf_active = new_pf_active
+        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
-
+        self.coil_currents.create_ui(self.pf_active)
         if not self.pf_active:
             self.nice_settings.md_pf_active = ""
 
@@ -255,9 +241,9 @@ class ShapeEditor(Viewer):
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
+            self.coil_currents.update_fixed_coils_in_xml(xml_params)
 
         # Update XML parameters:
-        self.coil_currents.update_fixed_coils_in_xml(xml_params)
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
