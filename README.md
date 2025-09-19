@@ -6,6 +6,8 @@ are described using descriptive tendencies, such as sine waves or linear ramps. 
 Waveform Editor includes a GUI for interactive creation, editing, and organization of
 waveforms.
 
+![GUI of the Waveform Editor](docs/source/images/gui/editor.png)
+
 ## Development Status 
 
 This project is currently under active development. While a functional prototype and
