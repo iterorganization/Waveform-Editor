@@ -75,6 +75,14 @@ class CoilCurrents(Viewer):
             _, slider = coil_ui.objects
             pf_active.coil[i].current.data = np.array([slider.value])
 
+    def get(self):
+        coil_currents = []
+        for coil_ui in self.coil_ui:
+            _, slider = coil_ui.objects
+            coil_currents.append(slider.value)
+
+        return coil_currents
+
     def sync_ui_with_pf_active(self, pf_active):
         """Synchronize UI sliders with the current values from the pf_active IDS.
 
