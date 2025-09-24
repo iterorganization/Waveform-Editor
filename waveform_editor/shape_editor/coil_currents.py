@@ -18,7 +18,6 @@ class CoilCurrents(Viewer):
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
     export_time = param.Number(doc="Time to export coil currents to")
-    coil_export_valid = param.Boolean()
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
@@ -36,26 +35,14 @@ class CoilCurrents(Viewer):
             visible=self.param.coil_ui.rx.not_(),
         )
 
-        modal_text = pn.pane.Markdown("## Enter a time to store coil currents")
-        modal_input = pn.widgets.FloatInput.from_param(self.param.export_time)
+        export_time_input = pn.widgets.FloatInput.from_param(self.param.export_time)
         confirm_button = pn.widgets.Button(
             on_click=lambda event: self._store_coil_currents(),
-            name="Store Coil Currents",
-            disabled=self.param.coil_export_valid.rx.not_(),
-        )
-        modal_alert = pn.pane.Alert(
-            "### Export time must be later than the end of any existing waveforms",
-            alert_type="danger",
-            visible=self.param.coil_export_valid.rx.not_(),
-        )
-        modal_content = pn.Column(modal_text, modal_input, modal_alert, confirm_button)
-        self.modal = pn.Modal(modal_content, open=False)
-        button_store = pn.widgets.Button(
-            on_click=lambda event: self._open_modal(),
-            name="Store Coil Currents",
+            name="Save Currents as Waveforms",
+            margin=30,
         )
         self.panel = pn.Column(
-            pn.Row(button_store, no_ids_message),
+            pn.Row(export_time_input, confirm_button, no_ids_message),
             guide_message,
             self.sliders_ui,
             self.modal,
@@ -113,16 +100,27 @@ class CoilCurrents(Viewer):
         self.coil_ui = new_coil_ui
 
     def _store_coil_currents(self):
-        self.modal.hide()
         coil_currents = self._get_currents()
         config = self.main_gui.config
         new_waveforms_created = False
+
+        for i in range(len(self.coil_ui)):
+            name = f"pf_active/coil({i + 1})/current/data"
+            if name in self.main_gui.config.waveform_map:
+                tendencies = self.main_gui.config[name].tendencies
+                if tendencies:
+                    end_time = tendencies[-1].end
+                    if end_time >= self.export_time:
+                        pn.state.notifications.error(
+                            "Export time must be later than the end of any existing waveforms"
+                        )
+                        return
 
         for i, current in enumerate(coil_currents):
             name = f"pf_active/coil({i + 1})/current/data"
             eps = 1e-100
             # Piecewise tendencies must contain at least two points
-            new_piecewise = f"- {{type: piecewise, time: [{self.export_time - eps}, {self.export_time}], value: [{current}, {current}]}}"
+            new_piecewise = f"- {{type: piecewise, time: [{self.export_time}, {self.export_time + eps}], value: [{current}, {current}]}}"
             if not name in config.waveform_map:
                 group_name = "Coil Currents"
                 if group_name not in config.groups:
