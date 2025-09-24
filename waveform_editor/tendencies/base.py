@@ -117,23 +117,6 @@ class BaseTendency(param.Parameterized):
         self._handle_unknown_kwargs(unknown_kwargs)
         self.values_changed = True
 
-    def to_yaml_entry(self):
-        """Return a dict containing only user-defined parameters for YAML."""
-        entry = {"type": self.__class__.__name__.replace("Tendency", "").lower()}
-
-        for param_name in self.param:
-            if param_name.startswith("user_"):
-                value = getattr(self, param_name)
-                if value is not None:
-                    if isinstance(value, np.floating):
-                        value = float(value)
-                    elif isinstance(value, np.integer):
-                        value = int(value)
-
-                    key = param_name.replace("user_", "", 1)
-                    entry[key] = value
-        return entry
-
     def _handle_error(self, error):
         """Handle exceptions raised by param assignment and add them as annotations.
 

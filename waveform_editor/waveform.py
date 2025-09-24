@@ -6,7 +6,6 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
 from waveform_editor.base_waveform import BaseWaveform
-from waveform_editor.tendencies.base import BaseTendency
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -225,22 +224,6 @@ class Waveform(BaseWaveform):
             self.annotations.add(line_number, error_msg)
             return True
         return False
-
-    def append_tendency(self, tendency):
-        """Appends a Tendency object directly to the waveform."""
-
-        if not isinstance(tendency, BaseTendency):
-            raise TypeError("Expected a Tendency object.")
-
-        if self.tendencies:
-            prev_tendency = self.tendencies[-1]
-            prev_tendency.set_next_tendency(tendency)
-            tendency.set_previous_tendency(prev_tendency)
-
-        self.tendencies.append(tendency)
-        tendency.param.watch(self.update_annotations, "annotations")
-        self.update_annotations()
-        self.yaml.append(tendency.to_yaml_entry())
 
     def get_yaml_string(self):
         """Converts the internal YAML waveform description to a string.

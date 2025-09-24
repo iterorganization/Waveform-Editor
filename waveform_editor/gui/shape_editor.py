@@ -15,7 +15,6 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
-from waveform_editor.tendencies.linear import LinearTendency
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +35,11 @@ class ShapeEditor(Viewer):
 
     def __init__(self, main_gui):
         super().__init__()
-        self.main_gui = main_gui
         self.factory = imas.IDSFactory()
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents()
+        self.coil_currents = CoilCurrents(main_gui)
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,

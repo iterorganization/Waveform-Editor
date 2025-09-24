@@ -5,6 +5,11 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.tendencies.linear import LinearTendency
+from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.waveform import Waveform
+
 from waveform_editor.settings import settings
 
 
@@ -12,10 +17,13 @@ class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
+    export_time = param.Number(doc="Time to export coil currents to")
+    coil_export_valid = param.Boolean()
 
-    def __init__(self, **params):
+    def __init__(self, main_gui, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
+        self.main_gui = main_gui
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
@@ -27,7 +35,47 @@ class CoilCurrents(Viewer):
             "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
             visible=self.param.coil_ui.rx.not_(),
         )
-        self.panel = pn.Column(no_ids_message, guide_message, self.sliders_ui)
+
+        modal_text = pn.pane.Markdown("## Enter a time to store coil currents")
+        modal_input = pn.widgets.FloatInput.from_param(self.param.export_time)
+        confirm_button = pn.widgets.Button(
+            on_click=lambda event: self._store_coil_currents(),
+            name="Store Coil Currents",
+            disabled=self.param.coil_export_valid.rx.not_(),
+        )
+        modal_alert = pn.pane.Alert(
+            "### Export time must be later than the end of any existing waveforms",
+            alert_type="danger",
+            visible=self.param.coil_export_valid.rx.not_(),
+        )
+        modal_content = pn.Column(modal_text, modal_input, modal_alert, confirm_button)
+        self.modal = pn.Modal(modal_content, open=False)
+        button_store = pn.widgets.Button(
+            on_click=lambda event: self._open_modal(),
+            name="Store Coil Currents",
+        )
+        self.panel = pn.Column(
+            pn.Row(button_store, no_ids_message),
+            guide_message,
+            self.sliders_ui,
+            self.modal,
+        )
+
+    def _open_modal(self):
+        self._coil_currents_valid()
+        self.modal.show()
+
+    @param.depends("export_time", watch=True)
+    def _coil_currents_valid(self):
+        self.coil_export_valid = True
+        for i in range(len(self.coil_ui)):
+            name = f"pf_active/coil({i + 1})/current/data"
+            if name in self.main_gui.config.waveform_map:
+                tendencies = self.main_gui.config[name].tendencies
+                if tendencies:
+                    end_time = tendencies[-1].end
+                    if end_time >= self.export_time:
+                        self.coil_export_valid = False
 
     @param.depends("coil_ui", watch=True)
     def _update_slider_grid(self):
@@ -64,6 +112,56 @@ class CoilCurrents(Viewer):
 
         self.coil_ui = new_coil_ui
 
+    def _store_coil_currents(self):
+        self.modal.hide()
+        coil_currents = self._get_currents()
+        config = self.main_gui.config
+        new_waveforms_created = False
+
+        for i, current in enumerate(coil_currents):
+            name = f"pf_active/coil({i + 1})/current/data"
+            eps = 1e-100
+            # Piecewise tendencies must contain at least two points
+            new_piecewise = f"- {{type: piecewise, time: [{self.export_time - eps}, {self.export_time}], value: [{current}, {current}]}}"
+            if not name in config.waveform_map:
+                group_name = "Coil Currents"
+                if group_name not in config.groups:
+                    config.add_group(group_name, [])
+                waveform = config.parser.parse_waveform(f"{name}:\n{new_piecewise}")
+                config.add_waveform(waveform, [group_name])
+                new_waveforms_created = True
+            else:
+                waveform = config[name]
+                if isinstance(waveform, DerivedWaveform):
+                    pn.state.error(
+                        f"Could not store coil current in {name}, because it is a derived waveform"
+                    )
+                    continue
+
+                last_tendency = waveform.tendencies[-1]
+                if isinstance(last_tendency, PiecewiseLinearTendency):
+                    waveform.yaml[-1]["time"].append(float(self.export_time))
+                    waveform.yaml[-1]["value"].append(float(current))
+                    yaml_str = f"{name}:\n{waveform.get_yaml_string()}"
+                else:
+                    end = waveform.tendencies[-1].end
+                    append_new_piecewise = f"- {{type: piecewise, time: [{end}, {self.export_time}], value: [{current}, {current}]}}"
+                    yaml_str = (
+                        f"{name}:\n{waveform.get_yaml_string()}{append_new_piecewise}"
+                    )
+                new_waveform = config.parse_waveform(yaml_str)
+                config.replace_waveform(new_waveform)
+
+        if new_waveforms_created:
+            self.main_gui.selector.refresh()
+            pn.state.notifications.warning(
+                f"Could not find an existing waveform to store the coil current. A new waveform is created in the {group_name!r} group"
+            )
+        else:
+            pn.state.notifications.success(
+                "The coil currents were appended to their respective waveforms."
+            )
+
     def fill_pf_active(self, pf_active):
         """Update the coil currents of the provided pf_active IDS. Only coils with
         their corresponding checkbox checked are updated.
@@ -75,7 +173,7 @@ class CoilCurrents(Viewer):
             _, slider = coil_ui.objects
             pf_active.coil[i].current.data = np.array([slider.value])
 
-    def get(self):
+    def _get_currents(self):
         coil_currents = []
         for coil_ui in self.coil_ui:
             _, slider = coil_ui.objects
