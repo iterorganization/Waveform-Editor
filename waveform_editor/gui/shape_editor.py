@@ -3,7 +3,6 @@ import logging
 import xml.etree.ElementTree as ET
 
 import imas
-import numpy as np
 import panel as pn
 import param
 from imas.ids_toplevel import IDSToplevel
@@ -72,10 +71,6 @@ class ShapeEditor(Viewer):
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
             self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
         )
-        button_store = pn.widgets.Button(
-            name="Store Coil Currents",
-            on_click=lambda event: self._store_coil_currents(),
-        )
         buttons = pn.Row(button_start, button_stop, nice_mode_radio)
 
         # Accordion does not allow dynamic titles, so use separate card for each option
@@ -110,23 +105,6 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
-
-    def _store_coil_currents(self):
-        # TODO:add option to change time
-        self.placeholder_time += 1
-        coil_currents = self.coil_currents.get()
-        config = self.main_gui.config
-
-        for idx, current in enumerate(coil_currents):
-            name = f"pf_active/coil({idx + 1})/current/data"
-            if name in config.waveform_map:
-                waveform = config[name]
-                tendency = LinearTendency(
-                    user_end=self.placeholder_time, user_to=current
-                )
-                waveform.append_tendency(tendency)
-            else:
-                pn.state.notifications.error(f"There is no waveform called: {name}")
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.

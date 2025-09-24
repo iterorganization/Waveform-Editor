@@ -6,18 +6,17 @@ import param
 from panel.viewable import Viewer
 
 from waveform_editor.derived_waveform import DerivedWaveform
-from waveform_editor.tendencies.linear import LinearTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
-from waveform_editor.waveform import Waveform
-
 from waveform_editor.settings import settings
+from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 
 
 class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
-    export_time = param.Number(doc="Time to export coil currents to")
+    export_time = param.Number(
+        doc="Select a time at which coil currents will be saved to waveforms"
+    )
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
@@ -39,30 +38,16 @@ class CoilCurrents(Viewer):
         confirm_button = pn.widgets.Button(
             on_click=lambda event: self._store_coil_currents(),
             name="Save Currents as Waveforms",
-            margin=30,
+            margin=(30, 0, 0, 0),
         )
         self.panel = pn.Column(
-            pn.Row(export_time_input, confirm_button, no_ids_message),
+            pn.Row(
+                export_time_input, confirm_button, visible=self.param.coil_ui.rx.bool()
+            ),
+            no_ids_message,
             guide_message,
             self.sliders_ui,
-            self.modal,
         )
-
-    def _open_modal(self):
-        self._coil_currents_valid()
-        self.modal.show()
-
-    @param.depends("export_time", watch=True)
-    def _coil_currents_valid(self):
-        self.coil_export_valid = True
-        for i in range(len(self.coil_ui)):
-            name = f"pf_active/coil({i + 1})/current/data"
-            if name in self.main_gui.config.waveform_map:
-                tendencies = self.main_gui.config[name].tendencies
-                if tendencies:
-                    end_time = tendencies[-1].end
-                    if end_time >= self.export_time:
-                        self.coil_export_valid = False
 
     @param.depends("coil_ui", watch=True)
     def _update_slider_grid(self):
@@ -99,66 +84,123 @@ class CoilCurrents(Viewer):
 
         self.coil_ui = new_coil_ui
 
-    def _store_coil_currents(self):
+    def _store_coil_currents(self, group_name="Coil Currents"):
+        """Store the current values from the coil UI sliders into the waveform
+        configuration.
+
+        Args:
+            group_name: Name of the group to create new coil current waveforms in if
+                they do not already exist.
+        """
         coil_currents = self._get_currents()
         config = self.main_gui.config
         new_waveforms_created = False
 
+        if not self._has_valid_export_time():
+            return
+
+        for i, current in enumerate(coil_currents):
+            name = f"pf_active/coil({i + 1})/current/data"
+            if name not in config.waveform_map:
+                if group_name not in config.groups:
+                    config.add_group(group_name, [])
+                self._create_new_waveform(config, name, current, group_name)
+                new_waveforms_created = True
+            else:
+                waveform = config[name]
+                if isinstance(waveform, DerivedWaveform):
+                    pn.state.notifications.error(
+                        f"Could not store coil current in waveform {name!r}, "
+                        "because it is a derived waveform"
+                    )
+                    continue
+                self._append_to_existing_waveform(config, name, current)
+
+        if new_waveforms_created:
+            self.main_gui.selector.refresh()
+            pn.state.notifications.warning(
+                "Could not find an existing waveform to store the coil current. "
+                f"New waveform(s) are created in the {group_name!r} group"
+            )
+        else:
+            pn.state.notifications.success(
+                "The values of the coil currents were appended to their respective "
+                "waveforms."
+            )
+
+    def _append_to_existing_waveform(self, config, name, current):
+        """Append coil current value to an existing waveform. If the last tendency is a
+        piecewise tendency, it is extended, otherwise a new piecewise tendency
+        is added.
+
+        Args:
+            config: The waveform configuration.
+            name: Name of the waveform.
+            current: Coil current value to append.
+        """
+        waveform = config[name]
+        last_tendency = waveform.tendencies[-1]
+
+        # Either append to existing piecewise linear tendency, or create new
+        # piecewise linear tendency
+        if isinstance(last_tendency, PiecewiseLinearTendency):
+            waveform.yaml[-1]["time"].append(float(self.export_time))
+            waveform.yaml[-1]["value"].append(float(current))
+            yaml_str = f"{name}:\n{waveform.get_yaml_string()}"
+        else:
+            end = waveform.tendencies[-1].end
+            new_piecewise = (
+                f"- {{type: piecewise, time: [{end}, {self.export_time}], "
+                f"value: [{current}, {current}]}}"
+            )
+            yaml_str = f"{name}:\n{waveform.get_yaml_string()}{new_piecewise}"
+
+        new_waveform = config.parse_waveform(yaml_str)
+        config.replace_waveform(new_waveform)
+
+    def _create_new_waveform(self, config, name, current, group_name):
+        """Create a new waveform for a coil current when none exists.
+
+        Args:
+            config: The waveform configuration.
+            name: Name of the waveform.
+            current: Coil current value to append.
+            group_name: Name of the group to place the new waveform in.
+        """
+        # Piecewise tendencies must contain at least two points
+        eps = 1e-9
+        new_piecewise = (
+            f"- {{type: piecewise, time: [{self.export_time - eps}, "
+            f"{self.export_time}], value: [{current}, {current}]}}"
+        )
+        waveform = config.parser.parse_waveform(f"{name}:\n{new_piecewise}")
+        config.add_waveform(waveform, [group_name])
+
+    def _has_valid_export_time(self):
+        """Check whether the export time is later than the last tendency endpoint
+        in all existing coil current waveforms.
+
+        Returns:
+            True if export time is valid, False otherwise.
+        """
+        latest_time = None
         for i in range(len(self.coil_ui)):
             name = f"pf_active/coil({i + 1})/current/data"
             if name in self.main_gui.config.waveform_map:
                 tendencies = self.main_gui.config[name].tendencies
                 if tendencies:
                     end_time = tendencies[-1].end
-                    if end_time >= self.export_time:
-                        pn.state.notifications.error(
-                            "Export time must be later than the end of any existing waveforms"
-                        )
-                        return
+                    if latest_time is None or end_time > latest_time:
+                        latest_time = end_time
 
-        for i, current in enumerate(coil_currents):
-            name = f"pf_active/coil({i + 1})/current/data"
-            eps = 1e-100
-            # Piecewise tendencies must contain at least two points
-            new_piecewise = f"- {{type: piecewise, time: [{self.export_time}, {self.export_time + eps}], value: [{current}, {current}]}}"
-            if not name in config.waveform_map:
-                group_name = "Coil Currents"
-                if group_name not in config.groups:
-                    config.add_group(group_name, [])
-                waveform = config.parser.parse_waveform(f"{name}:\n{new_piecewise}")
-                config.add_waveform(waveform, [group_name])
-                new_waveforms_created = True
-            else:
-                waveform = config[name]
-                if isinstance(waveform, DerivedWaveform):
-                    pn.state.error(
-                        f"Could not store coil current in {name}, because it is a derived waveform"
-                    )
-                    continue
-
-                last_tendency = waveform.tendencies[-1]
-                if isinstance(last_tendency, PiecewiseLinearTendency):
-                    waveform.yaml[-1]["time"].append(float(self.export_time))
-                    waveform.yaml[-1]["value"].append(float(current))
-                    yaml_str = f"{name}:\n{waveform.get_yaml_string()}"
-                else:
-                    end = waveform.tendencies[-1].end
-                    append_new_piecewise = f"- {{type: piecewise, time: [{end}, {self.export_time}], value: [{current}, {current}]}}"
-                    yaml_str = (
-                        f"{name}:\n{waveform.get_yaml_string()}{append_new_piecewise}"
-                    )
-                new_waveform = config.parse_waveform(yaml_str)
-                config.replace_waveform(new_waveform)
-
-        if new_waveforms_created:
-            self.main_gui.selector.refresh()
-            pn.state.notifications.warning(
-                f"Could not find an existing waveform to store the coil current. A new waveform is created in the {group_name!r} group"
+        if latest_time is not None and latest_time >= self.export_time:
+            pn.state.notifications.error(
+                f"Invalid export time: {self.export_time}. It must be greater than the "
+                f"last endpoint of existing coil current waveforms ({latest_time})."
             )
-        else:
-            pn.state.notifications.success(
-                "The coil currents were appended to their respective waveforms."
-            )
+            return False
+
+        return True
 
     def fill_pf_active(self, pf_active):
         """Update the coil currents of the provided pf_active IDS. Only coils with
@@ -172,11 +214,11 @@ class CoilCurrents(Viewer):
             pf_active.coil[i].current.data = np.array([slider.value])
 
     def _get_currents(self):
+        """Returns the coil current values in a list."""
         coil_currents = []
         for coil_ui in self.coil_ui:
             _, slider = coil_ui.objects
             coil_currents.append(slider.value)
-
         return coil_currents
 
     def sync_ui_with_pf_active(self, pf_active):
