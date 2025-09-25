@@ -4,6 +4,10 @@ Waveform Editor manual
 
 The Waveform Editor is a Python tool for creating and managing 1D time-dependent data called waveforms. It utilizes a human-readable, text-based file format where waveforms are described using descriptive tendencies, such as sine waves or linear ramps. The Waveform Editor includes a GUI for interactive creation, editing, and organization of waveforms.
 
+.. figure:: images/gui/editor.png
+
+   GUI of the Waveform Editor.
+
 Manual
 ------
 
