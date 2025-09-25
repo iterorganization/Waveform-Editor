@@ -31,10 +31,6 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
-    nice_mode = param.Selector(
-        objects=[NiceSettings.INVERSE_MODE, NiceSettings.DIRECT_MODE],
-        default=NiceSettings.INVERSE_MODE,
-    )
 
     def __init__(self):
         super().__init__()
@@ -42,12 +38,11 @@ class ShapeEditor(Viewer):
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents(nice_mode=self.param.nice_mode)
+        self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
-            nice_mode=self.param.nice_mode,
         )
         self.nice_settings = settings.nice
 
@@ -67,30 +62,34 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
-                & (self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE)
+                & (
+                    self.nice_settings.param.mode.rx()
+                    == self.nice_settings.INVERSE_MODE
+                )
             )
             | self.plasma_properties.param.has_properties.rx.not_()
-            | param.rx(self.required_nice_settings_filled).rx.not_()
+            | self.nice_settings.param.are_required_filled.rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
-            self.param.nice_mode, inline=True, margin=(15, 20, 0, 20)
+            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
         )
         buttons = pn.Row(button_start, button_stop, nice_mode_radio)
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
-                pn.bind(self.nice_settings.panel, nice_mode=self.param.nice_mode),
+                self.nice_settings.panel,
                 "NICE Configuration",
-                is_valid=param.rx(self.required_nice_settings_filled),
+                is_valid=self.nice_settings.param.are_required_filled.rx(),
             ),
             self._create_card(self.nice_plotter, "Plotting Parameters"),
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
-                visible=self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE,
+                visible=self.nice_settings.param.mode.rx()
+                == self.nice_settings.INVERSE_MODE,
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -110,26 +109,6 @@ class ShapeEditor(Viewer):
                 sizing_mode="stretch_both",
             ),
         )
-
-    @param.depends(
-        "nice_mode",
-        *(f"nice_settings.{p}" for p in NiceSettings.BASE_REQUIRED),
-        "nice_settings.inv_executable",
-        "nice_settings.dir_executable",
-    )
-    def required_nice_settings_filled(self):
-        """Checks if all required base settings and the mode-specific
-        executable are filled."""
-        base_ready = all(
-            getattr(self.nice_settings, p) for p in self.nice_settings.BASE_REQUIRED
-        )
-        if not base_ready:
-            return False
-
-        if self.nice_mode == NiceSettings.INVERSE_MODE:
-            return bool(self.nice_settings.inv_executable)
-        else:
-            return bool(self.nice_settings.dir_executable)
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
@@ -212,7 +191,7 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
         # Only fill plasma shape for NICE inverse mode
-        if self.nice_mode == NiceSettings.INVERSE_MODE:
+        if self.nice_settings.mode == self.nice_settings.INVERSE_MODE:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
             equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
 
@@ -237,7 +216,7 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        if self.nice_mode == NiceSettings.DIRECT_MODE:
+        if self.nice_settings.mode == self.nice_settings.DIRECT_MODE:
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
@@ -248,7 +227,9 @@ class ShapeEditor(Viewer):
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run(
-                is_direct_mode=(self.nice_mode == NiceSettings.DIRECT_MODE)
+                is_direct_mode=(
+                    self.nice_settings.mode == self.nice_settings.DIRECT_MODE
+                )
             )
         await self.communicator.submit(
             ET.tostring(xml_params, encoding="unicode"),
@@ -260,7 +241,7 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
-    @param.depends("nice_mode", watch=True)
+    @param.depends("nice_settings.mode", watch=True)
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
         await self.communicator.close()

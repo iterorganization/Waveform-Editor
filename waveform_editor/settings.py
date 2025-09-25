@@ -43,6 +43,25 @@ class NiceSettings(param.Parameterized):
     md_wall = param.String(label="'wall' machine description URI")
     md_iron_core = param.String(label="'iron_core' machine description URI")
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
+    mode = param.Selector(
+        objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
+    )
+    are_required_filled = param.Boolean(precedence=-1)
+
+    @param.depends(
+        *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True
+    )
+    def check_required_params_filled(self):
+        base_ready = all(getattr(self, p) for p in self.BASE_REQUIRED)
+
+        if not base_ready:
+            self.are_required_filled = False
+            return
+
+        if self.mode == self.INVERSE_MODE:
+            self.are_required_filled = bool(self.inv_executable)
+        else:
+            self.are_required_filled = bool(self.dir_executable)
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
@@ -56,7 +75,7 @@ class NiceSettings(param.Parameterized):
         """Returns a dictionary representation of current parameter values."""
         return {p: getattr(self, p) for p in self.param if p != "name"}
 
-    def panel(self, nice_mode):
+    def panel(self):
         items = []
 
         for p in self.param:
@@ -64,8 +83,8 @@ class NiceSettings(param.Parameterized):
                 continue
 
             # Add warning indicator if required parameter is not filled
-            is_inv_required = p == "inv_executable" and nice_mode == self.INVERSE_MODE
-            is_dir_required = p == "dir_executable" and nice_mode == self.DIRECT_MODE
+            is_inv_required = p == "inv_executable" and self.mode == self.INVERSE_MODE
+            is_dir_required = p == "dir_executable" and self.mode == self.DIRECT_MODE
             is_base_required = p in self.BASE_REQUIRED
 
             row_content = [pn.Param(self.param[p], show_name=False)]

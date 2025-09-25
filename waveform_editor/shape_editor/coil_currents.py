@@ -5,17 +5,17 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.settings import NiceSettings
+from waveform_editor.settings import settings
 
 
 class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
-    nice_mode = param.Selector(allow_refs=True)
 
     def __init__(self, **params):
         super().__init__(**params)
+        self.nice_settings = settings.nice
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
@@ -49,7 +49,8 @@ class CoilCurrents(Viewer):
             coil_current = coil.current
             checkbox = pn.widgets.Checkbox(
                 margin=(30, 10, 10, 10),
-                disabled=self.param.nice_mode.rx() == NiceSettings.DIRECT_MODE,
+                disabled=self.nice_settings.param.mode.rx()
+                == self.nice_settings.DIRECT_MODE,
             )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
@@ -57,7 +58,10 @@ class CoilCurrents(Viewer):
                 start=-5e4,
                 end=5e4,
                 disabled=checkbox.param.value.rx.not_()
-                & (self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE),
+                & (
+                    self.nice_settings.param.mode.rx()
+                    == self.nice_settings.INVERSE_MODE
+                ),
                 format="0",
                 width=450,
             )
@@ -75,7 +79,10 @@ class CoilCurrents(Viewer):
         """
         for i, coil_ui in enumerate(self.coil_ui):
             checkbox, slider = coil_ui.objects
-            if checkbox.value or self.nice_mode == NiceSettings.DIRECT_MODE:
+            if (
+                checkbox.value
+                or self.nice_settings.mode == self.nice_settings.DIRECT_MODE
+            ):
                 pf_active.coil[i].current.data = np.array([slider.value])
 
     def sync_ui_with_pf_active(self, pf_active):

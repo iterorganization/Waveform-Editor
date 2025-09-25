@@ -10,7 +10,7 @@ import scipy
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
-from waveform_editor.settings import NiceSettings
+from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
@@ -26,7 +26,7 @@ class NicePlotter(Viewer):
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
-    nice_mode = param.Selector(precedence=-1, allow_refs=True)
+    nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -57,6 +57,7 @@ class NicePlotter(Viewer):
             xlabel="r [m]",
             ylabel="z [m]",
         )
+        self.nice_settings = settings.nice
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -93,7 +94,8 @@ class NicePlotter(Viewer):
             show_name=False,
             widgets={
                 "show_desired_shape": {
-                    "visible": self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
+                    "visible": self.nice_settings.param.mode.rx()
+                    == self.nice_settings.INVERSE_MODE
                 }
             },
         )
@@ -131,10 +133,12 @@ class NicePlotter(Viewer):
             hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
-    @pn.depends("plasma_shape.shape_updated", "show_desired_shape", "nice_mode")
+    @pn.depends(
+        "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
+    )
     def _plot_plasma_shape(self):
         if (
-            self.nice_mode == NiceSettings.DIRECT_MODE
+            self.nice_settings.mode == self.nice_settings.DIRECT_MODE
             or not self.show_desired_shape
             or not self.plasma_shape.has_shape
         ):
