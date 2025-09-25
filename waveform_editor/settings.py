@@ -63,6 +63,7 @@ class NiceSettings(param.Parameterized):
             if p == "name":
                 continue
 
+            # Add warning indicator if required parameter is not filled
             is_inv_required = p == "inv_executable" and nice_mode == self.INVERSE_MODE
             is_dir_required = p == "dir_executable" and nice_mode == self.DIRECT_MODE
             is_base_required = p in self.BASE_REQUIRED

@@ -26,7 +26,7 @@ class NicePlotter(Viewer):
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
-    nice_mode = param.Parameter(precedence=-1, allow_refs=True)
+    nice_mode = param.Selector(precedence=-1, allow_refs=True)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -87,6 +87,15 @@ class NicePlotter(Viewer):
         profiles_plot = hv.DynamicMap(self._plot_profiles)
         self.profiles_pane = pn.pane.HoloViews(
             profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
+        )
+        self.panel_layout = pn.Param(
+            self.param,
+            show_name=False,
+            widgets={
+                "show_desired_shape": {
+                    "visible": self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
+                }
+            },
         )
 
     @pn.depends("plasma_properties.profile_updated")
@@ -392,12 +401,4 @@ class NicePlotter(Viewer):
         return o_scatter * x_scatter
 
     def __panel__(self):
-        return pn.Param(
-            self.param,
-            show_name=False,
-            widgets={
-                "show_desired_shape": {
-                    "visible": self.param.nice_mode.rx() == NiceSettings.INVERSE_MODE
-                }
-            },
-        )
+        return self.panel_layout

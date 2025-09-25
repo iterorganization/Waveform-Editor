@@ -12,7 +12,7 @@ class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
-    nice_mode = param.Parameter(allow_refs=True)
+    nice_mode = param.Selector(allow_refs=True)
 
     def __init__(self, **params):
         super().__init__(**params)
