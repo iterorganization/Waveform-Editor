@@ -6,21 +6,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
+import scipy
 from imas.ids_toplevel import IDSToplevel
 
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
-class NicePlotter(pn.viewable.Viewer):
+class NicePlotter(param.Parameterized):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
+    plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -39,8 +42,16 @@ class NicePlotter(pn.viewable.Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    def __init__(self, communicator, plasma_shape, **params):
-        super().__init__(**params, communicator=communicator, plasma_shape=plasma_shape)
+    PROFILE_WIDTH = 350
+    PROFILE_HEIGHT = 350
+
+    def __init__(self, communicator, plasma_shape, plasma_properties, **params):
+        super().__init__(
+            **params,
+            communicator=communicator,
+            plasma_shape=plasma_shape,
+            plasma_properties=plasma_properties,
+        )
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -56,8 +67,7 @@ class NicePlotter(pn.viewable.Viewer):
             show_legend=False,
         )
         self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
-
-        plot_elements = [
+        flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
             hv.DynamicMap(self._plot_xo_points),
@@ -66,10 +76,52 @@ class NicePlotter(pn.viewable.Viewer):
             hv.DynamicMap(self._plot_vacuum_vessel),
             hv.DynamicMap(self._plot_plasma_shape),
         ]
-        overlay = hv.Overlay(plot_elements).collate().opts(self.DEFAULT_OPTS)
-        self.panel = pn.Column(
-            pn.pane.HoloViews(overlay, width=self.WIDTH, height=self.HEIGHT),
+        flux_map_overlay = (
+            hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
+        )
+        self.flux_map_pane = pn.pane.HoloViews(
+            flux_map_overlay,
+            width=self.WIDTH,
+            height=self.HEIGHT,
             loading=self.communicator.param.processing,
+        )
+
+        profiles_plot = hv.DynamicMap(self._plot_profiles)
+        self.profiles_pane = pn.pane.HoloViews(
+            profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
+        )
+
+    @pn.depends("plasma_properties.profile_updated")
+    def _plot_profiles(self):
+        # Define kdims/vdims otherwise Holoviews will link axes with flux map
+        kdims = "Normalized Poloidal Flux"
+        vdims = "Profile Value [A.U.]"
+        if not self.plasma_properties.has_properties:
+            overlay = hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
+        else:
+            psi_norm = self.plasma_properties.psi_norm
+
+            # Scale profiles
+            r0 = self.plasma_properties.r0
+            dpressure_dpsi = self.plasma_properties.dpressure_dpsi * r0
+            f_df_dpsi = self.plasma_properties.f_df_dpsi / (scipy.constants.mu_0 * r0)
+
+            dpressure_dpsi_curve = hv.Curve(
+                (psi_norm, dpressure_dpsi),
+                kdims=kdims,
+                vdims=vdims,
+                label="dpressure_dpsi * r₀",
+            )
+            f_df_dpsi_curve = hv.Curve(
+                (psi_norm, f_df_dpsi),
+                kdims=kdims,
+                vdims=vdims,
+                label="f_df_dpsi / (μ₀ * r₀)",
+            )
+            overlay = dpressure_dpsi_curve * f_df_dpsi_curve
+
+        return overlay.opts(
+            hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
     @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
@@ -133,7 +185,9 @@ class NicePlotter(pn.viewable.Viewer):
         if self.show_coils and self.pf_active is not None:
             for idx, coil in enumerate(self.pf_active.coil):
                 name = str(coil.name)
-                if self.communicator.pf_active:
+                if self.communicator.pf_active and len(
+                    self.communicator.pf_active.coil
+                ) == len(self.pf_active.coil):
                     current = self.communicator.pf_active.coil[idx].current.data[0]
                     units = self.communicator.pf_active.coil[idx].current.metadata.units
                     name = f"{name} | {current:.3f} [{units}]"
@@ -189,9 +243,11 @@ class NicePlotter(pn.viewable.Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_contour or equilibrium is None:
-            return hv.Contours(([0], [0], 0), vdims="psi").opts(self.CONTOUR_OPTS)
+            contours = hv.Contours(([0], [0], 0), vdims="psi")
+        else:
+            contours = self._calc_contours(equilibrium, self.levels)
 
-        return self._calc_contours(equilibrium, self.levels).opts(self.CONTOUR_OPTS)
+        return contours.opts(self.CONTOUR_OPTS)
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -209,6 +265,12 @@ class NicePlotter(pn.viewable.Viewer):
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
+
+        if not r or not z or not psi:
+            pn.state.notifications.error(
+                "NICE did not produce a valid poloidal flux field"
+            )
+            return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = plt.tricontour(r, z, psi, levels=levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
@@ -326,6 +388,3 @@ class NicePlotter(pn.viewable.Viewer):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
-
-    def __panel__(self):
-        return self.panel

@@ -230,3 +230,24 @@ Plasma Shape Editor
 
 TODO: The plasma shape editor is currently still under development. The
 documentation will be updated once it is in a more finished state.
+
+p' and ff' Parameterizations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+NICE can use a simplified parameterization for the p' and ff' profiles. These can be 
+used by selecting the `Manual` mode in the `Plasma Properties` options menu of the Plasma Shape Editor.
+The following parameterizations are used:
+
+.. math::
+
+   \begin{aligned}
+   p'(\psi_N) &\propto \frac{\beta}{r_0} \big(1 - \psi_N^\alpha\big)^\gamma \\
+   ff'(\psi_N) &\propto (1 - \beta) \mu_0 r_0 \big(1 - \psi_N^\alpha\big)^\gamma
+   \end{aligned}
+
+Here, :math:`\psi_N` is the normalized poloidal magnetic flux, :math:`r_0` is the major 
+radius of the vacuum chamber, and :math:`\mu_0` is constant magnetic permeability of vacuum.
+Note, the actual p' and ff' will be scaled by NICE to satisfy the required total plasma current Ip.
+
+The parameter **beta** is related to the poloidal beta, whereas **alpha** and **gamma** describe the peakage of the current profile. See equation 2.11 in `B. Cédric, et al. "CÉDRÈS: a free-boundary solver 
+for the Grad–Shafranov equation." (2014) <https://inria.hal.science/hal-01088772/file/CedresRefPaper.pdf>`_

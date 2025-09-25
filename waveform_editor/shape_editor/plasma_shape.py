@@ -6,10 +6,15 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import EquilibriumInput, WarningIndicator
+from waveform_editor.gui.util import (
+    EquilibriumInput,
+    FixedWidthEditableIntSlider,
+    FormattedEditableFloatSlider,
+    WarningIndicator,
+)
 
 
-class PlasmaShapeParams(param.Parameterized):
+class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
     a = param.Number(default=1.9, step=0.01, softbounds=[1, 2], label="Minor Radius")
@@ -33,10 +38,14 @@ class PlasmaShapeParams(param.Parameterized):
         default=96, softbounds=[3, 200], label="Number of boundary points"
     )
 
-
-class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
-    def __init__(self, **params):
-        super().__init__(format="1[.]000", **params)
+    def __panel__(self):
+        widgets = {}
+        for name in self.param:
+            if isinstance(self.param[name], param.Integer):
+                widgets[name] = FixedWidthEditableIntSlider
+            elif isinstance(self.param[name], param.Number):
+                widgets[name] = FormattedEditableFloatSlider
+        return pn.Param(self.param, widgets=widgets, show_name=False)
 
 
 @dataclass
@@ -282,16 +291,11 @@ class PlasmaShape(Viewer):
     @param.depends("input_mode")
     def _panel_shape_options(self):
         if self.input_mode == self.PARAMETERIZED_INPUT:
-            params = pn.Param(self.shape_params, show_name=False)
-            params.mapping[param.Number] = FormattedEditableFloatSlider
-            params.mapping[param.Integer] = pn.widgets.EditableIntSlider
+            return self.shape_params
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            params = pn.Param(self.input_outline, show_name=False)
-            params = pn.Row(params, self.indicator)
+            return pn.Row(pn.Param(self.input_outline, show_name=False), self.indicator)
         elif self.input_mode == self.GAP_INPUT:
-            params = pn.Param(self.input_gaps, show_name=False)
-            params = pn.Row(params, self.indicator)
-        return params
+            return pn.Row(pn.Param(self.input_gaps, show_name=False), self.indicator)
 
     def __panel__(self):
         return self.panel

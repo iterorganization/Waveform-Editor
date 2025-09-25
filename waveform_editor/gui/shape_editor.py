@@ -36,7 +36,9 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
-        self.nice_plotter = NicePlotter(self.communicator, self.plasma_shape)
+        self.nice_plotter = NicePlotter(
+            self.communicator, self.plasma_shape, self.plasma_properties
+        )
         self.nice_settings = settings.nice
 
         self.xml_params = ET.fromstring(
@@ -71,7 +73,7 @@ class ShapeEditor(Viewer):
                 is_valid=self.plasma_shape.param.has_shape,
             ),
             self._create_card(
-                self.plasma_properties,
+                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
                 "Plasma Properties",
                 is_valid=self.plasma_properties.param.has_properties,
             ),
@@ -81,7 +83,7 @@ class ShapeEditor(Viewer):
             buttons, self.communicator.terminal, sizing_mode="stretch_width"
         )
         self.panel = pn.Row(
-            self.nice_plotter,
+            self.nice_plotter.flux_map_pane,
             pn.Column(
                 menu,
                 options,
@@ -176,9 +178,15 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
         slice = equilibrium.time_slice[0]
         slice.global_quantities.ip = self.plasma_properties.ip
+
+        # These are not the p'/ff' profiles per se, the equilibrium solver will scale
+        # these to maintain the total plasma current Ip
         slice.profiles_1d.dpressure_dpsi = self.plasma_properties.dpressure_dpsi
         slice.profiles_1d.f_df_dpsi = self.plasma_properties.f_df_dpsi
-        slice.profiles_1d.psi = self.plasma_properties.psi
+
+        # N.B. We fill psi with psi_norm. This works for NICE, but is not adhering to
+        # the DD!
+        slice.profiles_1d.psi = self.plasma_properties.psi_norm
         return equilibrium
 
     async def submit(self, event=None):
