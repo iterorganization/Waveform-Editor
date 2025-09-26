@@ -16,16 +16,22 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
-    REQUIRED = (
-        "executable",
+    INVERSE_MODE = "NICE Inverse"
+    DIRECT_MODE = "NICE Direct"
+
+    BASE_REQUIRED = (
         "md_pf_active",
         "md_pf_passive",
         "md_wall",
         "md_iron_core",
     )
-    executable = param.String(
-        label="NICE executable path",
+    inv_executable = param.String(
+        label="NICE inverse executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
+    )
+    dir_executable = param.String(
+        label="NICE direct executable path",
+        doc="Path to NICE direct IMAS MUSCLE3 executable",
     )
     environment = param.Dict(
         default={},
@@ -37,10 +43,32 @@ class NiceSettings(param.Parameterized):
     md_wall = param.String(label="'wall' machine description URI")
     md_iron_core = param.String(label="'iron_core' machine description URI")
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
+    mode = param.Selector(
+        objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
+    )
+    are_required_filled = param.Boolean(precedence=-1)
+    is_direct_mode = param.Boolean(precedence=-1)
+    is_inverse_mode = param.Boolean(precedence=-1)
 
-    @param.depends(*REQUIRED)
-    def required_params_filled(self):
-        return all(getattr(self, required) for required in self.REQUIRED)
+    @param.depends("mode", watch=True, on_init=True)
+    def set_mode_flags(self):
+        self.is_direct_mode = self.mode == self.DIRECT_MODE
+        self.is_inverse_mode = self.mode == self.INVERSE_MODE
+
+    @param.depends(
+        *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True
+    )
+    def check_required_params_filled(self):
+        base_ready = all(getattr(self, p) for p in self.BASE_REQUIRED)
+
+        if not base_ready:
+            self.are_required_filled = False
+            return
+
+        if self.mode == self.INVERSE_MODE:
+            self.are_required_filled = bool(self.inv_executable)
+        else:
+            self.are_required_filled = bool(self.dir_executable)
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
@@ -51,24 +79,33 @@ class NiceSettings(param.Parameterized):
         self.param.update(**params)
 
     def to_dict(self):
-        """Returns a dictionary representation of current parameter values."""
-        return {p: getattr(self, p) for p in self.param if p != "name"}
+        """Returns a dictionary representation of current parameter values, excluding
+        params with a precendence of -1."""
+        result = {}
+        for p in self.param:
+            param_obj = self.param[p]
+            if p != "name" and param_obj.precedence != -1:
+                result[p] = getattr(self, p)
+        return result
 
     def panel(self):
         items = []
 
         for p in self.param:
             if p == "name":
-                pass
-            elif p in self.REQUIRED:
-                items.append(
-                    pn.Row(
-                        pn.Param(self.param[p], show_name=False),
-                        WarningIndicator(visible=self.param[p].rx.not_()),
-                    )
-                )
-            else:
-                items.append(pn.Param(self.param[p], show_name=False))
+                continue
+
+            # Add warning indicator if required parameter is not filled
+            is_inv_required = p == "inv_executable" and self.is_inverse_mode
+            is_dir_required = p == "dir_executable" and self.is_direct_mode
+            is_base_required = p in self.BASE_REQUIRED
+
+            row_content = [pn.Param(self.param[p], show_name=False)]
+            if is_inv_required or is_dir_required or is_base_required:
+                warning = WarningIndicator(visible=self.param[p].rx.not_())
+                row_content.append(warning)
+
+            items.append(pn.Row(*row_content))
 
         return pn.Column(*items)
 

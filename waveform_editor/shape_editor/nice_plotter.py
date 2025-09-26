@@ -8,7 +8,9 @@ import panel as pn
 import param
 import scipy
 from imas.ids_toplevel import IDSToplevel
+from panel.viewable import Viewer
 
+from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
@@ -17,13 +19,14 @@ matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
-class NicePlotter(param.Parameterized):
+class NicePlotter(Viewer):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
+    nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -45,13 +48,8 @@ class NicePlotter(param.Parameterized):
     PROFILE_WIDTH = 350
     PROFILE_HEIGHT = 350
 
-    def __init__(self, communicator, plasma_shape, plasma_properties, **params):
-        super().__init__(
-            **params,
-            communicator=communicator,
-            plasma_shape=plasma_shape,
-            plasma_properties=plasma_properties,
-        )
+    def __init__(self, **params):
+        super().__init__(**params)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=(0, 13),
             ylim=(-10, 10),
@@ -59,6 +57,7 @@ class NicePlotter(param.Parameterized):
             xlabel="r [m]",
             ylabel="z [m]",
         )
+        self.nice_settings = settings.nice
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -89,6 +88,15 @@ class NicePlotter(param.Parameterized):
         profiles_plot = hv.DynamicMap(self._plot_profiles)
         self.profiles_pane = pn.pane.HoloViews(
             profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
+        )
+        self.panel_layout = pn.Param(
+            self.param,
+            show_name=False,
+            widgets={
+                "show_desired_shape": {
+                    "visible": self.nice_settings.param.is_inverse_mode
+                }
+            },
         )
 
     @pn.depends("plasma_properties.profile_updated")
@@ -124,9 +132,15 @@ class NicePlotter(param.Parameterized):
             hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
-    @pn.depends("plasma_shape.shape_updated", "show_desired_shape")
+    @pn.depends(
+        "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
+    )
     def _plot_plasma_shape(self):
-        if not self.show_desired_shape or not self.plasma_shape.has_shape:
+        if (
+            self.nice_settings.is_direct_mode
+            or not self.show_desired_shape
+            or not self.plasma_shape.has_shape
+        ):
             return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
         r = self.plasma_shape.outline_r
@@ -388,3 +402,6 @@ class NicePlotter(param.Parameterized):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
+
+    def __panel__(self):
+        return self.panel_layout

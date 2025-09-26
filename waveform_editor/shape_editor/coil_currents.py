@@ -5,14 +5,17 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.settings import settings
+
 
 class CoilCurrents(Viewer):
     coil_ui = param.List(
         doc="List of tuples containing the checkboxes and sliders for the coil currents"
     )
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **params):
+        super().__init__(**params)
+        self.nice_settings = settings.nice
         self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
         guide_message = pn.pane.Markdown(
             "_To fix a coil to a specific current, enable the checkbox and provide "
@@ -44,13 +47,15 @@ class CoilCurrents(Viewer):
         new_coil_ui = []
         for coil in pf_active.coil:
             coil_current = coil.current
-            checkbox = pn.widgets.Checkbox(value=False, margin=(30, 10, 10, 10))
+            checkbox = pn.widgets.Checkbox(
+                margin=(30, 10, 10, 10),
+                disabled=self.nice_settings.param.is_direct_mode,
+            )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
                 value=coil_current.data[0] if coil_current.data.has_value else 0.0,
                 start=-5e4,
                 end=5e4,
-                disabled=checkbox.param.value.rx.not_(),
                 format="0",
                 width=450,
             )
@@ -67,9 +72,8 @@ class CoilCurrents(Viewer):
             pf_active: pf_active IDS to update the coil currents for.
         """
         for i, coil_ui in enumerate(self.coil_ui):
-            checkbox, slider = coil_ui.objects
-            if checkbox.value:
-                pf_active.coil[i].current.data = np.array([slider.value])
+            _, slider = coil_ui.objects
+            pf_active.coil[i].current.data = np.array([slider.value])
 
     def sync_ui_with_pf_active(self, pf_active):
         """Synchronize UI sliders with the current values from the pf_active IDS.

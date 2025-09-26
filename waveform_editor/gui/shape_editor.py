@@ -1,4 +1,5 @@
 import importlib.resources
+import logging
 import xml.etree.ElementTree as ET
 
 import imas
@@ -13,6 +14,8 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.shape_editor.plasma_shape import PlasmaShape
+
+logger = logging.getLogger(__name__)
 
 
 def _reactive_title(title, is_valid):
@@ -37,40 +40,52 @@ class ShapeEditor(Viewer):
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(
-            self.communicator, self.plasma_shape, self.plasma_properties
+            communicator=self.communicator,
+            plasma_shape=self.plasma_shape,
+            plasma_properties=self.plasma_properties,
         )
         self.nice_settings = settings.nice
 
-        self.xml_params = ET.fromstring(
+        self.xml_params_inv = ET.fromstring(
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("param.xml")
+            .joinpath("inverse_param.xml")
+            .read_text()
+        )
+        self.xml_params_dir = ET.fromstring(
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath("direct_param.xml")
             .read_text()
         )
 
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
         button_start.disabled = (
-            self.plasma_shape.param.has_shape.rx.not_()
+            (
+                self.plasma_shape.param.has_shape.rx.not_()
+                & self.nice_settings.param.is_inverse_mode.rx()
+            )
             | self.plasma_properties.param.has_properties.rx.not_()
-            | param.rx(self.nice_settings.required_params_filled).rx.not_()
+            | self.nice_settings.param.are_required_filled.rx.not_()
         )
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
-        buttons = pn.Row(button_start, button_stop)
+        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
+            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
+        )
+        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
                 self.nice_settings.panel,
                 "NICE Configuration",
-                is_valid=param.rx(self.nice_settings.required_params_filled),
+                is_valid=self.nice_settings.param.are_required_filled.rx(),
             ),
-            self._create_card(
-                pn.Param(self.nice_plotter, show_name=False), "Plotting Parameters"
-            ),
+            self._create_card(self.nice_plotter, "Plotting Parameters"),
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
+                visible=self.nice_settings.param.is_inverse_mode.rx(),
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -91,7 +106,7 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def _create_card(self, panel_object, title, is_valid=None):
+    def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
 
         Args:
@@ -99,6 +114,7 @@ class ShapeEditor(Viewer):
             title: The title to give the card.
             is_valid: If supplied, binds the card title to update reactively using
                 `_reactive_title`.
+            visible: Whether the card is visible.
         """
         if is_valid:
             title = param.bind(_reactive_title, title=title, is_valid=is_valid)
@@ -107,6 +123,7 @@ class ShapeEditor(Viewer):
             title=title,
             sizing_mode="stretch_width",
             collapsed=True,
+            visible=visible,
         )
         return card
 
@@ -169,9 +186,10 @@ class ShapeEditor(Viewer):
         equilibrium.time_slice.resize(1)
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
-        # Fill plasma shape
-        equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
-        equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
+        # Only fill plasma shape for NICE inverse mode
+        if self.nice_settings.is_inverse_mode:
+            equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
+            equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
 
         # Fill plasma properties
         equilibrium.vacuum_toroidal_field.r0 = self.plasma_properties.r0
@@ -194,14 +212,21 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
+        if self.nice_settings.is_direct_mode:
+            xml_params = self.xml_params_dir
+        else:
+            xml_params = self.xml_params_inv
+            self.coil_currents.update_fixed_coils_in_xml(xml_params)
+
         # Update XML parameters:
-        self.coil_currents.update_fixed_coils_in_xml(self.xml_params)
-        self.xml_params.find("verbose").text = str(self.nice_settings.verbose)
+        xml_params.find("verbose").text = str(self.nice_settings.verbose)
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
-            await self.communicator.run()
+            await self.communicator.run(
+                is_direct_mode=self.nice_settings.is_direct_mode
+            )
         await self.communicator.submit(
-            ET.tostring(self.xml_params, encoding="unicode"),
+            ET.tostring(xml_params, encoding="unicode"),
             equilibrium.serialize(),
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
@@ -210,7 +235,9 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
 
-    async def stop_nice(self, event):
+    @param.depends("nice_settings.mode", watch=True)
+    async def stop_nice(self, event=None):
+        logger.info("Stopping NICE...")
         await self.communicator.close()
 
     def __panel__(self):
