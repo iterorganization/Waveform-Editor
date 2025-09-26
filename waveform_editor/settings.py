@@ -52,12 +52,8 @@ class NiceSettings(param.Parameterized):
 
     @param.depends("mode", watch=True, on_init=True)
     def set_mode_flags(self):
-        if self.mode == self.INVERSE_MODE:
-            self.is_direct_mode = False
-            self.is_inverse_mode = True
-        else:
-            self.is_direct_mode = True
-            self.is_inverse_mode = False
+        self.is_direct_mode = self.mode == self.DIRECT_MODE
+        self.is_inverse_mode = self.mode == self.INVERSE_MODE
 
     @param.depends(
         *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True

@@ -49,7 +49,7 @@ class CoilCurrents(Viewer):
             coil_current = coil.current
             checkbox = pn.widgets.Checkbox(
                 margin=(30, 10, 10, 10),
-                disabled=self.nice_settings.param.is_direct_mode.rx(),
+                disabled=self.nice_settings.param.is_direct_mode,
             )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",

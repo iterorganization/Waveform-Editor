@@ -94,7 +94,7 @@ class NicePlotter(Viewer):
             show_name=False,
             widgets={
                 "show_desired_shape": {
-                    "visible": self.nice_settings.param.is_inverse_mode.rx()
+                    "visible": self.nice_settings.param.is_inverse_mode
                 }
             },
         )
