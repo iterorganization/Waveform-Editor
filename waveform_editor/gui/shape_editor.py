@@ -62,10 +62,7 @@ class ShapeEditor(Viewer):
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
-                & (
-                    self.nice_settings.param.mode.rx()
-                    == self.nice_settings.INVERSE_MODE
-                )
+                & self.nice_settings.param.is_inverse_mode.rx()
             )
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
@@ -88,8 +85,7 @@ class ShapeEditor(Viewer):
                 self.plasma_shape,
                 "Plasma Shape",
                 is_valid=self.plasma_shape.param.has_shape,
-                visible=self.nice_settings.param.mode.rx()
-                == self.nice_settings.INVERSE_MODE,
+                visible=self.nice_settings.param.is_inverse_mode.rx(),
             ),
             self._create_card(
                 pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
@@ -191,7 +187,7 @@ class ShapeEditor(Viewer):
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
         # Only fill plasma shape for NICE inverse mode
-        if self.nice_settings.mode == self.nice_settings.INVERSE_MODE:
+        if self.nice_settings.is_inverse_mode:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
             equilibrium.time_slice[0].boundary.outline.z = self.plasma_shape.outline_z
 
@@ -216,7 +212,7 @@ class ShapeEditor(Viewer):
         description IDSs and an input equilibrium IDS."""
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        if self.nice_settings.mode == self.nice_settings.DIRECT_MODE:
+        if self.nice_settings.is_direct_mode:
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
@@ -227,9 +223,7 @@ class ShapeEditor(Viewer):
         equilibrium = self._create_equilibrium()
         if not self.communicator.running:
             await self.communicator.run(
-                is_direct_mode=(
-                    self.nice_settings.mode == self.nice_settings.DIRECT_MODE
-                )
+                is_direct_mode=self.nice_settings.is_direct_mode
             )
         await self.communicator.submit(
             ET.tostring(xml_params, encoding="unicode"),

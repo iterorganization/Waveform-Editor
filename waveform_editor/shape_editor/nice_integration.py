@@ -151,16 +151,11 @@ class NiceIntegration(param.Parameterized):
 
         self.xml_config_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
 
-        # Select configuration based on mode
-        config_str = (
-            _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
-        )
-
         # MUSCLE manager
         self.manager_pipe, pipe = multiprocessing.Pipe()
         self.manager = multiprocessing.Process(
             target=run_muscle_manager,
-            args=[pipe, self.xml_config_file.name, config_str],
+            args=[pipe, self.xml_config_file.name, is_direct_mode],
             name="MUSCLE Manager",
         )
         self.manager.start()
@@ -346,9 +341,12 @@ def run_muscle3_communicator(
 
 
 def run_muscle_manager(
-    pipe: multiprocessing.connection.Connection, xml_path: str, config_str: str
+    pipe: multiprocessing.connection.Connection, xml_path: str, is_direct_mode: bool
 ):
     """Run the muscle_manager with a given configuration."""
+    config_str = (
+        _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
+    )
     config = ymmsl.load(config_str.format(xml_path=xml_path))
     manager = Manager(config)
     server_location = manager.get_server_location()

@@ -47,6 +47,17 @@ class NiceSettings(param.Parameterized):
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
     )
     are_required_filled = param.Boolean(precedence=-1)
+    is_direct_mode = param.Boolean(precedence=-1)
+    is_inverse_mode = param.Boolean(precedence=-1)
+
+    @param.depends("mode", watch=True, on_init=True)
+    def set_mode_flags(self):
+        if self.mode == self.INVERSE_MODE:
+            self.is_direct_mode = False
+            self.is_inverse_mode = True
+        else:
+            self.is_direct_mode = True
+            self.is_inverse_mode = False
 
     @param.depends(
         *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True
@@ -72,8 +83,14 @@ class NiceSettings(param.Parameterized):
         self.param.update(**params)
 
     def to_dict(self):
-        """Returns a dictionary representation of current parameter values."""
-        return {p: getattr(self, p) for p in self.param if p != "name"}
+        """Returns a dictionary representation of current parameter values, excluding
+        params with a precendence of -1."""
+        result = {}
+        for p in self.param:
+            param_obj = self.param[p]
+            if p != "name" and param_obj.precedence != -1:
+                result[p] = getattr(self, p)
+        return result
 
     def panel(self):
         items = []
@@ -83,8 +100,8 @@ class NiceSettings(param.Parameterized):
                 continue
 
             # Add warning indicator if required parameter is not filled
-            is_inv_required = p == "inv_executable" and self.mode == self.INVERSE_MODE
-            is_dir_required = p == "dir_executable" and self.mode == self.DIRECT_MODE
+            is_inv_required = p == "inv_executable" and self.is_inverse_mode
+            is_dir_required = p == "dir_executable" and self.is_direct_mode
             is_base_required = p in self.BASE_REQUIRED
 
             row_content = [pn.Param(self.param[p], show_name=False)]

@@ -94,8 +94,7 @@ class NicePlotter(Viewer):
             show_name=False,
             widgets={
                 "show_desired_shape": {
-                    "visible": self.nice_settings.param.mode.rx()
-                    == self.nice_settings.INVERSE_MODE
+                    "visible": self.nice_settings.param.is_inverse_mode.rx()
                 }
             },
         )
@@ -138,7 +137,7 @@ class NicePlotter(Viewer):
     )
     def _plot_plasma_shape(self):
         if (
-            self.nice_settings.mode == self.nice_settings.DIRECT_MODE
+            self.nice_settings.is_direct_mode
             or not self.show_desired_shape
             or not self.plasma_shape.has_shape
         ):

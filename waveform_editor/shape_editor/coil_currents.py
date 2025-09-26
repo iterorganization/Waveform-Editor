@@ -49,19 +49,13 @@ class CoilCurrents(Viewer):
             coil_current = coil.current
             checkbox = pn.widgets.Checkbox(
                 margin=(30, 10, 10, 10),
-                disabled=self.nice_settings.param.mode.rx()
-                == self.nice_settings.DIRECT_MODE,
+                disabled=self.nice_settings.param.is_direct_mode.rx(),
             )
             slider = pn.widgets.EditableFloatSlider(
                 name=f"{coil.name} Current [{coil_current.metadata.units}]",
                 value=coil_current.data[0] if coil_current.data.has_value else 0.0,
                 start=-5e4,
                 end=5e4,
-                disabled=checkbox.param.value.rx.not_()
-                & (
-                    self.nice_settings.param.mode.rx()
-                    == self.nice_settings.INVERSE_MODE
-                ),
                 format="0",
                 width=450,
             )
@@ -78,12 +72,8 @@ class CoilCurrents(Viewer):
             pf_active: pf_active IDS to update the coil currents for.
         """
         for i, coil_ui in enumerate(self.coil_ui):
-            checkbox, slider = coil_ui.objects
-            if (
-                checkbox.value
-                or self.nice_settings.mode == self.nice_settings.DIRECT_MODE
-            ):
-                pf_active.coil[i].current.data = np.array([slider.value])
+            _, slider = coil_ui.objects
+            pf_active.coil[i].current.data = np.array([slider.value])
 
     def sync_ui_with_pf_active(self, pf_active):
         """Synchronize UI sliders with the current values from the pf_active IDS.
