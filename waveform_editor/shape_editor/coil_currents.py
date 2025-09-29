@@ -118,9 +118,8 @@ class CoilCurrents(Viewer):
 
         if new_waveforms_created:
             self.main_gui.selector.refresh()
-            pn.state.notifications.warning(
-                "Could not find an existing waveform to store the coil current. "
-                f"New waveform(s) are created in the {group_name!r} group"
+            pn.state.notifications.success(
+                f"New waveform(s) were added in the {group_name!r} group"
             )
         else:
             pn.state.notifications.success(
@@ -167,11 +166,8 @@ class CoilCurrents(Viewer):
             current: Coil current value to append.
             group_name: Name of the group to place the new waveform in.
         """
-        # Piecewise tendencies must contain at least two points
-        eps = 1e-9
         new_piecewise = (
-            f"- {{type: piecewise, time: [{self.export_time - eps}, "
-            f"{self.export_time}], value: [{current}, {current}]}}"
+            f"- {{type: piecewise, time: [{self.export_time}], value: [{current}]}}"
         )
         waveform = config.parser.parse_waveform(f"{name}:\n{new_piecewise}")
         config.add_waveform(waveform, [group_name])

@@ -50,7 +50,6 @@ class BaseTendency(param.Parameterized):
     duration = param.Number(
         default=1.0,
         bounds=(0.0, None),
-        inclusive_bounds=(False, True),
         doc="The duration of the tendency.",
     )
     end = param.Number(default=1.0, doc="The end time of the tendency.")
@@ -79,9 +78,10 @@ class BaseTendency(param.Parameterized):
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
 
-    def __init__(self, **kwargs):
+    def __init__(self, allow_zero_duration=False, **kwargs):
         self.line_number = kwargs.pop("line_number", 0)
         self.is_first_repeated = kwargs.pop("is_first_repeated", False)
+        self.allow_zero_duration = allow_zero_duration
 
         unknown_kwargs = []
         super().__init__()
@@ -284,6 +284,8 @@ class BaseTendency(param.Parameterized):
         # Check if any value has changed
         if (self.start, self.duration, self.end) != values:
             try:
+                if values[1] == 0 and not self.allow_zero_duration:
+                    raise ValueError("Duration cannot be 0")
                 self.start, self.duration, self.end = values
             except Exception as error:
                 self._handle_error(error)
