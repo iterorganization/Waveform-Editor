@@ -228,8 +228,6 @@ of the configuration. Information about the avilable properties can be found in 
 Plasma Shape Editor
 -------------------
 
-TODO: add images
-
 The Plasma Shape Editor provides an interactive interface for running the 
 `NICE <https://gitlab.inria.fr/blfauger/nice>`__ (Newton direct and Inverse Computation 
 for Equilibrium) solver. This allows you to design and analyze plasma equilibria by 
@@ -240,6 +238,9 @@ The interface is primarily divided into two sections: a large plotting area on t
 that displays the machine geometry and equilibrium results, and a control panel on the 
 right with various configuration options.
 
+.. figure:: images/gui/plasma_shape_editor.png
+
+   Overview of the Plasma Shape Editor
 
 Operating Modes
 ^^^^^^^^^^^^^^^
@@ -346,4 +347,10 @@ Its behavior changes depending on the operating mode:
   in Inverse Mode, the sliders will be updated to show the calculated currents.
 * In **Direct Mode**, the sliders for all coils are enabled. You must use these sliders to provide the input current for every coil.
 
+You can save the coil currents to waveforms at a chosen export time.
+This allows for a convenient construction of a waveform by iteratively executing the following steps:
+
+#. Configure the plasma parameters and shape.
+#. Execute NICE to calculate the set of coil currents.
+#. Set an export time value, and append the calculated values to the respective waveforms.
 
