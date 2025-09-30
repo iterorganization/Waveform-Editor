@@ -77,11 +77,11 @@ class BaseTendency(param.Parameterized):
         doc="Whether the tendency is the first tendency within a repeated tendency",
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
+    allow_zero_duration = False
 
-    def __init__(self, allow_zero_duration=False, **kwargs):
+    def __init__(self, **kwargs):
         self.line_number = kwargs.pop("line_number", 0)
         self.is_first_repeated = kwargs.pop("is_first_repeated", False)
-        self.allow_zero_duration = allow_zero_duration
 
         unknown_kwargs = []
         super().__init__()

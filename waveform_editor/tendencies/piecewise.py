@@ -18,6 +18,7 @@ class PiecewiseLinearTendency(BaseTendency):
     value = param.Array(
         default=np.array([0, 1, 2]), doc="The values of the piecewise tendency."
     )
+    allow_zero_duration = True
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
@@ -29,7 +30,6 @@ class PiecewiseLinearTendency(BaseTendency):
             user_end=time[-1],
             time=time,
             value=value,
-            allow_zero_duration=True,
             **kwargs,
         )
         self.annotations.add_annotations(self.pre_check_annotations)

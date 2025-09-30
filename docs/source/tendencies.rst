@@ -171,7 +171,7 @@ Defines a sequence of points connected by straight lines.
 
 Parameters
 ----------
-*   ``time``: A list of time points. Must be strictly monotonically increasing and must have at least 2 points.
+*   ``time``: A list of time points. Must be strictly monotonically increasing and must have at least 1 point.
 *   ``value``: A list of corresponding values at each time point in the ``time`` list. Must have the same length as ``time``.
 
 .. image:: images/piecewise.png
