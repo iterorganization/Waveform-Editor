@@ -250,8 +250,8 @@ of the control panel:
 
 * **Inverse Mode**: You define a target plasma shape and properties, and NICE calculates 
   the required coil currents to achieve this equilibrium. You can also choose to 
-  fix the current in certain coils.
-* **Direct Mode**: In this mode, you specify the currents for all coils, and NICE 
+  fix the current in a subset of coils.
+* **Direct Mode**: You specify the currents for all coils, and NICE 
   calculates the resulting plasma equilibrium.
 
 At the top of the control panel, you'll find **Run** and **Stop** buttons to start and 
@@ -289,7 +289,7 @@ This section includes settings for:
 .. note::
 
   The settings in the NICE Configuration section are **persistent**. They are 
-  automatically saved to a configuration file (by default located at ``~/.config/waveform_editor.yaml``) 
+  automatically saved to a configuration file (by default located in ``$HOME/.config/waveform_editor.yaml``) 
   and will be reloaded each time you start the application.
 
 Plotting Parameters
@@ -347,10 +347,12 @@ Its behavior changes depending on the operating mode:
   in Inverse Mode, the sliders will be updated to show the calculated currents.
 * In **Direct Mode**, the sliders for all coils are enabled. You must use these sliders to provide the input current for every coil.
 
-You can save the coil currents to waveforms at a chosen export time.
-This allows for a convenient construction of a waveform by iteratively executing the following steps:
+You can save the coil currents to waveforms at a chosen export time. The coil current
+values will be stored in a :ref:`piecewise-linear-tendency` at the end of the
+corresponding waveforms (``pf_active/coil()/current/data``). This allows for a 
+convenient construction of a waveform by iteratively executing the following:
 
 #. Configure the plasma parameters and shape.
 #. Execute NICE to calculate the set of coil currents.
-#. Set an export time value, and append the calculated values to the respective waveforms.
+#. Set an export time value, and append the calculated values to their respective waveforms.
 
