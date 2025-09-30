@@ -37,6 +37,13 @@ def test_filled():
     assert np.all(tendency.value == np.array([9.9, 5.5, 2.2]))
     assert not tendency.annotations
 
+    tendency = PiecewiseLinearTendency(
+        user_time=np.array([1.1]), user_value=np.array([9.9])
+    )
+    assert tendency.time == np.array([1.1])
+    assert tendency.value == np.array([9.9])
+    assert not tendency.annotations
+
 
 def test_filled_invalid():
     """Test value of filled tendency with invalid parameters."""
@@ -47,11 +54,6 @@ def test_filled_invalid():
 
     tendency = PiecewiseLinearTendency(
         user_time=np.array([1, 2]), user_value=np.array([1, 2, 3])
-    )
-    assert tendency.annotations
-
-    tendency = PiecewiseLinearTendency(
-        user_time=np.array([1]), user_value=np.array([1])
     )
     assert tendency.annotations
 

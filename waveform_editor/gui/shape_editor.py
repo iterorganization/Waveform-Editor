@@ -32,13 +32,13 @@ class ShapeEditor(Viewer):
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
 
-    def __init__(self):
+    def __init__(self, main_gui):
         super().__init__()
         self.factory = imas.IDSFactory()
         self.communicator = NiceIntegration(self.factory)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents()
+        self.coil_currents = CoilCurrents(main_gui)
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,

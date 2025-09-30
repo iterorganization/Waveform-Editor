@@ -85,7 +85,7 @@ class WaveformEditorGui(param.Parameterized):
                 }
             },
         )
-        shape_editor = ShapeEditor()
+        shape_editor = ShapeEditor(self)
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),

@@ -18,6 +18,7 @@ class PiecewiseLinearTendency(BaseTendency):
     value = param.Array(
         default=np.array([0, 1, 2]), doc="The values of the piecewise tendency."
     )
+    allow_zero_duration = True
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
@@ -64,6 +65,8 @@ class PiecewiseLinearTendency(BaseTendency):
         Returns:
             numpy array containing the derivatives
         """
+        if len(self.time) == 1:
+            return np.zeros_like(time, dtype=float)
 
         # Compute piecewise derivatives
         dv = np.diff(self.value)
@@ -96,10 +99,10 @@ class PiecewiseLinearTendency(BaseTendency):
                 "The provided time and value arrays are not of the same length.\n"
             )
             self.pre_check_annotations.add(self.line_number, error_msg)
-        elif len(time) < 2:
+        elif len(time) < 1:
             error_msg = (
                 "The provided time and value arrays should have a length "
-                "of at least 2.\n"
+                "of at least 1.\n"
             )
             self.pre_check_annotations.add(self.line_number, error_msg)
 
