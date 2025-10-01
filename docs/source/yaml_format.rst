@@ -6,12 +6,19 @@ YAML File Format
 
 The Waveform Editor uses YAML files to define the desired waveforms, their organization, and global settings for export. This page describes the structure and syntax of these files.
 
+An example configuration file is provided on the following page:
+
+.. toctree::
+   :maxdepth: 1
+   
+   example_yaml
+
 Overall Structure
 -----------------
 
 A Waveform Editor YAML file is a standard YAML dictionary containing two main types of top-level keys:
 
-1.  **globals:** An optional key holding settings that apply to the entire configuration.
+1.  **globals:** A key holding settings that apply to the entire configuration.
 2.  **Groups:** These represent logical groupings for organizing waveforms. They can be nested to create a hierarchy.
 
 .. code-block:: yaml
@@ -28,10 +35,13 @@ A Waveform Editor YAML file is a standard YAML dictionary containing two main ty
        # More waveforms/groups...
      # More waveforms/groups...
 
-Global Settings
----------------
+.. _global_properties:
+   
+Global Properties
+-----------------
 
-The optional ``globals`` section defines parameters applicable to the entire waveform configuration.
+The ``globals`` section defines parameters applicable to the entire waveform configuration.
+These parameters can be changed under the "Edit Global Properties" tab in the GUI.
 
 *   **dd_version:** Specifies the IMAS Data Dictionary version to be used when handling this configuration.
 
@@ -40,12 +50,17 @@ The optional ``globals`` section defines parameters applicable to the entire wav
        globals:
          dd_version: 3.42.0
 
-*   **machine_description:** Provides URIs for IMAS machine description entries. This allows the exporter to copy existing static data from a machine description before adding the defined waveforms. To specify machine descriptions for a target IDS, use a dictionary where keys are the IDS names and values are their corresponding machine description URIs.
+*   **machine_description:** Provides URIs for IMAS machine description entries.
+    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
+    When exporting, any existing data from the given machine description will be copied
+    to the new IDS, before the waveforms from the configuration are added.
+    To specify machine descriptions for a target IDS, use a dictionary where keys are 
+    the IDS names and values are their corresponding machine description URIs.
 
     .. code-block:: yaml
 
        globals:
-         DD_version: 3.42.0
+         dd_version: 3.42.0
          machine_description:
            ec_launchers: imas:hdf5?path=machine_description1
            nbi: imas:hdf5?path=machine_description2
@@ -54,7 +69,8 @@ The optional ``globals`` section defines parameters applicable to the entire wav
 Grouping Waveforms
 ------------------
 
-Keys at any level that **do not** contain a forward slash (`/`) define logical groups. These are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
+Keys at any level that contain a dictionary represent logical groups. 
+These are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
 
 .. code-block:: yaml
 
@@ -71,7 +87,8 @@ Keys at any level that **do not** contain a forward slash (`/`) define logical g
 Defining Waveforms
 ------------------
 
-Waveforms are defined by key-value pairs where the key **contains** at least one forward slash (`/`).
+Waveforms are defined by key-value pairs where the key contains a string, 
+a list of waveforms, or a single number (float or integer).
 
 *   **Waveform Name:** The waveform name represents the unique identifier for the waveform. In order to export the waveform to an IDS the following naming structure must be used. The first segment should refer to the **IDS name** and the second part should refer to the **path** in that IDS the waveform applies to, e.g., ``ec_launchers/beam(1)/phase/angle``. It is allowed to not adhere to this format, but in this case the waveforms will not be saved to an IDS during export.
 
@@ -91,7 +108,7 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
 
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
-    2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time. This is shorthand for: ``{type: constant, value: <number>}``.
+    2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time.
 
         .. code-block:: yaml
 
@@ -105,8 +122,8 @@ Waveforms are defined by key-value pairs where the key **contains** at least one
           # This is equal to:
           some_ids/data: 0
 
-    4.  **Reference:** TODO: add referenced/derived waveforms and link to that section here.
-
+    4.  **Derived Waveform:** Waveforms may contain calculations or be derived from other waveforms.
+        For more information, see :ref:`Derived Waveforms <derived-waveforms>`.
 
 Slice Notation
 --------------

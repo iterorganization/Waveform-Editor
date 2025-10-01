@@ -190,9 +190,6 @@ def test_rename_waveform(config):
         config.rename_waveform("waveform/1", "test_error/1")
 
     with pytest.raises(ValueError):
-        config.rename_waveform("waveform/2", "invalid_waveform")
-
-    with pytest.raises(ValueError):
         config.rename_waveform("waveform/2", "waveform/2")
 
 
@@ -386,3 +383,20 @@ def test_bounds(config):
     config.remove_group(path)
     assert config.start == 0
     assert config.end == 1
+
+
+def test_duplicates_group_waveform():
+    """Test adding groups/waveforms with duplicate names"""
+    config = WaveformConfiguration()
+    config.add_group("root", [])
+    config.add_group("group_name", ["root"])
+
+    waveform = Waveform(name="group_name")
+    with pytest.raises(ValueError):
+        config.add_waveform(waveform, ["root"])
+    waveform.name = "waveform_name"
+    config.add_waveform(waveform, ["root"])
+    with pytest.raises(ValueError):
+        config.add_group("waveform_name", ["root"])
+    with pytest.raises(ValueError):
+        config.rename_waveform("waveform_name", "group_name")

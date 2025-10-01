@@ -71,8 +71,10 @@ Installing dependencies
             export LD_LIBRARY_PATH=~/.local/lib:$LD_LIBRARY_PATH
 
 
-Building the NICE inverse MUSCLE3 IMAS program
-----------------------------------------------
+.. _installing_nice:
+
+Building the NICE MUSCLE3 IMAS program
+--------------------------------------
 
 The following instructions are adapted from
 https://blfauger.gitlabpages.inria.fr/nice/install.html.
@@ -87,6 +89,7 @@ https://blfauger.gitlabpages.inria.fr/nice/install.html.
     cp Makefile.TEMPLATE Makefile
     make -j
     make nice_imas_inv_muscle3
+    make nice_imas_dir_muscle3
 
-If this was successful, you should find the program ``nice_imas_inv_muscle3`` in the
-``nice/run`` folder.
+If this was successful, you should find the programs ``nice_imas_inv_muscle3`` and
+``nice_imas_dir_muscle3`` in the ``nice/run`` folder.

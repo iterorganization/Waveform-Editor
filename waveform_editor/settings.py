@@ -6,6 +6,8 @@ import panel as pn
 import param
 import yaml
 
+from waveform_editor.gui.util import WarningIndicator
+
 logger = logging.getLogger(__name__)
 
 _xdg = os.environ.get("XDG_CONFIG_HOME")
@@ -14,36 +16,98 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 
 
 class NiceSettings(param.Parameterized):
-    executable = param.String(
-        default="nice_imas_inv_muscle3",
-        label="NICE executable path",
+    INVERSE_MODE = "NICE Inverse"
+    DIRECT_MODE = "NICE Direct"
+
+    BASE_REQUIRED = (
+        "md_pf_active",
+        "md_pf_passive",
+        "md_wall",
+        "md_iron_core",
+    )
+    inv_executable = param.String(
+        label="NICE inverse executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
+    )
+    dir_executable = param.String(
+        label="NICE direct executable path",
+        doc="Path to NICE direct IMAS MUSCLE3 executable",
     )
     environment = param.Dict(
         default={},
         label="NICE environment variables",
         doc="Environment variables for NICE",
     )
-    md_pf_active = param.String(
-        label="'pf_active' machine description URI",
+    md_pf_active = param.String(label="'pf_active' machine description URI")
+    md_pf_passive = param.String(label="'pf_passive' machine description URI")
+    md_wall = param.String(label="'wall' machine description URI")
+    md_iron_core = param.String(label="'iron_core' machine description URI")
+    verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
+    mode = param.Selector(
+        objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
     )
-    md_pf_passive = param.String(
-        label="'pf_passive' machine description URI",
+    are_required_filled = param.Boolean(precedence=-1)
+    is_direct_mode = param.Boolean(precedence=-1)
+    is_inverse_mode = param.Boolean(precedence=-1)
+
+    @param.depends("mode", watch=True, on_init=True)
+    def set_mode_flags(self):
+        self.is_direct_mode = self.mode == self.DIRECT_MODE
+        self.is_inverse_mode = self.mode == self.INVERSE_MODE
+
+    @param.depends(
+        *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True
     )
-    md_wall = param.String(
-        label="'wall' machine description URI",
-    )
-    md_iron_core = param.String(
-        label="'iron_core' machine description URI",
-    )
+    def check_required_params_filled(self):
+        base_ready = all(getattr(self, p) for p in self.BASE_REQUIRED)
+
+        if not base_ready:
+            self.are_required_filled = False
+            return
+
+        if self.mode == self.INVERSE_MODE:
+            self.are_required_filled = bool(self.inv_executable)
+        else:
+            self.are_required_filled = bool(self.dir_executable)
 
     def apply_settings(self, params):
-        """Update parameters from a dictionary."""
+        """Update parameters from a dictionary, skipping unknown keys."""
+        for key in list(params):
+            if key not in self.param or key == "name":
+                logger.warning(f"Removing unknown NICE setting: {key}")
+                params.pop(key)
         self.param.update(**params)
 
     def to_dict(self):
-        """Returns a dictionary representation of current parameter values."""
-        return {p: getattr(self, p) for p in self.param if p != "name"}
+        """Returns a dictionary representation of current parameter values, excluding
+        params with a precendence of -1."""
+        result = {}
+        for p in self.param:
+            param_obj = self.param[p]
+            if p != "name" and param_obj.precedence != -1:
+                result[p] = getattr(self, p)
+        return result
+
+    def panel(self):
+        items = []
+
+        for p in self.param:
+            if p == "name":
+                continue
+
+            # Add warning indicator if required parameter is not filled
+            is_inv_required = p == "inv_executable" and self.is_inverse_mode
+            is_dir_required = p == "dir_executable" and self.is_direct_mode
+            is_base_required = p in self.BASE_REQUIRED
+
+            row_content = [pn.Param(self.param[p], show_name=False)]
+            if is_inv_required or is_dir_required or is_base_required:
+                warning = WarningIndicator(visible=self.param[p].rx.not_())
+                row_content.append(warning)
+
+            items.append(pn.Row(*row_content))
+
+        return pn.Column(*items)
 
 
 class UserSettings(param.Parameterized):
@@ -70,6 +134,10 @@ class UserSettings(param.Parameterized):
             self.nice.apply_settings(settings["nice"])
 
         base_settings = {k: v for k, v in settings.items() if k != "nice"}
+        for key in list(base_settings):
+            if key not in self.param or key in ("name", "nice"):
+                logger.warning(f"Removing unknown setting: {key}")
+                base_settings.pop(key)
         self.param.update(**base_settings)
 
     def _save_settings(self, event=None):

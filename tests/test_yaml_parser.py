@@ -27,7 +27,7 @@ def yaml_parser(config):
 
 def test_yaml_parser(yaml_parser):
     """Test loading a yaml file as a string."""
-    with open("tests/tendencies/test_yaml/test.yaml") as file:
+    with open("tests/test_yaml/test.yaml") as file:
         yaml_file = file.read()
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert_tendencies_correct(waveform.tendencies)
@@ -35,14 +35,14 @@ def test_yaml_parser(yaml_parser):
     assert not yaml_parser.parse_errors
 
     # Invalid configuration
-    with open("tests/tendencies/test_yaml/test_invalid_config.yaml") as file:
+    with open("tests/test_yaml/test_invalid_config.yaml") as file:
         yaml_file = file.read()
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert waveform.annotations
     assert not yaml_parser.parse_errors
 
     # Invalid YAML
-    with open("tests/tendencies/test_yaml/test_invalid_yaml.yaml") as file:
+    with open("tests/test_yaml/test_invalid_yaml.yaml") as file:
         yaml_file = file.read()
     waveform = yaml_parser.parse_waveform(yaml_file)
     assert not waveform.tendencies

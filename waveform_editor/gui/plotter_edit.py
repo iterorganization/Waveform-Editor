@@ -46,7 +46,8 @@ class PlotterEdit(Viewer):
             try:
                 self.pane.object = self.main_curve()
             except Exception as e:
-                self.editor.create_error_alert(e, "danger")
+                self.editor.error_message = str(e)
+                self.editor.alert_type = "danger"
             return
 
         if self.plotted_waveform is None or not self.plotted_waveform.tendencies:
@@ -68,28 +69,27 @@ class PlotterEdit(Viewer):
             # piecewise tendencies, and add a CurveEdit stream to it:
             pwl_values = [tendency.get_value() for tendency in pwl_tendencies]
             # Stitch tendencies into a single curve, separated by nan values:
-            stitched_time = [[np.nan]] * (2 * len(pwl_values) - 1)
-            stitched_values = [[np.nan]] * (2 * len(pwl_values) - 1)
+            stitched_time = [[np.nan]] * (2 * len(pwl_values))
+            stitched_values = [[np.nan]] * (2 * len(pwl_values))
             stitched_time[::2] = [val[0] for val in pwl_values]
             stitched_values[::2] = [val[1] for val in pwl_values]
             stitched_time = np.concatenate(stitched_time)
             stitched_values = np.concatenate(stitched_values)
 
-            self.curve_stream = streams.CurveEdit(
+            self.point_stream = streams.PointDraw(
                 data={self.xlabel: stitched_time, self.ylabel: stitched_values},
-                style={"color": "black", "size": 10},
             )
-            self.curve_stream.add_subscriber(self.piecewise_click_and_drag)
+            self.point_stream.add_subscriber(self.piecewise_click_and_drag)
 
-            edit_curve = hv.DynamicMap(
-                lambda data: hv.Curve(data, self.xlabel, self.ylabel, label="edit"),
-                streams=[self.curve_stream],
+            edit_points = hv.DynamicMap(
+                lambda data: hv.Points(data, [self.xlabel, self.ylabel]),
+                streams=[self.point_stream],
             )
 
-            overlay = hv.DynamicMap(self.main_curve, streams=[self.pipe]) * edit_curve
+            overlay = hv.DynamicMap(self.main_curve, streams=[self.pipe]) * edit_points
             self.pane.object = overlay.opts(
                 opts.Curve(line_width=2, color=hv.Cycle().values[0]),
-                opts.Curve("edit", alpha=0.2),
+                opts.Points(color="black", size=10, tools=["box_select"]),
             ).opts(
                 framewise=True,
                 show_legend=False,
@@ -117,18 +117,47 @@ class PlotterEdit(Viewer):
 
         times = np.array(data[self.xlabel])
         values = np.array(data[self.ylabel])
+
+        # Check if a new point is inserted:
+        if not np.isnan(times[-1]):
+            # Find out in which curve we need to insert the new point
+            # NaN handling is tricky:
+            # - Time array could end with many nans: [t1, t2, nan, ..., nan, newtime]
+            newtime = times[-1]
+            end_of_last_curve = len(times) - 1
+            while np.isnan(times[end_of_last_curve - 1]):
+                end_of_last_curve -= 1
+            for itime in range(end_of_last_curve + 1):
+                if times[itime] > newtime:
+                    break
+
+            if itime == 0 or np.isnan(times[itime - 1]):
+                # Inserted in between two curves, this is not allowed
+                times[-1] = values[-1] = np.nan  # Clear the point
+                pn.state.notifications.warning(
+                    "Cannot insert points outside of piecewise tendencies"
+                )
+            else:
+                # Move new point to the right spot in times/values
+                times[itime + 1 :] = times[itime:-1]
+                times[itime] = newtime
+                newvalue = values[-1]
+                values[itime + 1 :] = values[itime:-1]
+                values[itime] = newvalue
+            self.point_stream.data = {self.xlabel: times, self.ylabel: values}
+
         # Ensure times are monotonically increasing
         if np.any(np.diff(times) <= 0):
             for i in range(1, len(times)):
                 if times[i] <= times[i - 1]:
                     times[i] = times[i - 1] * (1 + 1e-15)
-            self.curve_stream.data = {self.xlabel: times, self.ylabel: values}
+            self.point_stream.data = {self.xlabel: times, self.ylabel: values}
             pn.state.notifications.warning(
                 "Times must be increasing: clipping to previous time point."
             )
 
         data_idx = 0
-        nan_indices = [-1, *np.argwhere(np.isnan(times)).flatten(), None]
+        nan_indices = [-1, *np.argwhere(np.isnan(times)).flatten()]
 
         # Update data of the piecewise linear tendencies
         for item in items:

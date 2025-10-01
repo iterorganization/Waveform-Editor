@@ -25,8 +25,9 @@ def _excepthook(type_, value, tb):
 
 
 @click.group("waveform-editor", invoke_without_command=True, no_args_is_help=True)
-@click.option("-v", "--version", is_flag=True, help="Show version information")
-def cli(version):
+@click.option("--version", is_flag=True, help="Show version information")
+@click.option("-v", "--verbose", count=True, help="Show verbose output")
+def cli(version, verbose):
     """The Waveform Editor command line interface.
 
     Please use one of the available commands listed below. You can get help for each
@@ -34,9 +35,17 @@ def cli(version):
 
         waveform-editor <command> --help
     """
-    # Limit the traceback to 1 item: avoid scaring CLI users with long traceback prints
-    # and let them focus on the actual error message
-    sys.excepthook = _excepthook
+    loglevel = logging.WARNING
+    if verbose == 1:
+        loglevel = logging.INFO
+    elif verbose > 1:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel)
+
+    if verbose <= 1:
+        # Limit the traceback to 1 item: avoid scaring CLI users with long traceback
+        # prints and let them focus on the actual error message
+        sys.excepthook = _excepthook
 
     if version:
         print_version()
@@ -61,8 +70,14 @@ def parse_linspace(ctx, param, value):
 
 
 @cli.command("gui")
-def launch_gui():
-    """Launch the Waveform Editor GUI using Panel."""
+@click.argument("file", type=click.Path(exists=True, dir_okay=False), required=False)
+def launch_gui(file):
+    """Launch the Waveform Editor GUI using Panel.
+
+    \b
+    Arguments:
+      file: Waveform file to load on startup.
+    """
     # Use local imports to avoid loading the full GUI dependencies for the other CLI use
     # cases:
     import panel as pn
@@ -71,7 +86,9 @@ def launch_gui():
 
     try:
         app = WaveformEditorGui()
-        pn.serve(app)
+        if file is not None:
+            app.load_yaml_from_file(Path(file))
+        pn.serve(app, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 

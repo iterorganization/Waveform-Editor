@@ -626,3 +626,84 @@ def test_increasing_times():
         ConfigurationExporter(config, np.array([0, 0, 1]))
     with pytest.raises(ValueError):
         ConfigurationExporter(config, np.array([0, 2, 1]))
+
+
+def test_export_constant(tmp_path):
+    """Check if constant waveforms are exported correctly"""
+
+    yaml_str = """
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 1
+      ec_launchers/beam(2)/phase/angle: 2.2
+      ec_launchers/beam(3)/phase/angle: 3.3e3
+    """
+    file_path = f"{tmp_path}/test.nc"
+    times = np.array([0, 1, 2])
+    _export_ids(file_path, yaml_str, times)
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers", autoconvert=False)
+        assert np.array_equal(ids.beam[0].phase.angle, [1] * 3)
+        assert np.array_equal(ids.beam[1].phase.angle, [2.2] * 3)
+        assert np.array_equal(ids.beam[2].phase.angle, [3.3e3] * 3)
+
+
+def test_example_yaml(tmp_path):
+    """Test for an example YAML file if all IDSs are correctly filled."""
+
+    file_path = f"{tmp_path}/test.nc"
+    with open("tests/test_yaml/example.yaml") as file:
+        yaml_str = file.read()
+    times = np.array([0, 100, 200, 300, 400, 500])
+    values = np.array([0, 1e5, 1e5, 1e5, 1e5, 0])
+    _export_ids(file_path, yaml_str, times)
+
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        core_profiles = dbentry.get("core_profiles", autoconvert=False)
+        equilibrium = dbentry.get("equilibrium", autoconvert=False)
+        ic_antennas = dbentry.get("ic_antennas", autoconvert=False)
+        pellets = dbentry.get("pellets", autoconvert=False)
+        ec_launchers = dbentry.get("ec_launchers", autoconvert=False)
+        gas_injection = dbentry.get("gas_injection", autoconvert=False)
+        interferometer = dbentry.get("interferometer", autoconvert=False)
+        nbi = dbentry.get("nbi", autoconvert=False)
+
+    assert np.all(core_profiles.time == times)
+    assert np.all(equilibrium.time == times)
+    assert np.all(ic_antennas.time == times)
+    assert np.all(pellets.time == times)
+    assert np.all(ec_launchers.time == times)
+    assert np.all(gas_injection.time == times)
+    assert np.all(interferometer.time == times)
+    assert np.all(nbi.time == times)
+
+    assert np.all(core_profiles.global_quantities.ip == values)
+    assert np.all(core_profiles.global_quantities.z_eff_resistive == values)
+    assert np.all(core_profiles.vacuum_toroidal_field.b0 == values)
+
+    assert np.all(equilibrium.vacuum_toroidal_field.b0 == values)
+    for i, ts in enumerate(equilibrium.time_slice):
+        assert ts.global_quantities.ip == values[i]
+
+    assert np.all(ic_antennas.antenna[0].frequency.data == 40e6)
+    assert np.all(ic_antennas.antenna[0].power_launched.data == values)
+    assert np.all(ic_antennas.antenna[0].module[0].strap[0].phase.data == 1.5708)
+
+    for i, ts in enumerate(pellets.time_slice):
+        assert ts.pellet[0].velocity_initial == values[i]
+
+    assert np.all(ec_launchers.beam[0].power_launched.data == values)
+    assert np.all(ec_launchers.beam[0].frequency.data == 170e9)
+    assert np.all(ec_launchers.beam[0].steering_angle_pol == values)
+    assert np.all(ec_launchers.beam[0].steering_angle_tor == values)
+    assert np.all(ec_launchers.beam[0].phase.angle == values)
+
+    assert np.all(gas_injection.valve[0].flow_rate.data == values)
+    assert np.all(gas_injection.valve[0].electron_rate.data == values)
+    assert np.all(gas_injection.pipe[0].flow_rate.data == values)
+
+    assert np.all(interferometer.channel[0].n_e_line.data == values)
+
+    assert np.all(
+        nbi.unit[0].power_launched.data == 16.5e6 * (values**2.5) / (870e3**2.5)
+    )
+    assert np.all(nbi.unit[0].energy.data == values)

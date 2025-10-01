@@ -50,7 +50,6 @@ class BaseTendency(param.Parameterized):
     duration = param.Number(
         default=1.0,
         bounds=(0.0, None),
-        inclusive_bounds=(False, True),
         doc="The duration of the tendency.",
     )
     end = param.Number(default=1.0, doc="The end time of the tendency.")
@@ -78,6 +77,7 @@ class BaseTendency(param.Parameterized):
         doc="Whether the tendency is the first tendency within a repeated tendency",
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
+    allow_zero_duration = False
 
     def __init__(self, **kwargs):
         self.line_number = kwargs.pop("line_number", 0)
@@ -190,8 +190,7 @@ class BaseTendency(param.Parameterized):
             elif self.prev_tendency.end < self.start:
                 error_msg = (
                     "Previous tendency ends before the start of the current tendency.\n"
-                    "The values inbetween the tendencies will be linearly interpolated."
-                    "\n"
+                    "Please ensure there are no gaps in the waveform.\n"
                 )
                 self.annotations.add(self.line_number, error_msg, is_warning=True)
 
@@ -285,6 +284,8 @@ class BaseTendency(param.Parameterized):
         # Check if any value has changed
         if (self.start, self.duration, self.end) != values:
             try:
+                if values[1] == 0 and not self.allow_zero_duration:
+                    raise ValueError("Duration cannot be 0")
                 self.start, self.duration, self.end = values
             except Exception as error:
                 self._handle_error(error)

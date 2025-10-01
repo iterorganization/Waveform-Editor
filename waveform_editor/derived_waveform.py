@@ -159,7 +159,7 @@ class DerivedWaveform(BaseWaveform):
 
         # If derived waveform is a constant, ensure an array is returned
         if self.is_constant:
-            return time, np.full_like(time, result)
+            return time, np.full_like(time, result, dtype=float)
 
         # Ensure the result is a 1D array
         if not isinstance(result, np.ndarray):
