@@ -271,9 +271,9 @@ sections below:
 
 * **NICE Configuration**: Required NICE configuration parameters.
 * **Plotting Parameters**: Configuration for the plot.
-* **Plasma Shape**: Defining a target plasma shape when running NICE in **Inverse Mode**.
-* **Plasma Properties**: Plasma's physical characteristics (e.g. Ip, p' / ff' profiles).
-* **Coil Currents**: Setting the values of the coil currents.
+* **Plasma Shape**: Target plasma shape when running NICE in **Inverse Mode**.
+* **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
+* **Coil Currents**: The currents through the active field coils.
 
 NICE Configuration
 """"""""""""""""""
