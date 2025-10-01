@@ -349,7 +349,7 @@ Its behavior changes depending on the operating mode:
 
 You can save the coil currents to waveforms at a chosen export time. The coil current
 values will be stored in a :ref:`piecewise-linear-tendency` at the end of the
-corresponding waveforms (``pf_active/coil()/current/data``). This allows for a 
+corresponding waveforms (for example: ``pf_active/coil(1)/current/data``). This allows for a 
 convenient construction of a waveform by iteratively executing the following:
 
 #. Configure the plasma parameters and shape.
