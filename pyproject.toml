@@ -25,15 +25,13 @@ dependencies = [
     "holoviews",
     "ruamel.yaml",
     "kaleido", # required for exporting PNG to disk
-    "asteval"
+    "asteval",
+    "muscle3",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-all = ["waveform-editor[muscle3,dev,linting,test,docs]"]
-muscle3 = [
-    "muscle3",
-]
+all = ["waveform-editor[dev,linting,test,docs]"]
 dev = [
     "waveform-editor[test,linting]",
     # useful to run panel in --dev mode
