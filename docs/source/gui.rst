@@ -114,6 +114,8 @@ dialog, which provides several options:
 
    The export dialog
 
+.. _edit_config:
+
 Editing Configuration
 ---------------------
 
