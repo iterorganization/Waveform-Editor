@@ -68,6 +68,8 @@ You can start a new configuration or open an existing one from the sidebar's
   **File > 📁 Open...**. This will open a file dialog where you can navigate to and
   select your ``.yaml`` file.
 
+.. _saving_config:
+
 Saving a Configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -78,6 +80,8 @@ You can save your work in two ways:
   the "Save As" dialog instead.
 * **File > 💾 Save As...**: This opens a file dialog, allowing you to save the
   current configuration to a new file or overwrite an existing one.
+
+.. _export_config:
 
 Exporting a Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^

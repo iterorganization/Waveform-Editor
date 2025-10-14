@@ -22,7 +22,7 @@ Exercise 1a: Creating a new waveform
       so create a new group, and create a new waveform inside it.
 
       .. hint::
-         Detailed instructions on how to edit the waveform configuration can be found :ref:`here <gui>`.
+         Detailed instructions on how to edit the waveform configuration can be found :ref:`here <edit_config>`.
 
    .. md-tab-item:: Solution
 
@@ -142,11 +142,11 @@ Exercise 2a: Creating a Plasma Current
       in the editor.
 
       We will now design a simple waveform representing the plasma current during
-      a single pulse. Create a waveform called equilibrium/time_slice/global_quantities/ip``, 
+      a single pulse. Create a waveform called ``equilibrium/time_slice/global_quantities/ip``, 
       which has the following shape:
       
       1. A linear ramp up from 0 to 1.5e7 A, in a duration of 100 seconds.
-      2. A flat-top at 1.5e7 A held for 400 seconds.
+      2. A flat-top at 1.5e7 A, held for 400 seconds.
       3. A ramp down back to 0 A, in a duration of 200 seconds.
 
    .. md-tab-item:: Solution
@@ -172,7 +172,7 @@ Exercise 2b: Shortform notation
    .. md-tab-item:: Exercise
 
       In the previous exercise, the solution proposed was very quite lengthy. The 
-      Waveform Editor can sometimes deduce some information about the tendencies, if 
+      Waveform Editor can sometimes deduce some information about the tendencies if 
       information is missing.
 
       Some examples:
@@ -190,7 +190,7 @@ Exercise 2b: Shortform notation
 
       #. The first tendency - No ``start`` or ``from`` is needed because it begins at 0 by default.
       #. The second tendency - No ``type`` is provided, so it is a linear tendency by default. 
-         The ``start``, from``, and ``to`` attributes are by default set to the respective 
+         The ``start``, ``from``, and ``to`` attributes are by default set to the respective 
          values at the end of the previous tendency.
       #. The third tendency - Again, the ``start`` and ``from`` attributes are inferred from the 
          previous tendency. In this case, we do need to specify the ``to`` attribute, otherwise
@@ -301,6 +301,7 @@ Exercise 3c: Repeating Waveforms
       .. note:: You can also change the frequency of the repeated waveform, see the 
          :ref:`documentation <repeat-tendency>` to see how.
 
+
 Exercise 4a: Derived Waveforms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -324,6 +325,10 @@ Exercise 4a: Derived Waveforms
 
       .. hint::
          Detailed instructions on derived waveforms can be found :ref:`here <derived-waveforms>`.
+
+      Before starting with Exercise 4b, save the configuration containing the two created waveforms
+      to disk. This will be used in a later exercise. To see how to save a configuration, have a 
+      look at the :ref:`instructions <saving_config>`.
 
    .. md-tab-item:: Solution
 
@@ -395,28 +400,162 @@ Exercise 4b: Derived Waveforms - part 2
       .. image:: ../images/training/derived_nbi.png
          :align: center
 
-Exporting
----------
-- exporting different types
-- change global properties DD version?
-
-
-plasma shape editor
+Exporting Waveforms
 -------------------
-- run inverse mode
-- run direct mode?
-- store coils as waveforms
+
+In this exercise you will learn how to export waveform configurations.
+
+Exercise 5a: Exporting from the UI
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      In this exercise, we will continue with the configuration that you stored in 
+      exercise 4a. If you forgot to save it, the YAML is also shown under the tab `Configuration`.
+      Load this configuration into the Waveform Editor, if you are unsure how to, have a look 
+      at the instructions :ref:`here <gui>`.
+
+      We will export our EC beam power values to an ec_launchers IDS. Export the configuration
+      to an HDF5 file. Sample the time such that there are 20 points in the range from 0 to 800.
+
+      Inspect the exported IDS using ``imas print <your URI> ec_launchers``, which 
+      quantities are filled? What happens with the values outside of the waveform range 
+      (time steps later than 700 s)?
+
+      .. hint::
+         Detailed instructions on how to export the waveform configuration can be found :ref:`here <export_config>`.
+
+   .. md-tab-item:: Configuration
+
+      If you forgot to save the configuration of exercise 4a, copy the following YAML file,
+      and store it to disk.
 
 
+      .. code-block:: yaml
 
-Exporting
----------
-- exporting different types
-- change global properties DD version?
+         globals:
+           dd_version: 4.0.0
+           machine_description: {}
+         ec_launchers:
+           total_power:
+           - {type: linear, to: 5e5, duration: 100}
+           - {type: constant, duration: 500}
+           - {type: linear, to: 0, duration: 100}
+           ec_launchers/beam(1:10)/power_launched/data: |
+             "total_power" / 10
+
+   .. md-tab-item:: Solution
+
+      Printing the exported ec_launchers IDS shows the output below. Notice how the 
+      time array is filled with values from 0 to 800. The Waveform Editor will only 
+      export waveforms which name matches a path in the IDS. Therefore, the ``total_power``
+      waveform will not be exported to an IDS. Since we use a slicing notation for the 
+      power_launched waveform (``beam(1:10)``), the first 10 beams are filled with the 
+      same waveform.
+
+      Any values which are outside of the defined waveform range (e.g. values later than 700s)
+      will be set to 0.
+
+      .. code-block:: bash
+
+         ec_launchers
+         ├── ids_properties
+         │   ├── homogeneous_time: 1
+         │   └── ids_properties/version_put
+         │       ├── data_dictionary: '4.0.0'
+         │       ├── access_layer: '5.4.3'
+         │       └── access_layer_language: 'imas 2.0.1'
+         ├── beam[0]
+         │   └── beam[0]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[1]
+         │   └── beam[1]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[2]
+         │   └── beam[2]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[3]
+         │   └── beam[3]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[4]
+         │   └── beam[4]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[5]
+         │   └── beam[5]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[6]
+         │   └── beam[6]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[7]
+         │   └── beam[7]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[8]
+         │   └── beam[8]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         ├── beam[9]
+         │   └── beam[9]/power_launched
+         │       └── data: array([    0.    , 21052.6316, 42105.2632, ...,     0.    ,     0.    ,     0.    ])
+         └── time: array([  0.    ,  42.1053,  84.2105, ..., 715.7895, 757.8947, 800.    ])
 
 
-plasma shape editor
+Exercise 5b: Exporting different Data Dictionary versions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      Repeat the previous exercise, but this time, before exporting change the data dictionary 
+      version to **3.42.0** in the `Edit Global Properties` tab, and save the configuration.
+      Ensure you enter a different from previous exercise. Again, print the IDS in your terminal, what has changed?
+
+   .. md-tab-item:: Solution
+
+      You should see that the data dictionary version of the IDS has changed to '3.42.0':
+
+      .. code-block:: bash
+
+         ec_launchers
+         ├── ids_properties
+         │   ├── homogeneous_time: 1
+         │   └── ids_properties/version_put
+         │       ├── data_dictionary: '3.42.0'
+         │       ├── access_layer: '5.4.3'
+         │       └── access_layer_language: 'imas 2.0.1'
+         ...
+
+Exercise 5c: Exporting from the CLI
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      You can also export a configuration using the CLI. Try exporting your configuration
+      using the same settings with the CLI command. Print the IDS afterwards, is it the 
+      same as before?
+
+      .. hint::
+
+         Each CLI command has a help page which can be printed by supplying the ``--help``
+         flag, for example:
+
+         .. code-block:: bash
+
+            waveform-editor --help 
+
+         Detailed instructions on how to use the CLI can be found :ref:`here <cli>`.
+
+   .. md-tab-item:: Solution
+
+      Export the configuration using:
+
+      .. code-block:: bash
+
+         waveform-editor export-ids <example YAML> imas:hdf5?path=./ex5c --linspace 0,800,20
+
+      This exports the same IDS as in previous exercise.
+
+Plasma Shape Editor
 -------------------
-- run inverse mode
-- run direct mode?
-- store coils as waveforms
+
+TODO: Exercises for plasma shape editor
