@@ -3,8 +3,15 @@
 Training Courses
 ================
 
+In this training you will learn the following:
+
+- Creating and editing waveforms using the GUI
+- Exporting waveforms to an IDS
+
+Exporting waveform configurations to IMAS HDF5 files
 All examples assume you have an environment with the Waveform Editor up and running.
 if you do not have this yet, please have a look at the :ref:`installation instructions <installing>`.
+You do not need to have installed the dependencies for the Plasma Shape Editor to do these exercises.
 
 Creating your first waveforms
 -----------------------------
@@ -18,25 +25,37 @@ Exercise 1a: Creating a new waveform
    .. md-tab-item:: Exercise
 
       In order to start editing waveforms, you must first learn how to navigate your way around
-      around the GUI. Launch the waveform editor GUI. A waveform must *always* belong to a group,
-      so create a new group, and create a new waveform inside it.
+      around the GUI. Launch the Waveform Editor GUI using the following command, 
+      which opens the Waveform Editor in your default browser.
+
+      .. code-block:: bash
+
+         waveform-editor gui
+
+
+      #. A waveform must *always* belong to a group, so first create a group in which 
+         to store the new waveform, and provide a name for the group, e.g. ``Group1``.
+      #. Create a new waveform in the previously created group, and provide a name for 
+         this waveform, e.g. ``Waveform1``.
+      
+      What do you see in the sidebar on the left?
 
       .. hint::
-         Detailed instructions on how to edit the waveform configuration can be found :ref:`here <edit_config>`.
+         Detailed instructions on how to add groups and waveforms from the GUI 
+         can be found :ref:`here <edit_config>`.
+
 
    .. md-tab-item:: Solution
 
-      #. Launch the Waveform Editor GUI using the following command, which opens the Waveform Editor
-         in your default browser.
+      .. |add_waveform_icon| image:: ../images/gui/add_waveform_icon.png
+         :height: 24px
+      .. |add_group_icon| image:: ../images/gui/add_group_icon.png
+         :height: 24px
 
-         .. code-block:: bash
+      #. Use this button |add_group_icon| to add a new group and call it ``Group1``
+      #. Use this button |add_waveform_icon| to add a new waveform and call it ``Waveform1``
 
-            waveform-editor gui
-
-      #. Create a group in which to store the new waveform, and provide a name for the group, e.g. ``Group1``.
-      #. Create a new waveform in the previously created group, and provide a name for this waveform, e.g. ``Waveform1``.
-
-      You have now created a new, empty waveform, which is shown in the sidebar:
+      You have now created a new waveform, which is shown in the sidebar:
 
       .. image:: ../images/training/ex1_sidebar.png
          :align: center
@@ -48,15 +67,28 @@ Exercise 1b: Creating a sine wave
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      Edit the waveform you created in the previous exercise such that it contains
-      a single sine-wave tendency, with the following properties:
+      Now you will edit the empty waveform you created in the previous exercise. 
+      Select the waveform in the sidebar and open the *Edit Waveforms* tab. You will 
+      see an editor window as well as a live view the waveform currently being edited.
 
+      The editor currently shows ``- {}``, indicating an empty tendency.
+      A tendency can be specified by providing a tendency type and by setting parameters defining 
+      the shape of this tendency. For example:
+
+      .. code-block:: yaml
+
+         - {type: <waveform type>, <param 1>: <value 1>, <param 2>: <value 2>, ...}
+
+      Edit the waveform you created in the previous exercise such that it contains
+      a single sine-wave tendency, with the following parameters:
+
+      - Type: sine
       - Duration: from 10 to 15 seconds
       - Frequency: 0.5 Hz
       - Amplitude: 3
       - Vertical range: 0 to 6
 
-      Use the following tendency attributes: ``type``, ``start``, ``end``, ``frequency``, ``amplitude``, and ``base``.
+      Use the following tendency parameters: ``type``, ``start``, ``end``, ``frequency``, ``amplitude``, and ``base``.
 
       .. hint::
          Detailed descriptions of the tendencies can be found :ref:`here <available-tendencies>`.
@@ -81,7 +113,7 @@ Exercise 1c: Creating a sine wave - part 2
    .. md-tab-item:: Exercise
 
       In the previous execise, you might have noticed that there a multiple ways in which you can define the same 
-      waveform. Recreate the waveform of previous exercise using only the following tendency attributes: 
+      waveform. Recreate the waveform of previous exercise using only the following tendency parameters: 
       ``type``, ``start``, ``duration``, ``period``, ``min``, and ``max``.
 
    .. md-tab-item:: Solution
@@ -177,7 +209,7 @@ Exercise 2b: Shortform notation
 
       Some examples:
 
-      #. If no ``start`` attribute is provided, the end of the previously tendency will be 
+      #. If no ``start`` parameter is provided, the end of the previously tendency will be 
          used as a start value, or 0 if it is the first tendency.
       #. If no tendency ``type`` is provided, it will be considered a linear tendency by default.
       #. If no start value e.g. ``from`` is provided, it will try to match end of previous tendency.
@@ -190,10 +222,10 @@ Exercise 2b: Shortform notation
 
       #. The first tendency - No ``start`` or ``from`` is needed because it begins at 0 by default.
       #. The second tendency - No ``type`` is provided, so it is a linear tendency by default. 
-         The ``start``, ``from``, and ``to`` attributes are by default set to the respective 
+         The ``start``, ``from``, and ``to`` parameters are by default set to the respective 
          values at the end of the previous tendency.
-      #. The third tendency - Again, the ``start`` and ``from`` attributes are inferred from the 
-         previous tendency. In this case, we do need to specify the ``to`` attribute, otherwise
+      #. The third tendency - Again, the ``start`` and ``from`` parameters are inferred from the 
+         previous tendency. In this case, we do need to specify the ``to`` parameter, otherwise
          we would get a straight line.
       
       .. code-block:: yaml
@@ -268,7 +300,7 @@ Exercise 3c: Repeating Waveforms
    .. md-tab-item:: Exercise
 
       You can create repeating patterns using the ``repeat`` tendency. The repeat tendency 
-      allows you to specify the ``waveform`` attribute. This allows you to repeat 
+      allows you to specify the ``waveform`` parameter. This allows you to repeat 
       any number of tendencies.
 
       Take the waveform from the previous exercise and make it repeat three times.
@@ -279,7 +311,7 @@ Exercise 3c: Repeating Waveforms
 
       A smooth tendency was added as a last tendency to smoothly transition from the 
       linear tendency back into the piecewise linear tendency. This whole waveform is 
-      placed in the ``waveform`` attribute of the repeat tendency. Since the tendencies
+      placed in the ``waveform`` parameter of the repeat tendency. Since the tendencies
       combine up to a total length of 11 (6+1+3+1), the total ``duration`` of the repeat
       tendency is set to 33, to obtain three full cycles.
 
@@ -370,13 +402,13 @@ Exercise 4b: Derived Waveforms - part 2
 
       where:
 
-      - :math:`P_0` = 16.5×10⁶ W (nominal power per beam box)
-      - :math:`E_0` = 870×10³ eV (reference beam energy for hydrogen)
+      - :math:`P_0` = 16.5e6 W (nominal power per beam box)
+      - :math:`E_0` = 870e3 eV (reference beam energy for hydrogen)
       - :math:`E_\mathrm{beam}` is the beam energy
 
       Define the following waveforms:
 
-      1. ``nbi/unit(1)/energy/data`` - linear ramps up from 0 to 500 keV, for 100 seconds, then flattops for 500 seconds, and then linearly ramps down for 100 seconds.
+      1. ``nbi/unit(1)/energy/data`` - linear ramps up from 0 to 500e3, for 100 seconds, then flattops for 500 seconds, and then linearly ramps down for 100 seconds.
       2. ``nbi/unit(1)/power_launched/data`` - derived from the energy using the above equation.
 
    .. md-tab-item:: Solution
@@ -417,11 +449,12 @@ Exercise 5a: Exporting from the UI
       at the instructions :ref:`here <gui>`.
 
       We will export our EC beam power values to an ec_launchers IDS. Export the configuration
-      to an HDF5 file. Sample the time such that there are 20 points in the range from 0 to 800.
+      to an HDF5 file. Sample the time such that there are 20 points in the range from 0 to 800s.
 
       Inspect the exported IDS using ``imas print <your URI> ec_launchers``, which 
-      quantities are filled? What happens with the values outside of the waveform range 
-      (time steps later than 700 s)?
+      quantities are filled? Notice that the waveform in the configuration runs from 0 to 700s,
+      while you export from 0 to 800s . What happens with the exported values outside 
+      of the waveform (time steps later than 700 s)?
 
       .. hint::
          Detailed instructions on how to export the waveform configuration can be found :ref:`here <export_config>`.
