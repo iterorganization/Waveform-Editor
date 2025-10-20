@@ -32,28 +32,25 @@ Exercise 1a: Creating a new waveform
 
          waveform-editor gui
 
-
-      #. A waveform must *always* belong to a group, so first create a group in which 
-         to store the new waveform, and provide a name for the group, e.g. ``Group1``.
-      #. Create a new waveform in the previously created group, and provide a name for 
-         this waveform, e.g. ``Waveform1``.
-      
-      What do you see in the sidebar on the left?
-
-      .. hint::
-         Detailed instructions on how to add groups and waveforms from the GUI 
-         can be found :ref:`here <edit_config>`.
-
-
-   .. md-tab-item:: Solution
-
       .. |add_waveform_icon| image:: ../images/gui/add_waveform_icon.png
          :height: 24px
       .. |add_group_icon| image:: ../images/gui/add_group_icon.png
          :height: 24px
 
-      #. Use this button |add_group_icon| to add a new group and call it ``Group1``
-      #. Use this button |add_waveform_icon| to add a new waveform and call it ``Waveform1``
+      #. A waveform must *always* belong to a group, so first use this button 
+         in the sidebar |add_group_icon| to create a group in which to store the new 
+         waveform, and provide a name for the group, e.g. ``Group1``.
+      #. Use this button |add_waveform_icon| to create a new waveform in the previously 
+         created group, and provide a name for this waveform, e.g. ``Waveform1``.
+      
+      What do you see in the sidebar on the left?
+
+      .. hint::
+         Detailed instructions on how to navigate your way around the GUI
+         can be found :ref:`here <edit_config>`.
+
+
+   .. md-tab-item:: Solution
 
       You have now created a new waveform, which is shown in the sidebar:
 
@@ -177,13 +174,13 @@ Exercise 2a: Creating a Plasma Current
       a single pulse. Create a waveform called ``equilibrium/time_slice/global_quantities/ip``, 
       which has the following shape:
       
-      1. A linear ramp up from 0 to 1.5e7 A, in a duration of 100 seconds.
-      2. A flat-top at 1.5e7 A, held for 400 seconds.
-      3. A ramp down back to 0 A, in a duration of 200 seconds.
+      1. A linear ramp up from 0 to 1.5e7 A, in a duration of 100 seconds (use tendency type: ``linear``).
+      2. A flat-top at 1.5e7 A, held for 400 seconds (use tendency type: ``constant``).
+      3. A ramp down back to 0 A, in a duration of 200 seconds (use tendency type: ``linear``).
 
    .. md-tab-item:: Solution
-      
-      Your waveform can contain for example the following tendencies:
+            
+      A possible list of tendencies for this waveform can be:
 
       .. code-block:: yaml
 
@@ -299,11 +296,11 @@ Exercise 3c: Repeating Waveforms
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      You can create repeating patterns using the ``repeat`` tendency. The repeat tendency 
-      allows you to specify the ``waveform`` parameter. This allows you to repeat 
-      any number of tendencies.
+      You can create repeating patterns using the ``repeat`` tendency. This tendency 
+      allows you to specify the ``waveform`` parameter, here you can provide a list of 
+      tendencies that will be repeated.
 
-      Take the waveform from the previous exercise and make it repeat three times.
+      Copy the tendency list from the previous exercise use a ``repeat`` tendency to make it repeat three times.
       Ensure that the end of the linear tendency and the start of the piecewise tendency also smoothly 
       transition into each other, in 1 second.
 
@@ -437,6 +434,12 @@ Exporting Waveforms
 
 In this exercise you will learn how to export waveform configurations.
 
+.. warning:: In this section it is suggested to use ``imas print`` to quickly inspect
+   the exported IDSs. To use this, it is required to have the 
+   `imas-core <https://git.iter.org/projects/IMAS/repos/al-core/browse>`_ package 
+   (locked behind ITER login wall) installed. 
+   If you do not have this installed, you can manually inspect the exported IDSs.
+
 Exercise 5a: Exporting from the UI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -449,7 +452,7 @@ Exercise 5a: Exporting from the UI
       at the instructions :ref:`here <gui>`.
 
       We will export our EC beam power values to an ec_launchers IDS. Export the configuration
-      to an HDF5 file. Sample the time such that there are 20 points in the range from 0 to 800s.
+      to a NetCDF file. Sample the time such that there are 20 points in the range from 0 to 800s.
 
       Inspect the exported IDS using ``imas print <your URI> ec_launchers``, which 
       quantities are filled? Notice that the waveform in the configuration runs from 0 to 700s,
@@ -584,7 +587,7 @@ Exercise 5c: Exporting from the CLI
 
       .. code-block:: bash
 
-         waveform-editor export-ids <example YAML> imas:hdf5?path=./ex5c --linspace 0,800,20
+         waveform-editor export-ids <example YAML> <your URI> --linspace 0,800,20
 
       This exports the same IDS as in previous exercise.
 
