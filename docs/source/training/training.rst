@@ -1,17 +1,24 @@
 .. _training:
 
-Training Courses
-================
+Training
+========
 
 In this training you will learn the following:
 
-- Creating and editing waveforms using the GUI
-- Exporting waveforms to an IDS
+- How to use the Waveform Editor GUI and CLI
+- How to create a Waveform Editor configuration
+- How to create and edit different kinds of waveforms
+- How to export configurations to an IDS
 
-Exporting waveform configurations to IMAS HDF5 files
 All examples assume you have an environment with the Waveform Editor up and running.
 if you do not have this yet, please have a look at the :ref:`installation instructions <installing>`.
-You do not need to have installed the dependencies for the Plasma Shape Editor to do these exercises.
+You only need to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>` 
+if you want to do the exercises in the section :ref:`shape_editor_training`.
+
+For this training you will need access to a graphical environment to visualize
+the simulation results. If you are on SDCC, it is recommended to follow this training
+through the NoMachine client, and using chrome as your default browser (there have been
+issues when using firefox through NoMachine).
 
 Creating your first waveforms
 -----------------------------
@@ -591,7 +598,179 @@ Exercise 5c: Exporting from the CLI
 
       This exports the same IDS as in previous exercise.
 
+.. _shape_editor_training:
+
 Plasma Shape Editor
 -------------------
 
-TODO: Exercises for plasma shape editor
+In this section you will learn how to use the plasma shape editor. For this section 
+it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>`.
+
+Exercise 6a: Setting up NICE
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The plasma shape editor is a graphical environment in which you can design a specific plasma shape
+and use an equilibrium solver, such as NICE, to obtain the coil currents required to obtain
+this plasma shape.
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      Open the tab ``Plasma Shape Editor`` in the Waveform Editor GUI. 
+      You should see an empty plotting window on your left, and an options menu on your right.
+      NICE requires configuration to be set. 
+
+      1. Set the executable paths for the NICE inverse and direct mode. These should point
+         to the executables you built in the :ref:`installation instructions <shape_editor_install>`.
+      2. Set any NICE environment variables required to run NICE. This requires on your specific system.
+         On SDCC, you will need to the ``LD_LIBRARY_PATH`` environment variable here. 
+         Get the library paths, like so: ``echo $LD_LIBRARY_PATH``, copy the output and add
+         it in the following dictionary style format, for example: ``{'LD_LIBRARY_PATH': <paths>}``, 
+         replacing the ``<paths>`` (including angle brackets).
+      3. Provide the URIs for the different types of machine description IDS that NICE requires. 
+         You can provide your own, or if you are on SDCC you can try to use the following URI:
+
+         .. code-block:: bash
+
+            imas:hdf5?path=/home/ITER/vanschr/public/imasdb/ITER/4/666666/3
+
+
+      What happens after you fill in the machine description URIs?
+
+      .. tip::
+         These configurations are persistent, and will automatically be loaded again 
+         when you restart the Waveform Editor.
+
+   .. md-tab-item:: Solution
+      
+      After you fill in the URIs of the machine description, you should see the outline of the coils,
+      as well as the outlines of the first wall, divertor and vacuum vessel.
+
+      For example: 
+
+      .. image:: ../images/training/shape_editor_setup.png
+         :align: center
+
+
+Exercise 6b: Running NICE inverse
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      Besides the machine description URIs you provided in the previous exercise, NICE
+      requires some extra input to run. We focus on the inverse mode of NICE for now.
+      For this mode NICE requires the following:
+
+      - A desired plasma shape
+      - The plasma current
+      - Characteristics of the vacuum toroidal field; R0 and B0
+      - p' and ff' profiles
+
+      First, open the ``Plasma Shape`` options menu, set it to ``parameterized``, and
+      leave the shape settings on theirs defaults for now.
+
+      Secondly, open the ``Plasma Properties`` options menu, and set leave the values at its
+      default for now. This will set the plasma current, R0 and B0, and the ff' and p' profiles
+      through a parameterisation using the alpha, beta, and gamma profiles. Leave the values
+      at default for now.
+
+      You should now have set up enough to run NICE inverse mode, which you can verify by
+      checking that the ``Run`` button in the top is not greyed out.
+
+      What do you see in the plot on the left? What happens if you hover your mouse over the 
+      coil outlines? Try playing with the settings in the ``Plotting Parameters`` menu. What do they do?
+
+
+   .. md-tab-item:: Solution
+      
+      If NICE inverse converged with your desired plasma shape, you will see the resulting 
+      equilibrium contour lines appear on the plot on the left. 
+
+      When you hover over the coil outlines, you will see the currents calculated by NICE. 
+
+      Using the ``Plotting Parameters``
+      options, you can change how many contour lines are plotted, as well as change which 
+      plotting components are shown.
+
+      For example: 
+
+      .. image:: ../images/training/nice_result.png
+         :align: center
+
+Exercise 6c: Configurating the Plasma Shape
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+
+      There are three ways to configure the desired plasma shape for NICE inverse in the Plasma Shape Editor.
+
+      1. By providing an equilibrium IDS containing a `boundary outline <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-outline>`_.
+      2. By providing a geometric parameterization.
+      3. By providing gap distances for an equilibrium IDS containing `boundary gaps <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`_.
+      
+      We will try out the first two methods in this exercise.
+
+      1. Try providing an outline from an equilibrium IDS, for example using the URI below
+         if you are on SDCC. Try visualizing the boundary outline of the time steps at 200s and 251s, 
+         do you see a difference? Try running both cases, what happens?
+
+         .. code-block:: bash
+
+            imas:hdf5?path=/home/ITER/vanschr/public/imasdb/ITER/4/666666/3
+      2. Set the plasma shape to the ``Parameterized`` option, and try changing some of the 
+         sliders to change the shape to your desired shape. Try running NICE in inverse mode, does it converge?
+
+   .. md-tab-item:: Solution
+      
+      1. Running NICE inverse with time slice at 200s, converges and you should see the 
+         following equilibrium:
+
+         .. image:: ../images/training/shape_valid.png
+            :align: center
+
+         Running it with the time slice at 251s, NICE doesn't converge and it will throw
+         an error:
+
+         .. image:: ../images/training/shape_invalid.png
+            :align: center
+      2. If you provided a valid plasma shape NICE will converge and you will see the 
+         resulting equilibrium, otherwise you will receive an error.
+
+Exercise 6d: Fixing Coil Currents
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+
+      By default, NICE is able to freely change all coil currents to achieve the desired
+      plasma shape. It is possible, however, you fix any of the coils to a specific value,
+      and NICE will try to achieve your desired plasma shape by varying the unfixed coil
+      currents. This is possible to do in the ``Coil Currents`` menu. 
+
+      Load the plasma outline from previous exercise using the given IDS. Try setting
+      the currents of PF2 and PF5 to 25000A and 15000A respectively, and enable the checkbox
+      to fix the current. The sliders will update with the resulting coil currents after
+      NICE inverse converges. 
+
+      Did the currents of PF2 and PF5 stay fixed after running NICE?
+
+      Move some of the unfixed coil currents sliders randomly, and fix them. What happens?
+
+   .. md-tab-item:: Solution
+      
+         After running NICE with PF2 and PF5 fixed, you will see that the unfixed coil 
+         currents change to get the desired plasma shape, for example:
+
+         .. image:: ../images/training/fixed_coils.png
+            :align: center
+
+         If you fix too many coil currents, NICE is not able to represent the desired plasma
+         shape anymore by changing the unfixed coil currents, and so NICE may not converge to
+         the correct shape, for example:
+
+         .. image:: ../images/training/fixed_coils_invalid.png
+            :align: center
