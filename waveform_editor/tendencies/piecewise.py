@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import param
 
@@ -38,7 +36,7 @@ class PiecewiseLinearTendency(BaseTendency):
         self.param.update(values_changed=True)
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If a time array is
         provided, the values will be linearly interpolated between the piecewise linear

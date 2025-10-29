@@ -79,5 +79,5 @@ class PCSSPExporter:
             ET.SubElement(trajectory, "EXIT_RULE", {"is": "Last"})
             reference = ET.SubElement(trajectory, "REFERENCE")
             values = waveform.get_value(self.times)[1]
-            for t, v in zip(self.times, values):
+            for t, v in zip(self.times, values, strict=False):
                 ET.SubElement(reference, "POINT", {"time": str(t), "value": str(v)})

@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from typing import Optional
 
 import numpy as np
 import param
@@ -228,7 +227,7 @@ class BaseTendency(param.Parameterized):
 
     @abstractmethod
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array."""
         raise NotImplementedError()

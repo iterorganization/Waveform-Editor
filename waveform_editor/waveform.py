@@ -1,5 +1,4 @@
 import io
-from typing import Optional
 
 import numpy as np
 from ruamel.yaml import YAML
@@ -51,7 +50,7 @@ class Waveform(BaseWaveform):
             self._process_waveform(waveform)
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If no time array is
         provided, the individual tendencies are responsible for creating a time array,
@@ -67,7 +66,7 @@ class Waveform(BaseWaveform):
             return np.array([]), np.array([])
 
         if time is None:
-            time, values = zip(*(t.get_value() for t in self.tendencies))
+            time, values = zip(*(t.get_value() for t in self.tendencies), strict=False)
             time = np.concatenate(time)
             values = np.concatenate(values)
         else:
