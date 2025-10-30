@@ -147,29 +147,21 @@ class ShapeEditor(Viewer):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
-        if not self.pf_active:
-            self.nice_settings.md_pf_active = ""
 
     @param.depends("nice_settings.md_pf_passive", watch=True)
     def _load_pf_passive(self):
         self.pf_passive = self._load_slice(
             self.nice_settings.md_pf_passive, "pf_passive"
         )
-        if not self.pf_passive:
-            self.nice_settings.md_pf_passive = ""
 
     @param.depends("nice_settings.md_wall", watch=True)
     def _load_wall(self):
         self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
         self.nice_plotter.wall = self.wall
-        if not self.wall:
-            self.nice_settings.md_wall = ""
 
     @param.depends("nice_settings.md_iron_core", watch=True)
     def _load_iron_core(self):
         self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
-        if not self.iron_core:
-            self.nice_settings.md_iron_core = ""
 
     def _create_equilibrium(self):
         """Create an empty equilibrium IDS and fill the plasma shape parameters and

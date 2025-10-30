@@ -231,6 +231,8 @@ of the configuration. Information about the avilable properties can be found in 
 
    Example showing how to set the global properties
 
+.. _plasma_shape_editor:
+
 Plasma Shape Editor
 -------------------
 
@@ -320,6 +322,8 @@ plasma boundary. There are three methods for specifying the shape:
 * **Equilibrium IDS Gaps**: Loads `gaps
   <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`__ 
   from an `equilibrium` IDS. The distance value from the reference point can be changed from the UI.
+
+.. _abg_parameterisation:
 
 Plasma Properties
 """""""""""""""""

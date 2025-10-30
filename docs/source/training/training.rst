@@ -15,10 +15,11 @@ if you do not have this yet, please have a look at the :ref:`installation instru
 You only need to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>` 
 if you want to do the exercises in the section :ref:`shape_editor_training`.
 
-For this training you will need access to a graphical environment to visualize
-the simulation results. If you are on SDCC, it is recommended to follow this training
-through the NoMachine client, and using chrome as your default browser (there have been
-issues when using firefox through NoMachine).
+.. important::
+   For this training you will need access to a graphical environment to visualize
+   the simulation results. If you are on SDCC, it is recommended to follow this training
+   through the NoMachine client, and to use **chrome** as your default browser (there have been
+   issues when using firefox through NoMachine).
 
 Creating your first waveforms
 -----------------------------
@@ -605,6 +606,9 @@ Plasma Shape Editor
 
 In this section you will learn how to use the plasma shape editor. For this section 
 it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>`.
+Detailed information about the plasma shape editor can be found in :ref:`the documentation <plasma_shape_editor>`.
+If you are on SDCC, ensure the following modules are loaded, which are required to run NICE.
+
 
 Exercise 6a: Setting up NICE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -612,6 +616,10 @@ Exercise 6a: Setting up NICE
 The plasma shape editor is a graphical environment in which you can design a specific plasma shape
 and use an equilibrium solver, such as NICE, to obtain the coil currents required to obtain
 this plasma shape.
+
+.. code-block:: bash
+
+   module load IMAS-Python SuiteSparse/7.7.0-intel-2023b libxml2 Blitz++ MUSCLE3
 
 .. md-tab-set::
    .. md-tab-item:: Exercise
@@ -622,17 +630,19 @@ this plasma shape.
 
       1. Set the executable paths for the NICE inverse and direct mode. These should point
          to the executables you built in the :ref:`installation instructions <shape_editor_install>`.
-      2. Set any NICE environment variables required to run NICE. This requires on your specific system.
-         On SDCC, you will need to the ``LD_LIBRARY_PATH`` environment variable here. 
-         Get the library paths, like so: ``echo $LD_LIBRARY_PATH``, copy the output and add
-         it in the following dictionary style format, for example: ``{'LD_LIBRARY_PATH': <paths>}``, 
+      2. Set any NICE environment variables required to run NICE. This depends on your specific system.
+         If you are on SDCC, you can leave this as is. 
+
+         If you get errors stating that there
+         were issues when loading shared libraries, you might need to set the ``LD_LIBRARY_PATH``.
+         You can set them using the following dictionary style format: ``{'LD_LIBRARY_PATH': '<paths>'}``, 
          replacing the ``<paths>`` (including angle brackets).
       3. Provide the URIs for the different types of machine description IDS that NICE requires. 
          You can provide your own, or if you are on SDCC you can try to use the following URI:
 
          .. code-block:: bash
 
-            imas:hdf5?path=/home/ITER/vanschr/public/imasdb/ITER/4/666666/3
+            imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
 
 
       What happens after you fill in the machine description URIs?
@@ -670,13 +680,13 @@ Exercise 6b: Running NICE inverse
       First, open the ``Plasma Shape`` options menu, set it to ``parameterized``, and
       leave the shape settings on theirs defaults for now.
 
-      Secondly, open the ``Plasma Properties`` options menu, and set leave the values at its
-      default for now. This will set the plasma current, R0 and B0, and the ff' and p' profiles
-      through a parameterisation using the alpha, beta, and gamma profiles. Leave the values
+      Secondly, open the ``Plasma Properties`` options menu, and set it to the ``Manual`` option. 
+      Leave the values at its default for now. This will set the plasma current, R0 and B0, and the ff' and p' profiles
+      through :ref:`a parameterisation <abg_parameterisation>` using the alpha, beta, and gamma parameters. Leave the values
       at default for now.
 
       You should now have set up enough to run NICE inverse mode, which you can verify by
-      checking that the ``Run`` button in the top is not greyed out.
+      checking that there are no more ⚠️ icons besides the option menus, and that the ``Run`` button is enabled.
 
       What do you see in the plot on the left? What happens if you hover your mouse over the 
       coil outlines? Try playing with the settings in the ``Plotting Parameters`` menu. What do they do?
@@ -713,14 +723,15 @@ Exercise 6c: Configurating the Plasma Shape
       
       We will try out the first two methods in this exercise.
 
-      1. Try providing an outline from an equilibrium IDS, for example using the URI below
-         if you are on SDCC. Try visualizing the boundary outline of the time steps at 200s and 251s, 
-         do you see a difference? Try running both cases, what happens?
+      1. Select the ``Equilibrium IDS outline`` option. 
+         Try to provide an outline from an equilibrium IDS, for example by using the URI below
+         if you are on SDCC. Try to visualize the boundary outline of the time steps at 200s and 251s, 
+         do you see a difference? Try running both cases, what happens in each case?
 
          .. code-block:: bash
 
-            imas:hdf5?path=/home/ITER/vanschr/public/imasdb/ITER/4/666666/3
-      2. Set the plasma shape to the ``Parameterized`` option, and try changing some of the 
+            imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
+      2. Select the ``Parameterized`` option, and try changing some of the 
          sliders to change the shape to your desired shape. Try running NICE in inverse mode, does it converge?
 
    .. md-tab-item:: Solution
