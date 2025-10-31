@@ -193,7 +193,9 @@ class ConfigurationExporter:
         # Here, phase/angle should be filled for all 4 beams.
         # However, certain niche cases involving multiple slices for different waveforms
         # might still not be handled correctly.
-        for waveform, (path, values) in zip(waveforms, values_per_waveform):
+        for waveform, (path, values) in zip(
+            waveforms, values_per_waveform, strict=True
+        ):
             logger.debug(f"Filling {waveform.name}...")
             self._fill_nodes_recursively(ids, path, values)
             self._increment_progress()
@@ -228,7 +230,7 @@ class ConfigurationExporter:
             if node.metadata.type.is_dynamic and part != path.parts[-1]:
                 if len(node) != len(values):
                     node.resize(len(values), keep=True)
-                for item, value in zip(node, values):
+                for item, value in zip(node, values, strict=True):
                     self._fill_nodes_recursively(item, path, value, next_index)
             else:
                 self._fill_nodes_recursively(node, path, values, next_index)
