@@ -32,7 +32,7 @@ Exercise 1a: Creating a new waveform
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      In order to start editing waveforms, you must first learn how to navigate your way around
+      In order to start editing waveforms, you must first learn how to navigate your way
       around the GUI. Launch the Waveform Editor GUI using the following command, 
       which opens the Waveform Editor in your default browser.
 
@@ -88,12 +88,12 @@ Exercise 1b: Creating a sine wave
       a single sine-wave tendency, with the following parameters:
 
       - Type: sine
-      - Duration: from 10 to 15 seconds
+      - Duration: 5 seconds
       - Frequency: 0.5 Hz
       - Amplitude: 3
-      - Vertical range: 0 to 6
+      - A base offset of 3
 
-      Use the following tendency parameters: ``type``, ``start``, ``end``, ``frequency``, ``amplitude``, and ``base``.
+      Use the following tendency parameters: ``type``, ``duration``, ``frequency``, ``amplitude``, and ``base``.
 
       .. hint::
          Detailed descriptions of the tendencies can be found :ref:`here <available-tendencies>`.
@@ -104,7 +104,7 @@ Exercise 1b: Creating a sine wave
 
       .. code-block:: yaml
 
-         - {type: sine, start: 10, end: 15, frequency: 0.5, amplitude: 3, base: 3}
+         - {type: sine, duration: 5, frequency: 0.5, amplitude: 3, base: 3}
 
       You should see the following waveform:
 
@@ -136,11 +136,11 @@ Exercise 1d: Creating a sine wave - part 3
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      What happens if you overdetermine your waveform? For example, try setting both
+      What happens if you overdetermine your waveform? For example, set both
       the frequency, as well as the period of the sine wave:
       ``frequency: 0.5`` and ``period: 2``
 
-      And what happens if frequency and period would result in a different sine wave? For example, try setting 
+      And what happens if frequency and period would result in a different sine wave? For example, set
       ``frequency: 2`` and ``period: 2``? 
 
 
@@ -182,8 +182,8 @@ Exercise 2a: Creating a Plasma Current
       a single pulse. Create a waveform called ``equilibrium/time_slice/global_quantities/ip``, 
       which has the following shape:
       
-      1. A linear ramp up from 0 to 1.5e7 A, in a duration of 100 seconds (use tendency type: ``linear``).
-      2. A flat-top at 1.5e7 A, held for 400 seconds (use tendency type: ``constant``).
+      1. A linear ramp up from 0 to 15e6 A, in a duration of 100 seconds (use tendency type: ``linear``).
+      2. A flat-top at 15e6 A, held for 400 seconds (use tendency type: ``constant``).
       3. A ramp down back to 0 A, in a duration of 200 seconds (use tendency type: ``linear``).
 
    .. md-tab-item:: Solution
@@ -192,9 +192,9 @@ Exercise 2a: Creating a Plasma Current
 
       .. code-block:: yaml
 
-         - {type: linear, from: 0, to: 1.5e7, start: 0, duration: 100}
-         - {type: constant, value: 1.5e7, start: 100, duration: 400}
-         - {type: linear, from: 1.5e7, to: 0, start: 500, duration: 200}
+         - {type: linear, from: 0, to: 15e6, start: 0, duration: 100}
+         - {type: constant, value: 15e6, start: 100, duration: 400}
+         - {type: linear, from: 15e6, to: 0, start: 500, duration: 200}
 
       You should see the following waveform:
       
@@ -219,7 +219,7 @@ Exercise 2b: Shortform notation
       #. If no tendency ``type`` is provided, it will be considered a linear tendency by default.
       #. If no start value e.g. ``from`` is provided, it will try to match end of previous tendency.
 
-      Try to replicate the waveform in the previous exercise using this shortform notation.
+      Replicate the waveform in the previous exercise using this shortform notation.
 
    .. md-tab-item:: Solution
    
@@ -235,7 +235,7 @@ Exercise 2b: Shortform notation
       
       .. code-block:: yaml
 
-         - {to: 1.5e7, duration: 100}
+         - {to: 15e6, duration: 100}
          - {duration: 400}
          - {to: 0, duration: 200}
 
@@ -289,14 +289,11 @@ Exercise 3b: Smoothing
          - {type: smooth, duration: 1}
          - {type: linear, from: 2.5, rate: 0.25, duration: 3}
 
-      .. image:: ../images/training/smooth.png
-         :align: center
-
       You should see the following waveform. Notice how the smooth tendencies ensure 
       continuous value and derivative across multiple tendencies.
 
-
-
+      .. image:: ../images/training/smooth.png
+         :align: center
 
 Exercise 3c: Repeating Waveforms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,29 +303,29 @@ Exercise 3c: Repeating Waveforms
 
       You can create repeating patterns using the ``repeat`` tendency. This tendency 
       allows you to specify the ``waveform`` parameter, here you can provide a list of 
-      tendencies that will be repeated.
+      tendencies that will be repeated for a length of time.
 
-      Copy the tendency list from the previous exercise use a ``repeat`` tendency to make it repeat three times.
-      Ensure that the end of the linear tendency and the start of the piecewise tendency also smoothly 
-      transition into each other, in 1 second.
+      Copy the tendency list given below and use a ``repeat`` tendency to make it repeat three times.
 
+      .. code-block:: yaml
+
+        - {type: linear, from: 2.5, rate: 0.25, duration: 3}
+        - {type: smooth, duration: 2}
+
+      .. hint:: See the repeat tendency :ref:`documentation <repeat-tendency>`.
    .. md-tab-item:: Solution
 
-      A smooth tendency was added as a last tendency to smoothly transition from the 
-      linear tendency back into the piecewise linear tendency. This whole waveform is 
-      placed in the ``waveform`` parameter of the repeat tendency. Since the tendencies
-      combine up to a total length of 11 (6+1+3+1), the total ``duration`` of the repeat
-      tendency is set to 33, to obtain three full cycles.
+      The provided tendency list can be placed as is in the ``waveform`` parameter of the repeat tendency. 
+      Since the tendencies combine up to a total length of 5, the total ``duration`` of the repeat
+      tendency is set to 15, to obtain three full cycles.
 
       .. code-block:: yaml
 
          - type: repeat
-           duration: 33
+           duration: 15
            waveform:
-           - {type: piecewise, time: [0, 2, 3, 5, 6], value: [2.5, 3, 1, 3, 2]}
-           - {type: smooth, duration: 1}
            - {type: linear, from: 2.5, rate: 0.25, duration: 3}
-           - {type: smooth, duration: 1}
+           - {type: smooth, duration: 2}
 
       You should see the following waveform:
 
@@ -442,12 +439,6 @@ Exporting Waveforms
 
 In this exercise you will learn how to export waveform configurations.
 
-.. warning:: In this section it is suggested to use ``imas print`` to quickly inspect
-   the exported IDSs. To use this, it is required to have the 
-   `imas-core <https://git.iter.org/projects/IMAS/repos/al-core/browse>`_ package 
-   (locked behind ITER login wall) installed. 
-   If you do not have this installed, you can manually inspect the exported IDSs.
-
 Exercise 5a: Exporting from the UI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -459,8 +450,9 @@ Exercise 5a: Exporting from the UI
       Load this configuration into the Waveform Editor, if you are unsure how to, have a look 
       at the instructions :ref:`here <gui>`.
 
-      We will export our EC beam power values to an ec_launchers IDS. Export the configuration
-      to a NetCDF file. Sample the time such that there are 20 points in the range from 0 to 800s.
+      We will export our EC beam power values to an ec_launchers IDS, and store it using a IMAS NetCDF file.
+      You can export to a NetCDF file by providing the URI in the following format: ``path/to/file.nc``.
+      Sample the time such that there are 20 points in the range from 0 to 800s.
 
       Inspect the exported IDS using ``imas print <your URI> ec_launchers``, which 
       quantities are filled? Notice that the waveform in the configuration runs from 0 to 700s,
@@ -473,7 +465,7 @@ Exercise 5a: Exporting from the UI
    .. md-tab-item:: Configuration
 
       If you forgot to save the configuration of exercise 4a, copy the following YAML file,
-      and store it to disk.
+      and store it to disk and load it back into the waveform editor.
 
 
       .. code-block:: yaml
@@ -501,7 +493,7 @@ Exercise 5a: Exporting from the UI
       Any values which are outside of the defined waveform range (e.g. values later than 700s)
       will be set to 0.
 
-      .. code-block:: bash
+      .. code-block:: text
 
          ec_launchers
          ├── ids_properties
@@ -551,13 +543,13 @@ Exercise 5b: Exporting different Data Dictionary versions
 
       Repeat the previous exercise, but this time, before exporting change the data dictionary 
       version to **3.42.0** in the `Edit Global Properties` tab, and save the configuration.
-      Ensure you enter a different from previous exercise. Again, print the IDS in your terminal, what has changed?
+      Ensure you enter a different data dictionary version from previous exercise. Again, print the IDS in your terminal, what has changed?
 
    .. md-tab-item:: Solution
 
       You should see that the data dictionary version of the IDS has changed to '3.42.0':
 
-      .. code-block:: bash
+      .. code-block:: text
 
          ec_launchers
          ├── ids_properties
@@ -574,7 +566,7 @@ Exercise 5c: Exporting from the CLI
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      You can also export a configuration using the CLI. Try exporting your configuration
+      You can also export a configuration using the CLI. Export your configuration
       using the same settings with the CLI command. Print the IDS afterwards, is it the 
       same as before?
 
@@ -593,7 +585,7 @@ Exercise 5c: Exporting from the CLI
 
       Export the configuration using:
 
-      .. code-block:: bash
+      .. code-block:: text
 
          waveform-editor export-ids <example YAML> <your URI> --linspace 0,800,20
 
@@ -606,9 +598,16 @@ Plasma Shape Editor
 
 In this section you will learn how to use the plasma shape editor. For this section 
 it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>`.
+If you already have already built NICE inverse before (for example, if you followed the PDS training), 
+you can use this instead.
+
 Detailed information about the plasma shape editor can be found in :ref:`the documentation <plasma_shape_editor>`.
 If you are on SDCC, ensure the following modules are loaded, which are required to run NICE.
 
+
+.. code-block:: bash
+
+   module load IMAS-Python SuiteSparse/7.7.0-intel-2023b libxml2 Blitz++ MUSCLE3
 
 Exercise 6a: Setting up NICE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -617,15 +616,11 @@ The plasma shape editor is a graphical environment in which you can design a spe
 and use an equilibrium solver, such as NICE, to obtain the coil currents required to obtain
 this plasma shape.
 
-.. code-block:: bash
-
-   module load IMAS-Python SuiteSparse/7.7.0-intel-2023b libxml2 Blitz++ MUSCLE3
-
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
       Open the tab ``Plasma Shape Editor`` in the Waveform Editor GUI. 
-      You should see an empty plotting window on your left, and an options menu on your right.
+      You should see an empty plotting window on your left, and an options panels on your right.
       NICE requires configuration to be set. 
 
       1. Set the executable paths for the NICE inverse and direct mode. These should point
@@ -677,19 +672,21 @@ Exercise 6b: Running NICE inverse
       - Characteristics of the vacuum toroidal field; R0 and B0
       - p' and ff' profiles
 
-      First, open the ``Plasma Shape`` options menu, set it to ``parameterized``, and
+      First, open the ``Plasma Shape`` options panel, set it to ``parameterized``, and
       leave the shape settings on theirs defaults for now.
 
-      Secondly, open the ``Plasma Properties`` options menu, and set it to the ``Manual`` option. 
+      Secondly, open the ``Plasma Properties`` options panel, and set it to the ``Manual`` option. 
       Leave the values at its default for now. This will set the plasma current, R0 and B0, and the ff' and p' profiles
       through :ref:`a parameterisation <abg_parameterisation>` using the alpha, beta, and gamma parameters. Leave the values
       at default for now.
 
       You should now have set up enough to run NICE inverse mode, which you can verify by
-      checking that there are no more ⚠️ icons besides the option menus, and that the ``Run`` button is enabled.
+      checking that there are no more ⚠️ icons besides the option panels, and that the ``Run`` button is enabled.
+
+      Run NICE by selecting the ``Run`` button.
 
       What do you see in the plot on the left? What happens if you hover your mouse over the 
-      coil outlines? Try playing with the settings in the ``Plotting Parameters`` menu. What do they do?
+      coil outlines? Change some of the parameters in the ``Plotting Parameters`` option panel. What do they do?
 
 
    .. md-tab-item:: Solution
@@ -721,18 +718,18 @@ Exercise 6c: Configurating the Plasma Shape
       2. By providing a geometric parameterization.
       3. By providing gap distances for an equilibrium IDS containing `boundary gaps <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`_.
       
-      We will try out the first two methods in this exercise.
+      We will cover the first two methods in this exercise.
 
       1. Select the ``Equilibrium IDS outline`` option. 
-         Try to provide an outline from an equilibrium IDS, for example by using the URI below
-         if you are on SDCC. Try to visualize the boundary outline of the time steps at 200s and 251s, 
-         do you see a difference? Try running both cases, what happens in each case?
+         Provide an outline from an equilibrium IDS, for example by using the URI below
+         if you are on SDCC. Visualize the boundary outline of the time steps at 200s and 251s, 
+         do you see a difference? Run NICE inverse for both time steps, what happens in each case?
 
          .. code-block:: bash
 
             imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
-      2. Select the ``Parameterized`` option, and try changing some of the 
-         sliders to change the shape to your desired shape. Try running NICE in inverse mode, does it converge?
+      2. Select the ``Parameterized`` option, and update some of the 
+         parameter sliders to change your desired shape. Run NICE in inverse mode, does it converge?
 
    .. md-tab-item:: Solution
       
@@ -760,9 +757,9 @@ Exercise 6d: Fixing Coil Currents
       By default, NICE is able to freely change all coil currents to achieve the desired
       plasma shape. It is possible, however, you fix any of the coils to a specific value,
       and NICE will try to achieve your desired plasma shape by varying the unfixed coil
-      currents. This is possible to do in the ``Coil Currents`` menu. 
+      currents. You can do this in the ``Coil Currents`` panel.
 
-      Load the plasma outline from previous exercise using the given IDS. Try setting
+      Load the plasma outline from previous exercise using the given IDS. Set
       the currents of PF2 and PF5 to 25000A and 15000A respectively, and enable the checkbox
       to fix the current. The sliders will update with the resulting coil currents after
       NICE inverse converges. 
