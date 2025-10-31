@@ -194,7 +194,7 @@ class ConfigurationExporter:
         # However, certain niche cases involving multiple slices for different waveforms
         # might still not be handled correctly.
         for waveform, (path, values) in zip(
-            waveforms, values_per_waveform, strict=False
+            waveforms, values_per_waveform, strict=True
         ):
             logger.debug(f"Filling {waveform.name}...")
             self._fill_nodes_recursively(ids, path, values)
@@ -230,7 +230,7 @@ class ConfigurationExporter:
             if node.metadata.type.is_dynamic and part != path.parts[-1]:
                 if len(node) != len(values):
                     node.resize(len(values), keep=True)
-                for item, value in zip(node, values, strict=False):
+                for item, value in zip(node, values, strict=True):
                     self._fill_nodes_recursively(item, path, value, next_index)
             else:
                 self._fill_nodes_recursively(node, path, values, next_index)

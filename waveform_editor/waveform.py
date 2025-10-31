@@ -66,7 +66,7 @@ class Waveform(BaseWaveform):
             return np.array([]), np.array([])
 
         if time is None:
-            time, values = zip(*(t.get_value() for t in self.tendencies), strict=False)
+            time, values = zip(*(t.get_value() for t in self.tendencies), strict=True)
             time = np.concatenate(time)
             values = np.concatenate(values)
         else:

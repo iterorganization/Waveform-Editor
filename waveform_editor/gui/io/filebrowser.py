@@ -147,7 +147,7 @@ class FileBrowser(BaseFileNavigator):
             paths.insert(0, "..")
             abbreviated.insert(0, "⬆ ..")
 
-        options = dict(zip(abbreviated, paths, strict=False))
+        options = dict(zip(abbreviated, paths, strict=True))
         self._selector.options = options
         self._selector.value = [s for s in selected if s in paths]
 
