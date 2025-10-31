@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 
 from waveform_editor.tendencies.periodic.periodic_base import PeriodicBaseTendency
@@ -9,7 +7,7 @@ class SineWaveTendency(PeriodicBaseTendency):
     """A tendency representing a sine wave."""
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If no time array is
         provided, a linearly spaced time array will be generated from the start to the

@@ -1,5 +1,4 @@
 import textwrap
-from typing import Optional
 
 import panel as pn
 import param
@@ -53,7 +52,7 @@ class WaveformEditor(Viewer):
         # Initialize empty
         self.set_waveform(None)
 
-    def set_waveform(self, waveform: Optional[str]) -> None:
+    def set_waveform(self, waveform: str | None) -> None:
         """Start editing a waveform.
 
         Args:
