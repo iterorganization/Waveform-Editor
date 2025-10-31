@@ -84,10 +84,13 @@ def launch_gui(file):
 
     from waveform_editor.gui.main import WaveformEditorGui
 
-    try:
-        app = WaveformEditorGui()
+    def app():
+        gui = WaveformEditorGui()
         if file is not None:
-            app.load_yaml_from_file(Path(file))
+            gui.load_yaml_from_file(Path(file))
+        return gui
+
+    try:
         pn.serve(app, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
