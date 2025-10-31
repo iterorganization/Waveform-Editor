@@ -68,6 +68,8 @@ You can start a new configuration or open an existing one from the sidebar's
   **File > 📁 Open...**. This will open a file dialog where you can navigate to and
   select your ``.yaml`` file.
 
+.. _saving_config:
+
 Saving a Configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -78,6 +80,8 @@ You can save your work in two ways:
   the "Save As" dialog instead.
 * **File > 💾 Save As...**: This opens a file dialog, allowing you to save the
   current configuration to a new file or overwrite an existing one.
+
+.. _export_config:
 
 Exporting a Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -113,6 +117,8 @@ dialog, which provides several options:
    :width: 400px
 
    The export dialog
+
+.. _edit_config:
 
 Editing Configuration
 ---------------------
@@ -225,6 +231,8 @@ of the configuration. Information about the avilable properties can be found in 
 
    Example showing how to set the global properties
 
+.. _plasma_shape_editor:
+
 Plasma Shape Editor
 -------------------
 
@@ -314,6 +322,8 @@ plasma boundary. There are three methods for specifying the shape:
 * **Equilibrium IDS Gaps**: Loads `gaps
   <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`__ 
   from an `equilibrium` IDS. The distance value from the reference point can be changed from the UI.
+
+.. _abg_parameterisation:
 
 Plasma Properties
 """""""""""""""""

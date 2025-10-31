@@ -9,6 +9,23 @@ These computations may involve mathematical expressions or NumPy functions.
 Whenever a source waveform is changed, any waveform that depends on it is automatically 
 recalculated in the GUI.
 
+.. important::
+
+    The examples in this section show the full :ref:`YAML configuration files <yaml_format>`.
+    If you are using the :ref:`GUI <gui>` to edit waveforms, you must only enter 
+    the waveform tendencies, and not enter any group or waveform names. 
+    For example, with the base waveform called ``base_waveform``, you can enter in the editor: 
+
+    .. code-block:: yaml
+
+        - {type: linear, from: 5, to: 10, duration: 10}
+
+    Then, for the derived waveform, you enter:
+
+    .. code-block:: yaml
+
+        2 * "base_waveform"
+
 Examples
 ========
 
@@ -65,12 +82,6 @@ The other waveforms are derived from ``test/1`` and apply different mathematical
 .. image:: images/derived_calc.jpg
    :width: 600px
    :align: center
-
-.. note::
-
-    If you are using the Waveform Editor from the GUI, you only have to enter the 
-    expression in the block string. For the example above, you would only need
-    to enter ``'test/1' + 10`` as the waveform definition for the waveform ``test/4``.
 
 Multiple Dependencies
 ---------------------
