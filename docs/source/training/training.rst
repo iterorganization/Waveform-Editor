@@ -450,7 +450,7 @@ Exercise 5a: Exporting from the UI
       Load this configuration into the Waveform Editor, if you are unsure how to, have a look 
       at the instructions :ref:`here <gui>`.
 
-      We will export our EC beam power values to an ec_launchers IDS, and store it using a IMAS NetCDF file.
+      We will export our EC beam power values to an ec_launchers IDS, and store it using an IMAS NetCDF file.
       You can export to a NetCDF file by providing the URI in the following format: ``path/to/file.nc``.
       Sample the time such that there are 20 points in the range from 0 to 800s.
 
@@ -598,7 +598,7 @@ Plasma Shape Editor
 
 In this section you will learn how to use the plasma shape editor. For this section 
 it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>`.
-If you already have already built NICE inverse before (for example, if you followed the PDS training), 
+If you have already built NICE inverse before (for example, if you followed the PDS training), 
 you can use this instead.
 
 Detailed information about the plasma shape editor can be found in :ref:`the documentation <plasma_shape_editor>`.
@@ -620,7 +620,7 @@ this plasma shape.
    .. md-tab-item:: Exercise
 
       Open the tab ``Plasma Shape Editor`` in the Waveform Editor GUI. 
-      You should see an empty plotting window on your left, and an options panels on your right.
+      You should see an empty plotting window on your left, and an options panel on your right.
       NICE requires configuration to be set. 
 
       1. Set the executable paths for the NICE inverse and direct mode. These should point
