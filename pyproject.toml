@@ -48,7 +48,6 @@ test = [
     "pytest-randomly",
 ]
 docs = [
-    "waveform-editor[muscle3]",
     "sphinx>=6.0.0,<7.0.0",
     "sphinx-autosummary-accessors>=0.1.2",
     "sphinx-immaterial>=0.11.0,<0.12",

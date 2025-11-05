@@ -1,3 +1,5 @@
+.. _shape_editor_install:
+
 Installing dependencies of the Plasma Shape Editor
 ==================================================
 

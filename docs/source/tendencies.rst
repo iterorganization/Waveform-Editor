@@ -118,6 +118,8 @@ Parameters
 .. note::
     The start and end derivatives are automatically set to match those of adjacent tendencies.
 
+.. _repeat-tendency:
+
 Repeat Tendency
 ===============
 
