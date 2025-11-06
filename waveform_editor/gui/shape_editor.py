@@ -46,17 +46,6 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings = settings.nice
 
-        self.xml_params_inv = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("inverse_param.xml")
-            .read_text()
-        )
-        self.xml_params_dir = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("direct_param.xml")
-            .read_text()
-        )
-
         # UI Configuration
         button_start = pn.widgets.Button(name="Run", on_click=self.submit)
         button_start.disabled = (
@@ -205,9 +194,17 @@ class ShapeEditor(Viewer):
 
         self.coil_currents.fill_pf_active(self.pf_active)
         if self.nice_settings.is_direct_mode:
-            xml_params = self.xml_params_dir
+            xml_params = ET.fromstring(
+                importlib.resources.files("waveform_editor.shape_editor.xml_param")
+                .joinpath("direct_param.xml")
+                .read_text()
+            )
         else:
-            xml_params = self.xml_params_inv
+            xml_params = ET.fromstring(
+                importlib.resources.files("waveform_editor.shape_editor.xml_param")
+                .joinpath("inverse_param.xml")
+                .read_text()
+            )
             self.coil_currents.update_fixed_coils_in_xml(xml_params)
 
         # Update XML parameters:
