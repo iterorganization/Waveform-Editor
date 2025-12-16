@@ -107,7 +107,7 @@ def export_ids(yaml, uri, csv, linspace):
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
-      uri: URI of the output Data Entry.
+      uri: URI of the output Data Entry or file path of output NetCDF file.
     \b
     Options:
       csv: CSV file containing a custom time array.

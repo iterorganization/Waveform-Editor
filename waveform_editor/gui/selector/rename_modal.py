@@ -11,6 +11,7 @@ class RenameModal(Viewer):
 
         self.label = pn.pane.Markdown("**Enter a new name for the waveform:**")
         self.input = pn.widgets.TextInput(placeholder="Enter new name")
+        self.input.param.watch(self._handle_accept, "enter_pressed")
         self.accept_button = pn.widgets.Button(
             name="Accept", button_type="primary", on_click=self._handle_accept
         )

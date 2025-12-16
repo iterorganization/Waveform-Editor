@@ -119,7 +119,7 @@ Exercise 1c: Creating a sine wave - part 2
 
       In the previous execise, you might have noticed that there a multiple ways in which you can define the same 
       waveform. Recreate the waveform of previous exercise using only the following tendency parameters: 
-      ``type``, ``start``, ``duration``, ``period``, ``min``, and ``max``.
+      ``type``, ``duration``, ``period``, ``min``, and ``max``.
 
    .. md-tab-item:: Solution
 
@@ -127,7 +127,7 @@ Exercise 1c: Creating a sine wave - part 2
 
       .. code-block:: yaml
 
-         - {type: sine, start: 10, duration: 5, period: 2, min: 0, max: 6}
+         - {type: sine, duration: 5, period: 2, min: 0, max: 6}
 
 
 Exercise 1d: Creating a sine wave - part 3
@@ -590,6 +590,12 @@ Exercise 5c: Exporting from the CLI
          waveform-editor export-ids <example YAML> <your URI> --linspace 0,800,20
 
       This exports the same IDS as in previous exercise.
+
+      .. note:: You can also supply the path of a NetCDF file to export to an `IMAS NetCDF <https://imas-python.readthedocs.io/en/stable/netcdf.html>`_ file. For example:
+
+         .. code-block:: text
+
+            waveform-editor export-ids example.yaml output.nc --linspace 0,800,20
 
 .. _shape_editor_training:
 
