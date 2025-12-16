@@ -18,8 +18,8 @@ if you want to do the exercises in the section :ref:`shape_editor_training`.
 .. important::
    For this training you will need access to a graphical environment to visualize
    the simulation results. If you are on SDCC, it is recommended to follow this training
-   through the NoMachine client, and to use **chrome** as your default browser (there have been
-   issues when using firefox through NoMachine).
+   through the NoMachine client, and to use **chrome** as your default browser. If you use 
+   Firefox, ensure you disable hardware acceleration in the browser settings.
 
 Creating your first waveforms
 -----------------------------
