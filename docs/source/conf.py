@@ -105,7 +105,7 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store","generated/waveform_editor.cli._excepthook.rst"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -297,7 +297,13 @@ smartquotes = False
 def escape_underscores(string):
     return string.replace("_", r"\_")
 
+# Get around issue where param contains an invalid docstring
+def patch_param_docstring(app, what, name, obj, options, lines):
+    for i, line in enumerate(lines):
+        if "**params" in line:
+            lines[i] = line.replace("**params", "``**params``")
 
 def setup(app):
     DEFAULT_FILTERS["escape_underscores"] = escape_underscores
     app.add_css_file("waveform_editor.css")
+    app.connect("autodoc-process-docstring", patch_param_docstring)
