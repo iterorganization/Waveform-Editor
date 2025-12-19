@@ -18,8 +18,8 @@ if you want to do the exercises in the section :ref:`shape_editor_training`.
 .. important::
    For this training you will need access to a graphical environment to visualize
    the simulation results. If you are on SDCC, it is recommended to follow this training
-   through the NoMachine client, and to use **chrome** as your default browser (there have been
-   issues when using firefox through NoMachine).
+   through the NoMachine client, and to use **chrome** as your default browser. If you use 
+   Firefox, ensure you disable hardware acceleration in the browser settings.
 
 Creating your first waveforms
 -----------------------------
@@ -119,7 +119,7 @@ Exercise 1c: Creating a sine wave - part 2
 
       In the previous execise, you might have noticed that there a multiple ways in which you can define the same 
       waveform. Recreate the waveform of previous exercise using only the following tendency parameters: 
-      ``type``, ``start``, ``duration``, ``period``, ``min``, and ``max``.
+      ``type``, ``duration``, ``period``, ``min``, and ``max``.
 
    .. md-tab-item:: Solution
 
@@ -127,7 +127,7 @@ Exercise 1c: Creating a sine wave - part 2
 
       .. code-block:: yaml
 
-         - {type: sine, start: 10, duration: 5, period: 2, min: 0, max: 6}
+         - {type: sine, duration: 5, period: 2, min: 0, max: 6}
 
 
 Exercise 1d: Creating a sine wave - part 3
@@ -591,6 +591,12 @@ Exercise 5c: Exporting from the CLI
 
       This exports the same IDS as in previous exercise.
 
+      .. note:: You can also supply the path of a NetCDF file to export to an `IMAS NetCDF <https://imas-python.readthedocs.io/en/stable/netcdf.html>`_ file. For example:
+
+         .. code-block:: text
+
+            waveform-editor export-ids example.yaml output.nc --linspace 0,800,20
+
 .. _shape_editor_training:
 
 Plasma Shape Editor
@@ -628,7 +634,7 @@ this plasma shape.
       2. Set any NICE environment variables required to run NICE. This depends on your specific system.
          If you are on SDCC, you can leave this as is. 
 
-         If you get errors stating that there
+         If you are running waveform editor locally (not on SDCC), you may get errors stating that there
          were issues when loading shared libraries, you might need to set the ``LD_LIBRARY_PATH``.
          You can set them using the following dictionary style format: ``{'LD_LIBRARY_PATH': '<paths>'}``, 
          replacing the ``<paths>`` (including angle brackets).
@@ -724,6 +730,8 @@ Exercise 6c: Configurating the Plasma Shape
          Provide an outline from an equilibrium IDS, for example by using the URI below
          if you are on SDCC. Visualize the boundary outline of the time steps at 200s and 251s, 
          do you see a difference? Run NICE inverse for both time steps, what happens in each case?
+         What happens if you change the P' and FF' profiles from the manual parameterisation 
+         to the profiles from the corresponding equilibrium IDS?
 
          .. code-block:: bash
 
@@ -739,13 +747,21 @@ Exercise 6c: Configurating the Plasma Shape
          .. image:: ../images/training/shape_valid.png
             :align: center
 
-         Running it with the time slice at 251s, NICE doesn't converge and it will throw
-         an error:
+         Running it with the time slice at 251s with the default parameterised P' and FF' profiles, 
+         NICE doesn't converge and it will throw an error:
 
          .. image:: ../images/training/shape_invalid.png
             :align: center
+
+         However, if you use the P' and FF' profiles from the equilibrium IDS at 251s instead,
+         NICE will converge:
+
+         .. image:: ../images/training/shape_valid_251s.png
+            :align: center
+
       2. If you provided a valid plasma shape NICE will converge and you will see the 
-         resulting equilibrium, otherwise you will receive an error.
+         resulting equilibrium, otherwise you will receive an error. For example if the
+         given shape cannot be achieved with the given input.
 
 Exercise 6d: Fixing Coil Currents
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

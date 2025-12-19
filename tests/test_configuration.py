@@ -7,6 +7,7 @@ from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.util import LATEST_DD_VERSION
 from waveform_editor.waveform import Waveform
 from waveform_editor.yaml_parser import YamlParser
 
@@ -340,7 +341,7 @@ def test_load_yaml_globals():
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config.load_yaml(yaml_str)
-    assert config.globals.dd_version == "4.0.0"
+    assert config.globals.dd_version == LATEST_DD_VERSION
     assert not config.globals.machine_description
 
 
