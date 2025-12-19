@@ -634,7 +634,7 @@ this plasma shape.
       2. Set any NICE environment variables required to run NICE. This depends on your specific system.
          If you are on SDCC, you can leave this as is. 
 
-         If you get errors stating that there
+         If you are running waveform editor locally (not on SDCC), you may get errors stating that there
          were issues when loading shared libraries, you might need to set the ``LD_LIBRARY_PATH``.
          You can set them using the following dictionary style format: ``{'LD_LIBRARY_PATH': '<paths>'}``, 
          replacing the ``<paths>`` (including angle brackets).
@@ -730,6 +730,8 @@ Exercise 6c: Configurating the Plasma Shape
          Provide an outline from an equilibrium IDS, for example by using the URI below
          if you are on SDCC. Visualize the boundary outline of the time steps at 200s and 251s, 
          do you see a difference? Run NICE inverse for both time steps, what happens in each case?
+         What happens if you change the P' and FF' profiles from the manual parameterisation 
+         to the profiles from the corresponding equilibrium IDS?
 
          .. code-block:: bash
 
@@ -745,13 +747,21 @@ Exercise 6c: Configurating the Plasma Shape
          .. image:: ../images/training/shape_valid.png
             :align: center
 
-         Running it with the time slice at 251s, NICE doesn't converge and it will throw
-         an error:
+         Running it with the time slice at 251s with the default parameterised P' and FF' profiles, 
+         NICE doesn't converge and it will throw an error:
 
          .. image:: ../images/training/shape_invalid.png
             :align: center
+
+         However, if you use the P' and FF' profiles from the equilibrium IDS at 251s instead,
+         NICE will converge:
+
+         .. image:: ../images/training/shape_valid_251s.png
+            :align: center
+
       2. If you provided a valid plasma shape NICE will converge and you will see the 
-         resulting equilibrium, otherwise you will receive an error.
+         resulting equilibrium, otherwise you will receive an error. For example if the
+         given shape cannot be achieved with the given input.
 
 Exercise 6d: Fixing Coil Currents
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
