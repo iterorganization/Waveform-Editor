@@ -1,8 +1,11 @@
 import logging
+import socket
+import threading
 
 import imas
 import panel as pn
 import param
+import webview
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
@@ -195,6 +198,43 @@ class WaveformEditorGui(param.Parameterized):
         return self.template.servable()
 
 
-# Allow serving with `panel serve waveform_editor/gui/main.py`
-if "bokeh" in __name__:
-    WaveformEditorGui().serve()
+class PanelDesktop:
+    def __init__(self, title="Waveform Editor", width: int = 1920, height: int = 1080):
+        self.title = title
+        self.width = width
+        self.height = height
+
+    @staticmethod
+    def _find_free_port():
+        """Find a free port on localhost."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+        return port
+
+    def serve(self, app_factory, port: int = 0):
+        if not port:
+            port = self._find_free_port()
+
+        server_thread = threading.Thread(
+            target=lambda: pn.serve(
+                app_factory,
+                port=port,
+                show=False,
+                autoreload=False,
+            ),
+            daemon=True,
+        )
+        server_thread.start()
+
+        webview.create_window(
+            self.title,
+            f"http://localhost:{port}",
+            resizable=True,
+            fullscreen=False,
+            width=self.width,
+            height=self.height,
+            text_select=True,
+        )
+        webview.start()
