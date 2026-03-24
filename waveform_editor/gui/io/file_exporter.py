@@ -121,7 +121,7 @@ class FileExporter(param.Parameterized):
     def _export_type_placeholder(self):
         """Output path placeholder, based on the selected export type."""
         return {
-            IDS_EXPORT: "e.g. imas:hdf5?path=testdb",
+            IDS_EXPORT: "e.g. imas:hdf5?path=testdb or test.nc",
             PNG_EXPORT: "e.g. /path/to/export/pngs",
             CSV_EXPORT: "e.g. /path/to/export/output.csv",
             PCSSP_EXPORT: "e.g. /path/to/export/output.xml",
@@ -131,7 +131,7 @@ class FileExporter(param.Parameterized):
     def _export_type_description(self):
         """Help description for the selected export type."""
         return {
-            IDS_EXPORT: "Please enter the output IMAS URI below:",
+            IDS_EXPORT: "Please enter the output IMAS URI or NetCDF file name below:",
             PNG_EXPORT: "Please enter an output folder below:",
             CSV_EXPORT: "Please enter an output file below:",
             PCSSP_EXPORT: "Please enter an output file below:",

@@ -77,7 +77,7 @@ This command reads the waveform definitions from the specified `YAML` file, eval
 **Arguments:**
 
 *   ``YAML``: Path to the input waveform YAML configuration file.
-*   ``URI``: The URI specifying the IMAS data entry to write to.
+*   ``URI``: The URI specifying the IMAS data entry or `IMAS NetCDF <https://imas-python.readthedocs.io/en/stable/netcdf.html>`_ filename to write to.
 
 **Options:**
 
