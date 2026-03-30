@@ -168,7 +168,7 @@ class FileExporter(param.Parameterized):
             MANUALINPUT: pn.widgets.TextInput.from_param(
                 self.param.time_array_input, placeholder="e.g. 1,2,3,4,5", onkeyup=True
             ),
-        }.get(self.time_mode, None)  # DEFAULT has no time mode UI element
+        }.get(self.time_mode)  # DEFAULT has no time mode UI element
 
     @param.depends("time_mode")
     def _time_mode_description(self):
