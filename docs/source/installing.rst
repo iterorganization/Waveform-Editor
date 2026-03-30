@@ -16,8 +16,7 @@ This will download and install the package along with all its required dependenc
 
    pip install waveform-editor
 
-
-
+.. _install_nice:
 
 Installing dependencies for the Plasma Shape Editor
 ---------------------------------------------------
