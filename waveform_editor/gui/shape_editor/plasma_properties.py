@@ -1,10 +1,11 @@
 import imas
-import numpy as np
 import panel as pn
 import param
-import scipy
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.logic.plasma_properties_calc import (
+    compute_profiles_from_params,
+)
 from waveform_editor.gui.util import (
     EquilibriumInput,
     FormattedEditableFloatSlider,
@@ -84,20 +85,18 @@ class PlasmaProperties(Viewer):
 
     def _load_properties_from_params(self):
         """Load the plasma properties from the properties parameters. Calculate
-        dpressure_dpsi and f_df_dpsi from the parameteric alpha, beta, and gamma
+        dpressure_dpsi and f_df_dpsi from the parametric alpha, beta, and gamma
         parameters."""
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
-        alpha = self.properties_params.alpha
-        beta = self.properties_params.beta
-        gamma = self.properties_params.gamma
-
-        self.psi_norm = np.linspace(0, 1, 50)
-        self.dpressure_dpsi = beta / self.r0 * (1 - self.psi_norm**alpha) ** gamma
-        mu_0 = scipy.constants.mu_0
-        self.f_df_dpsi = (
-            (1 - beta) * mu_0 * self.r0 * (1 - self.psi_norm**alpha) ** gamma
+        self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = compute_profiles_from_params(
+            ip=self.properties_params.ip,
+            r0=self.properties_params.r0,
+            b0=self.properties_params.b0,
+            alpha=self.properties_params.alpha,
+            beta=self.properties_params.beta,
+            gamma=self.properties_params.gamma,
         )
         self.has_properties = True
 

@@ -2,7 +2,7 @@ import pytest
 import yaml
 
 from waveform_editor.annotations import Annotations
-from waveform_editor.yaml_parser import LineNumberYamlLoader
+from waveform_editor.yaml.yaml_parser import LineNumberYamlLoader
 
 
 @pytest.fixture

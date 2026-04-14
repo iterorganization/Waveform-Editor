@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 
-from waveform_editor.pcssp_exporter import PCSSPExporter
+from waveform_editor.export.pcssp_exporter import PCSSPExporter
 
 logger = logging.getLogger(__name__)
 

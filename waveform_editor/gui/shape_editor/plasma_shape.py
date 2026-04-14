@@ -1,11 +1,13 @@
-import math
-from dataclasses import dataclass
-
 import imas
 import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.logic.plasma_shape_calc import (
+    Gap,
+    compute_outline_from_params,
+    update_outline_from_gaps,
+)
 from waveform_editor.gui.util import (
     EquilibriumInput,
     FixedWidthEditableIntSlider,
@@ -46,27 +48,6 @@ class PlasmaShapeParams(Viewer):
             elif isinstance(self.param[name], param.Number):
                 widgets[name] = FormattedEditableFloatSlider
         return pn.Param(self.param, widgets=widgets, show_name=False)
-
-
-@dataclass
-class Gap:
-    """Helper dataclass representing the properties of a gap."""
-
-    name: str
-    r: float  # Major radius of the reference point
-    z: float  # Height of the reference point
-    angle: float
-    value: float
-
-    @property
-    def r_sep(self):
-        """Major radius of the point on the desired separatrix"""
-        return self.r + self.value * math.cos(-self.angle)
-
-    @property
-    def z_sep(self):
-        """Height of the point on the desired separatrix"""
-        return self.z + self.value * math.sin(-self.angle)
 
 
 class PlasmaShape(Viewer):
@@ -185,15 +166,7 @@ class PlasmaShape(Viewer):
 
     def _update_outline_from_gaps(self):
         """Update outline coordinates from current gap data."""
-        if not self.gaps:
-            self.outline_r = self.outline_z = None
-            return
-
-        self.outline_r = []
-        self.outline_z = []
-        for gap in self.gaps:
-            self.outline_r.append(gap.r_sep)
-            self.outline_z.append(gap.z_sep)
+        self.outline_r, self.outline_z = update_outline_from_gaps(self.gaps)
 
     def _on_gap_change(self, event):
         """Callback function triggered when gap UI values change."""
@@ -224,69 +197,17 @@ class PlasmaShape(Viewer):
         self.gap_ui.extend(new_gap_ui)
 
     def _load_shape_from_params(self):
-        """Compute plasma boundary outline from parameterized shape inputs.
-
-        Adapted from NICE, by Blaise Faugeras:
-        https://gitlab.inria.fr/blfauger/nice
-
-        Returns:
-            Tuple containing radial and vertical coordinates of the plasma boundary
-                outline
-        """
-        points = []
-        nb_desired_point = self.shape_params.n_desired_bnd_points
-        r0, z0 = self.shape_params.center_r, self.shape_params.center_z
-        a = self.shape_params.a
-        kappa = self.shape_params.kappa
-        delta = self.shape_params.delta
-        rx, zx = self.shape_params.rx, self.shape_params.zx
-
-        # Calculate point distribution
-        nb_point1 = (nb_desired_point - 1) // 2
-        rem1 = (nb_desired_point - 1) % 2
-        nb_point2 = (rem1 + nb_point1) // 2
-        nb_point3 = nb_point2
-        if (rem1 + nb_point1) % 2 == 1:
-            nb_point1 += 1
-
-        # First segment: main plasma shape
-        theta1 = math.pi / (nb_point1 - 1)
-        asin_delta = math.asin(delta)
-        for i in range(nb_point1):
-            theta = i * theta1
-            r = r0 + a * math.cos(theta + asin_delta * math.sin(theta))
-            z = z0 + a * kappa * math.sin(theta)
-            points.append((r, z))
-
-        # Second arc: inner divertor leg
-        ri = ((rx + r0 - a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 + a))
-        ai = ri - r0 + a
-        theta2 = math.asin((z0 - zx) / ai) / (nb_point2 + 1)
-        for i in range(nb_point2):
-            theta = (i + 1) * theta2
-            r = ri - ai * math.cos(theta)
-            z = z0 - ai * math.sin(theta)
-            points.append((r, z))
-
-        # Third arc: outer divertor leg
-        re = ((rx + r0 + a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 - a))
-        ae = r0 + a - re
-        theta3 = math.asin((z0 - zx) / ae) / (nb_point3 + 1)
-        for i in range(nb_point3):
-            theta = (i + 1) * theta3
-            r = re + ae * math.cos(theta)
-            z = z0 - ae * math.sin(theta)
-            points.append((r, z))
-
-        points.append((rx, zx))
-
-        # Sort points by angle from centroid
-        mean_r = sum(p[0] for p in points) / len(points)
-        mean_z = sum(p[1] for p in points) / len(points)
-        points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
-
-        self.outline_r = [p[0] for p in points]
-        self.outline_z = [p[1] for p in points]
+        """Compute plasma boundary outline from parameterized shape inputs."""
+        self.outline_r, self.outline_z = compute_outline_from_params(
+            a=self.shape_params.a,
+            center_r=self.shape_params.center_r,
+            center_z=self.shape_params.center_z,
+            kappa=self.shape_params.kappa,
+            delta=self.shape_params.delta,
+            rx=self.shape_params.rx,
+            zx=self.shape_params.zx,
+            n_desired_bnd_points=self.shape_params.n_desired_bnd_points,
+        )
 
     @param.depends("input_mode")
     def _panel_shape_options(self):

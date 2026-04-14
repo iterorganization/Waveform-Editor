@@ -5,7 +5,7 @@ import numpy as np
 import panel as pn
 import param
 
-from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.export.exporter import ConfigurationExporter
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)

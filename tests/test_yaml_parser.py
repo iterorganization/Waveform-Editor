@@ -11,7 +11,7 @@ from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.waveform import Waveform
-from waveform_editor.yaml_parser import YamlParser
+from waveform_editor.yaml.yaml_parser import YamlParser
 
 
 @pytest.fixture

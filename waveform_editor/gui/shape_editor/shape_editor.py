@@ -9,11 +9,12 @@ from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.coil_currents import CoilCurrents
-from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.settings import nice_settings_panel
+from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
+from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +48,12 @@ class ShapeEditor(Viewer):
         self.nice_settings = settings.nice
 
         self.xml_params_inv = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            importlib.resources.files("waveform_editor.gui.shape_editor.xml_param")
             .joinpath("inverse_param.xml")
             .read_text()
         )
         self.xml_params_dir = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            importlib.resources.files("waveform_editor.gui.shape_editor.xml_param")
             .joinpath("direct_param.xml")
             .read_text()
         )
@@ -76,7 +77,7 @@ class ShapeEditor(Viewer):
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
-                self.nice_settings.panel,
+                nice_settings_panel(self.nice_settings),
                 "NICE Configuration",
                 is_valid=self.nice_settings.param.are_required_filled.rx(),
             ),

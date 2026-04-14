@@ -6,7 +6,7 @@ import param
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.dict_editor import DictEditor
+from waveform_editor.gui.dict_editor import DictEditor
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
