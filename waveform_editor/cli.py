@@ -71,7 +71,10 @@ def parse_linspace(ctx, param, value):
 
 @cli.command("gui")
 @click.argument("file", type=click.Path(exists=True, dir_okay=False), required=False)
-def launch_gui(file):
+@click.option(
+    "-p", "--port", type=int, default=0, help="Specify port to host application."
+)
+def launch_gui(file, port):
     """Launch the Waveform Editor GUI using Panel.
 
     \b
@@ -91,7 +94,7 @@ def launch_gui(file):
         return gui
 
     try:
-        pn.serve(app, threaded=True)
+        pn.serve(app, port=port, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 
@@ -107,7 +110,7 @@ def export_ids(yaml, uri, csv, linspace):
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
-      uri: URI of the output Data Entry.
+      uri: URI of the output Data Entry or file path of output NetCDF file.
     \b
     Options:
       csv: CSV file containing a custom time array.
