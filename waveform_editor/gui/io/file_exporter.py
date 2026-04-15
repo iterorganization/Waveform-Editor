@@ -51,7 +51,7 @@ class FileExporter(param.Parameterized):
         Initialize the Export Dialog.
 
         Args:
-            manager: A reference to the WaveformEditorManager instance.
+            manager: A reference to the IOManager instance.
         """
         super().__init__()
         self.manager = manager
@@ -219,7 +219,7 @@ class FileExporter(param.Parameterized):
         elif self.time_mode == MANUALINPUT:
             return self.time_array
 
-    def _handle_export(self, event):
+    def _handle_export(self, _event=None):
         """Perform the export based on current settings."""
         self.error_alert = ""
         self.progress.visible = True
