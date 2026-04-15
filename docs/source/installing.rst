@@ -16,14 +16,20 @@ This will download and install the package along with all its required dependenc
 
    pip install waveform-editor
 
-
-
+.. _install_nice:
 
 Installing dependencies for the Plasma Shape Editor
 ---------------------------------------------------
 
-The Plasma Shape Editor requires a magnetic equilibrium solver. See the following page
-for further details on how to set this up:
+The Plasma Shape Editor requires a magnetic equilibrium solver. If you are on SDCC, 
+you can simply load the latest NICE module:
+
+.. code-block:: bash
+
+   module load NICE
+
+If the NICE module is not available, you must compile NICE manually.
+See the following page for further details on how to set this up:
 
 .. toctree::
    :maxdepth: 1
