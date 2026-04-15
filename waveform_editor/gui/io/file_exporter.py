@@ -51,7 +51,7 @@ class FileExporter(param.Parameterized):
         Initialize the Export Dialog.
 
         Args:
-            main_gui: A reference to the main WaveformEditorGui instance.
+            manager: A reference to the WaveformEditorManager instance.
         """
         super().__init__()
         self.manager = manager
