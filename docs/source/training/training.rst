@@ -620,7 +620,7 @@ this plasma shape.
       NICE requires configuration to be set. 
 
       1. Set the executable paths for the NICE inverse and direct mode. 
-         If you are using the NICE module, you can leave these as their default values: 
+         If you are using the NICE module, you can leave these at their default values: 
          ``nice_imas_inv_muscle3`` and ``nice_imas_dir_muscle3`` for the inverse and
          direct mode, respectively.
          If you manually compiled NICE, you must provide the paths to the executables you built in the :ref:`installation instructions <shape_editor_install>`.
