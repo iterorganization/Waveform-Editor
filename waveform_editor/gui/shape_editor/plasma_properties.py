@@ -3,13 +3,13 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.shape_editor.plasma_properties_calc import (
-    compute_profiles_from_params,
-)
 from waveform_editor.gui.util import (
     EquilibriumInput,
     FormattedEditableFloatSlider,
     WarningIndicator,
+)
+from waveform_editor.shape_editor.plasma_properties_calc import (
+    compute_profiles_from_params,
 )
 
 
@@ -90,7 +90,11 @@ class PlasmaProperties(Viewer):
         self.ip = self.properties_params.ip
         self.r0 = self.properties_params.r0
         self.b0 = self.properties_params.b0
-        self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = compute_profiles_from_params(
+        (
+            self.psi_norm,
+            self.dpressure_dpsi,
+            self.f_df_dpsi,
+        ) = compute_profiles_from_params(
             ip=self.properties_params.ip,
             r0=self.properties_params.r0,
             b0=self.properties_params.b0,

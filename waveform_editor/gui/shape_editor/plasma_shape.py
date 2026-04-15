@@ -3,16 +3,16 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.shape_editor.plasma_shape_calc import (
-    Gap,
-    compute_outline_from_params,
-    update_outline_from_gaps,
-)
 from waveform_editor.gui.util import (
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
     WarningIndicator,
+)
+from waveform_editor.shape_editor.plasma_shape_calc import (
+    Gap,
+    compute_outline_from_params,
+    update_outline_from_gaps,
 )
 
 

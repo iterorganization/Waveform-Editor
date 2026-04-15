@@ -11,11 +11,11 @@ import panel as pn
 import param
 from imas.ids_toplevel import IDSToplevel
 
+from waveform_editor.settings import settings
 from waveform_editor.shape_editor.muscle3_runner import (
     run_muscle3_communicator,
     run_muscle_manager,
 )
-from waveform_editor.settings import settings
 
 
 class NiceIntegration(param.Parameterized):

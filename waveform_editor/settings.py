@@ -85,6 +85,7 @@ class NiceSettings(param.Parameterized):
                 result[p] = getattr(self, p)
         return result
 
+
 class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
 
@@ -128,5 +129,6 @@ class UserSettings(param.Parameterized):
         with open(CONFIG_FILE, "w") as f:
             yaml.safe_dump(config, f)
         logger.debug(f"Saved options to {CONFIG_FILE}")
+
 
 settings = UserSettings()  # Global config object

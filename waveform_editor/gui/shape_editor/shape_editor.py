@@ -8,13 +8,13 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
-from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.gui.settings import nice_settings_panel
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.nice_integration import NiceIntegration
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.settings import NiceSettings, settings
 
 logger = logging.getLogger(__name__)
 
