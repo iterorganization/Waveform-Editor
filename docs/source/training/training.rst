@@ -603,17 +603,7 @@ Plasma Shape Editor
 -------------------
 
 In this section you will learn how to use the plasma shape editor. For this section 
-it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <shape_editor_install>`.
-If you have already built NICE inverse before (for example, if you followed the PDS training), 
-you can use this instead.
-
-Detailed information about the plasma shape editor can be found in :ref:`the documentation <plasma_shape_editor>`.
-If you are on SDCC, ensure the following modules are loaded, which are required to run NICE.
-
-
-.. code-block:: bash
-
-   module load IMAS-Python SuiteSparse/7.7.0-intel-2023b libxml2 Blitz++ MUSCLE3
+it is required to have installed the :ref:`dependencies for the Plasma Shape Editor <install_nice>`.
 
 Exercise 6a: Setting up NICE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -629,8 +619,11 @@ this plasma shape.
       You should see an empty plotting window on your left, and an options panel on your right.
       NICE requires configuration to be set. 
 
-      1. Set the executable paths for the NICE inverse and direct mode. These should point
-         to the executables you built in the :ref:`installation instructions <shape_editor_install>`.
+      1. Set the executable paths for the NICE inverse and direct mode. 
+         If you are using the NICE module, you can leave these at their default values: 
+         ``nice_imas_inv_muscle3`` and ``nice_imas_dir_muscle3`` for the inverse and
+         direct mode, respectively.
+         If you manually compiled NICE, you must provide the paths to the executables you built in the :ref:`installation instructions <shape_editor_install>`.
       2. Set any NICE environment variables required to run NICE. This depends on your specific system.
          If you are on SDCC, you can leave this as is. 
 

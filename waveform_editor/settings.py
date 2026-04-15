@@ -23,10 +23,12 @@ class NiceSettings(param.Parameterized):
         "md_iron_core",
     )
     inv_executable = param.String(
+        default="nice_imas_inv_muscle3",
         label="NICE inverse executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
     dir_executable = param.String(
+        default="nice_imas_dir_muscle3",
         label="NICE direct executable path",
         doc="Path to NICE direct IMAS MUSCLE3 executable",
     )

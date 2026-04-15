@@ -290,7 +290,9 @@ This is where you set up the core parameters for NICE and provide the necessary 
 This section includes settings for:
 
 * The file paths to the NICE executables for both *inverse* and *direct* modes.
-  These correspond to the executables that were built in :ref:`this section <installing_nice>`. For example:
+  If you are using the NICE module, you can leave these at their default values: 
+  ``nice_imas_inv_muscle3`` and ``nice_imas_dir_muscle3``.
+  If you manually built NICE, these should point to the executables that were built in :ref:`this section <installing_nice>`. For example:
   ``path/to/nice/run/nice_imas_inv_muscle3`` and ``path/to/nice/run/nice_imas_dir_muscle3``
   for the inverse mode and direct mode executable paths respectively.
 * Any environment variables that NICE requires. These are stored as a dictionary of strings.
