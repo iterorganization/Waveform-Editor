@@ -1,4 +1,5 @@
-"""MUSCLE3 subprocess runner functions for NICE integration, with no Panel dependency."""
+"""MUSCLE3 subprocess runner functions for NICE integration,
+with no Panel dependency."""
 
 import multiprocessing
 import multiprocessing.connection

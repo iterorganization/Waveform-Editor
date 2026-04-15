@@ -4,13 +4,11 @@ import numpy as np
 import scipy
 
 
-def compute_profiles_from_params(ip, r0, b0, alpha, beta, gamma):
+def compute_profiles_from_params(r0, alpha, beta, gamma):
     """Compute plasma profiles from parametric inputs.
 
     Args:
-        ip: Plasma current [A].
         r0: Reference major radius [m].
-        b0: Toroidal field at R0 [T].
         alpha: Alpha shape parameter.
         beta: Beta shape parameter.
         gamma: Gamma shape parameter.

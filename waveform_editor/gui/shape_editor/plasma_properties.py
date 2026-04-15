@@ -95,9 +95,7 @@ class PlasmaProperties(Viewer):
             self.dpressure_dpsi,
             self.f_df_dpsi,
         ) = compute_profiles_from_params(
-            ip=self.properties_params.ip,
             r0=self.properties_params.r0,
-            b0=self.properties_params.b0,
             alpha=self.properties_params.alpha,
             beta=self.properties_params.beta,
             gamma=self.properties_params.gamma,

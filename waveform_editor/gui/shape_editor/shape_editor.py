@@ -48,12 +48,12 @@ class ShapeEditor(Viewer):
         self.nice_settings = settings.nice
 
         self.xml_params_inv = ET.fromstring(
-            importlib.resources.files("waveform_editor.gui.shape_editor.xml_param")
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
             .joinpath("inverse_param.xml")
             .read_text()
         )
         self.xml_params_dir = ET.fromstring(
-            importlib.resources.files("waveform_editor.gui.shape_editor.xml_param")
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
             .joinpath("direct_param.xml")
             .read_text()
         )
