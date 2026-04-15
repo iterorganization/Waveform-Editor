@@ -3,7 +3,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.logic.plasma_properties_calc import (
+from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
 )
 from waveform_editor.gui.util import (

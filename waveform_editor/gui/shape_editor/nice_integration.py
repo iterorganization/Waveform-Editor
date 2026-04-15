@@ -11,7 +11,7 @@ import panel as pn
 import param
 from imas.ids_toplevel import IDSToplevel
 
-from waveform_editor.gui.shape_editor.logic.muscle3_runner import (
+from waveform_editor.shape_editor.muscle3_runner import (
     run_muscle3_communicator,
     run_muscle_manager,
 )
