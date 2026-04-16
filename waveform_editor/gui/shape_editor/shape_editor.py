@@ -101,9 +101,7 @@ class ShapeEditor(Viewer):
             ),
             self._create_card(self.coil_currents, "Coil Currents"),
         )
-        menu = pn.Column(
-            buttons, self.terminal, sizing_mode="stretch_width"
-        )
+        menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
             self.nice_plotter.flux_map_pane,
             pn.Column(
