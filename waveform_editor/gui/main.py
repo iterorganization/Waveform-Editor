@@ -124,15 +124,14 @@ class WaveformEditorGui(param.Parameterized):
             self.selector,
             self.confirm_modal,
             self.rename_modal,
-            visible=pn.bind(
-                lambda page: page == self.WAVEFORM_EDITOR_PAGE, self.nav
-            ),
+            visible=pn.bind(lambda page: page == self.WAVEFORM_EDITOR_PAGE, self.nav),
         )
 
         # Main content switches between waveform tabs and the plasma shape editor
         main_content = pn.bind(
-            lambda page: self.tabs 
-                if page == self.WAVEFORM_EDITOR_PAGE else shape_editor,
+            lambda page: (
+                self.tabs if page == self.WAVEFORM_EDITOR_PAGE else shape_editor
+            ),
             self.nav,
         )
 
@@ -143,7 +142,8 @@ class WaveformEditorGui(param.Parameterized):
             main=[main_content],
             sidebar=[sidebar],
             sidebar_width=400,
-            raw_css=["""
+            raw_css=[
+                """
                 /* Hide the app title text in the header (browser tab title is kept) */
                 a.title, span.title { display: none !important; }
 
@@ -158,7 +158,8 @@ class WaveformEditorGui(param.Parameterized):
                     color: #1976d2 !important;
                     border-color: white !important;
                 }
-            """],
+            """
+            ],
         )
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0
