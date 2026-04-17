@@ -8,12 +8,13 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
+from waveform_editor.gui.settings import nice_settings_panel
+from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
+from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,13 @@ class ShapeEditor(Viewer):
     def __init__(self, main_gui):
         super().__init__()
         self.factory = imas.IDSFactory()
-        self.communicator = NiceIntegration(self.factory)
+        self.terminal = pn.widgets.Terminal(
+            sizing_mode="stretch_width",
+            options={"scrollback": 10000, "wrap": True},
+            height=200,
+            max_width=750,
+        )
+        self.communicator = NiceIntegration(self.factory, on_output=self.terminal.write)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents(main_gui)
@@ -76,7 +83,7 @@ class ShapeEditor(Viewer):
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
-                self.nice_settings.panel,
+                nice_settings_panel(self.nice_settings),
                 "NICE Configuration",
                 is_valid=self.nice_settings.param.are_required_filled.rx(),
             ),
@@ -94,9 +101,7 @@ class ShapeEditor(Viewer):
             ),
             self._create_card(self.coil_currents, "Coil Currents"),
         )
-        menu = pn.Column(
-            buttons, self.communicator.terminal, sizing_mode="stretch_width"
-        )
+        menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
             self.nice_plotter.flux_map_pane,
             pn.Column(

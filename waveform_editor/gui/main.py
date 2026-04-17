@@ -6,7 +6,7 @@ import param
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.dict_editor import DictEditor
+from waveform_editor.gui.dict_editor import DictEditor
 from waveform_editor.gui.editor import WaveformEditor
 from waveform_editor.gui.io.manager import IOManager
 from waveform_editor.gui.plotter_edit import PlotterEdit
@@ -14,7 +14,7 @@ from waveform_editor.gui.plotter_view import PlotterView
 from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
-from waveform_editor.gui.shape_editor import ShapeEditor
+from waveform_editor.gui.shape_editor.shape_editor import ShapeEditor
 from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)

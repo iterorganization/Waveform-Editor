@@ -73,7 +73,7 @@ class FileDialogBase(Viewer):
             directory: Directory to show in the file dialog
             fname: Preselected filename
             on_confirm: Callback when the dialog is confirmed
-            file_pattern: A glob-like pattern to filter the files, e.g. *.txt
+            file_pattern: A glob-like pattern to filter the files, e.g. ``*.txt``
         """
         self.on_confirm = on_confirm
         self.filebrowser.directory = directory

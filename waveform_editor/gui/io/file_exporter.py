@@ -5,7 +5,7 @@ import numpy as np
 import panel as pn
 import param
 
-from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.export.exporter import ConfigurationExporter
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class FileExporter(param.Parameterized):
         Initialize the Export Dialog.
 
         Args:
-            main_gui: A reference to the main WaveformEditorGui instance.
+            manager: A reference to the IOManager instance.
         """
         super().__init__()
         self.manager = manager
@@ -219,7 +219,7 @@ class FileExporter(param.Parameterized):
         elif self.time_mode == MANUALINPUT:
             return self.time_array
 
-    def _handle_export(self, event):
+    def _handle_export(self, _event=None):
         """Perform the export based on current settings."""
         self.error_alert = ""
         self.progress.visible = True
