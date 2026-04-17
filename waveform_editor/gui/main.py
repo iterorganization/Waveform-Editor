@@ -43,6 +43,9 @@ class WaveformEditorGui(param.Parameterized):
     EDIT_WAVEFORMS_TAB = 1
     EDIT_YAML_GLOBALS_TAB = 2
 
+    WAVEFORM_EDITOR_PAGE = "Waveform Editor"
+    PLASMA_EDITOR_PAGE = "Plasma Shape Editor"
+
     DISCARD_CHANGES_MESSAGE = (
         "# **⚠️ Warning**  \nYou did not create a valid waveform. "
         "Leaving now will discard any changes you made to this waveform."
@@ -62,13 +65,6 @@ class WaveformEditorGui(param.Parameterized):
         self.io_manager = IOManager(self)
         self.selector = WaveformSelector(self)
         self.selector.param.watch(self.on_selection_change, "selection")
-
-        sidebar = pn.Column(
-            self.io_manager,
-            self.selector,
-            self.confirm_modal,
-            self.rename_modal,
-        )
 
         # Main views: view and edit tabs
         self.editor = WaveformEditor(self.config)
@@ -90,21 +86,79 @@ class WaveformEditorGui(param.Parameterized):
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
             ("Edit Global Properties", globals_editor),
-            ("Plasma Shape Editor", shape_editor),
             dynamic=True,
         )
         self.tabs.param.watch(self.on_tab_change, "active")
+
+        # Page navigation buttons in the header
+        self.nav = pn.widgets.RadioButtonGroup(
+            name="Page",
+            value=self.WAVEFORM_EDITOR_PAGE,
+            options=[self.WAVEFORM_EDITOR_PAGE, self.PLASMA_EDITOR_PAGE],
+            button_type="primary",
+        )
+        self.nav.param.watch(self.on_nav_change, "value")
+
+        # Collapses the sidebar frame when navigating to Plasma page by calling the
+        # template's own closeNav()/openNav() JS functions directly in the browser.
+        self.nav.jscallback(
+            value="""
+            var btn = document.getElementById('sidebar-button');
+            if (cb_obj.active === 1) {
+                closeNav();
+                if (btn) btn.style.setProperty('display', 'none', 'important');
+            } else {
+                openNav();
+                if (btn) btn.style.removeProperty('display');
+            }
+            """
+        )
 
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
 
+        # Sidebar is only shown on the Waveform Editor page
+        sidebar = pn.Column(
+            self.io_manager,
+            self.selector,
+            self.confirm_modal,
+            self.rename_modal,
+            visible=pn.bind(
+                lambda page: page == self.WAVEFORM_EDITOR_PAGE, self.nav
+            ),
+        )
+
+        # Main content switches between waveform tabs and the plasma shape editor
+        main_content = pn.bind(
+            lambda page: self.tabs 
+                if page == self.WAVEFORM_EDITOR_PAGE else shape_editor,
+            self.nav,
+        )
+
         # Combined UI:
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
-            main=[self.tabs],
+            header=[self.nav],
+            main=[main_content],
             sidebar=[sidebar],
             sidebar_width=400,
+            raw_css=["""
+                /* Hide the app title text in the header (browser tab title is kept) */
+                a.title, span.title { display: none !important; }
+
+                /* Navigation buttons: dim inactive, highlight active */
+                #header-items .bk-btn-group .bk-btn {
+                    background: transparent !important;
+                    color: rgba(255,255,255,0.6) !important;
+                    border-color: rgba(255,255,255,0.5) !important;
+                }
+                #header-items .bk-btn-group .bk-btn.bk-active {
+                    background: white !important;
+                    color: #1976d2 !important;
+                    border-color: white !important;
+                }
+            """],
         )
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0
@@ -141,6 +195,23 @@ class WaveformEditorGui(param.Parameterized):
         else:
             self.update_selection()
 
+    def on_nav_change(self, event):
+        """Respond to a page navigation change"""
+        if self._skip_editor_change_check:
+            return
+        if (
+            event.old == self.WAVEFORM_EDITOR_PAGE
+            and self.tabs.active == self.EDIT_WAVEFORMS_TAB
+            and self.editor.has_changed
+        ):
+            self.confirm_modal.show(
+                self.DISCARD_CHANGES_MESSAGE,
+                on_confirm=self.update_selection,
+                on_cancel=self.revert_to_editor,
+            )
+        else:
+            self.update_selection()
+
     def update_selection(self):
         """Reflect updated selection in other components"""
         selection = self.selector.selection
@@ -155,6 +226,7 @@ class WaveformEditorGui(param.Parameterized):
     def revert_to_editor(self):
         """Revert to the editor without changing its contents"""
         with self._skip_editor_change_check:  # Disable watchers for tab and selection
+            self.nav.value = self.WAVEFORM_EDITOR_PAGE
             self.tabs.active = self.EDIT_WAVEFORMS_TAB
             self.selector.set_selection([self.editor.waveform.name])
 
@@ -183,6 +255,7 @@ class WaveformEditorGui(param.Parameterized):
                 + self.config.load_error.replace("\n", "<br>")
             )
         with self._skip_editor_change_check:
+            self.nav.value = self.WAVEFORM_EDITOR_PAGE
             self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
         self.selector.refresh()
