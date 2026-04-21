@@ -29,7 +29,6 @@ class PiecewiseLinearTendency(BaseTendency):
             value=value,
             **kwargs,
         )
-        self.line_number = kwargs.get("line_number", 0)
         self.annotations.add_annotations(self.pre_check_annotations)
 
         self.start_value_set = True
