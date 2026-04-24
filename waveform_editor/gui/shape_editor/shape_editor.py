@@ -8,11 +8,11 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
-from waveform_editor.gui.settings import nice_settings_panel
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -78,16 +78,11 @@ class ShapeEditor(Viewer):
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
             self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
         )
+        settings_modal = SettingsModal(self.nice_plotter)
         buttons = pn.Row(button_start, button_stop, nice_mode_radio)
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
-            self._create_card(
-                nice_settings_panel(self.nice_settings),
-                "NICE Configuration",
-                is_valid=self.nice_settings.param.are_required_filled.rx(),
-            ),
-            self._create_card(self.nice_plotter, "Plotting Parameters"),
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
@@ -103,7 +98,9 @@ class ShapeEditor(Viewer):
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
-            self.nice_plotter.flux_map_pane,
+            pn.Column(
+                pn.Row(settings_modal, align="end"), self.nice_plotter.flux_map_pane
+            ),
             pn.Column(
                 menu,
                 options,

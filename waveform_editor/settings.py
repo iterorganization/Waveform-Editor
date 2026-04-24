@@ -15,12 +15,20 @@ CONFIG_FILE = _config_home / "waveform_editor.yaml"
 class NiceSettings(param.Parameterized):
     INVERSE_MODE = "NICE Inverse"
     DIRECT_MODE = "NICE Direct"
-
+    PRESET_ITER = "ITER"
+    PRESET_WEST = "WEST"
+    PRESET_CUSTOM = "Custom"
     BASE_REQUIRED = (
         "md_pf_active",
         "md_pf_passive",
         "md_wall",
         "md_iron_core",
+    )
+
+    machine_preset = param.Selector(
+        objects=[PRESET_ITER, PRESET_WEST, PRESET_CUSTOM],
+        default=PRESET_CUSTOM,
+        label="Machine Preset",
     )
     inv_executable = param.String(
         default="nice_imas_inv_muscle3",
@@ -37,10 +45,29 @@ class NiceSettings(param.Parameterized):
         label="NICE environment variables",
         doc="Environment variables for NICE",
     )
-    md_pf_active = param.String(label="'pf_active' machine description URI")
-    md_pf_passive = param.String(label="'pf_passive' machine description URI")
-    md_wall = param.String(label="'wall' machine description URI")
-    md_iron_core = param.String(label="'iron_core' machine description URI")
+
+    custom_md_pf_active = param.String(
+        label="custom 'pf_active' machine description URI"
+    )
+    custom_md_pf_passive = param.String(
+        label="custom 'pf_passive' machine description URI"
+    )
+    custom_md_wall = param.String(label="custom 'wall' machine description URI")
+    custom_md_iron_core = param.String(
+        label="custom 'iron_core' machine description URI"
+    )
+
+    md_pf_active = param.String(
+        label="'pf_active' machine description URI", precedence=-1
+    )
+    md_pf_passive = param.String(
+        label="'pf_passive' machine description URI", precedence=-1
+    )
+    md_wall = param.String(label="'wall' machine description URI", precedence=-1)
+    md_iron_core = param.String(
+        label="'iron_core' machine description URI", precedence=-1
+    )
+
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
     mode = param.Selector(
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
@@ -53,6 +80,45 @@ class NiceSettings(param.Parameterized):
     def set_mode_flags(self):
         self.is_direct_mode = self.mode == self.DIRECT_MODE
         self.is_inverse_mode = self.mode == self.INVERSE_MODE
+
+    @param.depends("md_pf_active", watch=True)
+    def sync_md_pf_active(self):
+        if self.machine_preset == self.PRESET_CUSTOM:
+            self.custom_md_pf_active = self.md_pf_active
+
+    @param.depends("md_pf_passive", watch=True)
+    def sync_md_pf_passive(self):
+        if self.machine_preset == self.PRESET_CUSTOM:
+            self.custom_md_pf_passive = self.md_pf_passive
+
+    @param.depends("md_wall", watch=True)
+    def sync_md_wall(self):
+        if self.machine_preset == self.PRESET_CUSTOM:
+            self.custom_md_wall = self.md_wall
+
+    @param.depends("md_iron_core", watch=True)
+    def sync_md_iron_core(self):
+        if self.machine_preset == self.PRESET_CUSTOM:
+            self.custom_md_iron_core = self.md_iron_core
+
+    @param.depends("machine_preset", watch=True)
+    def set_machine_preset(self):
+        # TODO: update placeholders to default URI
+        if self.machine_preset == self.PRESET_ITER:
+            self.md_pf_active = "PLACEHOLDER_ITER"
+            self.md_pf_passive = "PLACEHOLDER_ITER"
+            self.md_wall = "PLACEHOLDER_ITER"
+            self.md_iron_core = "PLACEHOLDER_ITER"
+        elif self.machine_preset == self.PRESET_WEST:
+            self.md_pf_active = "PLACEHOLDER_WEST"
+            self.md_pf_passive = "PLACEHOLDER_WEST"
+            self.md_wall = "PLACEHOLDER_WEST"
+            self.md_iron_core = "PLACEHOLDER_WEST"
+        else:  # custom
+            self.md_pf_active = self.custom_md_pf_active
+            self.md_pf_passive = self.custom_md_pf_passive
+            self.md_wall = self.custom_md_wall
+            self.md_iron_core = self.custom_md_iron_core
 
     @param.depends(
         *BASE_REQUIRED, "inv_executable", "dir_executable", "mode", watch=True
@@ -76,6 +142,7 @@ class NiceSettings(param.Parameterized):
                 logger.warning(f"Removing unknown NICE setting: {key}")
                 params.pop(key)
         self.param.update(**params)
+        self.set_machine_preset()
 
     def to_dict(self):
         """Returns a dictionary representation of current parameter values, excluding
