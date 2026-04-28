@@ -5,7 +5,6 @@ import imas
 import panel as pn
 import param
 
-import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.dict_editor import DictEditor
 from waveform_editor.gui.editor import WaveformEditor
@@ -100,7 +99,7 @@ class WaveformEditorGui(param.Parameterized):
             value=WAVEFORM_EDITOR_PAGE,
             options=[WAVEFORM_EDITOR_PAGE, PLASMA_EDITOR_PAGE],
             button_type="light",
-            stylesheets=[(_STYLES_DIR / "nav.css").read_text()],
+            button_style='outline',
         )
         self.nav.param.watch(self.on_nav_change, "value")
 
@@ -120,7 +119,6 @@ class WaveformEditorGui(param.Parameterized):
 
         # Combined UI:
         self.template = pn.template.FastListTemplate(
-            title=f"Waveform Editor (v{waveform_editor.__version__})",
             header=[self.nav],
             main=[main_content],
             raw_css=[(_STYLES_DIR / "styles.css").read_text()],
