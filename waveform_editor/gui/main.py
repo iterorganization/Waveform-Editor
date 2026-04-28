@@ -99,7 +99,7 @@ class WaveformEditorGui(param.Parameterized):
             value=WAVEFORM_EDITOR_PAGE,
             options=[WAVEFORM_EDITOR_PAGE, PLASMA_EDITOR_PAGE],
             button_type="light",
-            button_style='outline',
+            button_style="outline",
         )
         self.nav.param.watch(self.on_nav_change, "value")
 
