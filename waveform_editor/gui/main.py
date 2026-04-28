@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import imas
 import panel as pn
@@ -15,9 +16,11 @@ from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.shape_editor.shape_editor import ShapeEditor
+from waveform_editor.gui.sidebar import WaveformSidebar
 from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)
+_STYLES_DIR = Path(__file__).parent / "styles"
 
 
 def exception_handler(ex):
@@ -95,71 +98,55 @@ class WaveformEditorGui(param.Parameterized):
             name="Page",
             value=self.WAVEFORM_EDITOR_PAGE,
             options=[self.WAVEFORM_EDITOR_PAGE, self.PLASMA_EDITOR_PAGE],
-            button_type="primary",
+            button_type="light",
+            stylesheets=[(_STYLES_DIR / "nav.css").read_text()],
         )
         self.nav.param.watch(self.on_nav_change, "value")
-
-        # Collapses the sidebar frame when navigating to Plasma page by calling the
-        # template's own closeNav()/openNav() JS functions directly in the browser.
-        self.nav.jscallback(
-            value="""
-            var btn = document.getElementById('sidebar-button');
-            if (cb_obj.active === 1) {
-                closeNav();
-                if (btn) btn.style.setProperty('display', 'none', 'important');
-            } else {
-                openNav();
-                if (btn) btn.style.removeProperty('display');
-            }
-            """
-        )
 
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
 
-        # Sidebar is only shown on the Waveform Editor page
-        sidebar = pn.Column(
-            self.io_manager,
-            self.selector,
-            self.confirm_modal,
-            self.rename_modal,
-            visible=pn.bind(lambda page: page == self.WAVEFORM_EDITOR_PAGE, self.nav),
+        self.sidebar = WaveformSidebar(
+            self.io_manager, self.selector, self.confirm_modal, self.rename_modal
+        )
+        is_waveform_page = pn.bind(
+            lambda page: page == self.WAVEFORM_EDITOR_PAGE, self.nav
+        )
+        is_plasma_page = pn.bind(lambda page: page == self.PLASMA_EDITOR_PAGE, self.nav)
+
+        _no_shadow = {"box-shadow": "none", "overflow": "hidden"}
+        sidebar_card = pn.Card(
+            self.sidebar,
+            hide_header=True,
+            width=pn.bind(lambda v: 400 if v else 50, self.sidebar.param._open),
+            sizing_mode="stretch_height",
+            styles=_no_shadow,
+        )
+        tabs_card = pn.Card(
+            self.tabs,
+            hide_header=True,
+            sizing_mode="stretch_both",
+            styles=_no_shadow,
         )
 
-        # Main content switches between waveform tabs and the plasma shape editor
-        main_content = pn.bind(
-            lambda page: (
-                self.tabs if page == self.WAVEFORM_EDITOR_PAGE else shape_editor
-            ),
-            self.nav,
+        # Both pages stay in the DOM so Bokeh plots keep their layout context.
+        # Switching pages toggles visibility rather than swapping elements.
+        waveform_page = pn.Row(
+            sidebar_card,
+            tabs_card,
+            sizing_mode="stretch_both",
+            visible=is_waveform_page,
         )
+        plasma_page = pn.Column(shape_editor, visible=is_plasma_page)
+        main_content = pn.Column(waveform_page, plasma_page, sizing_mode="stretch_both")
 
         # Combined UI:
         self.template = pn.template.FastListTemplate(
             title=f"Waveform Editor (v{waveform_editor.__version__})",
             header=[self.nav],
             main=[main_content],
-            sidebar=[sidebar],
-            sidebar_width=400,
-            raw_css=[
-                """
-                /* Hide the app title text in the header (browser tab title is kept) */
-                a.title, span.title { display: none !important; }
-
-                /* Navigation buttons: dim inactive, highlight active */
-                #header-items .bk-btn-group .bk-btn {
-                    background: transparent !important;
-                    color: rgba(255,255,255,0.6) !important;
-                    border-color: rgba(255,255,255,0.5) !important;
-                }
-                #header-items .bk-btn-group .bk-btn.bk-active {
-                    background: white !important;
-                    color: #1976d2 !important;
-                    border-color: white !important;
-                }
-            """
-            ],
+            raw_css=[(_STYLES_DIR / "styles.css").read_text()],
         )
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0
