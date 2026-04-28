@@ -79,11 +79,11 @@ class BaseTendency(param.Parameterized):
     allow_zero_duration = False
 
     def __init__(self, **kwargs):
+        super().__init__()
         self.line_number = kwargs.pop("line_number", 0)
         self.is_first_repeated = kwargs.pop("is_first_repeated", False)
 
         unknown_kwargs = []
-        super().__init__()
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
                 if param_name not in self.param:

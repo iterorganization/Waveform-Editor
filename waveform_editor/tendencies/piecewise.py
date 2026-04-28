@@ -20,7 +20,6 @@ class PiecewiseLinearTendency(BaseTendency):
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
-        self.line_number = kwargs.get("line_number", 0)
         time, value = self._validate_time_value(user_time, user_value)
         self._remove_user_time_params(kwargs)
         super().__init__(
