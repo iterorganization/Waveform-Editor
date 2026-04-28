@@ -3,22 +3,18 @@ import param
 
 
 class WaveformSidebar(param.Parameterized):
-    _open = param.Boolean(default=True)
+    open = param.Boolean(default=True)
 
     def __init__(self, io_manager, selector, confirm_modal, rename_modal):
         super().__init__()
 
         toggle_btn = pn.widgets.Button(
-            name="◀",
+            name=pn.bind(lambda v: "◀" if v else "▶", self.param.open),
             button_type="light",
             width=40,
-            align=pn.bind(lambda v: "start" if v else "center", self.param._open),
+            align=pn.bind(lambda v: "start" if v else "center", self.param.open),
         )
-        toggle_btn.on_click(lambda _: setattr(self, "_open", not self._open))
-        self.param.watch(
-            lambda e: toggle_btn.param.update(name="◀" if e.new else "▶"),
-            "_open",
-        )
+        toggle_btn.on_click(lambda _: setattr(self, "open", not self.open))
 
         content = pn.Column(
             io_manager,
@@ -27,7 +23,7 @@ class WaveformSidebar(param.Parameterized):
             rename_modal,
             sizing_mode="stretch_width",
             scroll=True,
-            visible=pn.bind(lambda v: v, self.param._open),
+            visible=self.param.open,
         )
 
         self._layout = pn.Column(toggle_btn, content, sizing_mode="stretch_width")
