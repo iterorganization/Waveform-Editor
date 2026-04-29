@@ -65,8 +65,7 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        button_start = pn.widgets.Button(name="Run", on_click=self.submit)
-        button_start.disabled = (
+        disabled_expr = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
                 & self.nice_settings.param.is_inverse_mode.rx()
@@ -74,6 +73,21 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
+
+        button_start = pn.widgets.Button(
+            name="Run",
+            on_click=self.submit,
+            description=pn.bind(
+                lambda disabled: (
+                    "Cannot run: missing required inputs"
+                    if disabled
+                    else "Run simulation"
+                ),
+                disabled_expr,
+            ),
+            disabled=disabled_expr,
+        )
+
         button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
             self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)

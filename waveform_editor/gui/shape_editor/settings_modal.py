@@ -3,6 +3,7 @@ import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.gui.util import WarningIndicator
 from waveform_editor.settings import NiceSettings, settings
 
 
@@ -15,7 +16,11 @@ class SettingsModal(Viewer):
         self.nice_plotter = nice_plotter
 
         self.cogwheel_button = pn.widgets.ButtonIcon(
-            icon="settings",
+            icon=pn.bind(
+                lambda ready: "settings" if ready else "settings-exclamation",
+                self.nice_settings.param.are_required_filled,
+            ),
+            description="Setting Menu",
             size="30px",
             on_click=self._open_modal,
         )
@@ -40,7 +45,15 @@ class SettingsModal(Viewer):
             self._preset_selector,
             pn.layout.Divider(),
             pn.Column(
-                *(self._md_inputs[p] for p in md_params),
+                *(
+                    pn.Row(
+                        self._md_inputs[p],
+                        WarningIndicator(
+                            visible=self.nice_settings.param[p].rx() == ""
+                        ),
+                    )
+                    for p in md_params
+                ),
             ),
             sizing_mode="stretch_width",
         )
@@ -72,22 +85,20 @@ class SettingsModal(Viewer):
         )
 
         nice_content = pn.Column(
-            pn.Param(
-                self.nice_settings.param.inv_executable,
-                width=300,
+            pn.Row(
+                pn.Param(self.nice_settings.param.inv_executable),
+                WarningIndicator(
+                    visible=self.nice_settings.param.inv_executable.rx() == ""
+                ),
             ),
-            pn.Param(
-                self.nice_settings.param.dir_executable,
-                width=300,
+            pn.Row(
+                pn.Param(self.nice_settings.param.dir_executable),
+                WarningIndicator(
+                    visible=self.nice_settings.param.dir_executable.rx() == ""
+                ),
             ),
-            pn.Param(
-                self.nice_settings.param.environment,
-                width=300,
-            ),
-            pn.Param(
-                self.nice_settings.param.verbose,
-                width=100,
-            ),
+            pn.Param(self.nice_settings.param.environment),
+            pn.Param(self.nice_settings.param.verbose),
         )
 
         self.tabs = pn.Tabs(
