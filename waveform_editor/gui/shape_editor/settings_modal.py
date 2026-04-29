@@ -1,5 +1,3 @@
-import json
-
 import panel as pn
 import param
 from panel.viewable import Viewer
