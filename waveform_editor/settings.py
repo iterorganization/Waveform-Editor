@@ -24,6 +24,15 @@ class NiceSettings(param.Parameterized):
         "md_wall",
         "md_iron_core",
     )
+    # TODO: Update preset machine descriptions
+    ITER_PF_ACTIVE = "PLACEHOLDER_ITER_PF_ACTIVE"
+    ITER_PF_PASSIVE = "PLACEHOLDER_ITER_PF_PASSIVE"
+    ITER_WALL = "PLACEHOLDER_ITER_WALL"
+    ITER_IRON_CORE = "PLACEHOLDER_ITER_IRON_CORE"
+    WEST_PF_ACTIVE = "PLACEHOLDER_WEST_PF_ACTIVE"
+    WEST_PF_PASSIVE = "PLACEHOLDER_WEST_PF_PASSIVE"
+    WEST_WALL = "PLACEHOLDER_WEST_WALL"
+    WEST_IRON_CORE = "PLACEHOLDER_WEST_IRON_CORE"
 
     machine_preset = param.Selector(
         objects=[PRESET_ITER, PRESET_WEST, PRESET_CUSTOM],
@@ -45,6 +54,10 @@ class NiceSettings(param.Parameterized):
         label="NICE environment variables",
         doc="Environment variables for NICE",
     )
+    md_pf_active_loaded = param.Boolean(default=False, precedence=-1)
+    md_pf_passive_loaded = param.Boolean(default=False, precedence=-1)
+    md_wall_loaded = param.Boolean(default=False, precedence=-1)
+    md_iron_core_loaded = param.Boolean(default=False, precedence=-1)
 
     custom_md_pf_active = param.String(
         label="custom 'pf_active' machine description URI"
@@ -105,15 +118,15 @@ class NiceSettings(param.Parameterized):
     def set_machine_preset(self):
         # TODO: update placeholders to default URI
         if self.machine_preset == self.PRESET_ITER:
-            self.md_pf_active = "PLACEHOLDER_ITER"
-            self.md_pf_passive = "PLACEHOLDER_ITER"
-            self.md_wall = "PLACEHOLDER_ITER"
-            self.md_iron_core = "PLACEHOLDER_ITER"
+            self.md_pf_active = self.ITER_PF_ACTIVE
+            self.md_pf_passive = self.ITER_PF_PASSIVE
+            self.md_wall = self.ITER_WALL
+            self.md_iron_core = self.ITER_IRON_CORE
         elif self.machine_preset == self.PRESET_WEST:
-            self.md_pf_active = "PLACEHOLDER_WEST"
-            self.md_pf_passive = "PLACEHOLDER_WEST"
-            self.md_wall = "PLACEHOLDER_WEST"
-            self.md_iron_core = "PLACEHOLDER_WEST"
+            self.md_pf_active = self.WEST_PF_ACTIVE
+            self.md_pf_passive = self.WEST_PF_PASSIVE
+            self.md_wall = self.WEST_WALL
+            self.md_iron_core = self.WEST_IRON_CORE
         else:  # custom
             self.md_pf_active = self.custom_md_pf_active
             self.md_pf_passive = self.custom_md_pf_passive

@@ -41,6 +41,12 @@ class SettingsModal(Viewer):
                 self.nice_settings.param[p],
             )
 
+        md_loaded_params = {
+            "md_pf_active": "md_pf_active_loaded",
+            "md_pf_passive": "md_pf_passive_loaded",
+            "md_wall": "md_wall_loaded",
+            "md_iron_core": "md_iron_core_loaded",
+        }
         machine_preset_content = pn.Column(
             self._preset_selector,
             pn.layout.Divider(),
@@ -49,7 +55,9 @@ class SettingsModal(Viewer):
                     pn.Row(
                         self._md_inputs[p],
                         WarningIndicator(
-                            visible=self.nice_settings.param[p].rx() == ""
+                            visible=self.nice_settings.param[
+                                md_loaded_params[p]
+                            ].rx.not_()
                         ),
                     )
                     for p in md_params
