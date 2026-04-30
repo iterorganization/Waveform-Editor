@@ -161,10 +161,16 @@ class WaveformEditorGui(param.Parameterized):
         """Respond to a page navigation change"""
         if self._skip_editor_change_check:
             return
-        self._confirm_or_update(
+        if (
             event.old == WAVEFORM_EDITOR_PAGE
             and self.tabs.active == self.EDIT_WAVEFORMS_TAB
-        )
+            and self.editor.has_changed
+        ):
+            self.confirm_modal.show(
+                self.DISCARD_CHANGES_MESSAGE,
+                on_confirm=self.update_selection,
+                on_cancel=self.revert_to_editor,
+            )
 
     def update_selection(self):
         """Reflect updated selection in other components"""
