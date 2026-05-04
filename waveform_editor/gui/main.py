@@ -20,7 +20,7 @@ from waveform_editor.gui.waveform_content import (
     WAVEFORM_EDITOR_PAGE,
     WaveformContent,
 )
-from waveform_editor.util import LATEST_DD_VERSION, State
+from waveform_editor.util import LATEST_DD_VERSION
 
 logger = logging.getLogger(__name__)
 _STYLES_DIR = Path(__file__).parent / "styles"
@@ -49,16 +49,9 @@ class WaveformEditorGui(param.Parameterized):
     EDIT_WAVEFORMS_TAB = 1
     EDIT_YAML_GLOBALS_TAB = 2
 
-    DISCARD_CHANGES_MESSAGE = (
-        "# **⚠️ Warning**  \nYou did not create a valid waveform. "
-        "Leaving now will discard any changes you made to this waveform."
-        "   \n\n**Are you sure you want to continue?**"
-    )
-
     def __init__(self):
         """Initialize the Waveform Editor Panel App"""
         super().__init__()
-        self._skip_editor_change_check = State()
 
         self.config = WaveformConfiguration()
 
@@ -101,8 +94,6 @@ class WaveformEditorGui(param.Parameterized):
             button_type="light",
             button_style="outline",
         )
-        self.nav.param.watch(self.on_nav_change, "value")
-
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
@@ -126,51 +117,16 @@ class WaveformEditorGui(param.Parameterized):
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0
 
-    def _confirm_or_update(self, leaving_editor):
-        """Show discard-changes confirmation if needed, otherwise update selection.
-
-        leaving_editor: True when the user is navigating away from the waveform editor.
-        """
-        if leaving_editor and self.editor.has_changed:
-            self.confirm_modal.show(
-                self.DISCARD_CHANGES_MESSAGE,
-                on_confirm=self.update_selection,
-                on_cancel=self.revert_to_editor,
-            )
-        else:
-            self.update_selection()
-
-    def on_selection_change(self, event):
+    def on_selection_change(self, _):
         """Respond to a changed waveform selection"""
-        if self._skip_editor_change_check:
-            return  # ignore this event when we revert to the editor
-        # Check if current waveform is being removed. The user already confirmed
-        # they want to remove the waveform, so we don't ask again:
-        self._confirm_or_update(
-            self.tabs.active == self.EDIT_WAVEFORMS_TAB
-            and not self.selector.is_removing_waveform
-        )
+        self.update_selection()
 
     def on_tab_change(self, event):
         """Respond to a tab change"""
-        if self._skip_editor_change_check:
-            return  # ignore this event when we revert to the editor
-        self._confirm_or_update(event.old == self.EDIT_WAVEFORMS_TAB)
-
-    def on_nav_change(self, event):
-        """Respond to a page navigation change"""
-        if self._skip_editor_change_check:
+        entering_edit = event.new == self.EDIT_WAVEFORMS_TAB
+        if entering_edit and event.old != self.VIEW_WAVEFORMS_TAB:
             return
-        if (
-            event.old == WAVEFORM_EDITOR_PAGE
-            and self.tabs.active == self.EDIT_WAVEFORMS_TAB
-            and self.editor.has_changed
-        ):
-            self.confirm_modal.show(
-                self.DISCARD_CHANGES_MESSAGE,
-                on_confirm=self.update_selection,
-                on_cancel=self.revert_to_editor,
-            )
+        self.update_selection()
 
     def update_selection(self):
         """Reflect updated selection in other components"""
@@ -182,13 +138,6 @@ class WaveformEditorGui(param.Parameterized):
             self.editor.set_waveform(None)
             waveform_map = {name: self.config[name] for name in selection}
             self.plotter_view.plotted_waveforms = waveform_map
-
-    def revert_to_editor(self):
-        """Revert to the editor without changing its contents"""
-        with self._skip_editor_change_check:  # Disable watchers for tab and selection
-            self.nav.value = WAVEFORM_EDITOR_PAGE
-            self.tabs.active = self.EDIT_WAVEFORMS_TAB
-            self.selector.set_selection([self.editor.waveform.name])
 
     def load_yaml_from_file(self, path):
         """Load waveform configuration from a YAML file.
@@ -214,9 +163,8 @@ class WaveformEditorGui(param.Parameterized):
                 "YAML could not be loaded:<br>"
                 + self.config.load_error.replace("\n", "<br>")
             )
-        with self._skip_editor_change_check:
-            self.nav.value = WAVEFORM_EDITOR_PAGE
-            self.tabs.active = self.VIEW_WAVEFORMS_TAB
+        self.nav.value = WAVEFORM_EDITOR_PAGE
+        self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
         self.selector.refresh()
 
