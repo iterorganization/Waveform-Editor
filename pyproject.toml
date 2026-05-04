@@ -28,6 +28,7 @@ dependencies = [
     "kaleido", # required for exporting PNG to disk
     "asteval",
     "muscle3",
+    "panel-jstree",
 ]
 dynamic = ["version"]
 

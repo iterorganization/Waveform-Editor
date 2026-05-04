@@ -39,6 +39,12 @@ pn.extension(
     "tabulator",
     "terminal",
     "katex",
+    "tree",  # panel_jstree registers under "tree", not "jstree"
+    js_files={
+        # jQuery must be in the page <head> before Bokeh renders panel_jstree
+        "jquery": "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js",
+        "jstree": "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js",
+    },
     notifications=True,
     exception_handler=exception_handler,
 )
