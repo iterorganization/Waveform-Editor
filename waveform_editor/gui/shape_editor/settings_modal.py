@@ -34,33 +34,26 @@ class SettingsModal(Viewer):
             width=200,
         )
 
-        md_params = ["md_pf_active", "md_pf_passive", "md_wall", "md_iron_core"]
+        md_attrs = ["md_pf_active", "md_pf_passive", "md_wall", "md_iron_core"]
         self._md_inputs = {}
-        for p in md_params:
-            self._md_inputs[p] = pn.widgets.TextInput.from_param(
-                self.nice_settings.param[p],
-            )
+        for attr in md_attrs:
+            md = getattr(self.nice_settings, attr)
+            self._md_inputs[attr] = pn.widgets.TextInput.from_param(md.param.uri)
 
-        md_loaded_params = {
-            "md_pf_active": "md_pf_active_loaded",
-            "md_pf_passive": "md_pf_passive_loaded",
-            "md_wall": "md_wall_loaded",
-            "md_iron_core": "md_iron_core_loaded",
-        }
         machine_preset_content = pn.Column(
             self._preset_selector,
             pn.layout.Divider(),
             pn.Column(
                 *(
                     pn.Row(
-                        self._md_inputs[p],
+                        self._md_inputs[attr],
                         WarningIndicator(
-                            visible=self.nice_settings.param[
-                                md_loaded_params[p]
-                            ].rx.not_()
+                            visible=getattr(
+                                self.nice_settings, attr
+                            ).param.loaded.rx.not_()
                         ),
                     )
-                    for p in md_params
+                    for attr in md_attrs
                 ),
             ),
             sizing_mode="stretch_width",

@@ -158,30 +158,34 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
-    @param.depends("nice_settings.md_pf_active", watch=True)
+    @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
-        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
+        self.pf_active = self._load_slice(
+            self.nice_settings.md_pf_active.uri, "pf_active"
+        )
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
-        self.nice_settings.md_pf_active_loaded = self.pf_active is not None
+        self.nice_settings.md_pf_active.loaded = self.pf_active is not None
 
-    @param.depends("nice_settings.md_pf_passive", watch=True)
+    @param.depends("nice_settings.md_pf_passive.uri", watch=True)
     def _load_pf_passive(self):
         self.pf_passive = self._load_slice(
-            self.nice_settings.md_pf_passive, "pf_passive"
+            self.nice_settings.md_pf_passive.uri, "pf_passive"
         )
-        self.nice_settings.md_pf_passive_loaded = self.pf_passive is not None
+        self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
 
-    @param.depends("nice_settings.md_wall", watch=True)
+    @param.depends("nice_settings.md_wall.uri", watch=True)
     def _load_wall(self):
-        self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
+        self.wall = self._load_slice(self.nice_settings.md_wall.uri, "wall")
         self.nice_plotter.wall = self.wall
-        self.nice_settings.md_wall_loaded = self.wall is not None
+        self.nice_settings.md_wall.loaded = self.wall is not None
 
-    @param.depends("nice_settings.md_iron_core", watch=True)
+    @param.depends("nice_settings.md_iron_core.uri", watch=True)
     def _load_iron_core(self):
-        self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
-        self.nice_settings.md_iron_core_loaded = self.iron_core is not None
+        self.iron_core = self._load_slice(
+            self.nice_settings.md_iron_core.uri, "iron_core"
+        )
+        self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
     def _create_equilibrium(self):
         """Create an empty equilibrium IDS and fill the plasma shape parameters and
