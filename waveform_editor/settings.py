@@ -30,15 +30,15 @@ class NiceSettings(param.Parameterized):
     PRESET_ITER = "ITER"
     PRESET_WEST = "WEST"
     PRESET_CUSTOM = "Custom"
-    # TODO: Update preset machine descriptions
-    ITER_PF_ACTIVE = "PLACEHOLDER_ITER_PF_ACTIVE"
-    ITER_PF_PASSIVE = "PLACEHOLDER_ITER_PF_PASSIVE"
-    ITER_WALL = "PLACEHOLDER_ITER_WALL"
-    ITER_IRON_CORE = "PLACEHOLDER_ITER_IRON_CORE"
-    WEST_PF_ACTIVE = "PLACEHOLDER_WEST_PF_ACTIVE"
-    WEST_PF_PASSIVE = "PLACEHOLDER_WEST_PF_PASSIVE"
-    WEST_WALL = "PLACEHOLDER_WEST_WALL"
-    WEST_IRON_CORE = "PLACEHOLDER_WEST_IRON_CORE"
+    # TODO: Update preset machine descriptions URIs from MD database
+    ITER_PF_ACTIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
+    ITER_PF_PASSIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
+    ITER_WALL = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
+    ITER_IRON_CORE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
+    WEST_PF_ACTIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
+    WEST_PF_PASSIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
+    WEST_WALL = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
+    WEST_IRON_CORE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
 
     machine_preset = param.Selector(
         objects=[PRESET_ITER, PRESET_WEST, PRESET_CUSTOM],
