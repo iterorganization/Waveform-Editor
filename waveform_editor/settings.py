@@ -20,6 +20,7 @@ class MachineDescription(param.Parameterized):
 
     def __init__(self, ids_name: str, **params):
         super().__init__(**params)
+        self._ids_name = ids_name
         self.param.uri.label = f"'{ids_name}' machine description URI"
         self.custom_uri = ""
 
@@ -30,7 +31,8 @@ class NiceSettings(param.Parameterized):
     PRESET_ITER = "ITER"
     PRESET_WEST = "WEST"
     PRESET_CUSTOM = "Custom"
-    # TODO: Update preset machine descriptions URIs from MD database
+    # Preset machine description URIs
+    # TODO: Update URIs so they are from the MD database
     ITER_PF_ACTIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
     ITER_PF_PASSIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
     ITER_WALL = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
@@ -61,10 +63,26 @@ class NiceSettings(param.Parameterized):
         doc="Environment variables for NICE",
     )
 
-    md_pf_active = param.ClassSelector(class_=MachineDescription, precedence=-1)
-    md_pf_passive = param.ClassSelector(class_=MachineDescription, precedence=-1)
-    md_wall = param.ClassSelector(class_=MachineDescription, precedence=-1)
-    md_iron_core = param.ClassSelector(class_=MachineDescription, precedence=-1)
+    md_pf_active = param.ClassSelector(
+        class_=MachineDescription,
+        default=MachineDescription("pf_active"),
+        precedence=-1,
+    )
+    md_pf_passive = param.ClassSelector(
+        class_=MachineDescription,
+        default=MachineDescription("pf_passive"),
+        precedence=-1,
+    )
+    md_wall = param.ClassSelector(
+        class_=MachineDescription,
+        default=MachineDescription("wall"),
+        precedence=-1,
+    )
+    md_iron_core = param.ClassSelector(
+        class_=MachineDescription,
+        default=MachineDescription("iron_core"),
+        precedence=-1,
+    )
 
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
     mode = param.Selector(
@@ -74,24 +92,18 @@ class NiceSettings(param.Parameterized):
     is_direct_mode = param.Boolean(precedence=-1)
     is_inverse_mode = param.Boolean(precedence=-1)
 
+    @property
+    def mds(self):
+        return [self.md_pf_active, self.md_pf_passive, self.md_wall, self.md_iron_core]
+
     def __init__(self, **params):
-        params.setdefault("md_pf_active", MachineDescription("pf_active"))
-        params.setdefault("md_pf_passive", MachineDescription("pf_passive"))
-        params.setdefault("md_wall", MachineDescription("wall"))
-        params.setdefault("md_iron_core", MachineDescription("iron_core"))
         super().__init__(**params)
-        self._preset_switch = False
-        for md in self._mds():
-            md.param.watch(self._check_required_params_filled, ["uri"])
+        for md in self.mds:
+            md.param.watch(self._check_required_params_filled, ["uri", "loaded"])
         self.param.watch(
             self._check_required_params_filled,
             ["inv_executable", "dir_executable", "mode"],
         )
-        self.set_mode_flags()
-        self._check_required_params_filled()
-
-    def _mds(self):
-        return [self.md_pf_active, self.md_pf_passive, self.md_wall, self.md_iron_core]
 
     @param.depends("mode", watch=True, on_init=True)
     def set_mode_flags(self):
@@ -101,7 +113,7 @@ class NiceSettings(param.Parameterized):
     @param.depends("machine_preset", watch=True)
     def set_machine_preset(self, event=None):
         if event is not None and event.old == self.PRESET_CUSTOM:
-            for md in self._mds():
+            for md in self.mds:
                 md.custom_uri = md.uri
         presets = {
             self.PRESET_ITER: (
@@ -118,20 +130,16 @@ class NiceSettings(param.Parameterized):
             ),
         }
         uris = presets.get(self.machine_preset) or tuple(
-            md.custom_uri for md in self._mds()
+            md.custom_uri for md in self.mds
         )
-        self._preset_switch = True
-        try:
-            for md, uri in zip(self._mds(), uris, strict=True):
-                md.uri = uri
-        finally:
-            self._preset_switch = False
+        for md, uri in zip(self.mds, uris, strict=True):
+            md.uri = uri
 
     def _check_required_params_filled(self, *events):
-        base_ready = all(md.uri for md in self._mds())
-        if not base_ready:
+        if not all(md.uri and md.loaded for md in self.mds):
             self.are_required_filled = False
             return
+
         if self.mode == self.INVERSE_MODE:
             self.are_required_filled = bool(self.inv_executable)
         else:
@@ -139,51 +147,47 @@ class NiceSettings(param.Parameterized):
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
-        md_keys = {"md_pf_active", "md_pf_passive", "md_wall", "md_iron_core"}
+        for md in self.mds:
+            md_name = f"md_{md._ids_name}"
+            if md_name in params:
+                md.uri = md.custom_uri = params.pop(md_name)
         for key in list(params):
-            if key in md_keys:
-                md = getattr(self, key)
-                md.uri = md.custom_uri = params.pop(key)
-            elif key not in self.param or key == "name":
+            if key not in self.param or key == "name":
                 logger.warning(f"Removing unknown NICE setting: {key}")
                 params.pop(key)
         self.param.update(**params)
-        self.set_machine_preset()
 
     def to_dict(self):
         """Returns a dictionary representation of current parameter values, excluding
-        params with a precedence of -1."""
-        if self.machine_preset == self.PRESET_CUSTOM:
-            for md in self._mds():
-                md.custom_uri = md.uri
+        params with a precendence of -1."""
         result = {}
         for p in self.param:
-            if p == "name" or self.param[p].precedence == -1:
-                continue
-            result[p] = getattr(self, p)
-        for attr in ("md_pf_active", "md_pf_passive", "md_wall", "md_iron_core"):
-            result[attr] = getattr(self, attr).custom_uri
+            param_obj = self.param[p]
+            if p != "name" and param_obj.precedence != -1:
+                result[p] = getattr(self, p)
+
+        if self.machine_preset == self.PRESET_CUSTOM:
+            for md in self.mds:
+                md.custom_uri = md.uri
+        for md in self.mds:
+            result[f"md_{md._ids_name}"] = md.custom_uri
+
         return result
 
 
 class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
 
-    nice = param.ClassSelector(class_=NiceSettings, default=None, constant=True)
+    nice = param.ClassSelector(class_=NiceSettings, default=NiceSettings())
 
     def __init__(self, **params):
-        params.setdefault("nice", NiceSettings())
         super().__init__(**params)
         self._load_settings()
         self._save_settings()
         self.param.watch(self._save_settings, list(self.param))
         self.nice.param.watch(self._save_settings, list(self.nice.param))
-        for md in self.nice._mds():
-            md.param.watch(self._save_on_uri_change, ["uri"])
-
-    def _save_on_uri_change(self, event=None):
-        if not self.nice._preset_switch:
-            self._save_settings()
+        for md in self.nice.mds:
+            md.param.watch(self._save_settings, ["uri"])
 
     def _load_settings(self):
         """Load settings from disk and apply them to the current instance."""

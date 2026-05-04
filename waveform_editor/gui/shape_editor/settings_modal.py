@@ -15,47 +15,41 @@ class SettingsModal(Viewer):
         self.nice_settings = settings.nice
         self.nice_plotter = nice_plotter
 
-        self.cogwheel_button = pn.widgets.ButtonIcon(
+        self.modal = self._build_modal()
+        self.nice_settings.param.watch(
+            self._update_md_inputs_visibility, ["machine_preset"]
+        )
+
+        self.panel = pn.widgets.ButtonIcon(
             icon=pn.bind(
                 lambda ready: "settings" if ready else "settings-exclamation",
                 self.nice_settings.param.are_required_filled,
             ),
+            active_icon="settings-filled",
             description="Setting Menu",
             size="30px",
             on_click=self._open_modal,
         )
 
-        self._build_modal()
-        self._setup_preset_watcher()
-
     def _build_modal(self):
-        self._preset_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.machine_preset,
-            width=200,
-        )
-
-        md_attrs = ["md_pf_active", "md_pf_passive", "md_wall", "md_iron_core"]
+        """Returns the settings modal"""
         self._md_inputs = {}
-        for attr in md_attrs:
-            md = getattr(self.nice_settings, attr)
-            self._md_inputs[attr] = pn.widgets.TextInput.from_param(md.param.uri)
-
+        preset_selector = pn.widgets.Select.from_param(
+            self.nice_settings.param.machine_preset, width=200
+        )
+        md_uris = pn.Column()
+        for md in self.nice_settings.mds:
+            self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri)
+            md_uris.append(
+                pn.Row(
+                    self._md_inputs[md],
+                    WarningIndicator(visible=md.param.loaded.rx.not_()),
+                )
+            )
         machine_preset_content = pn.Column(
-            self._preset_selector,
+            preset_selector,
             pn.layout.Divider(),
-            pn.Column(
-                *(
-                    pn.Row(
-                        self._md_inputs[attr],
-                        WarningIndicator(
-                            visible=getattr(
-                                self.nice_settings, attr
-                            ).param.loaded.rx.not_()
-                        ),
-                    )
-                    for attr in md_attrs
-                ),
-            ),
+            md_uris,
             sizing_mode="stretch_width",
         )
 
@@ -111,22 +105,14 @@ class SettingsModal(Viewer):
             height=400,
         )
 
-        self.modal = pn.Modal(
-            self.tabs,
-            width=650,
-            height=500,
-        )
+        return pn.Modal(self.tabs, width=650, height=500)
 
-    def _setup_preset_watcher(self):
-        def update_md_inputs_visibility(event):
-            is_custom = (
-                self.nice_settings.machine_preset == self.nice_settings.PRESET_CUSTOM
+    def _update_md_inputs_visibility(self, _):
+        """Disable machine description URI inputs if preset is selected."""
+        for inp in self._md_inputs.values():
+            inp.disabled = (
+                self.nice_settings.machine_preset != self.nice_settings.PRESET_CUSTOM
             )
-            for inp in self._md_inputs.values():
-                inp.disabled = not is_custom
-
-        self.nice_settings.param.watch(update_md_inputs_visibility, ["machine_preset"])
-        update_md_inputs_visibility(None)
 
     def _open_modal(self, event):
         self.modal.show()
@@ -135,4 +121,4 @@ class SettingsModal(Viewer):
         self.modal.hide()
 
     def __panel__(self):
-        return pn.Row(self.cogwheel_button, self.modal)
+        return pn.Row(self.panel, self.modal)
