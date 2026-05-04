@@ -47,7 +47,6 @@ pn.extension(
 class WaveformEditorGui(param.Parameterized):
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
-    EDIT_YAML_GLOBALS_TAB = 2
 
     DISCARD_CHANGES_MESSAGE = (
         "# **⚠️ Warning**  \nYou did not create a valid waveform. "
@@ -196,7 +195,6 @@ class WaveformEditorGui(param.Parameterized):
                 "YAML could not be loaded:<br>"
                 + self.config.load_error.replace("\n", "<br>")
             )
-        self.nav.value = WAVEFORM_EDITOR_PAGE
         with self._skip_editor_change_check:
             self.tabs.active = self.VIEW_WAVEFORMS_TAB
         self.plotter_view.plotted_waveforms = {}
