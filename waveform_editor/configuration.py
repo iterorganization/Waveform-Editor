@@ -8,8 +8,8 @@ from ruamel.yaml.comments import CommentedMap
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
-from waveform_editor.yaml_globals import YamlGlobals
-from waveform_editor.yaml_parser import YamlParser
+from waveform_editor.yaml.yaml_globals import YamlGlobals
+from waveform_editor.yaml.yaml_parser import YamlParser
 
 logger = logging.getLogger(__name__)
 

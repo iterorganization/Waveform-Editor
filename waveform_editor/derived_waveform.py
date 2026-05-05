@@ -1,5 +1,4 @@
 import ast
-from typing import Optional
 
 import numpy as np
 from asteval import Interpreter
@@ -127,7 +126,7 @@ class DerivedWaveform(BaseWaveform):
         return eval_context
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Evaluate the derived waveform expression at specified times.
 

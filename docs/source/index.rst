@@ -16,6 +16,7 @@ Manual
    :maxdepth: 2
 
    installing
+   training/training
 
 .. toctree::
    :caption: Usage

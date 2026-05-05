@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import param
 
@@ -84,7 +82,7 @@ class RepeatTendency(BaseTendency):
             self.annotations.add(self.line_number, error_msg, is_warning=True)
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If no time array is
         provided, the individual tendencies are responsible for creating a time array,

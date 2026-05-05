@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import param
 from param import depends
@@ -36,7 +34,7 @@ class LinearTendency(BaseTendency):
         super().__init__(**kwargs)
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If no time array is
         provided, a line containing the start and end points will be generated.

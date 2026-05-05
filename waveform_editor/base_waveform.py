@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import imas
 import numpy as np
@@ -21,7 +20,7 @@ class BaseWaveform(ABC):
 
     @abstractmethod
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError
 

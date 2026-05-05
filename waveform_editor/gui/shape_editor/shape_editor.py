@@ -8,12 +8,13 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
+from waveform_editor.gui.settings import nice_mode_toggle, nice_settings_panel
+from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
+from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
+from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.shape_editor.plasma_shape import PlasmaShape
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,13 @@ class ShapeEditor(Viewer):
     def __init__(self, main_gui):
         super().__init__()
         self.factory = imas.IDSFactory()
-        self.communicator = NiceIntegration(self.factory)
+        self.terminal = pn.widgets.Terminal(
+            sizing_mode="stretch_width",
+            options={"scrollback": 10000, "wrap": True},
+            height=200,
+            max_width=750,
+        )
+        self.communicator = NiceIntegration(self.factory, on_output=self.terminal.write)
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents(main_gui)
@@ -58,7 +65,13 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        button_start = pn.widgets.Button(name="Run", on_click=self.submit)
+        button_start = pn.widgets.Button(
+            name="Run",
+            button_type="primary",
+            icon="player-play",
+            on_click=self.submit,
+            margin=(10, 0, 2, 0),
+        )
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
@@ -67,16 +80,25 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
-        button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
-        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
-            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
+        button_stop = pn.widgets.Button(
+            name="Stop",
+            button_type="danger",
+            icon="player-stop",
+            on_click=self.stop_nice,
+            margin=(10, 10, 2, 0),
         )
-        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
+        mode_widget = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
+        buttons = pn.Row(
+            mode_widget,
+            pn.Spacer(sizing_mode="stretch_width"),
+            button_stop,
+            button_start,
+        )
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
             self._create_card(
-                self.nice_settings.panel,
+                nice_settings_panel(self.nice_settings),
                 "NICE Configuration",
                 is_valid=self.nice_settings.param.are_required_filled.rx(),
             ),
@@ -94,9 +116,7 @@ class ShapeEditor(Viewer):
             ),
             self._create_card(self.coil_currents, "Coil Currents"),
         )
-        menu = pn.Column(
-            buttons, self.communicator.terminal, sizing_mode="stretch_width"
-        )
+        menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
             self.nice_plotter.flux_map_pane,
             pn.Column(
@@ -147,29 +167,21 @@ class ShapeEditor(Viewer):
         self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
-        if not self.pf_active:
-            self.nice_settings.md_pf_active = ""
 
     @param.depends("nice_settings.md_pf_passive", watch=True)
     def _load_pf_passive(self):
         self.pf_passive = self._load_slice(
             self.nice_settings.md_pf_passive, "pf_passive"
         )
-        if not self.pf_passive:
-            self.nice_settings.md_pf_passive = ""
 
     @param.depends("nice_settings.md_wall", watch=True)
     def _load_wall(self):
         self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
         self.nice_plotter.wall = self.wall
-        if not self.wall:
-            self.nice_settings.md_wall = ""
 
     @param.depends("nice_settings.md_iron_core", watch=True)
     def _load_iron_core(self):
         self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
-        if not self.iron_core:
-            self.nice_settings.md_iron_core = ""
 
     def _create_equilibrium(self):
         """Create an empty equilibrium IDS and fill the plasma shape parameters and

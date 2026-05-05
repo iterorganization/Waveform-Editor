@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import panel as pn
 import param
@@ -20,7 +20,7 @@ class SelectionGroup(Viewer):
     def __init__(
         self,
         selector: "WaveformSelector",
-        group: Union[WaveformConfiguration, WaveformGroup],
+        group: WaveformConfiguration | WaveformGroup,
         path: list[str],
     ) -> None:
         name = getattr(group, "name", "")

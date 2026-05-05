@@ -8,7 +8,7 @@ from rich import console, traceback
 
 import waveform_editor
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.export.exporter import ConfigurationExporter
 from waveform_editor.util import times_from_csv
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,10 @@ def parse_linspace(ctx, param, value):
 
 @cli.command("gui")
 @click.argument("file", type=click.Path(exists=True, dir_okay=False), required=False)
-def launch_gui(file):
+@click.option(
+    "-p", "--port", type=int, default=0, help="Specify port to host application."
+)
+def launch_gui(file, port):
     """Launch the Waveform Editor GUI using Panel.
 
     \b
@@ -88,7 +91,7 @@ def launch_gui(file):
         app = WaveformEditorGui()
         if file is not None:
             app.load_yaml_from_file(Path(file))
-        pn.serve(app, threaded=True)
+        pn.serve(app, port=port, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 
@@ -104,7 +107,7 @@ def export_ids(yaml, uri, csv, linspace):
     \b
     Arguments:
       yaml: Path to the waveform YAML file.
-      uri: URI of the output Data Entry.
+      uri: URI of the output Data Entry or file path of output NetCDF file.
     \b
     Options:
       csv: CSV file containing a custom time array.

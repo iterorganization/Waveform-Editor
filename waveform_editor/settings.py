@@ -2,11 +2,8 @@ import logging
 import os
 from pathlib import Path
 
-import panel as pn
 import param
 import yaml
-
-from waveform_editor.gui.util import WarningIndicator
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +23,12 @@ class NiceSettings(param.Parameterized):
         "md_iron_core",
     )
     inv_executable = param.String(
+        default="nice_imas_inv_muscle3",
         label="NICE inverse executable path",
         doc="Path to NICE inverse IMAS MUSCLE3 executable",
     )
     dir_executable = param.String(
+        default="nice_imas_dir_muscle3",
         label="NICE direct executable path",
         doc="Path to NICE direct IMAS MUSCLE3 executable",
     )
@@ -88,27 +87,6 @@ class NiceSettings(param.Parameterized):
                 result[p] = getattr(self, p)
         return result
 
-    def panel(self):
-        items = []
-
-        for p in self.param:
-            if p == "name":
-                continue
-
-            # Add warning indicator if required parameter is not filled
-            is_inv_required = p == "inv_executable" and self.is_inverse_mode
-            is_dir_required = p == "dir_executable" and self.is_direct_mode
-            is_base_required = p in self.BASE_REQUIRED
-
-            row_content = [pn.Param(self.param[p], show_name=False)]
-            if is_inv_required or is_dir_required or is_base_required:
-                warning = WarningIndicator(visible=self.param[p].rx.not_())
-                row_content.append(warning)
-
-            items.append(pn.Row(*row_content))
-
-        return pn.Column(*items)
-
 
 class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
@@ -153,16 +131,6 @@ class UserSettings(param.Parameterized):
         with open(CONFIG_FILE, "w") as f:
             yaml.safe_dump(config, f)
         logger.debug(f"Saved options to {CONFIG_FILE}")
-
-    @param.depends("gs_solver")
-    def panel(self):
-        params_to_show = [p for p in self.param if p != "nice" and p != "name"]
-        base_ui = pn.Param(self.param, parameters=params_to_show)
-        if self.gs_solver == "NICE":
-            nice_ui = pn.panel(self.nice.param, expand_button=False, expand=True)
-            return pn.Column(base_ui, pn.Spacer(height=10), nice_ui)
-        else:
-            return base_ui
 
 
 settings = UserSettings()  # Global config object

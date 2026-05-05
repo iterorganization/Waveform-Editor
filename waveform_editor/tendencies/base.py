@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from typing import Optional
 
 import numpy as np
 import param
@@ -80,11 +79,11 @@ class BaseTendency(param.Parameterized):
     allow_zero_duration = False
 
     def __init__(self, **kwargs):
+        super().__init__()
         self.line_number = kwargs.pop("line_number", 0)
         self.is_first_repeated = kwargs.pop("is_first_repeated", False)
 
         unknown_kwargs = []
-        super().__init__()
         with param.parameterized.batch_call_watchers(self):
             for param_name, value in kwargs.items():
                 if param_name not in self.param:
@@ -228,7 +227,7 @@ class BaseTendency(param.Parameterized):
 
     @abstractmethod
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array."""
         raise NotImplementedError()

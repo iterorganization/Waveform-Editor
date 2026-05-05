@@ -1,0 +1,2 @@
+/* Hide the app title text in the header (browser tab title is kept) */
+a.title, span.title { display: none !important; }

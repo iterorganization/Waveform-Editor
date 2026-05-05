@@ -9,7 +9,7 @@ from ymmsl import Operator
 
 from waveform_editor.cli import load_config
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.exporter import ConfigurationExporter
+from waveform_editor.export.exporter import ConfigurationExporter
 
 logger = logging.getLogger(__name__)
 

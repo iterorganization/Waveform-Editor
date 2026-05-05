@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import param
 
@@ -22,7 +20,6 @@ class PiecewiseLinearTendency(BaseTendency):
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
-        self.line_number = kwargs.get("line_number", 0)
         time, value = self._validate_time_value(user_time, user_value)
         self._remove_user_time_params(kwargs)
         super().__init__(
@@ -38,7 +35,7 @@ class PiecewiseLinearTendency(BaseTendency):
         self.param.update(values_changed=True)
 
     def get_value(
-        self, time: Optional[np.ndarray] = None
+        self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the tendency values at the provided time array. If a time array is
         provided, the values will be linearly interpolated between the piecewise linear
