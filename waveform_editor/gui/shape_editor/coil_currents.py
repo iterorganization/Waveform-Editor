@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 
 import numpy as np
+import pandas as pd
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -10,28 +11,79 @@ from waveform_editor.settings import settings
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 
 
+class CoilCurrentEntry(param.Parameterized):
+    coil_name = param.String()
+    fix_current = param.Boolean(default=False)
+    current = param.Number(default=None)
+    previous_current = param.Number(default=None)
+    # TODO: add additional columns for penalize to 0 and penalization weight columns
+
+
 class CoilCurrents(Viewer):
-    coil_ui = param.List(
-        doc="List of tuples containing the checkboxes and sliders for the coil currents"
-    )
+    coils = param.List(doc="List of CoilCurrentEntry for each coil")
     export_time = param.Number(
         doc="Select a time at which coil currents will be saved to waveforms"
     )
+    table = param.ClassSelector(class_=pn.widgets.Tabulator, default=None)
+
+    # Table column names
+    COIL_NAME = "coil_name"
+    FIX_CURRENT = "fix_current"
+    CURRENT = "current"
+    PREV_CURRENT = "previous_current"
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
         self.main_gui = main_gui
-        self.sliders_ui = pn.Column(visible=self.param.coil_ui.rx.bool())
-        guide_message = pn.pane.Markdown(
-            "_To fix a coil to a specific current, enable the checkbox and provide "
+
+        titles = {
+            self.COIL_NAME: "Name",
+            self.FIX_CURRENT: "Fix",
+            self.CURRENT: "Coil current [A]",
+            self.PREV_CURRENT: "Previous current [A]",
+        }
+        header_tooltips = {
+            self.COIL_NAME: "The name of the coil",
+            self.FIX_CURRENT: "Fix coil current so the inverse solver cannot change the value.",
+            self.CURRENT: "Coil current",
+            self.PREV_CURRENT: "Coil current input to previous run of the solver.",
+        }
+        self.table = pn.widgets.Tabulator(
+            layout="fit_data_stretch",
+            sizing_mode="stretch_width",
+            show_index=False,
+            titles=titles,
+            editors={
+                self.COIL_NAME: None,
+                self.FIX_CURRENT: None,
+                self.CURRENT: {"type": "number"},
+                self.PREV_CURRENT: None,
+            },
+            formatters={
+                self.FIX_CURRENT: {"type": "tickCross"},
+                self.CURRENT: {"type": "html", "value": "<b>{}</b>"},
+                self.PREV_CURRENT: {"type": "html", "value": "<i>{}</i>"},
+            },
+            header_align="center",
+            text_align="center",
+            sortable=False,
+            selectable=False,
+            header_tooltips=header_tooltips,
+            visible=self.param.coils.rx.bool(),
+            on_edit=self._on_cell_edit,
+            on_click=self._on_cell_click,
+        )
+
+        self.guide_message = pn.pane.Markdown(
+            "_To fix a coil to a specific current, enable the Fix checkbox and provide "
             " the desired current value._",
-            visible=self.param.coil_ui.rx.bool(),
+            visible=self.param.coils.rx.bool(),
             margin=(0, 10),
         )
-        no_ids_message = pn.pane.Markdown(
+        self.no_ids_message = pn.pane.Markdown(
             "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
-            visible=self.param.coil_ui.rx.not_(),
+            visible=self.param.coils.rx.not_(),
         )
 
         export_time_input = pn.widgets.FloatInput.from_param(self.param.export_time)
@@ -42,47 +94,64 @@ class CoilCurrents(Viewer):
         )
         self.panel = pn.Column(
             pn.Row(
-                export_time_input, confirm_button, visible=self.param.coil_ui.rx.bool()
+                export_time_input,
+                confirm_button,
+                visible=self.param.coils.rx.bool(),
             ),
-            no_ids_message,
-            guide_message,
-            self.sliders_ui,
+            self.no_ids_message,
+            self.guide_message,
+            self.table,
         )
 
-    @param.depends("coil_ui", watch=True)
-    def _update_slider_grid(self):
-        self.sliders_ui.objects = self.coil_ui
-
     def create_ui(self, pf_active):
-        """Create the UI for each coil in the provided pf_active IDS. For each coil a
-        checkbox and slider are added to fix, and set the current value, respectively.
+        """Create the UI for each coil in the provided pf_active IDS.
 
         Args:
             pf_active: pf_active IDS containing coils with current values.
         """
         if not pf_active:
-            self.coil_ui = []
+            self.coils = []
             return
 
-        new_coil_ui = []
+        new_coils = []
         for coil in pf_active.coil:
             coil_current = coil.current
-            checkbox = pn.widgets.Checkbox(
-                margin=(30, 10, 10, 10),
-                disabled=self.nice_settings.param.is_direct_mode,
+            entry = CoilCurrentEntry(
+                coil_name=str(coil.name),
+                current=coil_current.data[0] if coil_current.data.has_value else None,
             )
-            slider = pn.widgets.EditableFloatSlider(
-                name=f"{coil.name} Current [{coil_current.metadata.units}]",
-                value=coil_current.data[0] if coil_current.data.has_value else 0.0,
-                start=-5e4,
-                end=5e4,
-                format="0",
-                width=450,
-            )
-            row = pn.Row(checkbox, slider)
-            new_coil_ui.append(row)
+            new_coils.append(entry)
 
-        self.coil_ui = new_coil_ui
+        self.coils = new_coils
+
+    @param.depends("coils", watch=True)
+    def _update_table(self):
+        data = []
+        for coil in self.coils:
+            data.append(
+                {
+                    self.COIL_NAME: coil.coil_name,
+                    self.FIX_CURRENT: coil.fix_current,
+                    self.CURRENT: "" if coil.current is None else coil.current,
+                    self.PREV_CURRENT: ""
+                    if coil.previous_current is None
+                    else coil.previous_current,
+                }
+            )
+        self.table.value = pd.DataFrame(data)
+
+    def _on_cell_edit(self, event):
+        coil = self.coils[event.row]
+        if event.column == self.FIX_CURRENT:
+            coil.fix_current = bool(event.value)
+        elif event.column == self.CURRENT:
+            coil.current = float(event.value)
+
+    def _on_cell_click(self, event):
+        coil = self.coils[event.row]
+        if event.column == self.FIX_CURRENT:
+            coil.fix_current = not coil.fix_current
+            self._update_table()
 
     def _store_coil_currents(self, group_name="Coil Currents"):
         """Store the current values from the coil UI sliders into the waveform
@@ -92,7 +161,7 @@ class CoilCurrents(Viewer):
             group_name: Name of the group to create new coil current waveforms in if
                 they do not already exist.
         """
-        coil_currents = self._get_currents()
+        coil_currents = [c.current for c in self.coils]
         config = self.main_gui.config
         new_waveforms_created = False
 
@@ -180,7 +249,7 @@ class CoilCurrents(Viewer):
             True if export time is valid, False otherwise.
         """
         latest_time = None
-        for i in range(len(self.coil_ui)):
+        for i in range(len(self.coils)):
             name = f"pf_active/coil({i + 1})/current/data"
             if name in self.main_gui.config.waveform_map:
                 tendencies = self.main_gui.config[name].tendencies
@@ -200,32 +269,26 @@ class CoilCurrents(Viewer):
 
     def fill_pf_active(self, pf_active):
         """Update the coil currents of the provided pf_active IDS. Only coils with
-        their corresponding checkbox checked are updated.
+        their fix checkbox checked are updated. Also stores current values as
+        previous_current before the NICE run.
 
         Args:
             pf_active: pf_active IDS to update the coil currents for.
         """
-        for i, coil_ui in enumerate(self.coil_ui):
-            _, slider = coil_ui.objects
-            pf_active.coil[i].current.data = np.array([slider.value])
-
-    def _get_currents(self):
-        """Returns the coil current values in a list."""
-        coil_currents = []
-        for coil_ui in self.coil_ui:
-            _, slider = coil_ui.objects
-            coil_currents.append(slider.value)
-        return coil_currents
+        for i, coil in enumerate(self.coils):
+            if coil.fix_current and coil.current is not None:
+                pf_active.coil[i].current.data = np.array([coil.current])
+            coil.previous_current = pf_active.coil[i].current.data[0]
 
     def sync_ui_with_pf_active(self, pf_active):
-        """Synchronize UI sliders with the current values from the pf_active IDS.
+        """Synchronize UI with the current values from the pf_active IDS.
 
         Args:
             pf_active: pf_active IDS for which the coil currents are used.
         """
         for i, coil in enumerate(pf_active.coil):
-            _, slider = self.coil_ui[i].objects
-            slider.value = coil.current.data[0]
+            self.coils[i].current = coil.current.data[0]
+        self._update_table()
 
     def update_fixed_coils_in_xml(self, xml_params: ET.Element):
         """Update XML parameters indicating which coils are fixed based on
@@ -236,7 +299,7 @@ class CoilCurrents(Viewer):
                 in-place.
         """
         coil_groups = xml_params.find("coil_group_index").text.split()
-        fixed_coils = [i for i, row in enumerate(self.coil_ui) if row.objects[0].value]
+        fixed_coils = [i for i, coil in enumerate(self.coils) if coil.fix_current]
         target_groups = {coil_groups[coil_idx] for coil_idx in fixed_coils}
         fixed_groups = sorted(list(target_groups), key=int)
 
