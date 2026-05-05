@@ -1,0 +1,10 @@
+:host(.property-card) {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px 12px 12px;
+    display: block;
+}
+
+.bk-btn.bk-btn-primary.bk-active {
+    color: white !important;
+}
