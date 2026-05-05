@@ -89,8 +89,9 @@ class ShapeEditor(Viewer):
             self._create_card(self.nice_plotter, "Plotting Parameters"),
         )
 
-        options = pn.bind(self._create_options_tabs, 
-                          self.nice_settings.param.is_inverse_mode)
+        options = pn.bind(
+            self._create_options_tabs, self.nice_settings.param.is_inverse_mode
+        )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
             self.nice_plotter.flux_map_pane,
@@ -106,11 +107,18 @@ class ShapeEditor(Viewer):
         items = []
         if is_inverse_mode:
             items.append(("Shape", self.plasma_shape))
-        items.append(("Properties", pn.Column(self.plasma_properties,
-                                              self.nice_plotter.profiles_pane)))
+        items.append(
+            (
+                "Properties",
+                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
+            )
+        )
         items.append(("Coils", self.coil_currents))
-        return pn.Tabs(*items, sizing_mode="stretch_width", 
-                       stylesheets=[".bk-tab { flex: 1; text-align: center; }"])
+        return pn.Tabs(
+            *items,
+            sizing_mode="stretch_width",
+            stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
+        )
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
         """Create a collapsed card containing a panel object and a title.
