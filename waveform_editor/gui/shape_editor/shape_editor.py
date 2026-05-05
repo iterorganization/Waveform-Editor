@@ -76,6 +76,8 @@ class ShapeEditor(Viewer):
 
         button_start = pn.widgets.Button(
             name="Run",
+            button_type="primary",
+            icon="player-play",
             on_click=self.submit,
             description=pn.bind(
                 lambda disabled: (
@@ -86,14 +88,25 @@ class ShapeEditor(Viewer):
                 disabled_expr,
             ),
             disabled=disabled_expr,
+            margin=(10, 0, 2, 0),
         )
-
-        button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
+        button_stop = pn.widgets.Button(
+            name="Stop",
+            button_type="danger",
+            icon="player-stop",
+            on_click=self.stop_nice,
+            margin=(10, 10, 2, 0),
+        )
         nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
             self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
         )
         settings_modal = SettingsModal(self.nice_plotter)
-        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
+        buttons = pn.Row(
+            nice_mode_radio,
+            pn.Spacer(sizing_mode="stretch_width"),
+            button_stop,
+            button_start,
+        )
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(
