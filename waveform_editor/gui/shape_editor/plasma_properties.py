@@ -56,8 +56,9 @@ class PropertyInput(Viewer):
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
-        self.param.watch(lambda *_:
-                          self.param.trigger("changed"), ["ids_uri", "ids_time"])
+        self.param.watch(
+            lambda *_: self.param.trigger("changed"), ["ids_uri", "ids_time"]
+        )
 
     def _on_mode_change(self, event):
         self.mode = event.new
@@ -79,8 +80,9 @@ class PropertyInput(Viewer):
         return pn.Column(
             header,
             pn.Column(self._value_input, visible=is_manual, margin=(4, 0, 0, 0)),
-            pn.Column(self._uri_input, self._time_input, 
-                      visible=is_ids, margin=(4, 0, 0, 0)),
+            pn.Column(
+                self._uri_input, self._time_input, visible=is_ids, margin=(4, 0, 0, 0)
+            ),
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
             max_width=600,
@@ -125,8 +127,9 @@ class PlasmaProfiles(Viewer):
         self._gamma_input = pn.widgets.FloatInput.from_param(
             self.param.gamma, name="Gamma", sizing_mode="stretch_width"
         )
-        self.param.watch(lambda *_: 
-                         self.param.trigger("changed"), ["alpha", "beta", "gamma"])
+        self.param.watch(
+            lambda *_: self.param.trigger("changed"), ["alpha", "beta", "gamma"]
+        )
 
         self._uri_input = pn.widgets.TextInput.from_param(
             self.param.ids_uri,
@@ -137,8 +140,9 @@ class PlasmaProfiles(Viewer):
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
-        self.param.watch(lambda *_:
-                          self.param.trigger("changed"), ["ids_uri", "ids_time"])
+        self.param.watch(
+            lambda *_: self.param.trigger("changed"), ["ids_uri", "ids_time"]
+        )
 
     def _on_mode_change(self, event):
         self.mode = event.new
@@ -156,12 +160,17 @@ class PlasmaProfiles(Viewer):
         return pn.Column(
             header,
             pn.Column(
-                self._alpha_input, self._beta_input, self._gamma_input,
-                visible=is_parametric, margin=(4, 0, 0, 0),
+                self._alpha_input,
+                self._beta_input,
+                self._gamma_input,
+                visible=is_parametric,
+                margin=(4, 0, 0, 0),
             ),
             pn.Column(
-                self._uri_input, self._time_input,
-                visible=is_ids, margin=(4, 0, 0, 0),
+                self._uri_input,
+                self._time_input,
+                visible=is_ids,
+                margin=(4, 0, 0, 0),
             ),
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
@@ -215,16 +224,13 @@ class PlasmaProperties(Viewer):
         self.ip = self._load_scalar(
             self._ip, lambda eq: eq.time_slice[0].global_quantities.ip
         )
-        self.r0 = self._load_scalar(
-            self._r0, lambda eq: eq.vacuum_toroidal_field.r0
-        )
-        self.b0 = self._load_scalar(
-            self._b0, lambda eq: eq.vacuum_toroidal_field.b0[0]
-        )
+        self.r0 = self._load_scalar(self._r0, lambda eq: eq.vacuum_toroidal_field.r0)
+        self.b0 = self._load_scalar(self._b0, lambda eq: eq.vacuum_toroidal_field.b0[0])
 
         if self._profiles.mode == EQ_IDS:
-            self._load_profiles_from_ids(self._profiles.ids_uri,
-                                         self._profiles.ids_time)
+            self._load_profiles_from_ids(
+                self._profiles.ids_uri, self._profiles.ids_time
+            )
         elif self.r0 is not None:
             try:
                 self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = (
@@ -242,8 +248,7 @@ class PlasmaProperties(Viewer):
             self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
 
         self.has_properties = all(
-            v is not None
-            for v in [self.ip, self.r0, self.b0, self.dpressure_dpsi]
+            v is not None for v in [self.ip, self.r0, self.b0, self.dpressure_dpsi]
         )
         self.param.trigger("profile_updated")
 
