@@ -29,6 +29,36 @@ def _card(*items):
     )
 
 
+def _form_row(label, widget, warning=None):
+    items = [
+        pn.pane.HTML(
+            f'<span class="form-row-label">{label}</span>',
+            stylesheets=_STYLES,
+            width=180,
+            align="center",
+        ),
+        widget,
+    ]
+    if warning is not None:
+        items.append(warning)
+    return pn.Row(
+        *items,
+        css_classes=["form-row"],
+        stylesheets=_STYLES,
+        sizing_mode="stretch_width",
+        align="center",
+    )
+
+
+def _form_card(*rows):
+    return pn.Column(
+        *rows,
+        stylesheets=_STYLES,
+        css_classes=["settings-card"],
+        sizing_mode="stretch_width",
+    )
+
+
 class SettingsModal(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
 
@@ -60,20 +90,21 @@ class SettingsModal(Viewer):
         preset_selector = pn.widgets.Select.from_param(
             self.nice_settings.param.machine_preset, name="", width=200
         )
-        md_uris = pn.Column()
+        md_rows = []
         for md in self.nice_settings.mds:
-            self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri)
-            md_uris.append(
-                pn.Row(
+            self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
+            md_rows.append(
+                _form_row(
+                    md._ids_name,
                     self._md_inputs[md],
-                    WarningIndicator(visible=md.param.loaded.rx.not_()),
+                    WarningIndicator(margin=10, visible=md.param.loaded.rx.not_()),
                 )
             )
         machine_preset_content = pn.Column(
             _section_label("Preset"),
             preset_selector,
             _section_label("Machine Description URIs"),
-            md_uris,
+            _form_card(*md_rows),
             sizing_mode="stretch_width",
             scroll=True,
         )
@@ -134,26 +165,38 @@ class SettingsModal(Viewer):
         # --- NICE Configuration tab ---
         nice_content = pn.Column(
             _section_label("Executables"),
-            _card(
-                pn.Row(
-                    pn.Param(self.nice_settings.param.inv_executable),
-                    WarningIndicator(
-                        visible=self.nice_settings.param.inv_executable.rx() == ""
+            _form_card(
+                _form_row(
+                    "Inverse executable",
+                    pn.widgets.TextInput.from_param(
+                        self.nice_settings.param.inv_executable, name=""
                     ),
-                    sizing_mode="stretch_width",
+                    WarningIndicator(
+                        margin=10,
+                        visible=self.nice_settings.param.inv_executable.rx() == "",
+                    ),
                 ),
-                pn.Row(
-                    pn.Param(self.nice_settings.param.dir_executable),
-                    WarningIndicator(
-                        visible=self.nice_settings.param.dir_executable.rx() == ""
+                _form_row(
+                    "Direct executable",
+                    pn.widgets.TextInput.from_param(
+                        self.nice_settings.param.dir_executable, name=""
                     ),
-                    sizing_mode="stretch_width",
+                    WarningIndicator(
+                        margin=10,
+                        visible=self.nice_settings.param.dir_executable.rx() == "",
+                    ),
                 ),
             ),
             _section_label("Environment"),
-            _card(
-                pn.Param(self.nice_settings.param.environment),
-                pn.Param(self.nice_settings.param.verbose),
+            _form_card(
+                _form_row(
+                    "Environment variables",
+                    pn.Param(self.nice_settings.param.environment, show_name=False),
+                ),
+                _form_row(
+                    "Verbosity",
+                    pn.Param(self.nice_settings.param.verbose, show_name=False),
+                ),
             ),
             sizing_mode="stretch_width",
             scroll=True,

@@ -25,6 +25,27 @@ a.title, span.title { display: none !important; }
     text-align: center;
 }
 
+:host(.settings-card) {
+    border: 1px solid rgba(128,128,128,0.5);
+    border-radius: 20px;
+    overflow: hidden;
+}
+/* Settings form rows */
+.form-row {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(128,128,128,0.5);
+    align-items: center;
+}
+.form-row:last-child {
+    border-bottom: none;
+}
+
+.form-row-label {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 /* Settings modal tabs */
 .bk-tab { flex: 1; text-align: center; }
 
