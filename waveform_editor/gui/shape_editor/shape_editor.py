@@ -8,6 +8,7 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
+from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
@@ -97,9 +98,7 @@ class ShapeEditor(Viewer):
             on_click=self.stop_nice,
             margin=(10, 10, 2, 0),
         )
-        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
-            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
-        )
+        nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         settings_modal = SettingsModal(self.nice_plotter)
         buttons = pn.Row(
             nice_mode_radio,
