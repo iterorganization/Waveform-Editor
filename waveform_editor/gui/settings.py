@@ -18,8 +18,7 @@ def nice_mode_toggle(
         button_style="outline",
         **kwargs,
     )
-    nice_settings.param.watch(lambda e: setattr(widget, "value", e.new), "mode")
-    widget.param.watch(lambda e: setattr(nice_settings, "mode", e.new), "value")
+    widget.link(nice_settings, bidirectional=True, value="mode")
     return widget
 
 
