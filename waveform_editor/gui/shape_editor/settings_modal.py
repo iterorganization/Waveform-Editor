@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -6,26 +8,25 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.util import WarningIndicator
 from waveform_editor.settings import NiceSettings, settings
 
-_CARD_STYLES = {
-    "background": "rgba(255,255,255,0.04)",
-    "border": "1px solid rgba(255,255,255,0.1)",
-    "border-radius": "8px",
-    "overflow": "hidden",
-}
+_STYLES = [(Path(__file__).parent.parent / "styles" / "styles.css").read_text()]
 
 
 def _section_label(text):
     return pn.pane.HTML(
-        f'<p style="color:#999;font-size:11px;font-weight:600;'
-        f'letter-spacing:0.08em;text-transform:uppercase;margin:14px 0 5px 0;">'
-        f"{text}</p>",
+        f'<p class="settings-section-label">{text}</p>',
+        stylesheets=_STYLES,
         margin=0,
         sizing_mode="stretch_width",
     )
 
 
 def _card(*items):
-    return pn.Column(*items, styles=_CARD_STYLES, sizing_mode="stretch_width")
+    return pn.Column(
+        *items,
+        stylesheets=_STYLES,
+        css_classes=["settings-card"],
+        sizing_mode="stretch_width",
+    )
 
 
 class SettingsModal(Viewer):
@@ -80,9 +81,8 @@ class SettingsModal(Viewer):
         # --- General tab ---
         general_content = pn.Column(
             pn.pane.HTML(
-                '<p style="color:#888;font-style:italic;'
-                'margin-top:24px;text-align:center;">'
-                "No general settings yet.</p>"
+                '<p class="settings-placeholder">No general settings yet.</p>',
+                stylesheets=_STYLES,
             ),
         )
 
@@ -166,17 +166,14 @@ class SettingsModal(Viewer):
             ("NICE Configuration", nice_content),
             margin=(20, 20, 0, 20),
             sizing_mode="stretch_width",
-            stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
+            stylesheets=_STYLES,
         )
 
         return pn.Modal(
             self.tabs,
             width=700,
             height=560,
-            stylesheets=[
-                ".dialog-content { border-radius: 20px; "
-                "overflow: hidden; padding: 0 !important; }"
-            ],
+            stylesheets=_STYLES,
         )
 
     def _update_md_inputs_visibility(self, _):

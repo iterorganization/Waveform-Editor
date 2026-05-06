@@ -1,7 +1,6 @@
 """Panel rendering functions for settings objects."""
 
 import panel as pn
-import param
 
 from waveform_editor.settings import NiceSettings
 
