@@ -6,6 +6,27 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.util import WarningIndicator
 from waveform_editor.settings import NiceSettings, settings
 
+_CARD_STYLES = {
+    "background": "rgba(255,255,255,0.04)",
+    "border": "1px solid rgba(255,255,255,0.1)",
+    "border-radius": "8px",
+    "overflow": "hidden",
+}
+
+
+def _section_label(text):
+    return pn.pane.HTML(
+        f'<p style="color:#999;font-size:11px;font-weight:600;'
+        f'letter-spacing:0.08em;text-transform:uppercase;margin:14px 0 5px 0;">'
+        f"{text}</p>",
+        margin=0,
+        sizing_mode="stretch_width",
+    )
+
+
+def _card(*items):
+    return pn.Column(*items, styles=_CARD_STYLES, sizing_mode="stretch_width")
+
 
 class SettingsModal(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
@@ -32,10 +53,11 @@ class SettingsModal(Viewer):
         )
 
     def _build_modal(self):
-        """Returns the settings modal"""
         self._md_inputs = {}
+
+        # --- Machine Presets tab ---
         preset_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.machine_preset, width=200
+            self.nice_settings.param.machine_preset, name="", width=200
         )
         md_uris = pn.Column()
         for md in self.nice_settings.mds:
@@ -47,53 +69,94 @@ class SettingsModal(Viewer):
                 )
             )
         machine_preset_content = pn.Column(
+            _section_label("Preset"),
             preset_selector,
-            pn.layout.Divider(),
+            _section_label("Machine Description URIs"),
             md_uris,
             sizing_mode="stretch_width",
+            scroll=True,
         )
 
+        # --- General tab ---
         general_content = pn.Column(
-            pn.pane.Markdown("*No general settings yet.*"),
+            pn.pane.HTML(
+                '<p style="color:#888;font-style:italic;'
+                'margin-top:24px;text-align:center;">'
+                "No general settings yet.</p>"
+            ),
+        )
+
+        # --- Display tab ---
+        self._contour_detail = pn.Column(
+            _section_label("Contour Detail"),
+            _card(
+                pn.Param(
+                    self.nice_plotter.param,
+                    parameters=["levels"],
+                    show_name=False,
+                ),
+            ),
+            visible=self.nice_plotter.show_contour,
+            sizing_mode="stretch_width",
+        )
+        self.nice_plotter.param.watch(
+            lambda e: setattr(self._contour_detail, "visible", e.new),
+            ["show_contour"],
         )
 
         display_content = pn.Column(
-            pn.Param(
-                self.nice_plotter.param,
-                parameters=[
-                    "show_contour",
-                    "levels",
-                    "show_coils",
-                    "show_wall",
-                    "show_vacuum_vessel",
-                    "show_xo",
-                    "show_separatrix",
-                    "show_desired_shape",
-                ],
-                show_name=False,
-                widgets={
-                    "show_desired_shape": {
-                        "visible": self.nice_settings.param.is_inverse_mode
-                    }
-                },
+            _section_label("Visibility"),
+            _card(
+                pn.Param(
+                    self.nice_plotter.param,
+                    parameters=[
+                        "show_contour",
+                        "show_coils",
+                        "show_wall",
+                        "show_vacuum_vessel",
+                        "show_xo",
+                        "show_separatrix",
+                        "show_desired_shape",
+                    ],
+                    show_name=False,
+                    widgets={
+                        "show_desired_shape": {
+                            "visible": self.nice_settings.param.is_inverse_mode
+                        },
+                    },
+                ),
             ),
+            self._contour_detail,
+            sizing_mode="stretch_width",
+            scroll=True,
         )
 
+        # --- NICE Configuration tab ---
         nice_content = pn.Column(
-            pn.Row(
-                pn.Param(self.nice_settings.param.inv_executable),
-                WarningIndicator(
-                    visible=self.nice_settings.param.inv_executable.rx() == ""
+            _section_label("Executables"),
+            _card(
+                pn.Row(
+                    pn.Param(self.nice_settings.param.inv_executable),
+                    WarningIndicator(
+                        visible=self.nice_settings.param.inv_executable.rx() == ""
+                    ),
+                    sizing_mode="stretch_width",
+                ),
+                pn.Row(
+                    pn.Param(self.nice_settings.param.dir_executable),
+                    WarningIndicator(
+                        visible=self.nice_settings.param.dir_executable.rx() == ""
+                    ),
+                    sizing_mode="stretch_width",
                 ),
             ),
-            pn.Row(
-                pn.Param(self.nice_settings.param.dir_executable),
-                WarningIndicator(
-                    visible=self.nice_settings.param.dir_executable.rx() == ""
-                ),
+            _section_label("Environment"),
+            _card(
+                pn.Param(self.nice_settings.param.environment),
+                pn.Param(self.nice_settings.param.verbose),
             ),
-            pn.Param(self.nice_settings.param.environment),
-            pn.Param(self.nice_settings.param.verbose),
+            sizing_mode="stretch_width",
+            scroll=True,
         )
 
         self.tabs = pn.Tabs(
@@ -101,11 +164,20 @@ class SettingsModal(Viewer):
             ("General", general_content),
             ("Display", display_content),
             ("NICE Configuration", nice_content),
-            width=600,
-            height=400,
+            margin=(20, 20, 0, 20),
+            sizing_mode="stretch_width",
+            stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
 
-        return pn.Modal(self.tabs, width=650, height=500)
+        return pn.Modal(
+            self.tabs,
+            width=700,
+            height=560,
+            stylesheets=[
+                ".dialog-content { border-radius: 20px; "
+                "overflow: hidden; padding: 0 !important; }"
+            ],
+        )
 
     def _update_md_inputs_visibility(self, _):
         """Disable machine description URI inputs if preset is selected."""
