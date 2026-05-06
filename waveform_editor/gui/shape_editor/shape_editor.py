@@ -8,7 +8,7 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
-from waveform_editor.gui.settings import nice_settings_panel
+from waveform_editor.gui.settings import nice_mode_toggle, nice_settings_panel
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
@@ -65,7 +65,13 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        button_start = pn.widgets.Button(name="Run", on_click=self.submit)
+        button_start = pn.widgets.Button(
+            name="Run",
+            button_type="primary",
+            icon="player-play",
+            on_click=self.submit,
+            margin=(10, 0, 2, 0),
+        )
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
@@ -74,11 +80,20 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
-        button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
-        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
-            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
+        button_stop = pn.widgets.Button(
+            name="Stop",
+            button_type="danger",
+            icon="player-stop",
+            on_click=self.stop_nice,
+            margin=(10, 10, 2, 0),
         )
-        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
+        mode_widget = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
+        buttons = pn.Row(
+            mode_widget,
+            pn.Spacer(sizing_mode="stretch_width"),
+            button_stop,
+            button_start,
+        )
 
         # Accordion does not allow dynamic titles, so use separate card for each option
         options = pn.Column(

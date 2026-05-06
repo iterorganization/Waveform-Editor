@@ -7,6 +7,21 @@ from waveform_editor.gui.util import WarningIndicator
 from waveform_editor.settings import NiceSettings, UserSettings
 
 
+def nice_mode_toggle(
+    nice_settings: NiceSettings, **kwargs
+) -> pn.widgets.RadioButtonGroup:
+    """Create a segmented control for switching between NICE modes."""
+    widget = pn.widgets.RadioButtonGroup(
+        options=[NiceSettings.DIRECT_MODE, NiceSettings.INVERSE_MODE],
+        value=nice_settings.mode,
+        button_type="default",
+        button_style="outline",
+        **kwargs,
+    )
+    widget.link(nice_settings, bidirectional=True, value="mode")
+    return widget
+
+
 def nice_settings_panel(nice_settings: NiceSettings) -> pn.Column:
     """Render a NiceSettings instance as a Panel column.
 
@@ -18,10 +33,12 @@ def nice_settings_panel(nice_settings: NiceSettings) -> pn.Column:
     Returns:
         A Panel Column containing all settings fields.
     """
-    items = []
+    items = [nice_mode_toggle(nice_settings, margin=(10, 0, 0, 0))]
+
+    _skip = {"name", "mode", "is_direct_mode", "is_inverse_mode", "are_required_filled"}
 
     for p in nice_settings.param:
-        if p == "name":
+        if p in _skip:
             continue
 
         is_inv_required = p == "inv_executable" and nice_settings.is_inverse_mode
