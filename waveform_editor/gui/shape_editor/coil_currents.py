@@ -46,7 +46,7 @@ class CoilCurrents(Viewer):
         }
         header_tooltips = {
             self.COIL_NAME: "The name of the coil",
-            self.FIX_CURRENT: "Fix coil current so the inverse solver cannot change the value.",
+            self.FIX_CURRENT: "Fix coil current to a specific value.",
             self.CURRENT: "Coil current",
             self.PREV_CURRENT: "Coil current input to previous run of the solver.",
         }
