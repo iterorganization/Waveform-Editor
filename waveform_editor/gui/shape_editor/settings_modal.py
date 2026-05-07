@@ -71,7 +71,7 @@ class SettingsModal(Viewer):
             active_icon="settings-filled",
             description="Setting Menu",
             size="30px",
-            on_click=self._open_modal,
+            on_click=lambda event: self.modal.show(),
         )
 
     def _build_modal(self):
@@ -86,7 +86,7 @@ class SettingsModal(Viewer):
             self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
             md_rows.append(
                 _form_row(
-                    md._ids_name,
+                    md.ids_name,
                     self._md_inputs[md],
                     WarningIndicator(margin=10, visible=md.param.loaded.rx.not_()),
                 )
@@ -216,12 +216,6 @@ class SettingsModal(Viewer):
             inp.disabled = (
                 self.nice_settings.machine_preset != self.nice_settings.PRESET_CUSTOM
             )
-
-    def _open_modal(self, event):
-        self.modal.show()
-
-    def _close_modal(self, event):
-        self.modal.hide()
 
     def __panel__(self):
         return pn.Row(self.panel, self.modal)

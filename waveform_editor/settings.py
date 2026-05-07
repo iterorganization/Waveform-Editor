@@ -20,7 +20,7 @@ class MachineDescription(param.Parameterized):
 
     def __init__(self, ids_name: str, **params):
         super().__init__(**params)
-        self._ids_name = ids_name
+        self.ids_name = ids_name
         self.param.uri.label = f"'{ids_name}' machine description URI"
         self.custom_uri = ""
 
@@ -111,10 +111,7 @@ class NiceSettings(param.Parameterized):
         self.is_inverse_mode = self.mode == self.INVERSE_MODE
 
     @param.depends("machine_preset", watch=True)
-    def set_machine_preset(self, event=None):
-        if event is not None and event.old == self.PRESET_CUSTOM:
-            for md in self.mds:
-                md.custom_uri = md.uri
+    def set_machine_preset(self):
         presets = {
             self.PRESET_ITER: (
                 self.ITER_PF_ACTIVE,
@@ -148,7 +145,7 @@ class NiceSettings(param.Parameterized):
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
         for md in self.mds:
-            md_name = f"md_{md._ids_name}"
+            md_name = f"md_{md.ids_name}"
             if md_name in params:
                 md.uri = md.custom_uri = params.pop(md_name)
         for key in list(params):
@@ -170,7 +167,7 @@ class NiceSettings(param.Parameterized):
             for md in self.mds:
                 md.custom_uri = md.uri
         for md in self.mds:
-            result[f"md_{md._ids_name}"] = md.custom_uri
+            result[f"md_{md.ids_name}"] = md.custom_uri
 
         return result
 
