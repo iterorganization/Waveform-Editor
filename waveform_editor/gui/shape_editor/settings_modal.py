@@ -50,15 +50,6 @@ def _form_row(label, widget, warning=None):
     )
 
 
-def _form_card(*rows):
-    return pn.Column(
-        *rows,
-        stylesheets=_STYLES,
-        css_classes=["settings-card"],
-        sizing_mode="stretch_width",
-    )
-
-
 class SettingsModal(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
 
@@ -104,7 +95,7 @@ class SettingsModal(Viewer):
             _section_label("Preset"),
             preset_selector,
             _section_label("Machine Description URIs"),
-            _form_card(*md_rows),
+            _card(*md_rows),
             sizing_mode="stretch_width",
             scroll=True,
         )
@@ -152,7 +143,7 @@ class SettingsModal(Viewer):
                     show_name=False,
                     widgets={
                         "show_desired_shape": {
-                            "visible": self.nice_settings.param.is_inverse_mode
+                            "visible": self.nice_settings.param.is_inverse_mode.rx()
                         },
                     },
                 ),
@@ -165,7 +156,7 @@ class SettingsModal(Viewer):
         # --- NICE Configuration tab ---
         nice_content = pn.Column(
             _section_label("Executables"),
-            _form_card(
+            _card(
                 _form_row(
                     "Inverse executable",
                     pn.widgets.TextInput.from_param(
@@ -188,7 +179,7 @@ class SettingsModal(Viewer):
                 ),
             ),
             _section_label("Environment"),
-            _form_card(
+            _card(
                 _form_row(
                     "Environment variables",
                     pn.Param(self.nice_settings.param.environment, show_name=False),
