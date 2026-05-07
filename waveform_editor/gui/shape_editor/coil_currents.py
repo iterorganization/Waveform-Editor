@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import panel as pn
 import param
+from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
 from waveform_editor.derived_waveform import DerivedWaveform
@@ -16,7 +17,7 @@ class CoilCurrentEntry(param.Parameterized):
     fix_current = param.Boolean(default=False)
     current = param.Number(default=None)
     previous_current = param.Number(default=None)
-    # TODO: add additional columns for penalize to 0 and penalization weight columns
+    # TODO: add additional columns for penalization to 0 checkbox and pen. weight
 
 
 class CoilCurrents(Viewer):
@@ -49,27 +50,29 @@ class CoilCurrents(Viewer):
             self.CURRENT: "Coil current",
             self.PREV_CURRENT: "Coil current input to previous run of the solver.",
         }
+        editors = {
+            self.COIL_NAME: None,
+            self.FIX_CURRENT: None,
+            self.CURRENT: {"type": "number"},
+            self.PREV_CURRENT: None,
+        }
+        formatters = {
+            self.FIX_CURRENT: {"type": "tickCross"},
+            self.CURRENT: NumberFormatter(),
+            self.PREV_CURRENT: NumberFormatter(),
+        }
         self.table = pn.widgets.Tabulator(
             layout="fit_data_stretch",
             sizing_mode="stretch_width",
             show_index=False,
             titles=titles,
-            editors={
-                self.COIL_NAME: None,
-                self.FIX_CURRENT: None,
-                self.CURRENT: {"type": "number"},
-                self.PREV_CURRENT: None,
-            },
-            formatters={
-                self.FIX_CURRENT: {"type": "tickCross"},
-                self.CURRENT: {"type": "html", "value": "<b>{}</b>"},
-                self.PREV_CURRENT: {"type": "html", "value": "<i>{}</i>"},
-            },
+            editors=editors,
+            formatters=formatters,
+            header_tooltips=header_tooltips,
             header_align="center",
             text_align="center",
             sortable=False,
             selectable=False,
-            header_tooltips=header_tooltips,
             visible=self.param.coils.rx.bool(),
             on_edit=self._on_cell_edit,
             on_click=self._on_cell_click,
