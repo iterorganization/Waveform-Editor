@@ -1,5 +1,9 @@
+from pathlib import Path
+
 import panel as pn
 import param
+
+STYLES = [(Path(__file__).parent / "styles" / "styles.css").read_text()]
 
 
 class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):

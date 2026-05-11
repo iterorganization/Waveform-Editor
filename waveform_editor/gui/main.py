@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 import imas
 import panel as pn
@@ -15,6 +14,7 @@ from waveform_editor.gui.selector.confirm_modal import ConfirmModal
 from waveform_editor.gui.selector.rename_modal import RenameModal
 from waveform_editor.gui.selector.selector import WaveformSelector
 from waveform_editor.gui.shape_editor.shape_editor import ShapeEditor
+from waveform_editor.gui.util import STYLES
 from waveform_editor.gui.waveform_content import (
     PLASMA_EDITOR_PAGE,
     WAVEFORM_EDITOR_PAGE,
@@ -23,7 +23,6 @@ from waveform_editor.gui.waveform_content import (
 from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)
-_STYLES_DIR = Path(__file__).parent / "styles"
 
 
 def exception_handler(ex):
@@ -118,7 +117,7 @@ class WaveformEditorGui(param.Parameterized):
         self.template = pn.template.FastListTemplate(
             header=[self.nav],
             main=[main_content],
-            raw_css=[(_STYLES_DIR / "styles.css").read_text()],
+            raw_css=STYLES,
         )
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0

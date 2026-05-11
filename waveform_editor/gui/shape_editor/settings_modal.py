@@ -1,29 +1,25 @@
-from pathlib import Path
-
 import panel as pn
 import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
-from waveform_editor.gui.util import WarningIndicator
+from waveform_editor.gui.util import STYLES, WarningIndicator
 from waveform_editor.settings import NiceSettings, settings
-
-_STYLES = [(Path(__file__).parent.parent / "styles" / "styles.css").read_text()]
 
 
 def _section_label(text):
     return pn.pane.HTML(
         f'<p class="settings-section-label">{text}</p>',
-        stylesheets=_STYLES,
+        stylesheets=STYLES,
         margin=0,
         sizing_mode="stretch_width",
     )
 
 
-def _card(*items):
+def _settings_section(*items):
     return pn.Column(
         *items,
-        stylesheets=_STYLES,
+        stylesheets=STYLES,
         css_classes=["settings-card"],
         sizing_mode="stretch_width",
     )
@@ -33,7 +29,7 @@ def _form_row(label, widget, warning=None):
     items = [
         pn.pane.HTML(
             f'<span class="form-row-label">{label}</span>',
-            stylesheets=_STYLES,
+            stylesheets=STYLES,
             width=180,
             align="center",
         ),
@@ -44,7 +40,7 @@ def _form_row(label, widget, warning=None):
     return pn.Row(
         *items,
         css_classes=["form-row"],
-        stylesheets=_STYLES,
+        stylesheets=STYLES,
         sizing_mode="stretch_width",
         align="center",
     )
@@ -97,7 +93,7 @@ class SettingsModal(Viewer):
             _section_label("Preset"),
             preset_selector,
             _section_label("Machine Description URIs"),
-            _card(*md_rows),
+            _settings_section(*md_rows),
             sizing_mode="stretch_width",
             scroll=True,
         )
@@ -105,7 +101,7 @@ class SettingsModal(Viewer):
         # --- Display tab ---
         self._contour_detail = pn.Column(
             _section_label("Contour Detail"),
-            _card(
+            _settings_section(
                 pn.Param(
                     self.nice_plotter.param,
                     parameters=["levels"],
@@ -122,7 +118,7 @@ class SettingsModal(Viewer):
 
         display_content = pn.Column(
             _section_label("Visibility"),
-            _card(
+            _settings_section(
                 pn.Param(
                     self.nice_plotter.param,
                     parameters=[
@@ -150,7 +146,7 @@ class SettingsModal(Viewer):
         # --- NICE Configuration tab ---
         nice_content = pn.Column(
             _section_label("Executables"),
-            _card(
+            _settings_section(
                 _form_row(
                     "Inverse executable",
                     pn.widgets.TextInput.from_param(
@@ -173,7 +169,7 @@ class SettingsModal(Viewer):
                 ),
             ),
             _section_label("Environment"),
-            _card(
+            _settings_section(
                 _form_row(
                     "Environment variables",
                     pn.Param(self.nice_settings.param.environment, show_name=False),
@@ -193,14 +189,14 @@ class SettingsModal(Viewer):
             ("NICE Configuration", nice_content),
             margin=(20, 20, 0, 20),
             sizing_mode="stretch_width",
-            stylesheets=_STYLES,
+            stylesheets=STYLES,
         )
 
         return pn.Modal(
             self.tabs,
             width=700,
             height=560,
-            stylesheets=_STYLES,
+            stylesheets=STYLES,
         )
 
     def _update_md_inputs_visibility(self, _):
