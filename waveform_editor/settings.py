@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 
+import imas
 import param
 import yaml
 
@@ -31,22 +32,25 @@ class NiceSettings(param.Parameterized):
     PRESET_ITER = "ITER"
     PRESET_WEST = "WEST"
     PRESET_CUSTOM = "Custom"
+
     # Preset machine description URIs
     # TODO: Update URIs so they are from the MD database
-    ITER_PF_ACTIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
-    ITER_PF_PASSIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
-    ITER_WALL = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
-    ITER_IRON_CORE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3"
-    WEST_PF_ACTIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
-    WEST_PF_PASSIVE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
-    WEST_WALL = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
-    WEST_IRON_CORE = "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4"
+    PRESET_URIS = {
+        PRESET_ITER: {
+            "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
+            "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
+            "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
+            "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
+        },
+        PRESET_WEST: {
+            "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",
+            "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",
+            "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",
+            "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",
+        },
+    }
 
-    machine_preset = param.Selector(
-        objects=[PRESET_ITER, PRESET_WEST, PRESET_CUSTOM],
-        default=PRESET_CUSTOM,
-        label="Machine Preset",
-    )
+    machine_preset = param.Selector(default=PRESET_CUSTOM, label="Machine Preset")
     inv_executable = param.String(
         default="nice_imas_inv_muscle3",
         label="NICE inverse executable path",
@@ -92,18 +96,51 @@ class NiceSettings(param.Parameterized):
     is_direct_mode = param.Boolean(precedence=-1)
     is_inverse_mode = param.Boolean(precedence=-1)
 
-    @property
-    def mds(self):
-        return [self.md_pf_active, self.md_pf_passive, self.md_wall, self.md_iron_core]
-
     def __init__(self, **params):
         super().__init__(**params)
-        for md in self.mds:
+        self._load_machine_description_presets()
+
+        self.machine_descriptions = (
+            self.md_pf_active,
+            self.md_pf_passive,
+            self.md_wall,
+            self.md_iron_core,
+        )
+
+        for md in self.machine_descriptions:
             md.param.watch(self._check_required_params_filled, ["uri", "loaded"])
+            md.param.watch(self._sync_custom_uri, ["uri"])
         self.param.watch(
             self._check_required_params_filled,
             ["inv_executable", "dir_executable", "mode"],
         )
+
+    def _load_machine_description_presets(self):
+        """Load the machine description presets from PRESET_URIS"""
+        available = {}
+
+        for preset_name, preset in self.PRESET_URIS.items():
+            try:
+                for ids_name, uri in preset.items():
+                    with imas.DBEntry(uri, "r") as entry:
+                        entry.get(ids_name, lazy=True)
+
+            except Exception as err:
+                logger.warning(
+                    "Machine Description Preset '%s' could not be loaded: %s",
+                    preset_name,
+                    err,
+                )
+                continue
+
+            available[preset_name] = preset
+
+        self.PRESET_URIS = available
+
+        self.param.machine_preset.objects = [
+            *available.keys(),
+            self.PRESET_CUSTOM,
+        ]
 
     @param.depends("mode", watch=True, on_init=True)
     def set_mode_flags(self):
@@ -112,28 +149,23 @@ class NiceSettings(param.Parameterized):
 
     @param.depends("machine_preset", watch=True)
     def set_machine_preset(self):
-        presets = {
-            self.PRESET_ITER: (
-                self.ITER_PF_ACTIVE,
-                self.ITER_PF_PASSIVE,
-                self.ITER_WALL,
-                self.ITER_IRON_CORE,
-            ),
-            self.PRESET_WEST: (
-                self.WEST_PF_ACTIVE,
-                self.WEST_PF_PASSIVE,
-                self.WEST_WALL,
-                self.WEST_IRON_CORE,
-            ),
-        }
-        uris = presets.get(self.machine_preset) or tuple(
-            md.custom_uri for md in self.mds
-        )
-        for md, uri in zip(self.mds, uris, strict=True):
+        preset = self.PRESET_URIS.get(self.machine_preset)
+
+        if preset is None:
+            uris = tuple(md.custom_uri for md in self.machine_descriptions)
+        else:
+            uris = (
+                preset["pf_active"],
+                preset["pf_passive"],
+                preset["wall"],
+                preset["iron_core"],
+            )
+
+        for md, uri in zip(self.machine_descriptions, uris, strict=True):
             md.uri = uri
 
     def _check_required_params_filled(self, *events):
-        if not all(md.uri and md.loaded for md in self.mds):
+        if not all(md.uri and md.loaded for md in self.machine_descriptions):
             self.are_required_filled = False
             return
 
@@ -144,7 +176,7 @@ class NiceSettings(param.Parameterized):
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
-        for md in self.mds:
+        for md in self.machine_descriptions:
             md_name = f"md_{md.ids_name}"
             if md_name in params:
                 md.uri = md.custom_uri = params.pop(md_name)
@@ -153,6 +185,10 @@ class NiceSettings(param.Parameterized):
                 logger.warning(f"Removing unknown NICE setting: {key}")
                 params.pop(key)
         self.param.update(**params)
+
+    def _sync_custom_uri(self, event):
+        if self.machine_preset == self.PRESET_CUSTOM:
+            event.obj.custom_uri = event.new
 
     def to_dict(self):
         """Returns a dictionary representation of current parameter values, excluding
@@ -163,10 +199,7 @@ class NiceSettings(param.Parameterized):
             if p != "name" and param_obj.precedence != -1:
                 result[p] = getattr(self, p)
 
-        if self.machine_preset == self.PRESET_CUSTOM:
-            for md in self.mds:
-                md.custom_uri = md.uri
-        for md in self.mds:
+        for md in self.machine_descriptions:
             result[f"md_{md.ids_name}"] = md.custom_uri
 
         return result
@@ -183,7 +216,7 @@ class UserSettings(param.Parameterized):
         self._save_settings()
         self.param.watch(self._save_settings, list(self.param))
         self.nice.param.watch(self._save_settings, list(self.nice.param))
-        for md in self.nice.mds:
+        for md in self.nice.machine_descriptions:
             md.param.watch(self._save_settings, ["uri"])
 
     def _load_settings(self):

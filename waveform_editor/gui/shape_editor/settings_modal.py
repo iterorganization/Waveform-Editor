@@ -58,12 +58,8 @@ class SettingsModal(Viewer):
         self.nice_settings = settings.nice
         self.nice_plotter = nice_plotter
 
-        self.modal = self._build_modal()
-        self.nice_settings.param.watch(
-            self._update_md_inputs_visibility, ["machine_preset"]
-        )
-
-        self.panel = pn.widgets.ButtonIcon(
+        modal = self._build_modal()
+        button_icon = pn.widgets.ButtonIcon(
             icon=pn.bind(
                 lambda ready: "settings" if ready else "settings-exclamation",
                 self.nice_settings.param.are_required_filled,
@@ -71,10 +67,16 @@ class SettingsModal(Viewer):
             active_icon="settings-filled",
             description="Setting Menu",
             size="30px",
-            on_click=lambda event: self.modal.show(),
+            on_click=lambda event: modal.show(),
+        )
+        self.panel = pn.Row(button_icon, modal)
+
+        self.nice_settings.param.watch(
+            self._update_md_inputs_visibility, ["machine_preset"]
         )
 
     def _build_modal(self):
+        # Inputs for machine description URIs
         self._md_inputs = {}
 
         # --- Machine Presets tab ---
@@ -82,7 +84,7 @@ class SettingsModal(Viewer):
             self.nice_settings.param.machine_preset, name="", width=200
         )
         md_rows = []
-        for md in self.nice_settings.mds:
+        for md in self.nice_settings.machine_descriptions:
             self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
             md_rows.append(
                 _form_row(
@@ -98,14 +100,6 @@ class SettingsModal(Viewer):
             _card(*md_rows),
             sizing_mode="stretch_width",
             scroll=True,
-        )
-
-        # --- General tab ---
-        general_content = pn.Column(
-            pn.pane.HTML(
-                '<p class="settings-placeholder">No general settings yet.</p>',
-                stylesheets=_STYLES,
-            ),
         )
 
         # --- Display tab ---
@@ -194,9 +188,8 @@ class SettingsModal(Viewer):
         )
 
         self.tabs = pn.Tabs(
-            ("Machine Presets", machine_preset_content),
-            ("General", general_content),
             ("Display", display_content),
+            ("Machine Presets", machine_preset_content),
             ("NICE Configuration", nice_content),
             margin=(20, 20, 0, 20),
             sizing_mode="stretch_width",
@@ -218,4 +211,4 @@ class SettingsModal(Viewer):
             )
 
     def __panel__(self):
-        return pn.Row(self.panel, self.modal)
+        return self.panel
