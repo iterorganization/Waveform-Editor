@@ -98,7 +98,11 @@ class NiceSettings(param.Parameterized):
 
     def __init__(self, **params):
         super().__init__(**params)
-        self._load_machine_description_presets()
+        self._available_presets = self._load_machine_description_presets()
+        self.param.machine_preset.objects = [
+            *self._available_presets.keys(),
+            self.PRESET_CUSTOM,
+        ]
 
         self.machine_descriptions = (
             self.md_pf_active,
@@ -135,12 +139,7 @@ class NiceSettings(param.Parameterized):
 
             available[preset_name] = preset
 
-        self.PRESET_URIS = available
-
-        self.param.machine_preset.objects = [
-            *available.keys(),
-            self.PRESET_CUSTOM,
-        ]
+        return available
 
     @param.depends("mode", watch=True, on_init=True)
     def set_mode_flags(self):
@@ -149,7 +148,7 @@ class NiceSettings(param.Parameterized):
 
     @param.depends("machine_preset", watch=True)
     def set_machine_preset(self):
-        preset = self.PRESET_URIS.get(self.machine_preset)
+        preset = self._available_presets.get(self.machine_preset)
 
         if preset is None:
             uris = tuple(md.custom_uri for md in self.machine_descriptions)
