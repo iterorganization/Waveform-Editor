@@ -78,12 +78,6 @@ class CoilCurrents(Viewer):
             on_click=self._on_cell_click,
         )
 
-        self.guide_message = pn.pane.Markdown(
-            "_To fix a coil to a specific current, enable the Fix checkbox and provide "
-            " the desired current value._",
-            visible=self.param.coils.rx.bool(),
-            margin=(0, 10),
-        )
         self.no_ids_message = pn.pane.Markdown(
             "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
             visible=self.param.coils.rx.not_(),
@@ -102,7 +96,6 @@ class CoilCurrents(Viewer):
                 visible=self.param.coils.rx.bool(),
             ),
             self.no_ids_message,
-            self.guide_message,
             self.table,
         )
 
