@@ -1,2 +1,50 @@
 /* Hide the app title text in the header (browser tab title is kept) */
 a.title, span.title { display: none !important; }
+
+/* Settings modal */
+.settings-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.settings-section-label {
+    color: #999;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 14px 0 5px 0;
+}
+
+:host(.settings-card) {
+    border: 1px solid rgba(128,128,128,0.5);
+    border-radius: 20px;
+    overflow: hidden;
+}
+/* Settings form rows */
+.form-row {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(128,128,128,0.5);
+    align-items: center;
+}
+.form-row:last-child {
+    border-bottom: none;
+}
+
+.form-row-label {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Settings modal tabs */
+.bk-tab { flex: 1; text-align: center; }
+
+/* Settings modal dialog */
+.dialog-content { border-radius: 20px; overflow: hidden; padding: 0 !important; }
+
+#pnx_dialog_close {
+    margin: 6px;
+}

@@ -8,11 +8,12 @@ import param
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
-from waveform_editor.gui.settings import nice_settings_panel
+from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -65,7 +66,13 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        button_start = pn.widgets.Button(name="Run", on_click=self.submit)
+        button_start = pn.widgets.Button(
+            name="Run",
+            button_type="primary",
+            icon="player-play",
+            on_click=self.submit,
+            margin=(10, 0, 2, 0),
+        )
         button_start.disabled = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
@@ -74,27 +81,32 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
-        button_stop = pn.widgets.Button(name="Stop", on_click=self.stop_nice)
-        nice_mode_radio = pn.widgets.RadioBoxGroup.from_param(
-            self.nice_settings.param.mode, inline=True, margin=(15, 20, 0, 20)
+        button_stop = pn.widgets.Button(
+            name="Stop",
+            button_type="danger",
+            icon="player-stop",
+            on_click=self.stop_nice,
+            margin=(10, 10, 2, 0),
         )
-        buttons = pn.Row(button_start, button_stop, nice_mode_radio)
+        mode_widget = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
+        buttons = pn.Row(
+            mode_widget,
+            pn.Spacer(sizing_mode="stretch_width"),
+            button_stop,
+            button_start,
+        )
+        settings_modal = SettingsModal(self.nice_plotter)
 
-        settings_options = pn.Column(
-            self._create_card(
-                nice_settings_panel(self.nice_settings),
-                "NICE Configuration",
-                is_valid=self.nice_settings.param.are_required_filled.rx(),
-            ),
-            self._create_card(self.nice_plotter, "Plotting Parameters"),
-        )
+        settings_options = pn.Column()
 
         options = pn.bind(
             self._create_options_tabs, self.nice_settings.param.is_inverse_mode
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
-            self.nice_plotter.flux_map_pane,
+            pn.Column(
+                pn.Row(settings_modal, align="end"), self.nice_plotter.flux_map_pane
+            ),
             pn.Column(
                 menu,
                 settings_options,
