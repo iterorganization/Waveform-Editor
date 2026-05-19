@@ -66,20 +66,29 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        button_start = pn.widgets.Button(
-            name="Run",
-            button_type="primary",
-            icon="player-play",
-            on_click=self.submit,
-            margin=(10, 0, 2, 0),
-        )
-        button_start.disabled = (
+        disabled_expr = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
                 & self.nice_settings.param.is_inverse_mode.rx()
             )
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
+        )
+        button_start = pn.widgets.Button(
+            name="Run",
+            button_type="primary",
+            icon="player-play",
+            on_click=self.submit,
+            description=pn.bind(
+                lambda disabled: (
+                    "Cannot run: missing required inputs"
+                    if disabled
+                    else "Run simulation"
+                ),
+                disabled_expr,
+            ),
+            disabled=disabled_expr,
+            margin=(10, 0, 2, 0),
         )
         button_stop = pn.widgets.Button(
             name="Stop",
@@ -168,26 +177,34 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
-    @param.depends("nice_settings.md_pf_active", watch=True)
+    @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
-        self.pf_active = self._load_slice(self.nice_settings.md_pf_active, "pf_active")
+        self.pf_active = self._load_slice(
+            self.nice_settings.md_pf_active.uri, "pf_active"
+        )
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
+        self.nice_settings.md_pf_active.loaded = self.pf_active is not None
 
-    @param.depends("nice_settings.md_pf_passive", watch=True)
+    @param.depends("nice_settings.md_pf_passive.uri", watch=True)
     def _load_pf_passive(self):
         self.pf_passive = self._load_slice(
-            self.nice_settings.md_pf_passive, "pf_passive"
+            self.nice_settings.md_pf_passive.uri, "pf_passive"
         )
+        self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
 
-    @param.depends("nice_settings.md_wall", watch=True)
+    @param.depends("nice_settings.md_wall.uri", watch=True)
     def _load_wall(self):
-        self.wall = self._load_slice(self.nice_settings.md_wall, "wall")
+        self.wall = self._load_slice(self.nice_settings.md_wall.uri, "wall")
         self.nice_plotter.wall = self.wall
+        self.nice_settings.md_wall.loaded = self.wall is not None
 
-    @param.depends("nice_settings.md_iron_core", watch=True)
+    @param.depends("nice_settings.md_iron_core.uri", watch=True)
     def _load_iron_core(self):
-        self.iron_core = self._load_slice(self.nice_settings.md_iron_core, "iron_core")
+        self.iron_core = self._load_slice(
+            self.nice_settings.md_iron_core.uri, "iron_core"
+        )
+        self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
     def _create_equilibrium(self):
         """Create an empty equilibrium IDS and fill the plasma shape parameters and
