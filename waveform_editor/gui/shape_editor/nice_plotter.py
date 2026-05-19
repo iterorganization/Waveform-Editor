@@ -149,7 +149,7 @@ class NicePlotter(Viewer):
         if self.plasma_shape.input_mode == self.plasma_shape.GAP_INPUT:
             return self._plot_gaps(r, z)
         elif self.plasma_shape.input_mode == self.plasma_shape.WEIGHTED_POINTS_INPUT:
-            return self._plot_outline_shape(r, z)
+            return self._plot_weighted_points(r, z)
         else:
             return self._plot_outline_shape(r, z)
 
@@ -188,6 +188,18 @@ class NicePlotter(Viewer):
                 hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(color="black")
             )
         return hv.Overlay(plot_elements)
+
+    def _plot_weighted_points(self, r, z):
+        """Plots weighted points as scatter dots.
+
+        Args:
+            r: Radial coordinates of the points.
+            z: Height coordinates of the points.
+
+        Returns:
+            Holoviews overlay with scatter plot of the points.
+        """
+        return hv.Overlay([hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")])
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):
