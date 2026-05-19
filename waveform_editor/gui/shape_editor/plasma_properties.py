@@ -24,6 +24,7 @@ class PropertyInput(Viewer):
     value = param.Number(default=0.0)
     ids_uri = param.String(default="")
     ids_time = param.Number(default=0.0)
+    loaded_value = param.Number(default=None, allow_None=True, precedence=-1)
     changed = param.Event()
 
     def __init__(self, label, default_value, step=0.01, **params):
@@ -56,6 +57,16 @@ class PropertyInput(Viewer):
     def _on_change(self):
         self.param.trigger("changed")
 
+    @param.depends("loaded_value")
+    def _loaded_display(self):
+        if self.loaded_value is None:
+            return ""
+        html = (
+            f'<span style="color:#666;font-size:0.85em;">'
+            f"Loaded: {self.loaded_value:.4g}</span>"
+        )
+        return pn.pane.HTML(html, margin=(2, 0, 0, 0))
+
     def __panel__(self):
         is_manual = pn.bind(lambda m: m == MANUAL, self.param.mode)
         is_ids = pn.bind(lambda m: m == EQ_IDS, self.param.mode)
@@ -68,8 +79,11 @@ class PropertyInput(Viewer):
         return pn.Column(
             header,
             pn.Column(self._value_input, visible=is_manual, margin=(4, 0, 0, 0)),
-            pn.Row(
-                self._uri_input, self._time_input, visible=is_ids, margin=(4, 0, 0, 0)
+            pn.Column(
+                pn.Row(self._uri_input, self._time_input, margin=(4, 0, 0, 0)),
+                self._loaded_display,
+                visible=is_ids,
+                margin=0,
             ),
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
@@ -203,9 +217,12 @@ class PlasmaProperties(Viewer):
                 eq = entry.get_slice(
                     "equilibrium", prop.ids_time, imas.ids_defs.CLOSEST_INTERP
                 )
-            return extractor(eq)
+            value = extractor(eq)
+            prop.loaded_value = float(value)
+            return value
         except Exception as e:
             pn.state.notifications.error(f"Could not load from {prop.ids_uri}: {e}")
+            prop.loaded_value = None
             return None
 
     def _load_plasma_properties(self):
