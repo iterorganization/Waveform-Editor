@@ -190,7 +190,7 @@ class NicePlotter(Viewer):
         return hv.Overlay(plot_elements)
 
     def _plot_weighted_points(self, r, z):
-        """Plots weighted points as scatter dots.
+        """Plots weighted points as scatterplot.
 
         Args:
             r: Radial coordinates of the points.
