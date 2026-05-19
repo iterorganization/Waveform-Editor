@@ -52,6 +52,7 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
+        self.plasma_properties.profiles_plot = self.nice_plotter.profiles_pane
         self.nice_settings = settings.nice
 
         self.xml_params_inv = ET.fromstring(
@@ -116,7 +117,7 @@ class ShapeEditor(Viewer):
                 visible=self.nice_settings.param.is_inverse_mode.rx(),
             ),
             self._create_card(
-                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
+                self.plasma_properties,
                 "Plasma Properties",
                 is_valid=self.plasma_properties.param.has_properties,
             ),

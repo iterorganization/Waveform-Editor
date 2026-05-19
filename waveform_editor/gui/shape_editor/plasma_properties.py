@@ -5,6 +5,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.util import FormattedEditableFloatSlider
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
 )
@@ -30,42 +31,29 @@ class PropertyInput(Viewer):
         self.value = default_value
         self._label = label
 
-        self._mode_toggle = pn.widgets.RadioButtonGroup(
-            options=[MANUAL, EQ_IDS],
-            value=self.mode,
+        self._mode_toggle = pn.widgets.RadioButtonGroup.from_param(
+            self.param.mode,
             button_style="outline",
             button_type="primary",
             stylesheets=[_CARD_CSS],
         )
-        self._mode_toggle.param.watch(self._on_mode_change, "value")
-
-        self._value_input = pn.widgets.FloatInput(
-            value=self.value,
+        self._value_input = pn.widgets.FloatInput.from_param(
+            self.param.value,
             step=step,
             sizing_mode="stretch_width",
             margin=(4, 0, 0, 0),
         )
-        self._value_input.param.watch(self._on_value_change, "value")
-
         self._uri_input = pn.widgets.TextInput.from_param(
             self.param.ids_uri,
-            name="",
-            placeholder="IDS URI",
+            name="IDS URI",
             sizing_mode="stretch_width",
         )
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
-        self.param.watch(
-            lambda *_: self.param.trigger("changed"), ["ids_uri", "ids_time"]
-        )
 
-    def _on_mode_change(self, event):
-        self.mode = event.new
-        self.param.trigger("changed")
-
-    def _on_value_change(self, event):
-        self.value = event.new
+    @param.depends("mode", "value", "ids_uri", "ids_time", watch=True)
+    def _on_change(self):
         self.param.trigger("changed")
 
     def __panel__(self):
@@ -80,7 +68,7 @@ class PropertyInput(Viewer):
         return pn.Column(
             header,
             pn.Column(self._value_input, visible=is_manual, margin=(4, 0, 0, 0)),
-            pn.Column(
+            pn.Row(
                 self._uri_input, self._time_input, visible=is_ids, margin=(4, 0, 0, 0)
             ),
             css_classes=["property-card"],
@@ -99,53 +87,43 @@ class PlasmaProfiles(Viewer):
     """
 
     mode = param.ObjectSelector(default=PARAMETRIC, objects=[PARAMETRIC, EQ_IDS])
-    alpha = param.Number(default=0.5, step=0.01)
-    beta = param.Number(default=0.5, step=0.01)
-    gamma = param.Number(default=1.0, step=0.01)
+    alpha = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
+    beta = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
+    gamma = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01)
     ids_uri = param.String(default="")
     ids_time = param.Number(default=0.0)
     changed = param.Event()
+    profiles_plot = param.Parameter(default=None)
 
     def __init__(self, **params):
         super().__init__(**params)
 
-        self._mode_toggle = pn.widgets.RadioButtonGroup(
-            options=[PARAMETRIC, EQ_IDS],
-            value=self.mode,
+        self._mode_toggle = pn.widgets.RadioButtonGroup.from_param(
+            self.param.mode,
             button_style="outline",
             button_type="primary",
             stylesheets=[_CARD_CSS],
         )
-        self._mode_toggle.param.watch(self._on_mode_change, "value")
-
-        self._alpha_input = pn.widgets.FloatInput.from_param(
-            self.param.alpha, name="Alpha", sizing_mode="stretch_width"
+        self._alpha_input = FormattedEditableFloatSlider.from_param(
+            self.param.alpha, name="Alpha", margin=0
         )
-        self._beta_input = pn.widgets.FloatInput.from_param(
-            self.param.beta, name="Beta", sizing_mode="stretch_width"
+        self._beta_input = FormattedEditableFloatSlider.from_param(
+            self.param.beta, name="Beta", margin=0
         )
-        self._gamma_input = pn.widgets.FloatInput.from_param(
-            self.param.gamma, name="Gamma", sizing_mode="stretch_width"
+        self._gamma_input = FormattedEditableFloatSlider.from_param(
+            self.param.gamma, name="Gamma", margin=0
         )
-        self.param.watch(
-            lambda *_: self.param.trigger("changed"), ["alpha", "beta", "gamma"]
-        )
-
         self._uri_input = pn.widgets.TextInput.from_param(
             self.param.ids_uri,
-            name="",
-            placeholder="IDS URI",
+            name="IDS URI",
             sizing_mode="stretch_width",
         )
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
-        self.param.watch(
-            lambda *_: self.param.trigger("changed"), ["ids_uri", "ids_time"]
-        )
 
-    def _on_mode_change(self, event):
-        self.mode = event.new
+    @param.depends("mode", "alpha", "beta", "gamma", "ids_uri", "ids_time", watch=True)
+    def _on_change(self):
         self.param.trigger("changed")
 
     def __panel__(self):
@@ -164,6 +142,7 @@ class PlasmaProfiles(Viewer):
                 self._beta_input,
                 self._gamma_input,
                 visible=is_parametric,
+                align="end",
                 margin=(4, 0, 0, 0),
             ),
             pn.Column(
@@ -172,6 +151,7 @@ class PlasmaProfiles(Viewer):
                 visible=is_ids,
                 margin=(4, 0, 0, 0),
             ),
+            pn.bind(lambda p: p, self.param.profiles_plot),
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
             max_width=600,
@@ -185,9 +165,17 @@ class PlasmaProperties(Viewer):
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
 
+    @property
+    def profiles_plot(self):
+        return self._profiles.profiles_plot
+
+    @profiles_plot.setter
+    def profiles_plot(self, value):
+        self._profiles.profiles_plot = value
+
     def __init__(self):
         super().__init__()
-        self._ip = PropertyInput("Plasma current [A]", default_value=-1.5e7)
+        self._ip = PropertyInput("Plasma current [A]", default_value=-1.5e7, step=1e6)
         self._r0 = PropertyInput("Reference major radius [m]", default_value=6.2)
         self._b0 = PropertyInput("Toroidal magnetic field [T]", default_value=-5.3)
         self._profiles = PlasmaProfiles()

@@ -97,6 +97,7 @@ select = [
 ]
 
 [tool.pytest.ini_options]
+norecursedirs = ["nice"]
 filterwarnings = [
     # filter deprecation warning mentioned in https://github.com/plotly/Kaleido/issues/194
     "ignore:setDaemon\\(\\) is deprecated, set the daemon attribute instead:DeprecationWarning"
