@@ -1,5 +1,9 @@
+from pathlib import Path
+
 import panel as pn
 import param
+
+STYLES = [(Path(__file__).parent / "styles" / "styles.css").read_text()]
 
 
 class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
@@ -21,4 +25,5 @@ class EquilibriumInput(param.Parameterized):
 
 class WarningIndicator(pn.widgets.StaticText):
     def __init__(self, **params):
-        super().__init__(value="⚠️", margin=(40, 0, 0, 0), **params)
+        params.setdefault("margin", (40, 0, 0, 0))
+        super().__init__(value="⚠️", **params)
