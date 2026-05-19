@@ -1,4 +1,5 @@
 import imas
+import pandas as pd
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -50,13 +51,28 @@ class PlasmaShapeParams(Viewer):
         return pn.Param(self.param, widgets=widgets, show_name=False)
 
 
+class WeightedPointsInput(param.Parameterized):
+    """Parameterized class containing weighted points for plasma shape definition."""
+
+    points = param.DataFrame(
+        default=pd.DataFrame(columns=["R[m]", "Z[m]", "weight"]),
+        doc="DataFrame containing R, Z coordinates and weights",
+    )
+
+
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
     GAP_INPUT = "Equilibrium IDS Gaps"
+    WEIGHTED_POINTS_INPUT = "Weighted Points"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
-        objects=[EQUILIBRIUM_INPUT, PARAMETERIZED_INPUT, GAP_INPUT],
+        objects=[
+            EQUILIBRIUM_INPUT,
+            PARAMETERIZED_INPUT,
+            GAP_INPUT,
+            WEIGHTED_POINTS_INPUT,
+        ],
         label="Shape input mode",
     )
     input_outline = param.ClassSelector(
@@ -64,6 +80,9 @@ class PlasmaShape(Viewer):
     )
     input_gaps = param.ClassSelector(
         class_=EquilibriumInput, default=EquilibriumInput()
+    )
+    input_weighted_points = param.ClassSelector(
+        class_=WeightedPointsInput, default=WeightedPointsInput()
     )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
@@ -76,10 +95,15 @@ class PlasmaShape(Viewer):
         super().__init__()
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
+        self.weighted_points_tabulator = self._create_weighted_points_tabulator()
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
         )
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
+        self.panel = pn.Column(
+            self.radio_box,
+            self._panel_shape_options,
+            self.gap_ui,
+        )
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
@@ -88,6 +112,7 @@ class PlasmaShape(Viewer):
         "shape_params.param",
         "input_outline.param",
         "input_gaps.param",
+        "input_weighted_points.param",
         "input_mode",
         watch=True,
     )
@@ -102,8 +127,14 @@ class PlasmaShape(Viewer):
             self._load_shape_from_params()
         elif self.input_mode == self.GAP_INPUT:
             self._load_shape_from_gaps()
+        elif self.input_mode == self.WEIGHTED_POINTS_INPUT:
+            self._load_shape_from_weighted_points()
 
-        if self.outline_r and self.outline_z:
+        if (
+            self.outline_r is not None
+            and self.outline_z is not None
+            and len(self.outline_r) > 0
+        ):
             self.has_shape = True
         else:
             self.has_shape = False
@@ -196,6 +227,76 @@ class PlasmaShape(Viewer):
 
         self.gap_ui.extend(new_gap_ui)
 
+    def _create_weighted_points_tabulator(self):
+        """Create the Tabulator widget for weighted points."""
+        self.weighted_points_tabulator = pn.widgets.Tabulator(
+            value=pd.DataFrame(columns=("delete", "R[m]", "Z[m]", "weight")),
+            editors={
+                "delete": None,
+                "R[m]": {"type": "number"},
+                "Z[m]": {"type": "number"},
+                "weight": {"type": "number"},
+            },
+            titles={"delete": "🗑️", "R[m]": "R[m]", "Z[m]": "Z[m]", "weight": "weight"},
+            layout="fit_data_stretch",
+            sizing_mode="stretch_width",
+            show_index=False,
+        )
+        self.weighted_points_tabulator.on_click(self._on_weighted_points_delete_click)
+        self.weighted_points_tabulator.on_edit(self._on_weighted_points_edit)
+        self.input_weighted_points.param.watch(
+            self._update_weighted_points_df, "points", onlychanged=True
+        )
+        self._update_weighted_points_df()
+        return self.weighted_points_tabulator
+
+    def _update_weighted_points_df(self, event=None):
+        """Update the Tabulator to reflect the current DataFrame."""
+        df = self.input_weighted_points.points
+        data = []
+        for _, row in df.iterrows():
+            data.append(("🗑️", row["R[m]"], row["Z[m]"], row["weight"]))
+        data.append(("🗑️", 0.0, 0.0, 1.0))
+        new_df = pd.DataFrame(data, columns=("delete", "R[m]", "Z[m]", "weight"))
+        self.weighted_points_tabulator.value = new_df
+
+    def _on_weighted_points_delete_click(self, event):
+        """Handle delete button clicks in the weighted points tabulator."""
+        if event.column == "delete":
+            n_data_rows = len(self.input_weighted_points.points)
+            if event.row < n_data_rows:
+                df = self.input_weighted_points.points.copy()
+                df = df.drop(index=event.row).reset_index(drop=True)
+                self.input_weighted_points.param.update(points=df)
+
+    def _on_weighted_points_edit(self, event):
+        """Handle edits in the weighted points tabulator."""
+        df = self.input_weighted_points.points.copy()
+        n_data_rows = len(df)
+        is_empty_row = event.row >= n_data_rows
+
+        col_map = {"R[m]": "R[m]", "Z[m]": "Z[m]", "weight": "weight"}
+        if event.column not in col_map:
+            return
+
+        if is_empty_row:
+            new_row = {"R[m]": 0.0, "Z[m]": 0.0, "weight": 1.0}
+            new_row[event.column] = event.value
+            new_df = pd.DataFrame([new_row])
+            df = pd.concat([df, new_df], ignore_index=True)
+        else:
+            df.at[event.row, event.column] = event.value
+
+        self.input_weighted_points.param.update(points=df)
+
+    def _load_shape_from_weighted_points(self):
+        """Load plasma boundary outline from weighted points."""
+        df = self.input_weighted_points.points
+        if df.empty:
+            return
+        self.outline_r = df["R[m]"].values.astype(float)
+        self.outline_z = df["Z[m]"].values.astype(float)
+
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs."""
         self.outline_r, self.outline_z = compute_outline_from_params(
@@ -217,6 +318,8 @@ class PlasmaShape(Viewer):
             return pn.Row(pn.Param(self.input_outline, show_name=False), self.indicator)
         elif self.input_mode == self.GAP_INPUT:
             return pn.Row(pn.Param(self.input_gaps, show_name=False), self.indicator)
+        elif self.input_mode == self.WEIGHTED_POINTS_INPUT:
+            return self.weighted_points_tabulator
 
     def __panel__(self):
         return self.panel

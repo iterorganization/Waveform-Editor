@@ -148,6 +148,8 @@ class NicePlotter(Viewer):
 
         if self.plasma_shape.input_mode == self.plasma_shape.GAP_INPUT:
             return self._plot_gaps(r, z)
+        elif self.plasma_shape.input_mode == self.plasma_shape.WEIGHTED_POINTS_INPUT:
+            return self._plot_outline_shape(r, z)
         else:
             return self._plot_outline_shape(r, z)
 
