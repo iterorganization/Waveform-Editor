@@ -77,13 +77,14 @@ class CoilCurrents(Viewer):
             on_edit=self._on_cell_edit,
             on_click=self._on_cell_click,
         )
-
-        self.no_ids_message = pn.pane.Markdown(
-            "Please load a valid 'pf_active' IDS in the _NICE Configuration_ settings.",
-            visible=self.param.coils.rx.not_(),
+        self._update_fix_column_visibility()
+        self.nice_settings.param.watch(
+            self._update_fix_column_visibility, "is_direct_mode"
         )
 
-        export_time_input = pn.widgets.FloatInput.from_param(self.param.export_time)
+        export_time_input = pn.widgets.FloatInput.from_param(
+            self.param.export_time, width=100
+        )
         confirm_button = pn.widgets.Button(
             on_click=lambda event: self._store_coil_currents(),
             name="Save Currents as Waveforms",
@@ -95,7 +96,6 @@ class CoilCurrents(Viewer):
                 confirm_button,
                 visible=self.param.coils.rx.bool(),
             ),
-            self.no_ids_message,
             self.table,
         )
 
@@ -119,6 +119,11 @@ class CoilCurrents(Viewer):
             new_coils.append(entry)
 
         self.coils = new_coils
+
+    def _update_fix_column_visibility(self, *events):
+        """Show or hide the fix column based on whether NICE is in direct mode."""
+        hidden = [self.FIX_CURRENT] if self.nice_settings.is_direct_mode else []
+        self.table.hidden_columns = hidden
 
     @param.depends("coils", watch=True)
     def _update_table(self):
@@ -150,8 +155,7 @@ class CoilCurrents(Viewer):
             self._update_table()
 
     def _store_coil_currents(self, group_name="Coil Currents"):
-        """Store the current values from the coil UI sliders into the waveform
-        configuration.
+        """Store the coil current values into the waveform configuration.
 
         Args:
             group_name: Name of the group to create new coil current waveforms in if
