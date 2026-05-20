@@ -68,18 +68,12 @@ class WeightedPointsTable(param.Parameterized):
         )
         self._tabulator = pn.widgets.Tabulator(
             value=initial_df,
-            editors={
-                self.COL_DELETE: None,
-                self.COL_R: {"type": "number"},
-                self.COL_Z: {"type": "number"},
-                self.COL_WEIGHT: {"type": "number"},
-            },
             layout="fit_data_fill",
             sizing_mode="stretch_width",
             show_index=False,
+            on_click=self._on_delete_click,
+            on_edit=self._on_edit,
         )
-        self._tabulator.on_click(self._on_delete_click)
-        self._tabulator.on_edit(self._on_edit)
         self.param.watch(self._update_tabulator, "points", onlychanged=True)
         self._update_tabulator()
 
@@ -99,10 +93,7 @@ class WeightedPointsTable(param.Parameterized):
 
         # Add empty row if last data row has R and Z values filled
         if len(df) == 0 or (
-            pd.notna(df.iloc[-1][self.COL_R])
-            and pd.notna(df.iloc[-1][self.COL_Z])
-            and df.iloc[-1][self.COL_R] != ""
-            and df.iloc[-1][self.COL_Z] != ""
+            df.iloc[-1][self.COL_R] != "" and df.iloc[-1][self.COL_Z] != ""
         ):
             data.append((self.COL_DELETE, "", "", 1))
 
@@ -131,6 +122,13 @@ class WeightedPointsTable(param.Parameterized):
         for col in [self.COL_R, self.COL_Z, self.COL_WEIGHT]:
             if col in df.columns:
                 df[col] = df[col].astype(object)
+
+        if event.column == self.COL_WEIGHT:
+            if event.value < 1:
+                pn.state.notifications.error("Weight must be >= 1")
+                self._tabulator.value.at[event.row, self.COL_WEIGHT] = 1
+                self._tabulator.param.trigger("value")
+                return
 
         if is_empty_row:
             new_row = {self.COL_R: "", self.COL_Z: "", self.COL_WEIGHT: 1}
@@ -162,9 +160,9 @@ class WeightedPointsTable(param.Parameterized):
         outline_r = []
         outline_z = []
         for _, row in valid_df.iterrows():
-            weight = int(row[self.COL_WEIGHT]) if pd.notna(row[self.COL_WEIGHT]) else 1
-            outline_r.extend([float(row[self.COL_R])] * weight)
-            outline_z.extend([float(row[self.COL_Z])] * weight)
+            weight = row[self.COL_WEIGHT]
+            outline_r.extend([row[self.COL_R]] * weight)
+            outline_z.extend([row[self.COL_Z]] * weight)
 
         return outline_r, outline_z
 
