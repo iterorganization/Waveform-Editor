@@ -6,6 +6,7 @@ import imas
 import panel as pn
 import param
 from imas.ids_toplevel import IDSToplevel
+from panel.io import hold
 from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
@@ -22,6 +23,58 @@ logger = logging.getLogger(__name__)
 
 def _reactive_title(title, is_valid):
     return title if is_valid else f"{title} ⚠️"
+
+
+class Metrics(Viewer):
+    """Grid containing equilibrium metrics."""
+
+    metrics = param.Dict(default={})
+
+    ELONGATION = "elongation"
+    TRI_UPPER = "tri_upper"
+    TRI_LOWER = "tri_lower"
+    Q95 = "q95"
+    MAJOR_RADIUS = "r0"
+    VERTICAL = "z0"
+    MINOR_RADIUS = "a"
+
+    LABELS = {
+        ELONGATION: ("Elongation", ""),
+        TRI_UPPER: ("Triangularity upper", ""),
+        TRI_LOWER: ("Triangularity lower", ""),
+        Q95: ("Edge safety factor", ""),
+        MAJOR_RADIUS: ("Major radius", "m"),
+        VERTICAL: ("Vertical position", "m"),
+        MINOR_RADIUS: ("Minor radius", "m"),
+    }
+
+    def __init__(self, **params):
+        super().__init__(**params)
+
+        self._panes = {
+            key: pn.pane.Markdown("", margin=(0, 10, 0, 0)) for key in self.LABELS
+        }
+
+        self.view = pn.GridBox(
+            *self._panes.values(),
+            ncols=4,
+            margin=(0, 0, 10, 0),
+        )
+
+        self._update_panes()
+
+    @param.depends("metrics", watch=True)
+    @hold()
+    def _update_panes(self):
+        for key, pane in self._panes.items():
+            label, unit = self.LABELS[key]
+            val = self.metrics.get(key, "-")
+            if isinstance(val, float):
+                val = f"{val:.4g}"
+            pane.object = f"**{label}**<br>{val} {unit}".strip()
+
+    def __panel__(self):
+        return self.view
 
 
 class ShapeEditor(Viewer):
@@ -123,15 +176,23 @@ class ShapeEditor(Viewer):
             self._create_card(self.coil_currents, "Coil Currents"),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
+        self.metrics = Metrics()
+        header = pn.Row(
+            self.metrics,
+            pn.HSpacer(),
+            settings_modal,
+            sizing_mode="stretch_width",
+        )
+
+        left_col = pn.Column(
+            header,
+            self.nice_plotter.flux_map_pane,
+            width=self.nice_plotter.flux_map_pane.width,
+        )
+
         self.panel = pn.Row(
-            pn.Column(
-                pn.Row(settings_modal, align="end"), self.nice_plotter.flux_map_pane
-            ),
-            pn.Column(
-                menu,
-                options,
-                sizing_mode="stretch_both",
-            ),
+            left_col,
+            pn.Column(menu, options, sizing_mode="stretch_both"),
         )
 
     def _create_card(self, panel_object, title, is_valid=None, visible=True):
@@ -262,6 +323,22 @@ class ShapeEditor(Viewer):
             self.iron_core.serialize(),
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
+        self._update_result_param()
+
+    def _update_result_param(self):
+        eq = self.communicator.equilibrium
+        global_quantities = eq.time_slice[0].global_quantities
+        boundary = eq.time_slice[0].boundary
+
+        self.metrics.metrics = {
+            self.metrics.ELONGATION: float(boundary.elongation),
+            self.metrics.TRI_UPPER: float(boundary.triangularity_upper),
+            self.metrics.TRI_LOWER: float(boundary.triangularity_lower),
+            self.metrics.MAJOR_RADIUS: float(boundary.geometric_axis.r),
+            self.metrics.VERTICAL: float(boundary.geometric_axis.z),
+            self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
+            self.metrics.Q95: float(global_quantities.q_95),
+        }
 
     @param.depends("nice_settings.mode", watch=True)
     async def stop_nice(self, event=None):
