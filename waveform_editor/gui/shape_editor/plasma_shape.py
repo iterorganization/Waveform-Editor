@@ -68,6 +68,12 @@ class WeightedPointsTable(param.Parameterized):
         )
         self._tabulator = pn.widgets.Tabulator(
             value=initial_df,
+            editors={
+                self.COL_DELETE: None,
+                self.COL_R: {"type": "number"},
+                self.COL_Z: {"type": "number"},
+                self.COL_WEIGHT: {"type": "number"},
+            },
             layout="fit_data_fill",
             sizing_mode="stretch_width",
             show_index=False,
