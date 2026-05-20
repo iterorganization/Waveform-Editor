@@ -219,7 +219,7 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
-    def _create_equilibrium(self):
+    def _create_empty_equilibrium(self):
         """Create an empty equilibrium IDS and fill the plasma shape parameters and
         plasma properties.
 
@@ -234,6 +234,9 @@ class ShapeEditor(Viewer):
         equilibrium.time_slice.resize(1)
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
+        return equilibrium
+
+    def _fill_equilibrium(self, equilibrium):
         # Only fill plasma shape for NICE inverse mode
         if self.nice_settings.is_inverse_mode:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
@@ -253,7 +256,6 @@ class ShapeEditor(Viewer):
         # N.B. We fill psi with psi_norm. This works for NICE, but is not adhering to
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
-        return equilibrium
 
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
@@ -268,7 +270,14 @@ class ShapeEditor(Viewer):
 
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
-        equilibrium = self._create_equilibrium()
+
+        # Use previous equilibrium from communicator output if available
+        if self.communicator.equilibrium is not None:
+            equilibrium = self.communicator.equilibrium
+        else:
+            equilibrium = self._create_empty_equilibrium()
+        self._fill_equilibrium(equilibrium)
+
         if not self.communicator.running:
             await self.communicator.run(
                 is_direct_mode=self.nice_settings.is_direct_mode
