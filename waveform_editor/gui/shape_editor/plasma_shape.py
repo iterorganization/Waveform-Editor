@@ -129,12 +129,11 @@ class WeightedPointsTable(param.Parameterized):
             if col in df.columns:
                 df[col] = df[col].astype(object)
 
-        if event.column == self.COL_WEIGHT:
-            if event.value < 1:
-                pn.state.notifications.error("Weight must be >= 1")
-                self._tabulator.value.at[event.row, self.COL_WEIGHT] = 1
-                self._tabulator.param.trigger("value")
-                return
+        if event.column == self.COL_WEIGHT and event.value < 1:
+            pn.state.notifications.error("Weight must be >= 1")
+            self._tabulator.value.at[event.row, self.COL_WEIGHT] = 1
+            self._tabulator.param.trigger("value")
+            return
 
         if is_empty_row:
             new_row = {self.COL_R: "", self.COL_Z: "", self.COL_WEIGHT: 1}
