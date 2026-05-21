@@ -219,12 +219,11 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
-    def _create_empty_equilibrium(self):
-        """Create an empty equilibrium IDS and fill the plasma shape parameters and
-        plasma properties.
+    def _create_equilibrium(self):
+        """Create and initialize an equilibrium IDS.
 
         Returns:
-            The filled equilibrium IDS
+            The equilibrium IDS
         """
         equilibrium = self.factory.new("equilibrium")
         equilibrium.ids_properties.homogeneous_time = (
@@ -237,6 +236,11 @@ class ShapeEditor(Viewer):
         return equilibrium
 
     def _fill_equilibrium(self, equilibrium):
+        """Fill equilibrium IDS with plasma boundary and core profiles.
+
+        Args:
+            equilibrium: equilibrium IDS object to fill
+        """
         # Only fill plasma shape for NICE inverse mode
         if self.nice_settings.is_inverse_mode:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
@@ -271,11 +275,11 @@ class ShapeEditor(Viewer):
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
 
-        # Use previous equilibrium from communicator output if available
+        # Load previous equilibrium from communicator output if available
         if self.communicator.equilibrium is not None:
             equilibrium = self.communicator.equilibrium
         else:
-            equilibrium = self._create_empty_equilibrium()
+            equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
 
         if not self.communicator.running:
