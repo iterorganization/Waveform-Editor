@@ -25,7 +25,6 @@ class CoilCurrents(Viewer):
     export_time = param.Number(
         doc="Select a time at which coil currents will be saved to waveforms"
     )
-    table = param.ClassSelector(class_=pn.widgets.Tabulator, default=None)
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -77,10 +76,8 @@ class CoilCurrents(Viewer):
             on_edit=self._on_cell_edit,
             on_click=self._on_cell_click,
         )
-        self._update_fix_column_visibility()
-        self.nice_settings.param.watch(
-            self._update_fix_column_visibility, "is_direct_mode"
-        )
+        self._update_column_visibility()
+        self.nice_settings.param.watch(self._update_column_visibility, "is_direct_mode")
 
         export_time_input = pn.widgets.FloatInput.from_param(
             self.param.export_time, width=100
@@ -120,25 +117,24 @@ class CoilCurrents(Viewer):
 
         self.coils = new_coils
 
-    def _update_fix_column_visibility(self, *events):
+    def _update_column_visibility(self, *events):
         """Show or hide the fix column based on whether NICE is in direct mode."""
         hidden = [self.FIX_CURRENT] if self.nice_settings.is_direct_mode else []
         self.table.hidden_columns = hidden
 
     @param.depends("coils", watch=True)
     def _update_table(self):
-        data = []
-        for coil in self.coils:
-            data.append(
-                {
-                    self.COIL_NAME: coil.coil_name,
-                    self.FIX_CURRENT: coil.fix_current,
-                    self.CURRENT: "" if coil.current is None else coil.current,
-                    self.PREV_CURRENT: ""
-                    if coil.previous_current is None
-                    else coil.previous_current,
-                }
-            )
+        data = [
+            {
+                self.COIL_NAME: coil.coil_name,
+                self.FIX_CURRENT: coil.fix_current,
+                self.CURRENT: "" if coil.current is None else coil.current,
+                self.PREV_CURRENT: ""
+                if coil.previous_current is None
+                else coil.previous_current,
+            }
+            for coil in self.coils
+        ]
         self.table.value = pd.DataFrame(data)
 
     def _on_cell_edit(self, event):
@@ -147,6 +143,8 @@ class CoilCurrents(Viewer):
             coil.fix_current = bool(event.value)
         elif event.column == self.CURRENT:
             coil.current = float(event.value)
+        else:
+            raise RuntimeError(f"Cannot edit column {event.column}")
 
     def _on_cell_click(self, event):
         coil = self.coils[event.row]
