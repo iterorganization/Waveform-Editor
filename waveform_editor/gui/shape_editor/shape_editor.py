@@ -120,7 +120,11 @@ class ShapeEditor(Viewer):
                 "Plasma Properties",
                 is_valid=self.plasma_properties.param.has_properties,
             ),
-            self._create_card(self.coil_currents, "Coil Currents"),
+            self._create_card(
+                self.coil_currents,
+                "Coil Currents",
+                visible=self.nice_settings.md_pf_active.param.loaded.rx(),
+            ),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
