@@ -52,7 +52,6 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
-        self.plasma_properties.profiles_plot = self.nice_plotter.profiles_pane
         self.nice_settings = settings.nice
 
         self.xml_params_inv = ET.fromstring(

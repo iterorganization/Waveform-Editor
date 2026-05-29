@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import holoviews as hv
 import imas
 import panel as pn
 import param
+import scipy.constants
 from panel.viewable import Viewer
 
 from waveform_editor.gui.util import FormattedEditableFloatSlider
@@ -59,6 +61,7 @@ class PropertyInput(Viewer):
 
     @param.depends("loaded_value")
     def _loaded_display(self):
+        """Render a small label showing the last value loaded from IDS."""
         if self.loaded_value is None:
             return ""
         html = (
@@ -107,7 +110,13 @@ class PlasmaProfiles(Viewer):
     ids_uri = param.String(default="")
     ids_time = param.Number(default=0.0)
     changed = param.Event()
-    profiles_plot = param.Parameter(default=None)
+
+    # Computed profile data pushed by PlasmaProperties after each load
+    psi_norm = param.Parameter(default=None, precedence=-1)
+    dpressure_dpsi = param.Parameter(default=None, precedence=-1)
+    f_df_dpsi = param.Parameter(default=None, precedence=-1)
+    r0 = param.Parameter(default=None, precedence=-1)
+    has_properties = param.Boolean(default=False, precedence=-1)
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -135,10 +144,39 @@ class PlasmaProfiles(Viewer):
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
+        self._profiles_pane = pn.pane.HoloViews(
+            hv.DynamicMap(self._plot_profiles), width=350, height=350
+        )
 
     @param.depends("mode", "alpha", "beta", "gamma", "ids_uri", "ids_time", watch=True)
     def _on_change(self):
         self.param.trigger("changed")
+
+    @pn.depends("psi_norm", "has_properties")
+    def _plot_profiles(self):
+        """Plot dpressure_dpsi and f_df_dpsi vs normalised poloidal flux."""
+        # Define kdims/vdims explicitly
+        # to prevent HoloViews linking axes with the flux map
+        kdims = "Normalized Poloidal Flux"
+        vdims = "Profile Value [A.U.]"
+        if not self.has_properties:
+            return hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
+        r0 = self.r0
+        dpressure_dpsi_curve = hv.Curve(
+            (self.psi_norm, self.dpressure_dpsi * r0),
+            kdims=kdims,
+            vdims=vdims,
+            label="dpressure_dpsi * r₀",
+        )
+        f_df_dpsi_curve = hv.Curve(
+            (self.psi_norm, self.f_df_dpsi / (scipy.constants.mu_0 * r0)),
+            kdims=kdims,
+            vdims=vdims,
+            label="f_df_dpsi / (μ₀ * r₀)",
+        )
+        return (dpressure_dpsi_curve * f_df_dpsi_curve).opts(
+            hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
+        )
 
     def __panel__(self):
         is_parametric = pn.bind(lambda m: m == PARAMETRIC, self.param.mode)
@@ -165,7 +203,7 @@ class PlasmaProfiles(Viewer):
                 visible=is_ids,
                 margin=(4, 0, 0, 0),
             ),
-            pn.bind(lambda p: p, self.param.profiles_plot),
+            self._profiles_pane,
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
             max_width=600,
@@ -174,18 +212,17 @@ class PlasmaProfiles(Viewer):
 
 
 class PlasmaProperties(Viewer):
+    """Assembles per-property inputs; exposes resolved plasma scalars and profiles.
+
+    Each scalar (ip, r0, b0) can independently source its value from manual input or
+    an equilibrium IDS. Profile functions (dpressure_dpsi, f_df_dpsi) can be computed
+    parametrically or read from an IDS via the PlasmaProfiles widget.
+    """
+
     profile_updated = param.Event(
         doc="Triggered whenever the dpressure_dpsi and f_df_dpsi are updated."
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
-
-    @property
-    def profiles_plot(self):
-        return self._profiles.profiles_plot
-
-    @profiles_plot.setter
-    def profiles_plot(self, value):
-        self._profiles.profiles_plot = value
 
     def __init__(self):
         super().__init__()
@@ -226,6 +263,11 @@ class PlasmaProperties(Viewer):
             return None
 
     def _load_plasma_properties(self):
+        """Reload all plasma properties from the current mode and inputs.
+
+        Resolves each scalar independently, then either reads profile functions from an
+        IDS or computes them parametrically. Triggers `profile_updated` when done.
+        """
         self.ip = self._load_scalar(
             self._ip, lambda eq: eq.time_slice[0].global_quantities.ip
         )
@@ -255,9 +297,15 @@ class PlasmaProperties(Viewer):
         self.has_properties = all(
             v is not None for v in [self.ip, self.r0, self.b0, self.dpressure_dpsi]
         )
+        self._profiles.psi_norm = self.psi_norm
+        self._profiles.dpressure_dpsi = self.dpressure_dpsi
+        self._profiles.f_df_dpsi = self.f_df_dpsi
+        self._profiles.r0 = self.r0
+        self._profiles.has_properties = self.has_properties
         self.param.trigger("profile_updated")
 
     def _load_profiles_from_ids(self, uri: str, time: float):
+        """Load dpressure_dpsi, f_df_dpsi, and psi_norm from an equilibrium IDS."""
         if not uri:
             self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
             return
