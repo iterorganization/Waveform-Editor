@@ -106,8 +106,6 @@ class ShapeEditor(Viewer):
         )
         settings_modal = SettingsModal(self.nice_plotter)
 
-        settings_options = pn.Column()
-
         options = pn.bind(
             self._create_options_tabs, self.nice_settings.param.is_inverse_mode
         )
@@ -118,7 +116,6 @@ class ShapeEditor(Viewer):
             ),
             pn.Column(
                 menu,
-                settings_options,
                 options,
                 sizing_mode="stretch_both",
             ),
@@ -140,27 +137,6 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
-
-    def _create_card(self, panel_object, title, is_valid=None, visible=True):
-        """Create a collapsed card containing a panel object and a title.
-
-        Args:
-            panel_object: The panel object to place into the card.
-            title: The title to give the card.
-            is_valid: If supplied, binds the card title to update reactively using
-                `_reactive_title`.
-            visible: Whether the card is visible.
-        """
-        if is_valid:
-            title = param.bind(_reactive_title, title=title, is_valid=is_valid)
-        card = pn.Card(
-            panel_object,
-            title=title,
-            sizing_mode="stretch_width",
-            collapsed=True,
-            visible=visible,
-        )
-        return card
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
