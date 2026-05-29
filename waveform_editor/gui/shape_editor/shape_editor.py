@@ -74,7 +74,6 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
-
         button_start = pn.widgets.Button(
             name="Run",
             button_type="primary",
@@ -98,33 +97,17 @@ class ShapeEditor(Viewer):
             on_click=self.stop_nice,
             margin=(10, 10, 2, 0),
         )
-        nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
-        settings_modal = SettingsModal(self.nice_plotter)
+        mode_widget = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         buttons = pn.Row(
-            nice_mode_radio,
+            mode_widget,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
         )
+        settings_modal = SettingsModal(self.nice_plotter)
 
-        # Accordion does not allow dynamic titles, so use separate card for each option
-        options = pn.Column(
-            self._create_card(
-                self.plasma_shape,
-                "Plasma Shape",
-                is_valid=self.plasma_shape.param.has_shape,
-                visible=self.nice_settings.param.is_inverse_mode.rx(),
-            ),
-            self._create_card(
-                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
-                "Plasma Properties",
-                is_valid=self.plasma_properties.param.has_properties,
-            ),
-            self._create_card(
-                self.coil_currents,
-                "Coil Currents",
-                visible=self.nice_settings.md_pf_active.param.loaded.rx(),
-            ),
+        options = pn.bind(
+            self._create_options_tabs, self.nice_settings.param.is_inverse_mode
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
         self.panel = pn.Row(
@@ -138,26 +121,22 @@ class ShapeEditor(Viewer):
             ),
         )
 
-    def _create_card(self, panel_object, title, is_valid=None, visible=True):
-        """Create a collapsed card containing a panel object and a title.
-
-        Args:
-            panel_object: The panel object to place into the card.
-            title: The title to give the card.
-            is_valid: If supplied, binds the card title to update reactively using
-                `_reactive_title`.
-            visible: Whether the card is visible.
-        """
-        if is_valid:
-            title = param.bind(_reactive_title, title=title, is_valid=is_valid)
-        card = pn.Card(
-            panel_object,
-            title=title,
-            sizing_mode="stretch_width",
-            collapsed=True,
-            visible=visible,
+    def _create_options_tabs(self, is_inverse_mode):
+        items = []
+        if is_inverse_mode:
+            items.append(("Shape", self.plasma_shape))
+        items.append(
+            (
+                "Properties",
+                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
+            )
         )
-        return card
+        items.append(("Coils", self.coil_currents))
+        return pn.Tabs(
+            *items,
+            sizing_mode="stretch_width",
+            stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
+        )
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
