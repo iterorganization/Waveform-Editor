@@ -187,20 +187,15 @@ class PlasmaProfiles(Viewer):
             hv.DynamicMap(self._plot_profiles), width=350, height=350
         )
 
-    def _reload(self, r0):
-        """Resolve profile functions from parametric params or an equilibrium IDS.
-
-        Called by PlasmaProperties after it resolves r0. Results are stored in
-        `psi_norm`, `dpressure_dpsi`, and `f_df_dpsi`.
-        """
-        self.r0 = r0
+    def _reload(self):
+        """Resolve profile functions from the current params; store results in-place."""
         if self.mode == EQ_IDS:
             self._load_from_ids()
-        elif r0 is not None:
+        elif self.r0 is not None:
             try:
                 self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = (
                     compute_profiles_from_params(
-                        r0=r0,
+                        r0=self.r0,
                         alpha=self.alpha,
                         beta=self.beta,
                         gamma=self.gamma,
@@ -237,7 +232,13 @@ class PlasmaProfiles(Viewer):
 
     @param.depends("mode", "alpha", "beta", "gamma", "ids_uri", "ids_time", watch=True)
     def _on_change(self):
+        self._reload()
         self.param.trigger("changed")
+
+    @param.depends("r0", watch=True)
+    def _on_r0_change(self):
+        """Reload silently when r0 is updated by the parent; does not notify parent."""
+        self._reload()
 
     @pn.depends("psi_norm", "has_properties")
     def _plot_profiles(self):
@@ -353,7 +354,7 @@ class PlasmaProperties(Viewer):
         self.r0 = self._r0.resolved_value
         self.b0 = self._b0.resolved_value
 
-        self._profiles._reload(self.r0)
+        self._profiles.r0 = self.r0
         self.psi_norm = self._profiles.psi_norm
         self.dpressure_dpsi = self._profiles.dpressure_dpsi
         self.f_df_dpsi = self._profiles.f_df_dpsi
