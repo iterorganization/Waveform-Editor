@@ -56,6 +56,8 @@ class NicePlotter(Viewer):
             title="Equilibrium poloidal flux",
             xlabel="r [m]",
             ylabel="z [m]",
+            data_aspect=1,
+            responsive=True,
         )
         self.nice_settings = settings.nice
         self.CONTOUR_OPTS = hv.opts.Contours(
@@ -80,14 +82,13 @@ class NicePlotter(Viewer):
         )
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
-            width=self.WIDTH,
-            height=self.HEIGHT,
+            sizing_mode="stretch_both",
             loading=self.communicator.param.processing,
         )
 
         profiles_plot = hv.DynamicMap(self._plot_profiles)
         self.profiles_pane = pn.pane.HoloViews(
-            profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
+            profiles_plot, sizing_mode="stretch_width", min_height=self.PROFILE_HEIGHT
         )
         self.panel_layout = pn.Param(
             self.param,
