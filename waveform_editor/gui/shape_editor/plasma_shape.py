@@ -72,7 +72,7 @@ class WeightedPointsTable(param.Parameterized):
                 self.COL_DELETE: None,
                 self.COL_R: {"type": "number"},
                 self.COL_Z: {"type": "number"},
-                self.COL_WEIGHT: {"type": "number"},
+                self.COL_WEIGHT: {"type": "number", "step": 1},
             },
             layout="fit_data_fill",
             sizing_mode="stretch_width",
@@ -129,9 +129,16 @@ class WeightedPointsTable(param.Parameterized):
             if col in df.columns:
                 df[col] = df[col].astype(object)
 
-        if event.column == self.COL_WEIGHT and (event.value < 1 or event.value > 1000):
+        if event.column == self.COL_WEIGHT and (
+            event.value is None or event.value < 1 or event.value > 1000
+        ):
             pn.state.notifications.error("Weight must be between 1 and 1000")
-            self._tabulator.value.at[event.row, self.COL_WEIGHT] = 1
+            prev = (
+                self.points.iloc[event.row][self.COL_WEIGHT]
+                if not is_empty_row
+                else 1
+            )
+            self._tabulator.value.at[event.row, self.COL_WEIGHT] = prev
             self._tabulator.param.trigger("value")
             return
 
@@ -166,8 +173,8 @@ class WeightedPointsTable(param.Parameterized):
         outline_z = []
         for _, row in valid_df.iterrows():
             weight = row[self.COL_WEIGHT]
-            outline_r.extend([row[self.COL_R]] * weight)
-            outline_z.extend([row[self.COL_Z]] * weight)
+            outline_r.extend([row[self.COL_R]] * int(weight))
+            outline_z.extend([row[self.COL_Z]] * int(weight))
 
         return outline_r, outline_z
 
@@ -211,7 +218,7 @@ class PlasmaShape(Viewer):
         self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
-            self.param.input_mode, inline=True, margin=(15, 20, 0, 20)
+            self.param.input_mode, inline=False, margin=(15, 20, 0, 20)
         )
         self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
         self.outline_r = None
