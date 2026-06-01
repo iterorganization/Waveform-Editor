@@ -134,9 +134,7 @@ class WeightedPointsTable(param.Parameterized):
         ):
             pn.state.notifications.error("Weight must be between 1 and 1000")
             prev = (
-                self.points.iloc[event.row][self.COL_WEIGHT]
-                if not is_empty_row
-                else 1
+                self.points.iloc[event.row][self.COL_WEIGHT] if not is_empty_row else 1
             )
             self._tabulator.value.at[event.row, self.COL_WEIGHT] = prev
             self._tabulator.param.trigger("value")
