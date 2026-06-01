@@ -13,7 +13,7 @@ from waveform_editor.shape_editor.plasma_properties_calc import (
 )
 
 MANUAL = "Manual"
-EQ_IDS = "Eq IDS"
+EQ_IDS = "Equilibrium IDS"
 PARAMETRIC = "Parametric"
 
 _CARD_CSS = (Path(__file__).parent.parent / "styles" / "property_card.css").read_text()
@@ -22,15 +22,30 @@ _CARD_CSS = (Path(__file__).parent.parent / "styles" / "property_card.css").read
 class PropertyInput(Viewer):
     """A single scalar plasma property with its own Manual / Eq IDS mode toggle."""
 
-    mode = param.ObjectSelector(default=MANUAL, objects=[MANUAL, EQ_IDS])
+    mode = param.Selector(default=MANUAL, objects=[MANUAL, EQ_IDS])
     value = param.Number(default=0.0)
     ids_uri = param.String(default="")
     ids_time = param.Number(default=0.0)
     loaded_value = param.Number(default=None, allow_None=True, precedence=-1)
+    resolved_value = param.Parameter(default=None, precedence=-1)
     changed = param.Event()
 
-    def __init__(self, label, default_value, step=0.01, **params):
+    def __init__(self, label, default_value, ids_path, step=0.01, **params):
+        """
+        Parameters
+        ----------
+        label:
+            Display label shown in the card header.
+        default_value:
+            Initial value used in Manual mode.
+        ids_path:
+            Dot-path into the equilibrium IDS used in Eq IDS mode, e.g.
+            ``"vacuum_toroidal_field.r0"``.
+        step:
+            Step size for the numeric input widget.
+        """
         super().__init__(**params)
+        self._ids_path = ids_path
         self.value = default_value
         self._label = label
 
@@ -54,9 +69,32 @@ class PropertyInput(Viewer):
         self._time_input = pn.widgets.FloatInput.from_param(
             self.param.ids_time, name="Time [s]", width=100
         )
+        self._reload()
+
+    def _reload(self):
+        if self.mode == MANUAL:
+            self.resolved_value = self.value
+            return
+        if not self.ids_uri:
+            self.resolved_value = None
+            return
+        try:
+            with imas.DBEntry(self.ids_uri, "r") as entry:
+                eq = entry.get_slice(
+                    "equilibrium",
+                    self.ids_time,
+                    imas.ids_defs.CLOSEST_INTERP,
+                    lazy=True,
+                )
+                self.loaded_value = self.resolved_value = float(eq[self._ids_path])
+        except Exception as e:
+            pn.state.notifications.error(f"Could not load from {self.ids_uri}: {e}")
+            self.loaded_value = None
+            self.resolved_value = None
 
     @param.depends("mode", "value", "ids_uri", "ids_time", watch=True)
     def _on_change(self):
+        self._reload()
         self.param.trigger("changed")
 
     @param.depends("loaded_value")
@@ -73,6 +111,7 @@ class PropertyInput(Viewer):
     def __panel__(self):
         is_manual = pn.bind(lambda m: m == MANUAL, self.param.mode)
         is_ids = pn.bind(lambda m: m == EQ_IDS, self.param.mode)
+        self._value_input.visible = is_manual
         header = pn.Row(
             pn.pane.HTML(self._label, sizing_mode="stretch_width", margin=(5, 0)),
             self._mode_toggle,
@@ -81,7 +120,7 @@ class PropertyInput(Viewer):
         )
         return pn.Column(
             header,
-            pn.Column(self._value_input, visible=is_manual, margin=(4, 0, 0, 0)),
+            self._value_input,
             pn.Column(
                 pn.Row(self._uri_input, self._time_input, margin=(4, 0, 0, 0)),
                 self._loaded_display,
@@ -103,7 +142,7 @@ class PlasmaProfiles(Viewer):
     directly from an equilibrium IDS file.
     """
 
-    mode = param.ObjectSelector(default=PARAMETRIC, objects=[PARAMETRIC, EQ_IDS])
+    mode = param.Selector(default=PARAMETRIC, objects=[PARAMETRIC, EQ_IDS])
     alpha = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
     beta = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
     gamma = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01)
@@ -111,7 +150,7 @@ class PlasmaProfiles(Viewer):
     ids_time = param.Number(default=0.0)
     changed = param.Event()
 
-    # Computed profile data pushed by PlasmaProperties after each load
+    # Resolved profile data, updated by _reload()
     psi_norm = param.Parameter(default=None, precedence=-1)
     dpressure_dpsi = param.Parameter(default=None, precedence=-1)
     f_df_dpsi = param.Parameter(default=None, precedence=-1)
@@ -147,6 +186,54 @@ class PlasmaProfiles(Viewer):
         self._profiles_pane = pn.pane.HoloViews(
             hv.DynamicMap(self._plot_profiles), width=350, height=350
         )
+
+    def _reload(self, r0):
+        """Resolve profile functions from parametric params or an equilibrium IDS.
+
+        Called by PlasmaProperties after it resolves r0. Results are stored in
+        `psi_norm`, `dpressure_dpsi`, and `f_df_dpsi`.
+        """
+        self.r0 = r0
+        if self.mode == EQ_IDS:
+            self._load_from_ids()
+        elif r0 is not None:
+            try:
+                self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = (
+                    compute_profiles_from_params(
+                        r0=r0,
+                        alpha=self.alpha,
+                        beta=self.beta,
+                        gamma=self.gamma,
+                    )
+                )
+            except Exception as e:
+                pn.state.notifications.error(f"Could not compute profiles: {e}")
+                self.psi_norm = self.dpressure_dpsi = self.f_df_dpsi = None
+        else:
+            self.psi_norm = self.dpressure_dpsi = self.f_df_dpsi = None
+
+    def _load_from_ids(self):
+        """Load dpressure_dpsi, f_df_dpsi, and psi_norm from an equilibrium IDS."""
+        if not self.ids_uri:
+            self.psi_norm = self.dpressure_dpsi = self.f_df_dpsi = None
+            return
+        try:
+            with imas.DBEntry(self.ids_uri, "r") as entry:
+                eq = entry.get_slice(
+                    "equilibrium",
+                    self.ids_time,
+                    imas.ids_defs.CLOSEST_INTERP,
+                    lazy=True,
+                )
+                self.dpressure_dpsi = eq.time_slice[0].profiles_1d.dpressure_dpsi
+                self.f_df_dpsi = eq.time_slice[0].profiles_1d.f_df_dpsi
+                psi = eq.time_slice[0].profiles_1d.psi
+                self.psi_norm = (psi - psi[0]) / (psi[-1] - psi[0])
+        except Exception as e:
+            pn.state.notifications.error(
+                f"Could not load profiles from {self.ids_uri}: {e}"
+            )
+            self.psi_norm = self.dpressure_dpsi = self.f_df_dpsi = None
 
     @param.depends("mode", "alpha", "beta", "gamma", "ids_uri", "ids_time", watch=True)
     def _on_change(self):
@@ -226,9 +313,22 @@ class PlasmaProperties(Viewer):
 
     def __init__(self):
         super().__init__()
-        self._ip = PropertyInput("Plasma current [A]", default_value=-1.5e7, step=1e6)
-        self._r0 = PropertyInput("Reference major radius [m]", default_value=6.2)
-        self._b0 = PropertyInput("Toroidal magnetic field [T]", default_value=-5.3)
+        self._ip = PropertyInput(
+            "Plasma current [A]",
+            default_value=-1.5e7,
+            ids_path="time_slice[0].global_quantities.ip",
+            step=1e6,
+        )
+        self._r0 = PropertyInput(
+            "Reference major radius [m]",
+            default_value=6.2,
+            ids_path="vacuum_toroidal_field.r0",
+        )
+        self._b0 = PropertyInput(
+            "Toroidal magnetic field [T]",
+            default_value=-5.3,
+            ids_path="vacuum_toroidal_field.b0[0]",
+        )
         self._profiles = PlasmaProfiles()
 
         self.dpressure_dpsi = None
@@ -239,86 +339,30 @@ class PlasmaProperties(Viewer):
         self.b0 = None
 
         for widget in [self._ip, self._r0, self._b0, self._profiles]:
-            widget.param.watch(lambda *_: self._load_plasma_properties(), "changed")
+            widget.param.watch(self._load_plasma_properties, "changed")
 
         self._load_plasma_properties()
 
-    def _load_scalar(self, prop: PropertyInput, extractor):
-        """Return a scalar value from manual input or extracted from an IDS."""
-        if prop.mode == MANUAL:
-            return prop.value
-        if not prop.ids_uri:
-            return None
-        try:
-            with imas.DBEntry(prop.ids_uri, "r") as entry:
-                eq = entry.get_slice(
-                    "equilibrium", prop.ids_time, imas.ids_defs.CLOSEST_INTERP
-                )
-            value = extractor(eq)
-            prop.loaded_value = float(value)
-            return value
-        except Exception as e:
-            pn.state.notifications.error(f"Could not load from {prop.ids_uri}: {e}")
-            prop.loaded_value = None
-            return None
-
-    def _load_plasma_properties(self):
+    def _load_plasma_properties(self, _event=None):
         """Reload all plasma properties from the current mode and inputs.
 
-        Resolves each scalar independently, then either reads profile functions from an
-        IDS or computes them parametrically. Triggers `profile_updated` when done.
+        Reads already-resolved scalar values from each PropertyInput, delegates
+        profile loading/computation to PlasmaProfiles, then triggers `profile_updated`.
         """
-        self.ip = self._load_scalar(
-            self._ip, lambda eq: eq.time_slice[0].global_quantities.ip
-        )
-        self.r0 = self._load_scalar(self._r0, lambda eq: eq.vacuum_toroidal_field.r0)
-        self.b0 = self._load_scalar(self._b0, lambda eq: eq.vacuum_toroidal_field.b0[0])
+        self.ip = self._ip.resolved_value
+        self.r0 = self._r0.resolved_value
+        self.b0 = self._b0.resolved_value
 
-        if self._profiles.mode == EQ_IDS:
-            self._load_profiles_from_ids(
-                self._profiles.ids_uri, self._profiles.ids_time
-            )
-        elif self.r0 is not None:
-            try:
-                self.psi_norm, self.dpressure_dpsi, self.f_df_dpsi = (
-                    compute_profiles_from_params(
-                        r0=self.r0,
-                        alpha=self._profiles.alpha,
-                        beta=self._profiles.beta,
-                        gamma=self._profiles.gamma,
-                    )
-                )
-            except Exception as e:
-                pn.state.notifications.error(f"Could not compute profiles: {e}")
-                self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
-        else:
-            self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
+        self._profiles._reload(self.r0)
+        self.psi_norm = self._profiles.psi_norm
+        self.dpressure_dpsi = self._profiles.dpressure_dpsi
+        self.f_df_dpsi = self._profiles.f_df_dpsi
 
         self.has_properties = all(
             v is not None for v in [self.ip, self.r0, self.b0, self.dpressure_dpsi]
         )
-        self._profiles.psi_norm = self.psi_norm
-        self._profiles.dpressure_dpsi = self.dpressure_dpsi
-        self._profiles.f_df_dpsi = self.f_df_dpsi
-        self._profiles.r0 = self.r0
         self._profiles.has_properties = self.has_properties
         self.param.trigger("profile_updated")
-
-    def _load_profiles_from_ids(self, uri: str, time: float):
-        """Load dpressure_dpsi, f_df_dpsi, and psi_norm from an equilibrium IDS."""
-        if not uri:
-            self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
-            return
-        try:
-            with imas.DBEntry(uri, "r") as entry:
-                eq = entry.get_slice("equilibrium", time, imas.ids_defs.CLOSEST_INTERP)
-            self.dpressure_dpsi = eq.time_slice[0].profiles_1d.dpressure_dpsi
-            self.f_df_dpsi = eq.time_slice[0].profiles_1d.f_df_dpsi
-            psi = eq.time_slice[0].profiles_1d.psi
-            self.psi_norm = (psi - psi[0]) / (psi[-1] - psi[0])
-        except Exception as e:
-            pn.state.notifications.error(f"Could not load profiles from {uri}: {e}")
-            self.dpressure_dpsi = self.f_df_dpsi = self.psi_norm = None
 
     def __panel__(self):
         return pn.Column(
