@@ -50,16 +50,16 @@ a.title, span.title { display: none !important; }
 }
 
 /* Metrics chips */
-.mc-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px; }
+.mc-wrap { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 4px; }
 .mc {
     display: inline-flex;
     align-items: center;
     background: rgba(128,128,128,0.1);
     border: 1px solid rgba(128,128,128,0.3);
     border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 5px 14px;
+    font-size: 16px;
     white-space: nowrap;
 }
-.mc-lbl { color: #888; margin-right: 5px; }
+.mc-lbl { color: #888; margin-right: 6px; }
 .mc-val { font-weight: 600; }
