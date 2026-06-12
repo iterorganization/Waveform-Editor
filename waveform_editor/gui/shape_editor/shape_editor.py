@@ -6,7 +6,6 @@ import imas
 import panel as pn
 import param
 from imas.ids_toplevel import IDSToplevel
-from panel.io import hold
 from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
@@ -15,6 +14,7 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
+from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -26,7 +26,7 @@ def _reactive_title(title, is_valid):
 
 
 class Metrics(Viewer):
-    """Grid containing equilibrium metrics."""
+    """Chips row showing equilibrium metrics below the flux map."""
 
     metrics = param.Dict(default={})
 
@@ -38,43 +38,42 @@ class Metrics(Viewer):
     VERTICAL = "z0"
     MINOR_RADIUS = "a"
 
-    LABELS = {
-        ELONGATION: ("Elongation", ""),
-        TRI_UPPER: ("Triangularity upper", ""),
-        TRI_LOWER: ("Triangularity lower", ""),
-        Q95: ("Edge safety factor", ""),
-        MAJOR_RADIUS: ("Major radius", "m"),
-        VERTICAL: ("Vertical position", "m"),
-        MINOR_RADIUS: ("Minor radius", "m"),
+    # (symbol, unit, full name) — full name is shown as a hover tooltip
+    METRICS = {
+        ELONGATION:   ("κ",    "",  "Elongation"),
+        TRI_UPPER:    ("δᵤ",   "",  "Triangularity upper"),
+        TRI_LOWER:    ("δₗ",   "",  "Triangularity lower"),
+        Q95:          ("q₉₅",  "",  "Edge safety factor"),
+        MAJOR_RADIUS: ("R₀",   "m", "Major radius"),
+        VERTICAL:     ("Z₀",   "m", "Vertical position"),
+        MINOR_RADIUS: ("a",    "m", "Minor radius"),
     }
 
     def __init__(self, **params):
         super().__init__(**params)
-
-        self._panes = {
-            key: pn.pane.Markdown("", margin=(0, 10, 0, 0)) for key in self.LABELS
-        }
-
-        self.view = pn.GridBox(
-            *self._panes.values(),
-            ncols=4,
-            margin=(0, 0, 10, 0),
+        self._pane = pn.pane.HTML(
+            pn.bind(self._render, self.param.metrics),
+            sizing_mode="stretch_width",
+            stylesheets=STYLES,
         )
 
-        self._update_panes()
-
-    @param.depends("metrics", watch=True)
-    @hold()
-    def _update_panes(self):
-        for key, pane in self._panes.items():
-            label, unit = self.LABELS[key]
-            val = self.metrics.get(key, "-")
+    def _render(self, metrics=None):
+        chips = []
+        for key, (symbol, unit, tooltip) in self.METRICS.items():
+            val = metrics.get(key, "—") if metrics else "—"
             if isinstance(val, float):
                 val = f"{val:.4g}"
-            pane.object = f"**{label}**<br>{val} {unit}".strip()
+            display = f"{val} {unit}".strip()
+            chips.append(
+                f'<span class="mc" title="{tooltip}">'
+                f'<span class="mc-lbl">{symbol}</span>'
+                f'<span class="mc-val">{display}</span>'
+                f"</span>"
+            )
+        return '<div class="mc-wrap">' + "".join(chips) + "</div>"
 
     def __panel__(self):
-        return self.view
+        return self._pane
 
 
 class ShapeEditor(Viewer):
@@ -160,8 +159,9 @@ class ShapeEditor(Viewer):
             button_start,
         )
 
+        self.metrics = Metrics()
         # Accordion does not allow dynamic titles, so use separate card for each option
-        options = pn.Column(
+        inputs = pn.Column(
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
@@ -176,9 +176,7 @@ class ShapeEditor(Viewer):
             self._create_card(self.coil_currents, "Coil Currents"),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
-        self.metrics = Metrics()
         header = pn.Row(
-            self.metrics,
             pn.HSpacer(),
             settings_modal,
             sizing_mode="stretch_width",
@@ -187,34 +185,32 @@ class ShapeEditor(Viewer):
         left_col = pn.Column(
             header,
             self.nice_plotter.flux_map_pane,
+            self.metrics,
             width=self.nice_plotter.flux_map_pane.width,
         )
 
         self.panel = pn.Row(
             left_col,
-            pn.Column(menu, options, sizing_mode="stretch_both"),
+            pn.Column(
+                menu,
+                pn.layout.Divider(),
+                inputs,
+                sizing_mode="stretch_both",
+            ),
         )
 
-    def _create_card(self, panel_object, title, is_valid=None, visible=True):
-        """Create a collapsed card containing a panel object and a title.
-
-        Args:
-            panel_object: The panel object to place into the card.
-            title: The title to give the card.
-            is_valid: If supplied, binds the card title to update reactively using
-                `_reactive_title`.
-            visible: Whether the card is visible.
-        """
+    def _create_card(
+        self, panel_object, title, is_valid=None, visible=True, collapsed=True
+    ):
         if is_valid:
             title = param.bind(_reactive_title, title=title, is_valid=is_valid)
-        card = pn.Card(
+        return pn.Card(
             panel_object,
             title=title,
             sizing_mode="stretch_width",
-            collapsed=True,
+            collapsed=collapsed,
             visible=visible,
         )
-        return card
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
