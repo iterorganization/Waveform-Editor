@@ -41,14 +41,14 @@ class Metrics(Viewer):
 
     # (symbol, unit, full name) — full name is shown as a hover tooltip
     METRICS = {
-        ELONGATION:    ("e",   "",  "Elongation"),
-        TRIANGULARITY: ("t",   "",  "Triangularity"),
-        TRI_UPPER:     ("tᵤ",  "",  "Triangularity upper"),
-        TRI_LOWER:     ("tₗ",  "",  "Triangularity lower"),
-        Q95:           ("q₉₅", "",  "Edge safety factor"),
-        MAJOR_RADIUS:  ("R₀",  "m", "Major radius"),
-        VERTICAL:      ("Z₀",  "m", "Vertical position"),
-        MINOR_RADIUS:  ("a",   "m", "Minor radius"),
+        ELONGATION: ("e", "", "Elongation"),
+        TRIANGULARITY: ("t", "", "Triangularity"),
+        TRI_UPPER: ("tᵤ", "", "Triangularity upper"),
+        TRI_LOWER: ("tₗ", "", "Triangularity lower"),
+        Q95: ("q₉₅", "", "Edge safety factor"),
+        MAJOR_RADIUS: ("R₀", "m", "Major radius"),
+        VERTICAL: ("Z₀", "m", "Vertical position"),
+        MINOR_RADIUS: ("a", "m", "Minor radius"),
     }
 
     def __init__(self, **params):
@@ -329,14 +329,14 @@ class ShapeEditor(Viewer):
         boundary = eq.time_slice[0].boundary
 
         self.metrics.metrics = {
-            self.metrics.ELONGATION:    float(boundary.elongation),
+            self.metrics.ELONGATION: float(boundary.elongation),
             self.metrics.TRIANGULARITY: float(boundary.triangularity),
-            self.metrics.TRI_UPPER:     float(boundary.triangularity_upper),
-            self.metrics.TRI_LOWER:     float(boundary.triangularity_lower),
-            self.metrics.MAJOR_RADIUS:  float(boundary.geometric_axis.r),
-            self.metrics.VERTICAL:      float(boundary.geometric_axis.z),
-            self.metrics.MINOR_RADIUS:  float(boundary.minor_radius),
-            self.metrics.Q95:           float(global_quantities.q_95),
+            self.metrics.TRI_UPPER: float(boundary.triangularity_upper),
+            self.metrics.TRI_LOWER: float(boundary.triangularity_lower),
+            self.metrics.MAJOR_RADIUS: float(boundary.geometric_axis.r),
+            self.metrics.VERTICAL: float(boundary.geometric_axis.z),
+            self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
+            self.metrics.Q95: float(global_quantities.q_95),
         }
 
     @param.depends("nice_settings.mode", watch=True)
