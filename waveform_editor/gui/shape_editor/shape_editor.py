@@ -40,13 +40,13 @@ class Metrics(Viewer):
 
     # (symbol, unit, full name) — full name is shown as a hover tooltip
     METRICS = {
-        ELONGATION:   ("κ",    "",  "Elongation"),
-        TRI_UPPER:    ("δᵤ",   "",  "Triangularity upper"),
-        TRI_LOWER:    ("δₗ",   "",  "Triangularity lower"),
-        Q95:          ("q₉₅",  "",  "Edge safety factor"),
-        MAJOR_RADIUS: ("R₀",   "m", "Major radius"),
-        VERTICAL:     ("Z₀",   "m", "Vertical position"),
-        MINOR_RADIUS: ("a",    "m", "Minor radius"),
+        ELONGATION: ("κ", "", "Elongation"),
+        TRI_UPPER: ("δᵤ", "", "Triangularity upper"),
+        TRI_LOWER: ("δₗ", "", "Triangularity lower"),
+        Q95: ("q₉₅", "", "Edge safety factor"),
+        MAJOR_RADIUS: ("R₀", "m", "Major radius"),
+        VERTICAL: ("Z₀", "m", "Vertical position"),
+        MINOR_RADIUS: ("a", "m", "Minor radius"),
     }
 
     def __init__(self, **params):
