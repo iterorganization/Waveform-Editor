@@ -34,6 +34,9 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
+    use_previous_run = param.Boolean(
+        default=False, doc="Use previous run as warm start"
+    )
 
     def __init__(self, main_gui):
         super().__init__()
@@ -44,7 +47,14 @@ class ShapeEditor(Viewer):
             height=200,
             max_width=750,
         )
-        self.communicator = NiceIntegration(self.factory, on_output=self.terminal.write)
+        self.communicator = NiceIntegration(
+            self.factory,
+            on_output=self.terminal.write,
+            on_run_finished=self._on_nice_run_finished,
+        )
+        self.communicator.param.watch(
+            lambda e: setattr(self, "use_previous_run", e.new), ["can_warm_start"]
+        )
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents(main_gui)
@@ -100,12 +110,13 @@ class ShapeEditor(Viewer):
             margin=(10, 10, 2, 0),
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
-        settings_modal = SettingsModal(self.nice_plotter)
+        settings_modal = SettingsModal(self.nice_plotter, self)
         buttons = pn.Row(
             nice_mode_radio,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
+            align="center",
         )
 
         self.metrics = Metrics()
@@ -198,6 +209,7 @@ class ShapeEditor(Viewer):
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
         self.nice_settings.md_pf_active.loaded = self.pf_active is not None
+        self.communicator.equilibrium = None
 
     @param.depends("nice_settings.md_pf_passive.uri", watch=True)
     def _load_pf_passive(self):
@@ -205,12 +217,14 @@ class ShapeEditor(Viewer):
             self.nice_settings.md_pf_passive.uri, "pf_passive"
         )
         self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
+        self.communicator.equilibrium = None
 
     @param.depends("nice_settings.md_wall.uri", watch=True)
     def _load_wall(self):
         self.wall = self._load_slice(self.nice_settings.md_wall.uri, "wall")
         self.nice_plotter.wall = self.wall
         self.nice_settings.md_wall.loaded = self.wall is not None
+        self.communicator.equilibrium = None
 
     @param.depends("nice_settings.md_iron_core.uri", watch=True)
     def _load_iron_core(self):
@@ -218,6 +232,7 @@ class ShapeEditor(Viewer):
             self.nice_settings.md_iron_core.uri, "iron_core"
         )
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
+        self.communicator.equilibrium = None
 
     def _create_equilibrium(self):
         """Create and initialize an equilibrium IDS.
@@ -261,6 +276,14 @@ class ShapeEditor(Viewer):
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
+    def _on_nice_run_finished(self, success):
+        if success:
+            pn.state.notifications.success("NICE run complete.")
+        else:
+            pn.state.notifications.error(
+                "NICE did not converge. Check the terminal for details."
+            )
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
@@ -275,12 +298,23 @@ class ShapeEditor(Viewer):
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
 
-        # Load previous equilibrium from communicator output if available
-        if self.communicator.equilibrium is not None:
+        use_previous_equilibrium = (
+            self.use_previous_run and self.communicator.can_warm_start
+        )
+        if use_previous_equilibrium:
+            pn.state.notifications.info("Starting from previous equilibrium.")
             equilibrium = self.communicator.equilibrium
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
+
+        if self.nice_settings.is_direct_mode:
+            start_from_scratch = "0" if use_previous_equilibrium else "1"
+            xml_params.find("algoStartFromScratch").text = start_from_scratch
+            xml_params.find("algoStartFromScratchReconAB").text = start_from_scratch
+            xml_params.find("algoStartPsiFromInData").text = (
+                "1" if use_previous_equilibrium else "0"
+            )
 
         if not self.communicator.running:
             await self.communicator.run(

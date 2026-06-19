@@ -49,10 +49,11 @@ def _form_row(label, widget, warning=None):
 class SettingsModal(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
 
-    def __init__(self, nice_plotter: NicePlotter, **params):
+    def __init__(self, nice_plotter: NicePlotter, shape_editor, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
         self.nice_plotter = nice_plotter
+        self._shape_editor = shape_editor
 
         modal = self._build_modal()
         button_icon = pn.widgets.ButtonIcon(
@@ -183,8 +184,45 @@ class SettingsModal(Viewer):
             scroll=True,
         )
 
+        # --- General tab ---
+        self._warm_start_switch = pn.widgets.Switch.from_param(
+            self._shape_editor.param.use_previous_run,
+            name="",
+            disabled=self._shape_editor.communicator.param.can_warm_start.rx.not_(),
+            margin=(15, 0, 0, 0),
+        )
+        no_equilibrium_msg = pn.pane.HTML(
+            '<span class="form-row-label form-row-label--warning">'
+            "No previous equilibrium available, run NICE to enable."
+            "</span>",
+            stylesheets=STYLES,
+            visible=self._shape_editor.communicator.param.can_warm_start.rx.not_(),
+            sizing_mode="stretch_width",
+            margin=(4, 10),
+        )
+        general_content = pn.Column(
+            _section_label("Warm Start"),
+            _settings_section(
+                _form_row(
+                    "Start from previous equilibrium",
+                    self._warm_start_switch,
+                    pn.widgets.TooltipIcon(
+                        value=(
+                            "Use the previous converged equilibrium as the starting "
+                            "point. Disabled when no valid equilibrium is available."
+                        ),
+                        margin=10,
+                    ),
+                ),
+                no_equilibrium_msg,
+            ),
+            sizing_mode="stretch_width",
+            scroll=True,
+        )
+
         self.tabs = pn.Tabs(
             ("Display", display_content),
+            ("General", general_content),
             ("Machine Presets", machine_preset_content),
             ("NICE Configuration", nice_content),
             margin=(20, 20, 0, 20),
