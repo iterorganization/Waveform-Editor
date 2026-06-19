@@ -61,5 +61,5 @@ a.title, span.title { display: none !important; }
     font-size: 16px;
     white-space: nowrap;
 }
-.mc-lbl { color: #888; margin-right: 6px; }
+.mc-lbl { color: #000; margin-right: 6px; }
 .mc-val { font-weight: 600; }
