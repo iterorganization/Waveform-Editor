@@ -10,11 +10,11 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
-from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -23,59 +23,6 @@ logger = logging.getLogger(__name__)
 
 def _reactive_title(title, is_valid):
     return title if is_valid else f"{title} ⚠️"
-
-
-class Metrics(Viewer):
-    """Chips row showing equilibrium metrics below the flux map."""
-
-    metrics = param.Dict(default={})
-
-    ELONGATION = "elongation"
-    TRIANGULARITY = "triangularity"
-    TRI_UPPER = "tri_upper"
-    TRI_LOWER = "tri_lower"
-    Q95 = "q95"
-    MAJOR_RADIUS = "r0"
-    VERTICAL = "z0"
-    MINOR_RADIUS = "a"
-
-    # (symbol, unit, full name) — full name is shown as a hover tooltip
-    METRICS = {
-        ELONGATION: ("e", "", "Elongation"),
-        TRIANGULARITY: ("t", "", "Triangularity"),
-        TRI_UPPER: ("tᵤ", "", "Triangularity upper"),
-        TRI_LOWER: ("tₗ", "", "Triangularity lower"),
-        Q95: ("q₉₅", "", "Edge safety factor"),
-        MAJOR_RADIUS: ("R₀", "m", "Major radius"),
-        VERTICAL: ("Z₀", "m", "Vertical position"),
-        MINOR_RADIUS: ("a", "m", "Minor radius"),
-    }
-
-    def __init__(self, **params):
-        super().__init__(**params)
-        self._pane = pn.pane.HTML(
-            pn.bind(self._render, self.param.metrics),
-            sizing_mode="stretch_width",
-            stylesheets=STYLES,
-        )
-
-    def _render(self, metrics=None):
-        chips = []
-        for key, (symbol, unit, tooltip) in self.METRICS.items():
-            val = metrics.get(key, "—") if metrics else "—"
-            if isinstance(val, float):
-                val = f"{val:.4g}"
-            display = f"{val} {unit}".strip()
-            chips.append(
-                f'<span class="mc" title="{tooltip}">'
-                f'<span class="mc-lbl">{symbol}</span>'
-                f'<span class="mc-val">{display}</span>'
-                f"</span>"
-            )
-        return '<div class="mc-wrap">' + "".join(chips) + "</div>"
-
-    def __panel__(self):
-        return self._pane
 
 
 class ShapeEditor(Viewer):
@@ -204,6 +151,16 @@ class ShapeEditor(Viewer):
     def _create_card(
         self, panel_object, title, is_valid=None, visible=True, collapsed=True
     ):
+        """Create a collapsed card containing a panel object and a title.
+
+        Args:
+            panel_object: The panel object to place into the card.
+            title: The title to give the card.
+            is_valid: If supplied, binds the card title to update reactively using
+                `_reactive_title`.
+            visible: Whether the card is visible.
+            collapsed: Whether the card is collapsed.
+        """
         if is_valid:
             title = param.bind(_reactive_title, title=title, is_valid=is_valid)
         return pn.Card(
@@ -321,9 +278,9 @@ class ShapeEditor(Viewer):
             self.iron_core.serialize(),
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
-        self._update_result_param()
+        self._update_metrics()
 
-    def _update_result_param(self):
+    def _update_metrics(self):
         eq = self.communicator.equilibrium
         global_quantities = eq.time_slice[0].global_quantities
         boundary = eq.time_slice[0].boundary
