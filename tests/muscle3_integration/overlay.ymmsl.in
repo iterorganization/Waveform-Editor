@@ -1,0 +1,44 @@
+ymmsl_version: v0.1
+
+model:
+  name: example_overlay_with_waveform_actor
+
+  components:
+    solver:
+      implementation: solver
+      ports:
+        o_i: equilibrium_out
+        s:
+        - equilibrium_in
+
+    waveform_actor:
+      implementation: waveform_actor
+      ports:
+        # An IDS-named input port selects overlay mode:
+        f_init: equilibrium_in
+        # Name of the output port is "<ids_name>_out":
+        o_f:
+        - equilibrium_out
+
+  conduits:
+    solver.equilibrium_out: waveform_actor.equilibrium_in
+    waveform_actor.equilibrium_out: solver.equilibrium_in
+
+settings:
+  # Mandatory setting for the waveform actor: the waveform configuration:
+  waveform_actor.waveforms: __PATH__/overlay_waveforms.yaml
+
+resources:
+  solver:
+    threads: 1
+  waveform_actor:
+    threads: 1
+
+implementations:
+  solver:
+    executable: python
+    args: __PATH__/overlay_solver.py
+
+  waveform_actor:
+    executable: waveform-editor
+    args: actor

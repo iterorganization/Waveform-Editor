@@ -13,10 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigurationExporter:
-    def __init__(self, config, times, progress=None):
+    def __init__(self, config, times, progress=None, base_idss=None):
         self.config = config
         self.times = times
         self.progress = progress
+        # {ids_name: IDS} bases to overlay the waveforms onto in place (preserving their
+        # other data), taking precedence over the machine description / an empty IDS.
+        self.base_idss = base_idss or {}
         self.total_progress = None
         self.current_progress = None
         # We assume that all DD times are in seconds
@@ -70,15 +73,7 @@ class ConfigurationExporter:
         self.current_progress = 0
         for ids_name, waveforms in ids_map.items():
             logger.debug(f"Filling {ids_name}...")
-
-            # Copy machine description if provided, otherwise start from empty IDS
-            md = self.config.globals.machine_description.get(ids_name)
-            if md:
-                with imas.DBEntry(md, "r") as entry_md:
-                    orig_ids = entry_md.get(ids_name, autoconvert=False)
-                    ids = imas.convert_ids(orig_ids, self.config.globals.dd_version)
-            else:
-                ids = factory.new(ids_name)
+            ids = self._base_ids(ids_name, factory)
             # TODO: currently only IDSs with homogeneous time mode are supported
             ids.ids_properties.homogeneous_time = (
                 imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
@@ -86,6 +81,18 @@ class ConfigurationExporter:
             ids.time = self.times
             self._fill_waveforms(ids, waveforms)
             yield ids_name, ids
+
+    def _base_ids(self, ids_name, factory):
+        """The IDS to fill the waveforms onto: a caller-provided base, else the machine
+        description, else a new empty IDS."""
+        if ids_name in self.base_idss:
+            return self.base_idss[ids_name]
+        md = self.config.globals.machine_description.get(ids_name)
+        if md:
+            with imas.DBEntry(md, "r") as entry_md:
+                orig_ids = entry_md.get(ids_name, autoconvert=False)
+                return imas.convert_ids(orig_ids, self.config.globals.dd_version)
+        return factory.new(ids_name)
 
     def to_png(self, dir_path):
         """Export the waveforms to PNGs.
