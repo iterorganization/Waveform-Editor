@@ -39,8 +39,8 @@ class PropertyInput(Viewer):
         default_value:
             Initial value used in Manual mode.
         ids_path:
-            Dot-path into the equilibrium IDS used in Eq IDS mode, e.g.
-            ``"vacuum_toroidal_field.r0"``.
+            Slash-separated path into the equilibrium IDS used in Eq IDS mode, e.g.
+            ``"vacuum_toroidal_field/r0"``.
         step:
             Step size for the numeric input widget.
         """
@@ -317,18 +317,18 @@ class PlasmaProperties(Viewer):
         self._ip = PropertyInput(
             "Plasma current [A]",
             default_value=-1.5e7,
-            ids_path="time_slice[0].global_quantities.ip",
+            ids_path="time_slice(0)/global_quantities/ip",
             step=1e6,
         )
         self._r0 = PropertyInput(
             "Reference major radius [m]",
             default_value=6.2,
-            ids_path="vacuum_toroidal_field.r0",
+            ids_path="vacuum_toroidal_field/r0",
         )
         self._b0 = PropertyInput(
             "Toroidal magnetic field [T]",
             default_value=-5.3,
-            ids_path="vacuum_toroidal_field.b0[0]",
+            ids_path="vacuum_toroidal_field/b0(0)",
         )
         self._profiles = PlasmaProfiles()
 

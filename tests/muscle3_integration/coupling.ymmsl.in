@@ -39,7 +39,7 @@ resources:
 
 implementations:
   controller:
-    executable: python
+    executable: __PYTHON__
     args: __PATH__/controller.py
   
   waveform_actor:
