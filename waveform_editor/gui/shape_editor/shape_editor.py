@@ -10,6 +10,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
@@ -107,8 +108,9 @@ class ShapeEditor(Viewer):
             button_start,
         )
 
+        self.metrics = Metrics()
         # Accordion does not allow dynamic titles, so use separate card for each option
-        options = pn.Column(
+        inputs = pn.Column(
             self._create_card(
                 self.plasma_shape,
                 "Plasma Shape",
@@ -127,18 +129,32 @@ class ShapeEditor(Viewer):
             ),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
+        header = pn.Row(
+            pn.HSpacer(),
+            settings_modal,
+            sizing_mode="stretch_width",
+        )
+
+        left_col = pn.Column(
+            header,
+            self.nice_plotter.flux_map_pane,
+            self.metrics,
+            width=self.nice_plotter.flux_map_pane.width,
+        )
+
         self.panel = pn.Row(
-            pn.Column(
-                pn.Row(settings_modal, align="end"), self.nice_plotter.flux_map_pane
-            ),
+            left_col,
             pn.Column(
                 menu,
-                options,
+                pn.layout.Divider(),
+                inputs,
                 sizing_mode="stretch_both",
             ),
         )
 
-    def _create_card(self, panel_object, title, is_valid=None, visible=True):
+    def _create_card(
+        self, panel_object, title, is_valid=None, visible=True, collapsed=True
+    ):
         """Create a collapsed card containing a panel object and a title.
 
         Args:
@@ -147,17 +163,17 @@ class ShapeEditor(Viewer):
             is_valid: If supplied, binds the card title to update reactively using
                 `_reactive_title`.
             visible: Whether the card is visible.
+            collapsed: Whether the card is collapsed.
         """
         if is_valid:
             title = param.bind(_reactive_title, title=title, is_valid=is_valid)
-        card = pn.Card(
+        return pn.Card(
             panel_object,
             title=title,
             sizing_mode="stretch_width",
-            collapsed=True,
+            collapsed=collapsed,
             visible=visible,
         )
-        return card
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
@@ -266,6 +282,23 @@ class ShapeEditor(Viewer):
             self.iron_core.serialize(),
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
+        self._update_metrics()
+
+    def _update_metrics(self):
+        eq = self.communicator.equilibrium
+        global_quantities = eq.time_slice[0].global_quantities
+        boundary = eq.time_slice[0].boundary
+
+        self.metrics.metrics = {
+            self.metrics.ELONGATION: float(boundary.elongation),
+            self.metrics.TRIANGULARITY: float(boundary.triangularity),
+            self.metrics.TRI_UPPER: float(boundary.triangularity_upper),
+            self.metrics.TRI_LOWER: float(boundary.triangularity_lower),
+            self.metrics.MAJOR_RADIUS: float(boundary.geometric_axis.r),
+            self.metrics.VERTICAL: float(boundary.geometric_axis.z),
+            self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
+            self.metrics.Q95: float(global_quantities.q_95),
+        }
 
     @param.depends("nice_settings.mode", watch=True)
     async def stop_nice(self, event=None):
