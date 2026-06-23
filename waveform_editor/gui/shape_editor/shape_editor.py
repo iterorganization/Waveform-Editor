@@ -118,7 +118,7 @@ class ShapeEditor(Viewer):
                 visible=self.nice_settings.param.is_inverse_mode.rx(),
             ),
             self._create_card(
-                pn.Column(self.plasma_properties, self.nice_plotter.profiles_pane),
+                self.plasma_properties,
                 "Plasma Properties",
                 is_valid=self.plasma_properties.param.has_properties,
             ),
