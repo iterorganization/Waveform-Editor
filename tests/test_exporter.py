@@ -707,3 +707,29 @@ def test_example_yaml(tmp_path):
         nbi.unit[0].power_launched.data == 16.5e6 * (values**2.5) / (870e3**2.5)
     )
     assert np.all(nbi.unit[0].energy.data == values)
+
+
+def test_overlay_base_without_waveforms_warns(caplog):
+    """An overlay base whose IDS has no waveforms in the config is dropped, with a
+    warning, rather than silently passed through."""
+    yaml_str = """
+    equilibrium:
+      equilibrium/time_slice/global_quantities/ip:
+      - {from: 2, to: 3, duration: 1}
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+
+    # Provide a 'core_profiles' base that the configuration says nothing about.
+    base = imas.IDSFactory("4.0.0").new("core_profiles")
+    exporter = ConfigurationExporter(
+        config, np.array([0.0, 1.0]), base_idss={"core_profiles": base}
+    )
+
+    with caplog.at_level("WARNING"):
+        idss = exporter.to_ids_dict()
+
+    assert "core_profiles" not in idss  # dropped, not passed through
+    assert "equilibrium" in idss
+    assert "core_profiles" in caplog.text
+    assert "no waveforms" in caplog.text
