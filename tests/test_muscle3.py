@@ -7,7 +7,10 @@ libmuscle = pytest.importorskip("libmuscle")
 ymmsl = pytest.importorskip("ymmsl")
 
 # This cannot be imported if libmuscle is not available
-from waveform_editor.muscle3 import waveform_actor  # noqa: E402
+from waveform_editor.muscle3 import (  # noqa: E402
+    _time_base_and_base_ids,
+    waveform_actor,
+)
 
 # imas_core is required for IDS serialize, unfortunately this means we cannot run these
 # tests in github Actions yet..
@@ -187,3 +190,54 @@ def test_muscle3_whole_trace(tmp_path, monkeypatch):
         "trace_validator": trace_validator,
     }
     libmuscle.runner.run_simulation(configuration, implementations)
+
+
+# --- overlay-mode validation of the incoming base IDS ---------------------------------
+
+
+class _Msg:
+    """Minimal stand-in for a libmuscle Message (only the fields the helper reads)."""
+
+    def __init__(self, data, timestamp=0.0):
+        self.data = data
+        self.timestamp = timestamp
+
+
+def _eq_msg(homogeneous_time, time):
+    eq = imas.IDSFactory("4.0.0").equilibrium()
+    eq.ids_properties.homogeneous_time = homogeneous_time
+    if time is not None:
+        eq.time = time
+    return _Msg(eq.serialize())
+
+
+def test_overlay_non_homogeneous_warns(caplog):
+    """A non-homogeneous base is overlaid but warns; INFO names the selected mode."""
+    msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS, TRACE_TIMES)
+    with caplog.at_level("INFO"):
+        times, base_idss = _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+    assert np.array_equal(times, TRACE_TIMES)
+    assert set(base_idss) == {"equilibrium"}
+    assert "overlay mode" in caplog.text
+    assert "homogeneous time mode" in caplog.text
+
+
+def test_overlay_homogeneous_does_not_warn(caplog):
+    msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, TRACE_TIMES)
+    with caplog.at_level("WARNING"):
+        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+    assert "homogeneous time mode" not in caplog.text
+
+
+def test_overlay_missing_time_raises():
+    msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, None)
+    with pytest.raises(RuntimeError, match="no root '/time'"):
+        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+
+
+def test_fresh_export_mode(caplog):
+    """A port whose name is not a valid IDS selects fresh-export mode."""
+    with caplog.at_level("INFO"):
+        times, base_idss = _time_base_and_base_ids(_Msg(None, 3.0), "input", "4.0.0")
+    assert np.array_equal(times, [3.0]) and base_idss == {}
+    assert "fresh-export mode" in caplog.text

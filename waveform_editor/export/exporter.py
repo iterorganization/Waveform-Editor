@@ -69,6 +69,12 @@ class ConfigurationExporter:
             factory: IDSFactory to use for creating new IDSs
         """
         ids_map = self._get_ids_map()
+        # An overlay base with no waveforms in the config is never filled nor yielded.
+        for ids_name in self.base_idss.keys() - ids_map.keys():
+            logger.warning(
+                f"overlay base '{ids_name}' has no waveforms in the config, "
+                f"so it is not exported."
+            )
         self.total_progress = sum(2 * len(waveforms) for waveforms in ids_map.values())
         self.current_progress = 0
         for ids_name, waveforms in ids_map.items():

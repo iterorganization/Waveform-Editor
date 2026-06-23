@@ -27,8 +27,10 @@ def _time_base_and_base_ids(msg, input_port, dd_version):
     name = input_port.removesuffix("_in")
     factory = imas.IDSFactory(dd_version)
     if not factory.exists(name):
+        logger.info("fresh-export mode on '%s' (not an IDS name)", input_port)
         return np.array([msg.timestamp]), {}
 
+    logger.info("overlay mode on '%s': overlaying onto '%s'", input_port, name)
     if msg.data is None:
         raise RuntimeError(
             f"input port '{input_port}' selects overlay mode, but the message carried "
@@ -36,9 +38,17 @@ def _time_base_and_base_ids(msg, input_port, dd_version):
         )
     base = factory.new(name)
     base.deserialize(msg.data)
+
+    # Overlay evaluates the waveforms on '/time' and writes the result back homogeneous,
+    # so '/time' is not authoritative for a non-homogeneous base: warn rather than fail.
+    if int(base.ids_properties.homogeneous_time) != (
+        imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+    ):
+        logger.warning("received '%s' IDS is not in homogeneous time mode", name)
+
     times = np.asarray(base.time, dtype=float)
     if times.size == 0:
-        raise RuntimeError(f"received '{name}' IDS has an empty time array")
+        raise RuntimeError(f"received '{name}' IDS has no root '/time' to overlay onto")
     return times, {name: base}
 
 
