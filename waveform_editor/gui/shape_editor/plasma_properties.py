@@ -164,6 +164,22 @@ class PlasmaProfiles(Viewer):
         self._from_ids_badge, self._edited_badge, self._reset_btn = _make_badges(
             self.param.input_state, self.reset_to_ids
         )
+        self._from_ids_badge.margin = (5, 0, 0, 4)
+        self._use_parametric_btn = pn.widgets.Button(
+            name="Use parametric",
+            button_type="light",
+            width=130,
+            margin=(0, 0, 0, 4),
+        )
+        self._use_parametric_btn.on_click(lambda _: self._switch_to_parametric())
+        self._use_parametric_btn.visible = pn.bind(
+            lambda s: s == "from_ids", self.param.input_state
+        )
+
+    def _switch_to_parametric(self):
+        self._reload_parametric()
+        self.input_state = "edited"
+        self.param.trigger("changed")
 
     def load_from_ids(self, uri, time):
         """Load profiles from IDS and mark as 'from IDS'."""
@@ -267,10 +283,12 @@ class PlasmaProfiles(Viewer):
         )
 
     def __panel__(self):
+        is_not_from_ids = pn.bind(lambda s: s != "from_ids", self.param.input_state)
         badge_area = pn.Row(
             self._from_ids_badge,
             self._edited_badge,
             self._reset_btn,
+            self._use_parametric_btn,
             margin=0,
             align="center",
         )
@@ -288,6 +306,7 @@ class PlasmaProfiles(Viewer):
                 self._gamma_input,
                 align="end",
                 margin=(4, 0, 0, 0),
+                visible=is_not_from_ids,
             ),
             self._profiles_pane,
             css_classes=["property-card"],
