@@ -15,9 +15,22 @@ This page assumes you are familiar with `MUSCLE3 <https://muscle3.readthedocs.io
 Actor details
 -------------
 
-The actor expects messages on a single input port. We take the timestamp of the
-message and evaluate all waveforms at that moment in time. These waveforms are
-stored in their respective IDSs and sent on the respective (connected) output port.
+The actor expects a message on a single input port, evaluates all configured waveforms,
+and sends each resulting IDS on its matching (connected) output port. The **name of the
+input port** selects between two modes:
+
+- **Fresh export** -- when the port name is *not* an IDS name (e.g. ``time_in``). The
+  waveforms are evaluated at the message timestamp into a single new time slice per output
+  IDS. Only the timestamp of the incoming message is used.
+
+- **Overlay** -- when the port name is ``<ids>_in`` (or ``<ids>``, i.e. a valid IDS name).
+  The message must carry that IDS; the actor reads its ``time`` array, evaluates the
+  waveforms on every time present, and overlays them onto the received IDS *in place* --
+  preserving all of its other data -- before sending it on. This lets the actor sit inline
+  in a pipeline and augment an IDS passing through, for example adding a plasma-current
+  waveform to an equilibrium on its way to a solver, rather than emitting a fresh IDS. The
+  actor stops with a ``RuntimeError`` if such a port receives no IDS, or an IDS whose
+  ``time`` array is empty.
 
 .. code-block:: yaml
     :caption: Example ``implementations`` section for running the waveform-editor actor
@@ -36,8 +49,10 @@ Available settings
 Input ports (``F_INIT``)
 ''''''''''''''''''''''''
 
-The actor has one input port. The name can be chosen freely in the workflow yMMSL (see
-example below).
+The actor has exactly one input port, whose name selects the export mode (see
+`Actor details`_): name it ``<ids>_in`` (or ``<ids>``) for *overlay* mode -- the time base
+is read from, and the waveforms overlaid onto, the IDS carried in the message; use any
+other name (e.g. ``time_in``) for *fresh export* at the message timestamp.
 
 The actor will stop with a ``RuntimeError`` when there are no input ports, or when there
 are multiple input ports declared.
@@ -55,12 +70,14 @@ error when the ``waveforms.yaml`` doesn't contain waveforms for either the
 ``ec_launchers`` IDS or the ``nbi`` IDS.
 
 
-Example
--------
+Example: fresh export
+---------------------
 
 The following yMMSL shows an example coupling for a hypothetical ``controller`` actor
-with the waveform-editor actor. N.B. ``__PATH__`` is a placeholder which should be
-replaced with the full path to the files.
+with the waveform-editor actor. The actor's input port is ``time_in`` (not an IDS name),
+so it runs in *fresh export* mode: the ``controller`` drives it with timestamps and gets
+back a single-slice ``ec_launchers`` and ``nbi`` IDS each step. N.B. ``__PATH__`` is a
+placeholder which should be replaced with the full path to the files.
 
 .. literalinclude:: ../../tests/muscle3_integration/coupling.ymmsl.in
     :language: yaml
@@ -71,4 +88,25 @@ The corresponding waveform configuration is shown below:
 .. literalinclude:: ../../tests/muscle3_integration/waveforms.yaml
     :language: yaml
     :caption: waveforms.yaml
+
+
+Example: overlay
+----------------
+
+In *overlay* mode the actor augments an IDS that flows through it. Below, a hypothetical
+``solver`` sends an ``equilibrium`` to the actor and receives it back with the configured
+waveforms (here the plasma current ``ip``) written onto every time slice; all other
+``equilibrium`` data is preserved. The input port ``equilibrium_in`` is what selects
+overlay mode. N.B. ``__PATH__`` is a placeholder which should be replaced with the full
+path to the files.
+
+.. literalinclude:: ../../tests/muscle3_integration/overlay.ymmsl.in
+    :language: yaml
+    :caption: overlay.ymmsl.in
+
+The corresponding waveform configuration is shown below:
+
+.. literalinclude:: ../../tests/muscle3_integration/overlay_waveforms.yaml
+    :language: yaml
+    :caption: overlay_waveforms.yaml
 

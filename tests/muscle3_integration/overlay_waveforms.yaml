@@ -1,0 +1,8 @@
+# Waveform configuration for the overlay example: a single plasma-current ramp that the
+# actor writes onto every time slice of the equilibrium it receives.
+globals:
+  dd_version: 4.0.0
+
+Plasma current:
+  equilibrium/time_slice/global_quantities/ip:
+    - {type: linear, to: -15e6, duration: 100}

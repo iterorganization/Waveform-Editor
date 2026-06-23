@@ -48,3 +48,18 @@ a.title, span.title { display: none !important; }
 #pnx_dialog_close {
     margin: 6px;
 }
+
+/* Metrics chips */
+.mc-wrap { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 4px; }
+.mc {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(128,128,128,0.1);
+    border: 1px solid rgba(128,128,128,0.3);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 16px;
+    white-space: nowrap;
+}
+.mc-lbl { color: #000; margin-right: 6px; }
+.mc-val { font-weight: 600; }
