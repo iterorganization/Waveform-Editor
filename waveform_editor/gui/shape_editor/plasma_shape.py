@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import imas
 import pandas as pd
 import panel as pn
@@ -15,6 +17,8 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_outline_from_params,
     update_outline_from_gaps,
 )
+
+_CARD_CSS = (Path(__file__).parent.parent / "styles" / "property_card.css").read_text()
 
 
 class PlasmaShapeParams(Viewer):
@@ -42,13 +46,33 @@ class PlasmaShapeParams(Viewer):
     )
 
     def __panel__(self):
-        widgets = {}
-        for name in self.param:
-            if isinstance(self.param[name], param.Integer):
-                widgets[name] = FixedWidthEditableIntSlider
-            elif isinstance(self.param[name], param.Number):
-                widgets[name] = FormattedEditableFloatSlider
-        return pn.Param(self.param, widgets=widgets, show_name=False)
+        def _slider(n):
+            p = getattr(self.param, n)
+            kwargs = {"sizing_mode": "stretch_width", "width": None}
+            if isinstance(self.param[n], param.Integer):
+                return FixedWidthEditableIntSlider.from_param(p, **kwargs)
+            return FormattedEditableFloatSlider.from_param(p, **kwargs)
+
+        def _group(title, *param_names):
+            return pn.Column(
+                pn.pane.HTML(
+                    f"<b>{title}</b>"
+                    "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
+                    margin=(0, 0, 0, 0),
+                ),
+                *[_slider(n) for n in param_names],
+                css_classes=["property-card"],
+                stylesheets=[_CARD_CSS],
+                margin=(0, 0, 8, 0),
+            )
+
+        return pn.Column(
+            _group("Geometry", "a", "center_r", "center_z"),
+            _group("Shape coefficients", "kappa", "delta"),
+            _group("X point", "rx", "zx"),
+            _group("Boundary", "n_desired_bnd_points"),
+            margin=(10, 20, 0, 20),
+        )
 
 
 class WeightedPointsTable(param.Parameterized):
@@ -227,9 +251,20 @@ class PlasmaShape(Viewer):
             visible=self.param.has_shape.rx.not_(),
         )
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
-        self.radio_box = pn.widgets.RadioBoxGroup.from_param(
-            self.param.input_mode, inline=False, margin=(15, 20, 0, 20)
+        self.radio_box = pn.widgets.RadioButtonGroup(
+            options={
+                "Eq IDS\nOutline": self.EQUILIBRIUM_INPUT,
+                "Parameterized": self.PARAMETERIZED_INPUT,
+                "Eq IDS\nGaps": self.GAP_INPUT,
+                "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
+            },
+            value=self.input_mode,
+            button_type="primary",
+            sizing_mode="stretch_width",
+            margin=(15, 20, 0, 20),
+            stylesheets=[_CARD_CSS],
         )
+        self.radio_box.link(self, value="input_mode", bidirectional=True)
         self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
         self.outline_r = None
         self.outline_z = None

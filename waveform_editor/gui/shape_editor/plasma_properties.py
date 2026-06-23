@@ -113,7 +113,7 @@ class PropertyInput(Viewer):
             self._value_input,
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
-            max_width=600,
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
 
@@ -149,13 +149,25 @@ class PlasmaProfiles(Viewer):
         self._resetting = False
 
         self._alpha_input = FormattedEditableFloatSlider.from_param(
-            self.param.alpha, name="Alpha", margin=0
+            self.param.alpha,
+            name="Alpha",
+            margin=0,
+            sizing_mode="stretch_width",
+            width=None,
         )
         self._beta_input = FormattedEditableFloatSlider.from_param(
-            self.param.beta, name="Beta", margin=0
+            self.param.beta,
+            name="Beta",
+            margin=0,
+            sizing_mode="stretch_width",
+            width=None,
         )
         self._gamma_input = FormattedEditableFloatSlider.from_param(
-            self.param.gamma, name="Gamma", margin=0
+            self.param.gamma,
+            name="Gamma",
+            margin=0,
+            sizing_mode="stretch_width",
+            width=None,
         )
         self._profiles_pane = pn.pane.HoloViews(
             hv.DynamicMap(self._plot_profiles), width=350, height=350
@@ -311,7 +323,7 @@ class PlasmaProfiles(Viewer):
             self._profiles_pane,
             css_classes=["property-card"],
             stylesheets=[_CARD_CSS],
-            max_width=600,
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
 
@@ -436,7 +448,7 @@ class PlasmaProperties(Viewer):
             ),
             css_classes=["property-card", "ids-source-card"],
             stylesheets=[_CARD_CSS],
-            max_width=600,
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
         return pn.Column(
