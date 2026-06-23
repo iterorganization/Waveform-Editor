@@ -91,9 +91,7 @@ class PropertyInput(Viewer):
     def _on_value_change(self):
         self.resolved_value = self.value
         if self.ids_value is not None:
-            self.input_state = (
-                "from_ids" if self.value == self.ids_value else "edited"
-            )
+            self.input_state = "from_ids" if self.value == self.ids_value else "edited"
         self.param.trigger("changed")
 
     def __panel__(self):
