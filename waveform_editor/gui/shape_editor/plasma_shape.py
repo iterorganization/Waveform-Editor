@@ -214,7 +214,18 @@ class PlasmaShape(Viewer):
 
     def __init__(self):
         super().__init__()
-        self.indicator = WarningIndicator(visible=self.param.has_shape.rx.not_())
+        self.outline_indicator = WarningIndicator(
+            tooltip="No valid equilibrium IDS with outline loaded",
+            visible=self.param.has_shape.rx.not_(),
+        )
+        self.gap_indicator = WarningIndicator(
+            tooltip="No valid equilibrium IDS with gaps loaded",
+            visible=self.param.has_shape.rx.not_(),
+        )
+        self.weighted_points_indicator = WarningIndicator(
+            tooltip="At least 2 points are required to define a plasma shape",
+            visible=self.param.has_shape.rx.not_(),
+        )
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioBoxGroup.from_param(
             self.param.input_mode, inline=False, margin=(15, 20, 0, 20)
@@ -363,11 +374,15 @@ class PlasmaShape(Viewer):
         if self.input_mode == self.PARAMETERIZED_INPUT:
             return self.shape_params
         elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Row(pn.Param(self.input_outline, show_name=False), self.indicator)
+            return pn.Row(
+                pn.Param(self.input_outline, show_name=False), self.outline_indicator
+            )
         elif self.input_mode == self.GAP_INPUT:
-            return pn.Row(pn.Param(self.input_gaps, show_name=False), self.indicator)
+            return pn.Row(
+                pn.Param(self.input_gaps, show_name=False), self.gap_indicator
+            )
         elif self.input_mode == self.WEIGHTED_POINTS_INPUT:
-            return self.weighted_points_table
+            return pn.Row(self.weighted_points_table, self.weighted_points_indicator)
 
     def __panel__(self):
         return self.panel
