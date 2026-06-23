@@ -154,7 +154,8 @@ class WeightedPointsTable(param.Parameterized):
         """Generate outline coordinates from weighted points.
 
         Returns:
-            tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if fewer than 2 valid points
+            tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if
+                fewer than 2 valid points
         """
         if self.points.empty:
             return None, None
