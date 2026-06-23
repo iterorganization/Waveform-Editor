@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
-import scipy
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -45,9 +44,6 @@ class NicePlotter(Viewer):
     WIDTH = 800
     HEIGHT = 1000
 
-    PROFILE_WIDTH = 350
-    PROFILE_HEIGHT = 350
-
     def __init__(self, **params):
         super().__init__(**params)
         self.DEFAULT_OPTS = hv.opts.Overlay(
@@ -85,10 +81,6 @@ class NicePlotter(Viewer):
             loading=self.communicator.param.processing,
         )
 
-        profiles_plot = hv.DynamicMap(self._plot_profiles)
-        self.profiles_pane = pn.pane.HoloViews(
-            profiles_plot, width=self.PROFILE_WIDTH, height=self.PROFILE_HEIGHT
-        )
         self.panel_layout = pn.Param(
             self.param,
             show_name=False,
@@ -97,39 +89,6 @@ class NicePlotter(Viewer):
                     "visible": self.nice_settings.param.is_inverse_mode
                 }
             },
-        )
-
-    @pn.depends("plasma_properties.profile_updated")
-    def _plot_profiles(self):
-        # Define kdims/vdims otherwise Holoviews will link axes with flux map
-        kdims = "Normalized Poloidal Flux"
-        vdims = "Profile Value [A.U.]"
-        if not self.plasma_properties.has_properties:
-            overlay = hv.Overlay([hv.Curve([], kdims=kdims, vdims=vdims)])
-        else:
-            psi_norm = self.plasma_properties.psi_norm
-
-            # Scale profiles
-            r0 = self.plasma_properties.r0
-            dpressure_dpsi = self.plasma_properties.dpressure_dpsi * r0
-            f_df_dpsi = self.plasma_properties.f_df_dpsi / (scipy.constants.mu_0 * r0)
-
-            dpressure_dpsi_curve = hv.Curve(
-                (psi_norm, dpressure_dpsi),
-                kdims=kdims,
-                vdims=vdims,
-                label="dpressure_dpsi * r₀",
-            )
-            f_df_dpsi_curve = hv.Curve(
-                (psi_norm, f_df_dpsi),
-                kdims=kdims,
-                vdims=vdims,
-                label="f_df_dpsi / (μ₀ * r₀)",
-            )
-            overlay = dpressure_dpsi_curve * f_df_dpsi_curve
-
-        return overlay.opts(
-            hv.opts.Overlay(title="Plasma Profiles"), hv.opts.Curve(framewise=True)
         )
 
     @pn.depends(
