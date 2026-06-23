@@ -3,7 +3,6 @@ import logging
 import imas
 import panel as pn
 import param
-from panel.io.notifications import NotificationAreaBase
 
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.gui.dict_editor import DictEditor
@@ -28,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def exception_handler(ex):
     logger.error("Error", exc_info=ex)
-    pn.state.notifications.error(f"{ex}")
+    pn.state.notifications.error(f"{ex}", duration=20000)
 
 
 # Note: these extension() calls take a couple of seconds
@@ -42,18 +41,6 @@ pn.extension(
     notifications=True,
     exception_handler=exception_handler,
 )
-
-_NOTIFICATION_DURATION = 20000
-
-for _name in ("error", "warning", "info", "success"):
-    _orig = getattr(NotificationAreaBase, _name)
-    setattr(
-        NotificationAreaBase,
-        _name,
-        lambda self, message, duration=_NOTIFICATION_DURATION, _f=_orig: _f(
-            self, message, duration
-        ),
-    )
 
 
 class WaveformEditorGui(param.Parameterized):
