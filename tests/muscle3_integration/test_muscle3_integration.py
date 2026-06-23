@@ -1,5 +1,4 @@
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -13,8 +12,7 @@ def _run_coupling(tmp_path, name):
     curpath = Path(__file__).parent
     ymmsl_in = curpath / f"{name}.ymmsl.in"
     ymmsl_out = curpath / f"{name}.ymmsl"
-    ymmsl_out.write_text(ymmsl_in.read_text().replace("__PATH__", str(curpath))
-                         .replace("__PYTHON__", sys.executable))
+    ymmsl_out.write_text(ymmsl_in.read_text().replace("__PATH__", str(curpath)))
 
     # Start workflow and check that it completes successfully
     subprocess.run(
