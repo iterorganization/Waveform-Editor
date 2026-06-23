@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def exception_handler(ex):
     logger.error("Error", exc_info=ex)
-    pn.state.notifications.error(f"{ex}")
+    pn.state.notifications.error(f"{ex}", duration=20000)
 
 
 # Note: these extension() calls take a couple of seconds
