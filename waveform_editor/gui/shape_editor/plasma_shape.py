@@ -154,7 +154,7 @@ class WeightedPointsTable(param.Parameterized):
         """Generate outline coordinates from weighted points.
 
         Returns:
-            tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if empty
+            tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if fewer than 2 valid points
         """
         if self.points.empty:
             return None, None
@@ -163,7 +163,7 @@ class WeightedPointsTable(param.Parameterized):
         valid_df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
         valid_df = valid_df[(valid_df[self.COL_R] != "") & (valid_df[self.COL_Z] != "")]
 
-        if valid_df.empty:
+        if len(valid_df) < 2:
             return None, None
 
         # Duplicate points according to their weight
