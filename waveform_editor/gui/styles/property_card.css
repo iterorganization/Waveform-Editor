@@ -5,6 +5,32 @@
     display: block;
 }
 
+:host(.ids-source-card) {
+    border-color: #2a5a8c;
+    background: rgba(13, 110, 253, 0.08);
+}
+
 .bk-btn.bk-btn-primary.bk-active {
     color: white !important;
+}
+
+.ids-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.ids-badge.from-ids {
+    background-color: rgba(13, 110, 253, 0.15);
+    color: #4da6ff;
+    border: 1px solid rgba(13, 110, 253, 0.4);
+}
+
+.ids-badge.edited {
+    background-color: rgba(255, 152, 0, 0.15);
+    color: #ffb347;
+    border: 1px solid rgba(255, 152, 0, 0.4);
 }
