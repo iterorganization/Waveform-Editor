@@ -27,7 +27,12 @@ dependencies = [
     "ruamel.yaml",
     "kaleido", # required for exporting PNG to disk
     "asteval",
-    "muscle3",
+    "muscle3==0.8.0",
+    # Web service backend
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "websockets>=12.0",
+    "pydantic>=2.0",
 ]
 dynamic = ["version"]
 
@@ -56,12 +61,13 @@ docs = [
 [project.urls]
 homepage = "https://github.com/iterorganization/Waveform-Editor"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["waveform_editor*"]
-
 [project.scripts]
 waveform-editor = "waveform_editor.cli:cli"
+waveform-editor-web = "backend.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["waveform_editor*", "backend*"]
 
 [tool.setuptools_scm]
 #version_file = "waveform_editor/_version.py"
@@ -75,6 +81,7 @@ profile = "black"
 exclude = [
     "docs",
     ".git",
+    "frontend",
 ]
 # Same as Black
 line-length = 88

@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-import imas
 import param
 import yaml
 
@@ -120,26 +119,8 @@ class NiceSettings(param.Parameterized):
         )
 
     def _load_machine_description_presets(self):
-        """Load the machine description presets from PRESET_URIS"""
-        available = {}
-
-        for preset_name, preset in self.PRESET_URIS.items():
-            try:
-                for ids_name, uri in preset.items():
-                    with imas.DBEntry(uri, "r") as entry:
-                        entry.get(ids_name, lazy=True)
-
-            except Exception as err:
-                logger.warning(
-                    "Machine Description Preset '%s' could not be loaded: %s",
-                    preset_name,
-                    err,
-                )
-                continue
-
-            available[preset_name] = preset
-
-        return available
+        """Return all preset URIs without pre-validating accessibility."""
+        return dict(self.PRESET_URIS)
 
     @param.depends("mode", watch=True, on_init=True)
     def set_mode_flags(self):

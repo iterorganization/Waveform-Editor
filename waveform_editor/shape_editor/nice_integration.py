@@ -39,7 +39,7 @@ model:
         nice_inv.pf_active_out: shape_editor.pf_active_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
+    muscle_profile_level: none
     nice_inv.xml_path: {xml_path}
 """
 
@@ -63,7 +63,7 @@ model:
         nice_dir.equilibrium_out: shape_editor.equilibrium_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
+    muscle_profile_level: none
     nice_dir.xml_path: {xml_path}
 """
 
@@ -166,7 +166,7 @@ class NiceIntegration(param.Parameterized):
 
     async def close(self):
         """Shutdown all running subprocesses and close any open files."""
-        if not self.running or self.closing:
+        if not getattr(self, '_started', False) or self.closing:
             return
         self.closing = True
         self.xml_config_file.close()
@@ -209,7 +209,7 @@ class NiceIntegration(param.Parameterized):
         self.processing = False
         self.communicator_pipe.close()
         self.manager_pipe.close()
-        self.closing = self.running = False
+        self.closing = self.running = self._started = False
         self._update_state()
 
     async def run(self, is_direct_mode=False):
@@ -217,6 +217,7 @@ class NiceIntegration(param.Parameterized):
         if self.running:
             raise RuntimeError("Already running!")
         self.running = True
+        self._started = True
 
         self.xml_config_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
 
@@ -341,9 +342,10 @@ class NiceIntegration(param.Parameterized):
             await asyncio.sleep(0.1)
         try:
             eq, pfa = self.communicator_pipe.recv()
-        except EOFError:  # NICE and/or communicator has crashed
+        except (EOFError, ConnectionResetError, OSError) as exc:  # NICE and/or communicator has crashed
             self.processing = False
-            return
+            self.running = False  # Signal to callers that the pipeline is dead
+            raise RuntimeError("NICE process terminated unexpectedly") from exc
 
         # Set output
         equilibrium = self.imas_factory.new("equilibrium")

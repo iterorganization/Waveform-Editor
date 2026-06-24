@@ -92,6 +92,12 @@ celerybeat-schedule
 venv/
 ENV/
 
+# Node
+frontend/node_modules/
+
+# MUSCLE3 / NICE runtime artifacts
+performance.sqlite
+
 # Spyder project settings
 .spyderproject
 .spyproject

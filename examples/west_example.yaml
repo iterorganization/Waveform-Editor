@@ -1,0 +1,66 @@
+# WEST 500 kA flat-top scenario — ready-to-use NICE Inverse example
+#
+# Pulse timeline (total: 30 s)
+#   0  –  5 s : plasma formation + current ramp-up to 500 kA
+#   5  – 25 s : 500 kA flat-top
+#   25 – 30 s : controlled ramp-down
+#
+# To use:
+#   1. Open the app and load this file into the YAML editor.
+#   2. Go to Settings → select WEST preset → Save & Load Geometries.
+#   3. Set NICE timesteps in the NICE Config panel and click Run.
+#
+# Reference: WEST machine parameters (CEA Cadarache)
+
+globals:
+  dd_version: 4.0.0
+  machine_description: {}
+
+NICE Shape:
+  # Elongation: ramps from circular to lower single-null shape
+  kappa:
+  - {type: linear, from: 1.0, to: 1.6, duration: 5}
+  - {type: constant, value: 1.6, duration: 20}
+  - {type: linear, from: 1.6, to: 1.0, duration: 5}
+  # Triangularity
+  delta:
+  - {type: linear, from: 0.05, to: 0.35, duration: 5}
+  - {type: constant, value: 0.35, duration: 20}
+  - {type: linear, from: 0.35, to: 0.05, duration: 5}
+  # Minor radius (m)
+  a:
+  - {type: linear, from: 0.1, to: 0.5, duration: 5}
+  - {type: constant, value: 0.5, duration: 20}
+  - {type: linear, from: 0.5, to: 0.1, duration: 5}
+  # Geometric centre R (m) — WEST major radius
+  center_r:
+  - {type: constant, value: 2.5, duration: 30}
+  # Geometric centre Z (m)
+  center_z:
+  - {type: constant, value: 0.0, duration: 30}
+  # X-point R (m)
+  rx:
+  - {type: constant, value: 1.95, duration: 30}
+  # X-point Z (m)
+  zx:
+  - {type: constant, value: -1.1, duration: 30}
+
+NICE Properties:
+  # Plasma current (A) — negative = counter-clockwise
+  ip:
+  - {type: linear, from: 0.0, to: -500000.0, duration: 5}
+  - {type: constant, value: -500000.0, duration: 20}
+  - {type: linear, from: -500000.0, to: 0.0, duration: 5}
+  # Vacuum toroidal field at R0 (T) — negative = clockwise
+  b0:
+  - {type: constant, value: -3.7, duration: 30}
+  # Reference major radius for b0 (m)
+  r0:
+  - {type: constant, value: 2.5, duration: 30}
+  # Current profile shape parameters
+  profile_alpha:
+  - {type: constant, value: 0.5, duration: 30}
+  profile_beta:
+  - {type: constant, value: 0.5, duration: 30}
+  profile_gamma:
+  - {type: constant, value: 1.0, duration: 30}
