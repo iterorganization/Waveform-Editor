@@ -113,11 +113,28 @@ class ShapeEditor(Viewer):
             disabled=self.communicator.param.can_warm_start.rx.not_(),
             margin=(20, 15, 2, 10),
         )
+        tooltip_msg = (
+            "Enable warm start to use the previous run's equilibrium as the "
+            "initial guess for the next run. This can improve convergence."
+        )
+        warm_start_tooltip = pn.widgets.TooltipIcon(
+            value=pn.bind(
+                lambda can: (
+                    tooltip_msg
+                    if can
+                    else f"{tooltip_msg}\n\nNo previous run is available yet. "
+                    "Run NICE once to allow warm starting. "
+                ),
+                self.communicator.param.can_warm_start,
+            ),
+            margin=(5, 0, 2, 0),
+        )
         settings_modal = SettingsModal(self.nice_plotter)
         buttons = pn.Row(
             nice_mode_radio,
-            pn.widgets.StaticText(value="Use previous run", margin=(15, 0, 2, 10)),
+            pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
             warm_start_switch,
+            warm_start_tooltip,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
@@ -206,6 +223,17 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
+    @param.depends(
+        "nice_settings.md_pf_active.uri",
+        "nice_settings.md_pf_passive.uri",
+        "nice_settings.md_wall.uri",
+        "nice_settings.md_iron_core.uri",
+        watch=True,
+    )
+    def _disable_warm_start(self):
+        self.use_previous_run = False
+        self.communicator.can_warm_start = False
+
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
         self.pf_active = self._load_slice(
@@ -214,7 +242,6 @@ class ShapeEditor(Viewer):
         self.nice_plotter.pf_active = self.pf_active
         self.coil_currents.create_ui(self.pf_active)
         self.nice_settings.md_pf_active.loaded = self.pf_active is not None
-        self.communicator.can_warm_start = False
 
     @param.depends("nice_settings.md_pf_passive.uri", watch=True)
     def _load_pf_passive(self):
@@ -222,14 +249,12 @@ class ShapeEditor(Viewer):
             self.nice_settings.md_pf_passive.uri, "pf_passive"
         )
         self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
-        self.communicator.can_warm_start = False
 
     @param.depends("nice_settings.md_wall.uri", watch=True)
     def _load_wall(self):
         self.wall = self._load_slice(self.nice_settings.md_wall.uri, "wall")
         self.nice_plotter.wall = self.wall
         self.nice_settings.md_wall.loaded = self.wall is not None
-        self.communicator.can_warm_start = False
 
     @param.depends("nice_settings.md_iron_core.uri", watch=True)
     def _load_iron_core(self):
@@ -237,7 +262,6 @@ class ShapeEditor(Viewer):
             self.nice_settings.md_iron_core.uri, "iron_core"
         )
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
-        self.communicator.can_warm_start = False
 
     def _create_equilibrium(self):
         """Create and initialize an equilibrium IDS.
