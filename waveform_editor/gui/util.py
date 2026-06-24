@@ -24,6 +24,9 @@ class EquilibriumInput(param.Parameterized):
 
 
 class WarningIndicator(pn.widgets.StaticText):
-    def __init__(self, **params):
+    def __init__(self, tooltip="", **params):
         params.setdefault("margin", (40, 0, 0, 0))
-        super().__init__(value="⚠️", **params)
+        icon = (
+            f'<span title="{tooltip}" style="cursor:help">⚠️</span>' if tooltip else "⚠️"
+        )
+        super().__init__(value=icon, **params)
