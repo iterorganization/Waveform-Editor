@@ -143,13 +143,16 @@ class ShapeEditor(Viewer):
         )
 
         self.panel = pn.Row(
+            pn.HSpacer(),
             left_col,
             pn.Column(
                 menu,
                 pn.layout.Divider(),
                 inputs,
-                sizing_mode="stretch_both",
+                sizing_mode="stretch_width",
+                max_width=800,
             ),
+            pn.HSpacer(),
         )
 
     def _create_card(
