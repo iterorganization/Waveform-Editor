@@ -142,7 +142,6 @@ class NiceIntegration(param.Parameterized):
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
-    last_run_successful = param.Boolean(default=False)
     can_warm_start = param.Boolean(default=False)
 
     def __init__(
@@ -155,6 +154,7 @@ class NiceIntegration(param.Parameterized):
         self.imas_factory = imas_factory
         self.on_output = on_output
         self.on_run_finished = on_run_finished
+        self.last_run_successful = False
         self.running = False
         self.closing = False
         self.pf_active = None

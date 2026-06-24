@@ -109,13 +109,14 @@ class ShapeEditor(Viewer):
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         warm_start_switch = pn.widgets.Switch.from_param(
             self.param.use_previous_run,
-            name="Warm start",
+            name="",
             disabled=self.communicator.param.can_warm_start.rx.not_(),
-            margin=(16, 15, 2, 10),
+            margin=(20, 15, 2, 10),
         )
         settings_modal = SettingsModal(self.nice_plotter)
         buttons = pn.Row(
             nice_mode_radio,
+            pn.widgets.StaticText(value="Use previous run", margin=(15, 0, 2, 10)),
             warm_start_switch,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
