@@ -175,13 +175,16 @@ def test_to_ids_aos(tmp_path):
 
 
 def test_export_with_md(tmp_path, ec_launchers_md_uri):
-    """Test export if machine description is provided."""
+    """A whole-IDS import (`ec_launchers/*`) acts as a machine-description base: it is
+    overlaid first, then explicit leaf waveforms override individual nodes."""
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        ec_launchers: {ec_launchers_md_uri}
+      imports:
+        md: {ec_launchers_md_uri}
     ec_launchers:
+      ec_launchers/*:
+        - {{ref: md}}
       ec_launchers/beam(2)/phase/angle: 1
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -210,9 +213,11 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        ec_launchers: {ec_launchers_md_uri}
+      imports:
+        md: {ec_launchers_md_uri}
     ec_launchers:
+      ec_launchers/*:
+        - {{ref: md}}
       ec_launchers/beam(:)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -244,9 +249,11 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        ec_launchers: {ec_launchers_md_uri}
+      imports:
+        md: {ec_launchers_md_uri}
     ec_launchers:
+      ec_launchers/*:
+        - {{ref: md}}
       ec_launchers/beam(2:3)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -295,9 +302,11 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        ec_launchers: {ec_launchers_md_uri}
+      imports:
+        md: {ec_launchers_md_uri}
     ec_launchers:
+      ec_launchers/*:
+        - {{ref: md}}
       ec_launchers/beam(2:)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -315,9 +324,11 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        ec_launchers: {ec_launchers_md_uri}
+      imports:
+        md: {ec_launchers_md_uri}
     ec_launchers:
+      ec_launchers/*:
+        - {{ref: md}}
       ec_launchers/beam(:2)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
@@ -377,9 +388,11 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        core_sources: {core_sources_md_uri}
+      imports:
+        md: {core_sources_md_uri}
     core_sources:
+      core_sources/*:
+        - {{ref: md}}
       core_sources/source(:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
@@ -419,9 +432,11 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        core_sources: {core_sources_md_uri}
+      imports:
+        md: {core_sources_md_uri}
     core_sources:
+      core_sources/*:
+        - {{ref: md}}
       core_sources/source(2:3)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
@@ -483,9 +498,11 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        core_sources: {core_sources_md_uri}
+      imports:
+        md: {core_sources_md_uri}
     core_sources:
+      core_sources/*:
+        - {{ref: md}}
       core_sources/source(2:)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
@@ -507,9 +524,11 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
       dd_version: 4.0.0
-      machine_description: 
-        core_sources: {core_sources_md_uri}
+      imports:
+        md: {core_sources_md_uri}
     core_sources:
+      core_sources/*:
+        - {{ref: md}}
       core_sources/source(:2)/global_quantities/power:
       - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
@@ -709,27 +728,347 @@ def test_example_yaml(tmp_path):
     assert np.all(nbi.unit[0].energy.data == values)
 
 
-def test_overlay_base_without_waveforms_warns(caplog):
-    """An overlay base whose IDS has no waveforms in the config is dropped, with a
-    warning, rather than silently passed through."""
-    yaml_str = """
-    equilibrium:
-      equilibrium/time_slice/global_quantities/ip:
-      - {from: 2, to: 3, duration: 1}
-    """
-    config = WaveformConfiguration()
-    config.load_yaml(yaml_str)
+@pytest.fixture
+def core_sources_ext_uri(tmp_path):
+    """An external, time-dependent core_sources to import from. Its single source has
+    only identifier.index set (no identifier.name), so the config assigns the name."""
+    uri = f"imas:hdf5?path={tmp_path}/ext"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        cs = dbentry.factory.new("core_sources")
+        cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cs.time = [0.0, 1.0, 2.0]
+        cs.source.resize(1)
+        cs.source[0].identifier.index = 1
+        cs.source[0].profiles_1d.resize(3)
+        for t in range(3):
+            cs.source[0].profiles_1d[t].grid.rho_tor_norm = [0.0, 0.5, 1.0]
+            cs.source[0].profiles_1d[t].electrons.energy = [t * 10.0] * 3
+        dbentry.put(cs)
+    return uri
 
-    # Provide a 'core_profiles' base that the configuration says nothing about.
-    base = imas.IDSFactory("4.0.0").new("core_profiles")
-    exporter = ConfigurationExporter(
-        config, np.array([0.0, 1.0]), base_idss={"core_profiles": base}
+
+def test_import_scalar(core_sources_ext_uri):
+    """An import reads its (resampled) value per variable from a named entry at the same
+    path; a {value: <string>} constant assigns a static field (e.g. a name)."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_ext_uri}"
+Heating:
+  core_sources/source(1)/profiles_1d/electrons/energy:
+    - {{type: reference, ref: ext}}
+  core_sources/source(1)/identifier/name:
+    - {{value: ec}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    cs = ConfigurationExporter(config, times).to_ids_dict()["core_sources"]
+
+    # a {value: <string>} constant names the (1-based) first source:
+    assert str(cs.source[0].identifier.name) == "ec"
+    # the profile was read from the reference and resampled onto /time:
+    assert np.allclose(
+        [cs.source[0].profiles_1d[t].electrons.energy[0] for t in range(3)],
+        [0.0, 10.0, 20.0],
+    )
+    # only the referenced node was imported, not its siblings:
+    assert len(cs.source[0].profiles_1d[0].grid.rho_tor_norm) == 0
+
+
+@pytest.fixture
+def equilibrium_ext_uri(tmp_path):
+    """An external equilibrium with a scalar ip(t) = 0, 10, 20 at t = 0, 1, 2."""
+    uri = f"imas:hdf5?path={tmp_path}/eq"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        eq = dbentry.factory.new("equilibrium")
+        eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        eq.time = [0.0, 1.0, 2.0]
+        eq.time_slice.resize(3)
+        for t in range(3):
+            eq.time_slice[t].global_quantities.ip = t * 10.0
+        dbentry.put(eq)
+    return uri
+
+
+def test_import_composite(equilibrium_ext_uri):
+    """A scalar waveform mixing an analytic and an import segment: each fills its
+    [start, end] window. Imports may be combined with analytic segments only for 0D."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{equilibrium_ext_uri}"
+Plasma current:
+  equilibrium/time_slice/global_quantities/ip:
+    - {{type: constant, value: -1.0, duration: 1}}
+    - {{ref: ext, duration: 1}}
+"""
+    )
+    times = np.array([0.0, 2.0])
+    eq = ConfigurationExporter(config, times).to_ids_dict()["equilibrium"]
+
+    # [0, 1] s: analytic constant -1; [1, 2] s: reference ip (20 at t=2)
+    assert eq.time_slice[0].global_quantities.ip == -1.0
+    assert eq.time_slice[1].global_quantities.ip == 20.0
+
+
+def test_import_wildcard(core_sources_ext_uri):
+    """A `*` after a prefix imports every filled leaf of that subtree from the entry."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_ext_uri}"
+Heating:
+  core_sources/source(1)/profiles_1d/*:
+    - {{ref: ext}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    cs = ConfigurationExporter(config, times).to_ids_dict()["core_sources"]
+
+    # both leaves under profiles_1d were imported across all three slices:
+    assert len(cs.source[0].profiles_1d) == 3
+    assert np.allclose(
+        [cs.source[0].profiles_1d[t].electrons.energy[0] for t in range(3)],
+        [0.0, 10.0, 20.0],
+    )
+    assert np.allclose(cs.source[0].profiles_1d[0].grid.rho_tor_norm, [0.0, 0.5, 1.0])
+
+
+@pytest.fixture
+def core_sources_multi_ext_uri(tmp_path):
+    """An external core_sources with two sources; source(s) has electrons.energy
+    offset by 100*s so each source is distinguishable after import."""
+    uri = f"imas:hdf5?path={tmp_path}/multi"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        cs = dbentry.factory.new("core_sources")
+        cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cs.time = [0.0, 1.0, 2.0]
+        cs.source.resize(2)
+        for s in range(2):
+            cs.source[s].profiles_1d.resize(3)
+            for t in range(3):
+                cs.source[s].profiles_1d[t].grid.rho_tor_norm = [0.0, 0.5, 1.0]
+                cs.source[s].profiles_1d[t].electrons.energy = [100 * s + t * 10.0] * 3
+        dbentry.put(cs)
+    return uri
+
+
+def test_import_index_wildcard(core_sources_multi_ext_uri):
+    """A `(*)` index wildcard imports the leaf for every element of that array of
+    structure in the source (here: the same leaf across all sources)."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_multi_ext_uri}"
+Heating:
+  core_sources/source(*)/profiles_1d/electrons/energy:
+    - {{ref: ext}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    cs = ConfigurationExporter(config, times).to_ids_dict()["core_sources"]
+
+    # both sources were imported, each with its own offset across all slices:
+    assert len(cs.source) == 2
+    for s in range(2):
+        assert np.allclose(
+            [cs.source[s].profiles_1d[t].electrons.energy[0] for t in range(3)],
+            [100 * s + t * 10.0 for t in range(3)],
+        )
+
+
+@pytest.fixture
+def core_sources_ions_ext_uri(tmp_path):
+    """An external core_sources with two sources, each with two ions; ion z_ion encodes
+    its (source, ion) indices as 10*source + ion so every combination is distinguishable
+    after a two-dimensional wildcard import."""
+    uri = f"imas:hdf5?path={tmp_path}/ions"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        cs = dbentry.factory.new("core_sources")
+        cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cs.time = [0.0, 1.0]
+        cs.source.resize(2)
+        for s in range(2):
+            cs.source[s].profiles_1d.resize(2)
+            for t in range(2):
+                cs.source[s].profiles_1d[t].ion.resize(2)
+                for i in range(2):
+                    cs.source[s].profiles_1d[t].ion[i].z_ion = 10.0 * s + i
+        dbentry.put(cs)
+    return uri
+
+
+def test_import_index_wildcard_multi(core_sources_ions_ext_uri):
+    """Multiple `(*)` index wildcards expand over every combination (here sources x
+    ions), supporting higher-dimensional imports."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_ions_ext_uri}"
+Heating:
+  core_sources/source(*)/profiles_1d/ion(*)/z_ion:
+    - {{ref: ext}}
+"""
+    )
+    times = np.array([0.0, 1.0])
+    cs = ConfigurationExporter(config, times).to_ids_dict()["core_sources"]
+
+    assert len(cs.source) == 2
+    for s in range(2):
+        assert len(cs.source[s].profiles_1d[0].ion) == 2
+        for i in range(2):
+            for t in range(2):
+                assert cs.source[s].profiles_1d[t].ion[i].z_ion == 10.0 * s + i
+
+
+@pytest.fixture
+def core_sources_varying_ions_uri(tmp_path):
+    """A core_sources whose ion array of structure varies in size across time slices
+    (2 ions at t=0, 3 ions at t=1) -- a legal but wildcard-incompatible source."""
+    uri = f"imas:hdf5?path={tmp_path}/varying"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        cs = dbentry.factory.new("core_sources")
+        cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cs.time = [0.0, 1.0]
+        cs.source.resize(1)
+        cs.source[0].profiles_1d.resize(2)
+        for t, n_ions in enumerate((2, 3)):
+            cs.source[0].profiles_1d[t].ion.resize(n_ions)
+            for i in range(n_ions):
+                cs.source[0].profiles_1d[t].ion[i].z_ion = float(i)
+        dbentry.put(cs)
+    return uri
+
+
+def test_import_index_wildcard_varying_in_time_raises(core_sources_varying_ions_uri):
+    """A `(*)` over an array of structure whose size varies in time raises a clear
+    error instead of silently importing only some elements."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_varying_ions_uri}"
+Heating:
+  core_sources/source(1)/profiles_1d/ion(*)/z_ion:
+    - {{ref: ext}}
+"""
+    )
+    with pytest.raises(RuntimeError, match="varies across a time-dependent parent"):
+        ConfigurationExporter(config, np.array([0.0, 1.0])).to_ids_dict()
+
+
+def test_import_time_offset(core_sources_ext_uri):
+    """`time_offset` shifts the time at which the import is sampled."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{core_sources_ext_uri}"
+Heating:
+  core_sources/source(1)/profiles_1d/electrons/energy:
+    - {{type: reference, ref: ext, time_offset: 1.0}}
+"""
+    )
+    times = np.array([0.0, 1.0])
+    cs = ConfigurationExporter(config, times).to_ids_dict()["core_sources"]
+
+    # sampled at t+1 (CLOSEST): export t=0 -> ext t=1 (10), export t=1 -> ext t=2 (20)
+    assert np.allclose(
+        [cs.source[0].profiles_1d[t].electrons.energy[0] for t in range(2)],
+        [10.0, 20.0],
     )
 
-    with caplog.at_level("WARNING"):
-        idss = exporter.to_ids_dict()
 
-    assert "core_profiles" not in idss  # dropped, not passed through
-    assert "equilibrium" in idss
-    assert "core_profiles" in caplog.text
-    assert "no waveforms" in caplog.text
+def test_import_interp_linear(equilibrium_ext_uri):
+    """`interp: linear` interpolates between the source time slices instead of snapping
+    to the closest one."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{equilibrium_ext_uri}"
+Plasma current:
+  equilibrium/time_slice/global_quantities/ip:
+    - {{ref: ext, interp: linear}}
+"""
+    )
+    times = np.array([0.5, 1.5])
+    eq = ConfigurationExporter(config, times).to_ids_dict()["equilibrium"]
+
+    # ip is 0, 10, 20 at t = 0, 1, 2 -> linear interpolation gives 5 and 15:
+    assert eq.time_slice[0].global_quantities.ip == 5.0
+    assert eq.time_slice[1].global_quantities.ip == 15.0
+
+
+def test_import_missing_entry_errors(core_sources_ext_uri):
+    """Referring to an import name that is not declared raises, rather than silently
+    producing an empty IDS."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        """
+globals:
+  dd_version: 4.0.0
+Heating:
+  core_sources/source(1)/profiles_1d/electrons/energy:
+    - {ref: does_not_exist}
+"""
+    )
+    with pytest.raises(KeyError):
+        ConfigurationExporter(config, np.array([0.0, 1.0])).to_ids_dict()
+
+
+def test_import_port_overlay():
+    """A `{port: <name>}` import reads an IDS supplied at run time (as the MUSCLE3 actor
+    does); a whole-IDS import overlays it, then explicit leaves override."""
+    received = imas.IDSFactory("4.0.0").new("equilibrium")
+    received.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+    received.time = [0.0, 1.0]
+    received.time_slice.resize(2)
+    received.vacuum_toroidal_field.r0 = 6.2
+    for t in range(2):
+        received.time_slice[t].global_quantities.ip = 100.0
+
+    config = WaveformConfiguration()
+    config.load_yaml(
+        """
+globals:
+  dd_version: 4.0.0
+  imports:
+    live: {port: equilibrium_in}
+Plasma:
+  equilibrium/*:
+    - {ref: live}
+  equilibrium/time_slice/global_quantities/ip:
+    - {type: constant, value: 5.0}
+"""
+    )
+    times = np.array([0.0, 1.0])
+    exporter = ConfigurationExporter(
+        config, times, received_idss={"equilibrium_in": received}
+    )
+    eq = exporter.to_ids_dict()["equilibrium"]
+
+    # overlaid base field survived, while ip was overridden by the explicit waveform:
+    assert eq.vacuum_toroidal_field.r0 == 6.2
+    assert eq.time_slice[0].global_quantities.ip == 5.0

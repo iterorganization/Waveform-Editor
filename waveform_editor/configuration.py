@@ -40,6 +40,12 @@ class WaveformConfiguration(param.Parameterized):
     def _set_changed(self, event):
         self.has_changed = True
 
+    @property
+    def imports(self):
+        """Named external data entries (name -> URI or {port: name}), stored under
+        globals and consumed by import (``{ref: ...}``) entries in waveforms."""
+        return self.globals.imports
+
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.
 

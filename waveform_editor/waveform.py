@@ -6,6 +6,7 @@ from ruamel.yaml.comments import CommentedSeq
 
 from waveform_editor.base_waveform import BaseWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
+from waveform_editor.tendencies.import_tendency import ImportTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
@@ -29,6 +30,9 @@ tendency_map = {
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
     "repeat": RepeatTendency,
+    "import": ImportTendency,
+    # `reference` kept as an alias for the import tendency type.
+    "reference": ImportTendency,
 }
 
 
@@ -194,6 +198,7 @@ class Waveform(BaseWaveform):
         they still need an explicit ``type``. Falls back to ``linear``.
         """
         for key, tendency_type in (
+            ("user_ref", "import"),
             ("user_to", "linear"),
             ("user_time", "piecewise"),
             ("user_value", "constant"),

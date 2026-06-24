@@ -1,6 +1,6 @@
 globals:
   dd_version: 4.0.0
-  machine_description: {}
+  imports: {}
 dummy_waveform:
   w/1:
   - {to: 1e5, duration: 100}

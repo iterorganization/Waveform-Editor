@@ -50,21 +50,31 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
        globals:
          dd_version: 3.42.0
 
-*   **machine_description:** Provides URIs for IMAS machine description entries.
-    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
-    When exporting, any existing data from the given machine description will be copied
-    to the new IDS, before the waveforms from the configuration are added.
-    To specify machine descriptions for a target IDS, use a dictionary where keys are 
-    the IDS names and values are their corresponding machine description URIs.
+*   **imports:** Named external data entries that waveforms can import values from
+    (see :ref:`Import <import-tendency>`). Each value is either an IMAS URI, or a
+    mapping ``{port: <name>}`` referring to an IDS received on a MUSCLE3 port at run
+    time (used by the actor). Use a dictionary where the keys are names you choose and
+    refer to with ``{ref: <name>}``.
 
     .. code-block:: yaml
 
        globals:
          dd_version: 3.42.0
-         machine_description:
-           ec_launchers: imas:hdf5?path=machine_description1
-           nbi: imas:hdf5?path=machine_description2
-           # Add other IDSs as needed
+         imports:
+           machine: imas:hdf5?path=machine_description1
+           scenario: imas:hdf5?path=scenario_run
+           live_eq: {port: equilibrium_in}
+
+    A machine description is expressed as an import overlaid whole onto an IDS: list an
+    ``<ids>/*`` import first (its filled leaves are copied in as a base), then add the
+    waveforms that override individual nodes.
+
+    .. code-block:: yaml
+
+       ec_launchers:
+         ec_launchers/*:
+           - {ref: machine}          # overlay the whole machine-description IDS first
+         ec_launchers/beam(1)/phase/angle: -1.65898  # then override specific leaves
 
 Grouping Waveforms
 ------------------
@@ -155,5 +165,13 @@ Slicing can be applied at multiple nested levels. For example, the following fil
 .. code-block:: yaml
 
    interferometer/channel(2:3)/wavelength(1:4)/phase_corrected/data: 15.0
+
+Complete Example
+----------------
+
+The following configuration exercises the full :ref:`imports <import-tendency>` mechanism: a machine-description overlay (``<ids>/*``), a scalar import with interpolation, a static value, trailing-subtree and index wildcards (``source(*)``, ``ion(*)``), a 0D composite, and a runtime port-import.
+
+.. literalinclude:: examples/imports.yaml
+   :language: yaml
 
 

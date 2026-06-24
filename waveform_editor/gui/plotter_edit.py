@@ -9,6 +9,8 @@ from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
 from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.import_waveform import ImportWaveform
+from waveform_editor.static_waveform import StaticWaveform
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.util import State
 from waveform_editor.waveform import Waveform
@@ -18,7 +20,8 @@ class PlotterEdit(Viewer):
     """Class to plot a single waveform in edit mode."""
 
     plotted_waveform: Waveform = param.ClassSelector(
-        class_=(Waveform, DerivedWaveform), allow_refs=True
+        class_=(Waveform, DerivedWaveform, ImportWaveform, StaticWaveform),
+        allow_refs=True,
     )
 
     def __init__(self, editor, **params):

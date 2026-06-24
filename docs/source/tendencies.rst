@@ -192,6 +192,42 @@ Parameters
 .. warning::
     This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.
 
+.. _import-tendency:
+
+Import
+======
+
+Takes its values from an external entry declared in :ref:`globals.imports <global_properties>` instead of an analytic shape. By default the same DD path the waveform sits at is read from the import and resampled onto the export time base.
+
+*Type:* ``import`` (inferred when ``ref`` is present)
+
+Parameters
+----------
+*   ``ref``: Name of the entry in ``globals.imports`` to read from.
+*   ``path``: DD path to read from the import. Defaults to the waveform's own path.
+*   ``time_offset``: Offset added to the export time when sampling the import. Defaults to ``0``.
+*   ``interp``: Resampling mode onto the export time base: ``closest`` (default), ``linear`` or ``previous``.
+
+.. code-block:: yaml
+
+    core_sources/source(1)/profiles_1d/electrons/energy:
+      - {ref: scenario, interp: linear}
+
+Wildcards expand against the source: a trailing ``*`` imports every filled leaf of that subtree (e.g. ``core_sources/source(1)/profiles_1d/*``), an ``<ids>/*`` import copies a whole IDS and acts as an overlay base, and a ``(*)`` index wildcard imports the leaf for every element of that array of structure. Several ``(*)`` may be combined for higher-dimensional imports, e.g. every ion of every source:
+
+.. code-block:: yaml
+
+    core_sources/source(*)/profiles_1d/ion(*)/z_ion:
+      - {ref: scenario}
+
+Non-0D imports (a value per radial point, a wildcard subtree) own the whole waveform. Only **0D (scalar)** imports may be combined with analytic segments, each filling its ``[start, end]`` window:
+
+.. code-block:: yaml
+
+    equilibrium/time_slice/global_quantities/ip:
+      - {type: constant, value: -1.0, duration: 1}   # analytic on [0, 1] s
+      - {ref: scenario, duration: 1}                 # imported on [1, 2] s
+
 Periodic Tendencies
 ===================
 

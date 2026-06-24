@@ -8,7 +8,7 @@ ymmsl = pytest.importorskip("ymmsl")
 
 # This cannot be imported if libmuscle is not available
 from waveform_editor.muscle3 import (  # noqa: E402
-    _time_base_and_base_ids,
+    _time_base_and_received_idss,
     waveform_actor,
 )
 
@@ -106,13 +106,17 @@ def test_muscle3(tmp_path, monkeypatch):
 # --- whole-trace mode: an '<ids>_in' port carrying an IDS -> overlay on its /time ----
 
 TRACE_YAML = """
+globals:
+  dd_version: 4.0.0
+  imports:
+    eq_in: {port: equilibrium_in}
 equilibrium:
+  equilibrium/*:
+    - {ref: eq_in}
   equilibrium/time_slice/global_quantities/ip:
     - {to: 8.33e5, duration: 20}
     - {type: constant, duration: 20}
     - {duration: 25, to: 0}
-globals:
-  dd_version: 4.0.0
 """
 # Same waveform as the per-slice test, but now interpolated onto a whole trace at once:
 TRACE_TIMES = [1.0, 21.0, 50.0]
@@ -192,7 +196,7 @@ def test_muscle3_whole_trace(tmp_path, monkeypatch):
     libmuscle.runner.run_simulation(configuration, implementations)
 
 
-# --- overlay-mode validation of the incoming base IDS ---------------------------------
+# --- the input port carrying an IDS becomes a port-import -----------------------------
 
 
 class _Msg:
@@ -211,33 +215,34 @@ def _eq_msg(homogeneous_time, time):
     return _Msg(eq.serialize())
 
 
-def test_overlay_non_homogeneous_warns(caplog):
-    """A non-homogeneous base is overlaid but warns; INFO names the selected mode."""
+def test_received_non_homogeneous_warns(caplog):
+    """A non-homogeneous IDS is still exposed as a port-import but warns; the export
+    times are taken from its /time. The IDS is keyed by the input port name."""
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS, TRACE_TIMES)
     with caplog.at_level("INFO"):
-        times, base_idss = _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        times, received = _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
     assert np.array_equal(times, TRACE_TIMES)
-    assert set(base_idss) == {"equilibrium"}
-    assert "overlay mode" in caplog.text
+    assert set(received) == {"equilibrium_in"}
     assert "homogeneous time mode" in caplog.text
 
 
-def test_overlay_homogeneous_does_not_warn(caplog):
+def test_received_homogeneous_does_not_warn(caplog):
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, TRACE_TIMES)
     with caplog.at_level("WARNING"):
-        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
     assert "homogeneous time mode" not in caplog.text
 
 
-def test_overlay_missing_time_raises():
+def test_received_missing_time_raises():
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, None)
     with pytest.raises(RuntimeError, match="no root '/time'"):
-        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
 
 
 def test_fresh_export_mode(caplog):
     """A port whose name is not a valid IDS selects fresh-export mode."""
     with caplog.at_level("INFO"):
-        times, base_idss = _time_base_and_base_ids(_Msg(None, 3.0), "input", "4.0.0")
-    assert np.array_equal(times, [3.0]) and base_idss == {}
+        msg = _Msg(None, 3.0)
+        times, received = _time_base_and_received_idss(msg, "input", "4.0.0")
+    assert np.array_equal(times, [3.0]) and received == {}
     assert "fresh-export mode" in caplog.text

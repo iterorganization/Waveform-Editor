@@ -2,13 +2,44 @@ import logging
 import re
 from io import StringIO
 
+import imas
 import yaml
+from imas.ids_path import IDSPath
 from ruamel.yaml import YAML
 
 from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.import_waveform import ImportWaveform
+from waveform_editor.static_waveform import StaticWaveform
 from waveform_editor.waveform import Waveform
 
 logger = logging.getLogger(__name__)
+
+
+def _is_import_entry(entry):
+    """Whether a parsed waveform entry declares an import (``{ref: ...}``)."""
+    return isinstance(entry, dict) and (
+        "user_ref" in entry or entry.get("user_type") in ("import", "reference")
+    )
+
+
+def _import_is_non_scalar(name, entry, dd_version):
+    """Whether an import must be an ImportWaveform rather than a 0D segment.
+
+    True for wildcard paths (``.../*``) and for any path whose DD leaf is not a scalar
+    (a value per radial point, an array of structure, etc.); such imports cannot be
+    combined with analytic segments and own the whole waveform.
+    """
+    source = entry.get("user_path") or name
+    if "*" in source:
+        return True
+    try:
+        ids_name, path = source.split("/", 1)
+        ids = imas.IDSFactory(version=dd_version).new(ids_name)
+        metadata = IDSPath(path).goto_metadata(ids.metadata)
+    except (imas.exception.IDSNameError, ValueError, KeyError):
+        # Unknown path: let the (sole-content) ImportWaveform path handle/report it.
+        return True
+    return metadata.ndim != 0
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
@@ -158,6 +189,32 @@ class YamlParser:
             line_number = waveform_yaml.get("line_number", 0)
             dd_version = self.config.globals.dd_version
             if isinstance(waveform, list):
+                # A single {value: <string>} entry is a static constant (e.g. an
+                # identifier name) -- strings don't fit the numeric tendency value flow.
+                if (
+                    len(waveform) == 1
+                    and isinstance(waveform[0], dict)
+                    and isinstance(waveform[0].get("user_value"), str)
+                ):
+                    return StaticWaveform(
+                        waveform[0]["user_value"],
+                        yaml_str=yaml_str,
+                        name=name,
+                        dd_version=dd_version,
+                    )
+                # A non-0D or wildcard import owns the whole waveform; 0D imports
+                # stay as tendency segments, combinable with analytic ones.
+                if (
+                    len(waveform) == 1
+                    and _is_import_entry(waveform[0])
+                    and _import_is_non_scalar(name, waveform[0], dd_version)
+                ):
+                    return ImportWaveform(
+                        waveform[0],
+                        yaml_str=yaml_str,
+                        name=name,
+                        dd_version=dd_version,
+                    )
                 waveform = Waveform(
                     waveform=waveform,
                     yaml_str=yaml_str,
