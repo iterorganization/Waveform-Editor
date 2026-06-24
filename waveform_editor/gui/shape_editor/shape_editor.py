@@ -34,6 +34,9 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
+    use_previous_run = param.Boolean(
+        default=False, doc="Use previous run as warm start"
+    )
 
     def __init__(self, main_gui):
         super().__init__()
@@ -44,7 +47,11 @@ class ShapeEditor(Viewer):
             height=200,
             max_width=750,
         )
-        self.communicator = NiceIntegration(self.factory, on_output=self.terminal.write)
+        self.communicator = NiceIntegration(
+            self.factory,
+            on_output=self.terminal.write,
+            on_run_finished=self._on_nice_run_finished,
+        )
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents(main_gui)
@@ -100,12 +107,38 @@ class ShapeEditor(Viewer):
             margin=(10, 10, 2, 0),
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
+        warm_start_switch = pn.widgets.Switch.from_param(
+            self.param.use_previous_run,
+            name="",
+            disabled=self.communicator.param.can_warm_start.rx.not_(),
+            margin=(20, 15, 2, 10),
+        )
+        tooltip_msg = (
+            "Enable warm start to use the previous run's equilibrium as the "
+            "initial guess for the next run. This can improve convergence."
+        )
+        warm_start_tooltip = pn.widgets.TooltipIcon(
+            value=pn.bind(
+                lambda can: (
+                    tooltip_msg
+                    if can
+                    else f"{tooltip_msg}\n\nNo previous run is available yet. "
+                    "Run NICE once to allow warm starting. "
+                ),
+                self.communicator.param.can_warm_start,
+            ),
+            margin=(5, 0, 2, 0),
+        )
         settings_modal = SettingsModal(self.nice_plotter)
         buttons = pn.Row(
             nice_mode_radio,
+            pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
+            warm_start_switch,
+            warm_start_tooltip,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
+            align="center",
         )
 
         self.metrics = Metrics()
@@ -190,6 +223,17 @@ class ShapeEditor(Viewer):
             except Exception as e:
                 pn.state.notifications.error(str(e))
 
+    @param.depends(
+        "nice_settings.md_pf_active.uri",
+        "nice_settings.md_pf_passive.uri",
+        "nice_settings.md_wall.uri",
+        "nice_settings.md_iron_core.uri",
+        watch=True,
+    )
+    def _disable_warm_start(self):
+        self.use_previous_run = False
+        self.communicator.can_warm_start = False
+
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
         self.pf_active = self._load_slice(
@@ -220,11 +264,10 @@ class ShapeEditor(Viewer):
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
     def _create_equilibrium(self):
-        """Create an empty equilibrium IDS and fill the plasma shape parameters and
-        plasma properties.
+        """Create and initialize an equilibrium IDS.
 
         Returns:
-            The filled equilibrium IDS
+            The equilibrium IDS
         """
         equilibrium = self.factory.new("equilibrium")
         equilibrium.ids_properties.homogeneous_time = (
@@ -234,6 +277,14 @@ class ShapeEditor(Viewer):
         equilibrium.time_slice.resize(1)
         equilibrium.vacuum_toroidal_field.b0.resize(1)
 
+        return equilibrium
+
+    def _fill_equilibrium(self, equilibrium):
+        """Fill equilibrium IDS with plasma boundary and core profiles.
+
+        Args:
+            equilibrium: equilibrium IDS object to fill
+        """
         # Only fill plasma shape for NICE inverse mode
         if self.nice_settings.is_inverse_mode:
             equilibrium.time_slice[0].boundary.outline.r = self.plasma_shape.outline_r
@@ -253,7 +304,14 @@ class ShapeEditor(Viewer):
         # N.B. We fill psi with psi_norm. This works for NICE, but is not adhering to
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
-        return equilibrium
+
+    def _on_nice_run_finished(self, success):
+        if success:
+            pn.state.notifications.success("NICE run complete.")
+        else:
+            pn.state.notifications.error(
+                "NICE did not converge. Check the terminal for details."
+            )
 
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
@@ -268,7 +326,25 @@ class ShapeEditor(Viewer):
 
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
-        equilibrium = self._create_equilibrium()
+
+        use_previous_equilibrium = (
+            self.use_previous_run and self.communicator.can_warm_start
+        )
+        if use_previous_equilibrium:
+            pn.state.notifications.info("Starting from previous equilibrium.")
+            equilibrium = self.communicator.equilibrium
+        else:
+            equilibrium = self._create_equilibrium()
+        self._fill_equilibrium(equilibrium)
+
+        if self.nice_settings.is_direct_mode:
+            start_from_scratch = "0" if use_previous_equilibrium else "1"
+            xml_params.find("algoStartFromScratch").text = start_from_scratch
+            xml_params.find("algoStartFromScratchReconAB").text = start_from_scratch
+            xml_params.find("algoStartPsiFromInData").text = (
+                "1" if use_previous_equilibrium else "0"
+            )
+
         if not self.communicator.running:
             await self.communicator.run(
                 is_direct_mode=self.nice_settings.is_direct_mode

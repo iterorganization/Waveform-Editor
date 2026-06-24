@@ -20,9 +20,9 @@
   <algoReconPolar>0</algoReconPolar>
   <algoReconPressure>0</algoReconPressure>
   <algoReconMSE>0</algoReconMSE>
-  <algoStartFromScratch>1</algoStartFromScratch>
-  <algoStartFromScratchReconAB>1</algoStartFromScratchReconAB>
-  <algoStartPsiFromInData>0</algoStartPsiFromInData>
+  <algoStartFromScratch>0</algoStartFromScratch>
+  <algoStartFromScratchReconAB>0</algoStartFromScratchReconAB>
+  <algoStartPsiFromInData>1</algoStartPsiFromInData>
   <algoWithIp>1</algoWithIp>
   <iterMaxDir>40</iterMaxDir>
   <epsStopDir>1.0e-10</epsStopDir>

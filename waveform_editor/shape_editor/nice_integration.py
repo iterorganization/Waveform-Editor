@@ -142,23 +142,26 @@ class NiceIntegration(param.Parameterized):
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
+    can_warm_start = param.Boolean(default=False)
 
     def __init__(
         self,
         imas_factory,
-        on_output: Callable[[str | bytes], None] | None = None,
+        on_output: Callable[[str | bytes], None],
+        on_run_finished: Callable[[bool], None],
     ):
         super().__init__()
         self.imas_factory = imas_factory
         self.on_output = on_output
+        self.on_run_finished = on_run_finished
+        self.last_run_successful = False
         self.running = False
         self.closing = False
         self.pf_active = None
         self._poll_task = None
 
     def _write_output(self, text: str | bytes):
-        if self.on_output is not None:
-            self.on_output(text)
+        self.on_output(text)
 
     def create_communicator_protocol(self):
         """Instantiate protocol to handle NICE subprocess output."""
@@ -286,10 +289,21 @@ class NiceIntegration(param.Parameterized):
             and self.nice_transport.get_returncode() is None
         )
 
+    @param.depends("equilibrium", watch=True)
+    def _update_can_warm_start(self):
+        if self.equilibrium is None:
+            self.can_warm_start = False
+        else:
+            self.can_warm_start = bool(self.equilibrium.code.output_flag[0] == 0)
+
     @param.depends("nice_running", watch=True)
     async def _nice_running_changed(self):
         if not self.nice_running:  # figure out why:
             retcode = self.nice_transport.get_returncode()
+            self.last_run_successful = retcode == 0
+            if not self.last_run_successful:
+                self.can_warm_start = False
+                self.on_run_finished(False)
             # Bold green on success, bold red on failure:
             color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
@@ -352,6 +366,7 @@ class NiceIntegration(param.Parameterized):
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
         self.pf_active = pf_active
+        self.on_run_finished(self.can_warm_start)
         self.processing = False
 
 
