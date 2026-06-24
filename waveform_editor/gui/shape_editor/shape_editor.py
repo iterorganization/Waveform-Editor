@@ -106,6 +106,8 @@ class ShapeEditor(Viewer):
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
+            max_width=800,
+            sizing_mode="stretch_width",
         )
 
         self.metrics = Metrics()
