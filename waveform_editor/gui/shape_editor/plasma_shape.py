@@ -72,6 +72,7 @@ class PlasmaShapeParams(Viewer):
             _group("X point", "rx", "zx"),
             _group("Boundary", "n_desired_bnd_points"),
             margin=(10, 20, 0, 20),
+            max_width=800,
         )
 
 
@@ -253,14 +254,15 @@ class PlasmaShape(Viewer):
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioButtonGroup(
             options={
-                "Eq IDS\nOutline": self.EQUILIBRIUM_INPUT,
+                "Equilibrium\nIDS Outline": self.EQUILIBRIUM_INPUT,
                 "Parameterized": self.PARAMETERIZED_INPUT,
-                "Eq IDS\nGaps": self.GAP_INPUT,
+                "Equilibrium\nIDS Gaps": self.GAP_INPUT,
                 "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
             },
             value=self.input_mode,
             button_type="primary",
             sizing_mode="stretch_width",
+            max_width=800,
             margin=(15, 20, 0, 20),
             stylesheets=[_CARD_CSS],
         )

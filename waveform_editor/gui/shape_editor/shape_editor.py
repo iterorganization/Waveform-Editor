@@ -146,7 +146,6 @@ class ShapeEditor(Viewer):
             left_col,
             pn.Column(
                 menu,
-                pn.layout.Divider(),
                 inputs,
                 sizing_mode="stretch_both",
             ),
@@ -171,6 +170,7 @@ class ShapeEditor(Viewer):
             panel_object,
             title=title,
             sizing_mode="stretch_width",
+            max_width=800,
             collapsed=collapsed,
             visible=visible,
         )
