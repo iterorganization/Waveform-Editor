@@ -186,6 +186,22 @@ class Waveform(BaseWaveform):
             if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
 
+    @staticmethod
+    def _infer_tendency_type(entry):
+        """Infer the tendency type from an entry's keys when ``type`` is omitted.
+
+        Unambiguous keys map directly; periodic shapes share keys (period/amplitude) so
+        they still need an explicit ``type``. Falls back to ``linear``.
+        """
+        for key, tendency_type in (
+            ("user_to", "linear"),
+            ("user_time", "piecewise"),
+            ("user_value", "constant"),
+        ):
+            if key in entry:
+                return tendency_type
+        return "linear"
+
     def _has_type_error(self, entry):
         """Check if the YAML entry contains an error related to the tendency type.
 
@@ -198,9 +214,9 @@ class Waveform(BaseWaveform):
         line_number = entry.get("line_number", 0)
         ignore_msg = "This tendency will be ignored.\n"
 
-        # If no type is given, take linear as default
+        # If no type is given, infer it from the entry's keys (linear by default)
         if "user_type" not in entry:
-            entry["user_type"] = "linear"
+            entry["user_type"] = self._infer_tendency_type(entry)
 
         tendency_type = entry.get("user_type", None)
         if tendency_type is None:

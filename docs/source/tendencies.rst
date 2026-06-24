@@ -8,6 +8,10 @@ This document describes the different types of tendencies available in the Wavef
 
 Each tendency defines the behavior of the signal over a specific time interval. You can chain multiple tendencies together to create complex waveforms.
 
+The ``type`` may be omitted, in which case it is inferred from the entry's keys: ``to`` implies a :ref:`Linear <available-tendencies>` tendency, ``time`` a :ref:`Piecewise Linear <piecewise-linear-tendency>` tendency, and ``value`` a :ref:`Constant <available-tendencies>` tendency. Anything else falls back to ``linear`` -- so a linear tendency does *not* require ``to``; a ``from``-only, ``rate``-only, or bare segment is still linear and takes its endpoints from its neighbours.
+
+A segment whose distinguishing key is absent must therefore name its ``type`` explicitly: the periodic shapes (sine, sawtooth, triangle, square), a :ref:`Smooth <available-tendencies>` tendency, and a value-less :ref:`Constant <available-tendencies>` (a bare ``{duration: ...}`` is read as a linear ramp, not a held constant).
+
 Common Time Parameters
 ======================
 

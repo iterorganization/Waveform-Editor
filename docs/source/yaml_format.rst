@@ -106,6 +106,8 @@ a list of waveforms, or a single number (float or integer).
                # Implicit linear ramp back to 0 over 25 seconds
              - { duration: 25, to: 0 }
 
+        The ``type`` may be omitted, in which case it is inferred from the entry's keys: ``to`` implies ``linear``, ``time`` implies ``piecewise``, and ``value`` implies ``constant``. Anything else falls back to ``linear`` -- a linear tendency does not require ``to`` (a ``from``-only, ``rate``-only, or bare segment is still linear, taking its endpoints from its neighbours). A segment whose distinguishing key is absent must name its ``type`` explicitly: the periodic shapes, ``smooth``, and a value-less ``constant`` (a bare ``{duration: ...}`` is read as a linear ramp).
+
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
     2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time.
