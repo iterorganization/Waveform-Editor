@@ -58,8 +58,9 @@ Value types
 
 The ``value`` is type-aware and is not restricted to floating-point numbers:
 
-*   **Floats** are interpolated across gaps between tendencies, as usual.
-*   **Integers** are preserved as integers (they are not coerced to float).
+*   **Numeric values** (floats and integers) produce a floating-point signal that is
+    interpolated across gaps between tendencies, as usual. Integers are treated as
+    floats during evaluation.
 *   **Categorical values** (strings or booleans) describe non-numeric signals, such
     as a heating scheme (``"nbi"``, ``"ec"``) or an on/off flag. These are held as a
     step (zero-order hold) rather than interpolated: across a gap, the previous value
