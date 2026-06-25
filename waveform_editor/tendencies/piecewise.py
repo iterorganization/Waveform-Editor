@@ -21,18 +21,33 @@ class PiecewiseLinearTendency(BaseTendency):
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
         time, value = self._validate_time_value(user_time, user_value)
-        self._remove_user_time_params(kwargs)
+        time_bounds = self._resolve_time_bounds(time, kwargs)
         super().__init__(
-            user_start=time[0],
-            user_end=time[-1],
             time=time,
             value=value,
+            **time_bounds,
             **kwargs,
         )
         self.annotations.add_annotations(self.pre_check_annotations)
 
         self.start_value_set = True
         self.param.update(values_changed=True)
+
+    def _resolve_time_bounds(self, time, kwargs):
+        """Determine the tendency's start/end from the time array. The piecewise-linear
+        tendency derives its full interval from the time list, so the common time
+        parameters (``start``, ``duration``, ``end``) are not accepted.
+
+        Args:
+            time: The validated time array.
+            kwargs: The remaining keyword arguments. Disallowed time parameters are
+                removed in place.
+
+        Returns:
+            A dict of the ``user_start``/``user_end`` keyword arguments to pass on.
+        """
+        self._remove_user_time_params(kwargs)
+        return {"user_start": time[0], "user_end": time[-1]}
 
     def get_value(
         self, time: np.ndarray | None = None
@@ -105,7 +120,7 @@ class PiecewiseLinearTendency(BaseTendency):
 
         try:
             time = np.asarray_chkfinite(time, dtype=float)
-            value = np.asarray_chkfinite(value, dtype=float)
+            value = self._coerce_value(value)
             is_monotonic = np.all(np.diff(time) > 0)
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
@@ -118,6 +133,20 @@ class PiecewiseLinearTendency(BaseTendency):
             return time, value
         else:
             return self.time, self.value
+
+    def _coerce_value(self, value):
+        """Coerce the value array to the dtype expected by this tendency. The
+        piecewise-linear tendency interpolates its values, so they must be finite
+        floats. Subclasses may override this (e.g. a step function keeps the native
+        dtype, allowing non-numeric values).
+
+        Args:
+            value: The values defined on each time step.
+
+        Returns:
+            The coerced value array.
+        """
+        return np.asarray_chkfinite(value, dtype=float)
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,

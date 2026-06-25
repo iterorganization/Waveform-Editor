@@ -15,6 +15,7 @@ from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTenden
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.tendencies.steps import StepsTendency
 
 tendency_map = {
     "linear": LinearTendency,
@@ -29,6 +30,7 @@ tendency_map = {
     "constant": ConstantTendency,
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
+    "steps": StepsTendency,
     "repeat": RepeatTendency,
     "import": ImportTendency,
     # `reference` kept as an alias for the import tendency type.

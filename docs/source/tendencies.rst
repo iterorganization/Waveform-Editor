@@ -212,6 +212,32 @@ Parameters
 .. warning::
     This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.
 
+.. _steps-tendency:
+
+Steps Tendency
+==============
+
+Defines a piecewise-constant (zero-order-hold) signal. Each ``time`` is the start of a step that holds the corresponding ``value`` until the next breakpoint, and the final value is held until the tendency's ``end``. Unlike the :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>`, the values are never interpolated, so they may be :ref:`categorical <available-tendencies>` (strings or booleans) as well as numeric.
+
+Parameters
+----------
+*   ``time``: A list of step start times. Must be strictly monotonically increasing and must have at least 1 point.
+*   ``value``: A list of corresponding values, one per breakpoint in ``time``. Must have the same length as ``time``. Values may be numbers, strings, or booleans.
+*   ``duration``, ``end``: Optionally extend the tendency past the last breakpoint, so the final value is held for a real duration. If omitted, the tendency ends at the last ``time`` (the final value then has zero duration within the tendency). The ``start`` is always inferred from the first ``time`` and may not be set explicitly.
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 2, 4], value: [1, 3, 5], end: 6}
+
+A common use is a non-numeric signal, such as the active heating scheme:
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 10, 20], value: [ohmic, nbi, ec], end: 30}
+
+.. warning::
+    Categorical and numeric values cannot be mixed within a single waveform.
+
 .. _import-tendency:
 
 Import
