@@ -209,6 +209,31 @@ def test_export_full_slice_flt_1d(tmp_path):
         assert np.array_equal(ids.beam[0].phase.angle, [111] * 3)
 
 
+@pytest.mark.parametrize("slice_first", [True, False])
+def test_full_slice_independent_of_order(tmp_path, slice_first):
+    """A `:` slice expands to the final array size whether it is listed before or after
+    the explicitly-indexed sibling that sizes the array: beam(:) fills all four beams
+    sized by beam(4). Arrays are sized (once) before any value is filled."""
+    slice_wf = "ec_launchers/beam(:)/phase/angle: 7"
+    index_wf = (
+        "ec_launchers/beam(4)/power_launched/data:\n"
+        "        - {type: constant, value: 1.0}"
+    )
+    order = (slice_wf, index_wf) if slice_first else (index_wf, slice_wf)
+    yaml_str = f"""
+    ec_launchers:
+      {order[0]}
+      {order[1]}
+    """
+    uri = f"{tmp_path}/test_db.nc"
+    _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
+    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("ec_launchers")
+        assert len(ids.beam) == 4
+        for beam in range(4):
+            assert np.array_equal(ids.beam[beam].phase.angle, [7] * 3)
+
+
 def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
@@ -1119,59 +1144,6 @@ Plasma current:
 
 
 @pytest.fixture
-def machine_ext_uri(tmp_path):
-    """An external entry with two filled IDSs, for a whole-entry (root `*`) import: a
-    homogeneous equilibrium with ip(t) and a time-independent ec_launchers."""
-    uri = f"imas:hdf5?path={tmp_path}/machine"
-    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
-        eq = dbentry.factory.new("equilibrium")
-        eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-        eq.time = [0.0, 1.0, 2.0]
-        eq.time_slice.resize(3)
-        for t in range(3):
-            eq.time_slice[t].global_quantities.ip = t * 10.0
-        dbentry.put(eq)
-
-        ec = dbentry.factory.new("ec_launchers")
-        ec.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
-        ec.beam.resize(2)
-        ec.beam[0].name = "beam0"
-        ec.beam[1].name = "beam1"
-        dbentry.put(ec)
-    return uri
-
-
-def test_root_import(machine_ext_uri):
-    """A root `*` import overlays every IDS the source provides, each as a whole-IDS
-    overlay base; explicit leaf waveforms still override afterwards."""
-    config = WaveformConfiguration()
-    config.load_yaml(
-        f"""
-globals:
-  dd_version: 4.0.0
-  imports:
-    machine: "{machine_ext_uri}"
-Machine:
-  '*':
-    - {{ref: machine}}
-  equilibrium/time_slice/global_quantities/ip:
-    - {{type: constant, value: 5.0}}
-"""
-    )
-    times = np.array([0.0, 1.0, 2.0])
-    idss = ConfigurationExporter(config, times).to_ids_dict()
-
-    # both filled IDSs of the entry were overlaid:
-    assert set(idss) == {"equilibrium", "ec_launchers"}
-    assert [str(b.name) for b in idss["ec_launchers"].beam] == ["beam0", "beam1"]
-    # the explicit ip waveform overrode the overlaid equilibrium values:
-    assert np.allclose(
-        [idss["equilibrium"].time_slice[t].global_quantities.ip for t in range(3)],
-        [5.0, 5.0, 5.0],
-    )
-
-
-@pytest.fixture
 def two_equilibria(tmp_path):
     """Two external equilibria for overlay-precedence tests: 'a' has ip(t) = 0,10,20 and
     r0 = 6.2; 'b' has a constant ip = 100 and r0 = 9.9."""
@@ -1192,8 +1164,8 @@ def two_equilibria(tmp_path):
     return a, b
 
 
-def test_multiple_root_imports(two_equilibria):
-    """A root `*` may list several sources; they overlay in listed order, so the last
+def test_multiple_source_overlay(two_equilibria):
+    """An overlay may list several sources; they overlay in listed order, so the last
     wins at a shared leaf (equal specificity)."""
     a, b = two_equilibria
     config = WaveformConfiguration()
@@ -1205,7 +1177,7 @@ globals:
     a: "{a}"
     b: "{b}"
 Machine:
-  '*':
+  equilibrium/*:
     - {{ref: a}}
     - {{ref: b}}
 """

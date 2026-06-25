@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 
 from waveform_editor.export.pcssp_exporter import PCSSPExporter
-from waveform_editor.ids_fill import fill_nodes
+from waveform_editor.ids_fill import fill_nodes, size_arrays
 from waveform_editor.import_waveform import ImportWaveform
 from waveform_editor.static_waveform import StaticWaveform
 
@@ -90,24 +90,12 @@ class ConfigurationExporter:
     def _get_ids_map(self):
         """Constructs a mapping of IDS names to their corresponding waveform objects.
 
-        A root import (``*``) is bucketed into every IDS its sources provide, so it acts
-        as a whole-IDS overlay base for each of them.
-
         Returns:
             A dictionary mapping IDS names to lists of waveform objects.
         """
         ids_map = {}
         for name, group in self.config.waveform_map.items():
             waveform = group[name]
-            if isinstance(waveform, ImportWaveform) and waveform.is_root:
-                provided = {
-                    ids_name
-                    for spec in waveform.specs
-                    for ids_name in self.resolver.source_ids_names(spec.ref)
-                }
-                for ids_name in provided:
-                    ids_map.setdefault(ids_name, []).append(waveform)
-                continue
             # wildcard reference imports (e.g. .../profiles_1d/*) have no single DD node
             if "*" not in name and not waveform.metadata:
                 logger.warning(
@@ -142,25 +130,15 @@ class ConfigurationExporter:
         self._fill_explicit(ids, waveforms)
 
     def _overlay_import(self, ids, waveform):
-        """Overlay an ImportWaveform's source(s) onto ``ids``, in listed order.
-
-        For a root (``*``) import, each source is copied as a whole-IDS overlay of this
-        IDS (only the sources that actually provide it); otherwise the waveform's own
-        path is the destination, with each spec's ``path`` overriding the source path.
-        """
-        ids_name = ids.metadata.name
+        """Overlay an ImportWaveform's source(s) onto ``ids``, in listed order. Each
+        spec's ``path`` overrides the source path; the destination is the waveform's
+        own path."""
         for spec in waveform.specs:
-            if waveform.is_root:
-                if ids_name not in self.resolver.source_ids_names(spec.ref):
-                    continue
-                src_path = dst_path = f"{ids_name}/*"
-            else:
-                src_path, dst_path = spec.path or waveform.name, waveform.name
             self.resolver.fill_import(
                 ids,
                 ref=spec.ref,
-                src_path=src_path,
-                dst_path=dst_path,
+                src_path=spec.path or waveform.name,
+                dst_path=waveform.name,
                 time=self.times,
                 time_offset=spec.time_offset,
                 interp=spec.interp,
@@ -169,33 +147,25 @@ class ConfigurationExporter:
     def _fill_explicit(self, ids, waveforms):
         """Fill the explicit (analytic / scalar-import / static) waveforms into ``ids``.
 
-        Ensure get_value is only called once per waveform"""
-        values_per_waveform = []
-
-        # We iterate through the waveforms in reverse order because they are typically
-        # ordered with increasing indices. By processing them in reverse, we avoid
-        # unnecessary repeated resizing.
-        for waveform in reversed(waveforms):
-            logger.debug(f"Filling {waveform.name}...")
+        Size every array of structure to the largest size any waveform needs first, then
+        fill, so a ``:`` slice expands against the final sizes regardless of the order
+        the waveforms appear in.
+        """
+        targets = []
+        for waveform in waveforms:
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             if isinstance(waveform, StaticWaveform):
                 values = waveform.value  # a bare constant (e.g. an identifier name)
             else:
                 # Scalar imports and analytic+import composites resolve themselves.
                 _, values = waveform.get_value(self.times)
-            values_per_waveform.append((path, values))
-            fill_nodes(ids, path, values)
+            targets.append((path, values))
             self._increment_progress()
 
-        # NOTE: We fill in two passes. The first pass (above) sizes every array of
-        # structure; the second pass (below) re-fills once all are sized. This handles
-        # e.g. 'beam(:)/phase/angle' processed before 'beam(4)/power_launched/data':
-        # phase/angle must end up filled for all 4 beams. Some niche cases involving
-        # multiple slices for different waveforms might still not be handled correctly.
-        for waveform, (path, values) in zip(
-            waveforms, values_per_waveform, strict=True
-        ):
-            logger.debug(f"Filling {waveform.name}...")
+        size_arrays(ids, [path for path, _ in targets], len(self.times))
+
+        # Fill in declaration order, so a later waveform wins at a shared leaf.
+        for path, values in targets:
             fill_nodes(ids, path, values)
             self._increment_progress()
 

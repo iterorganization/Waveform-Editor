@@ -47,8 +47,3 @@ Plasma current:
   # source is runtime data rather than a file.
   equilibrium/*:
     - {ref: live_eq}
-
-# A bare `*` overlays every IDS a source provides (sources stack, applied in order);
-# more specific imports above still win. Omitted here as it would overlay all IDSs:
-#   '*':
-#     - {ref: machine}

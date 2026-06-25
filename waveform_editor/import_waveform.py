@@ -28,9 +28,8 @@ class ImportWaveform(BaseWaveform):
     exporter copies the (resampled) source into the target IDS via the ImportResolver.
 
     It may carry **several** imports (``[{ref: a}, {ref: b}]``), overlaid in listed
-    order. A whole-IDS import (``<ids>/*``) is an overlay base for that IDS; a bare
-    ``*`` (:meth:`is_root`) overlays every IDS the sources provide. Overlays are applied
-    broadest-first (see :meth:`specificity`), so more specific imports win.
+    order. A whole-IDS import (``<ids>/*``) is an overlay base for that IDS. Overlays
+    are applied broadest-first (see :meth:`specificity`), so more specific imports win.
     """
 
     def __init__(self, entries, *, yaml_str="", name="waveform", dd_version=None):
@@ -40,12 +39,6 @@ class ImportWaveform(BaseWaveform):
             entries = [entries]
         self.specs = [_spec_from_entry(e) for e in entries]
         self.line_number = entries[0].get("line_number", 0) if entries else 0
-
-    @property
-    def is_root(self):
-        """Whether this is a whole-entry import (``*``): every IDS the sources provide
-        is overlaid, each as if it were an ``<ids>/*`` whole-IDS import."""
-        return self.name == "*"
 
     @property
     def specificity(self):

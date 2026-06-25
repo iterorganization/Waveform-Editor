@@ -45,8 +45,6 @@ class ImportResolver:
         self.received_idss = received_idss or {}
         # full source IDSs, keyed by (source_key, ids_name)
         self._full_cache = {}
-        # filled IDS names per import ref (root overlays probe this repeatedly)
-        self._ids_names_cache = {}
 
     # -- source resolution ----------------------------------------------------
 
@@ -126,33 +124,6 @@ class ImportResolver:
             return dst.get(ids_name)
 
     # -- public read API ------------------------------------------------------
-
-    def source_ids_names(self, ref):
-        """The IDS names a ``ref`` provides, for a root (``*``) overlay.
-
-        A port-import exposes the single received IDS; a URI entry is probed for every
-        filled IDS in the data dictionary. Cached per ref.
-        """
-        if ref in self._ids_names_cache:
-            return self._ids_names_cache[ref]
-        source = self._source(ref)
-        port = self._port_of(source)
-        if port is not None:
-            ids = self.received_idss.get(port)
-            if ids is None:
-                raise KeyError(f"no IDS received on import port '{port}'")
-            names = [ids.metadata.name]
-        else:
-            names = []
-            with self._open(source) as ext:
-                for name in imas.IDSFactory(self.dd_version).ids_names():
-                    try:
-                        if ext.list_all_occurrences(name):
-                            names.append(name)
-                    except Exception:  # noqa: BLE001 - backend may not have this IDS
-                        continue
-        self._ids_names_cache[ref] = names
-        return names
 
     def raw(self, ref, ids_path, *, time_offset=0.0):
         """The source's own (time, values) at ``ids_path``, without resampling.

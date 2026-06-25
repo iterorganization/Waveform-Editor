@@ -64,8 +64,8 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
            scenario: imas:hdf5?path=scenario_run
            live_eq: {port: equilibrium_in}
 
-    Overlay a whole machine description with a wildcard import, then override individual
-    nodes; ``<ids>/*`` overlays one IDS, a bare ``*`` overlays every IDS the source has.
+    Overlay a machine-description IDS with an ``<ids>/*`` wildcard import, then override
+    individual nodes.
 
     .. code-block:: yaml
 

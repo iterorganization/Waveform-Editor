@@ -211,18 +211,18 @@ Parameters
     core_sources/source(1)/profiles_1d/electrons/energy:
       - {ref: scenario, interp: linear}
 
-Wildcards expand against the source: a trailing ``*`` imports a whole subtree (``<ids>/*`` copies a whole IDS), and a ``(*)`` index wildcard iterates every element of an array of structure -- several may be combined, e.g. every ion of every source. A bare ``*`` imports the whole entry: every IDS the source provides (a URI is scanned for filled IDSs; a ``{port: ...}`` source contributes the IDS it received), loading a machine description in one line. An overlay may list several sources, applied in order:
+Wildcards expand against the source: a trailing ``*`` imports a whole subtree (``<ids>/*`` copies a whole IDS), and a ``(*)`` index wildcard iterates every element of an array of structure -- several may be combined, e.g. every ion of every source. An overlay may list several sources, applied in order:
 
 .. code-block:: yaml
 
     core_sources/source(*)/profiles_1d/ion(*)/z_ion:
       - {ref: scenario}
 
-    '*':                  # whole-entry overlay; sources stack
+    ec_launchers/*:        # whole-IDS overlay; sources stack
       - {ref: machine}
       - {ref: scenario}
 
-**Precedence.** Where imports or explicit waveforms write the same node, the most specific wins regardless of order: ``*`` < ``<ids>/*`` < subtree ``.../*`` < explicit leaf. Equal specificity falls back to listing order (last wins).
+**Precedence.** Where imports or explicit waveforms write the same node, the most specific wins regardless of order: ``<ids>/*`` < subtree ``.../*`` < explicit leaf. Equal specificity falls back to listing order (last wins).
 
 Non-0D imports (a profile, a wildcard subtree) own the whole waveform. Only **0D (scalar)** imports combine with analytic segments, each filling its ``[start, end]`` window:
 
