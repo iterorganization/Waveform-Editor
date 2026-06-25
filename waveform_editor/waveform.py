@@ -69,6 +69,11 @@ class Waveform(BaseWaveform):
                 tendency.resolver = resolver
                 tendency.default_path = self.name
 
+    @property
+    def is_string(self):
+        """Whether this waveform produces string (non-numeric) values."""
+        return any(t.is_string for t in self.tendencies)
+
     def get_value(
         self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -125,7 +130,11 @@ class Waveform(BaseWaveform):
         Returns:
             numpy array containing the computed values.
         """
-        values = np.zeros_like(time, dtype=float)
+        is_string = self.is_string and not eval_derivatives
+        if is_string:
+            values = np.empty(len(time), dtype=object)
+        else:
+            values = np.zeros_like(time, dtype=float)
 
         for i, tendency in enumerate(self.tendencies):
             mask = (time >= tendency.start) & (time <= tendency.end)
@@ -135,17 +144,17 @@ class Waveform(BaseWaveform):
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
-            # Handle gaps between tendencies, we linearly interpolate between the
-            # gap values.
+            # Handle gaps between tendencies (hold for strings, interpolate otherwise).
             if i and tendency.prev_tendency.end < tendency.start:
                 prev_tendency = tendency.prev_tendency
                 mask = (time < tendency.start) & (time > prev_tendency.end)
-                slope = (tendency.start_value - prev_tendency.end_value) / (
-                    tendency.start - prev_tendency.end
-                )
                 if np.any(mask):
                     if eval_derivatives:
-                        values[mask] = slope
+                        values[mask] = (
+                            tendency.start_value - prev_tendency.end_value
+                        ) / (tendency.start - prev_tendency.end)
+                    elif is_string:
+                        values[mask] = prev_tendency.end_value
                     else:
                         values[mask] = np.interp(
                             time[mask],

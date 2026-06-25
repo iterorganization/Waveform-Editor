@@ -320,3 +320,32 @@ def test_overlap_derivatives():
     expected = [2, 2, -1.5, -1.5, -1.5, -1.5, -1.5]
     values = waveform.get_derivative(np.linspace(0, 3, 7))
     assert np.allclose(values, expected)
+
+
+def test_string_waveform():
+    """A waveform of string constants evaluates as a zero-order-hold step function."""
+    waveform = Waveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "ohmic", "user_duration": 2},
+            {"user_type": "constant", "user_value": "nbi", "user_duration": 2},
+        ]
+    )
+    assert waveform.is_string
+
+    _, values = waveform.get_value(np.array([0.0, 1.0, 2.0, 3.0]))
+    # The switch happens at t=2; later tendencies take precedence at the boundary.
+    assert list(values) == ["ohmic", "ohmic", "nbi", "nbi"]
+
+    # Values are held (not interpolated) when extrapolating beyond the domain.
+    _, extrap = waveform.get_value(np.array([-1.0, 5.0]))
+    assert list(extrap) == ["ohmic", "nbi"]
+
+
+def test_numeric_waveform_evaluates_to_float():
+    """A numeric waveform evaluates to a float array (the int value is not stepwise)."""
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 8, "user_duration": 3}]
+    )
+    assert not waveform.is_string
+    _, values = waveform.get_value(np.array([0.0, 1.0, 2.0, 3.0]))
+    assert values.dtype == float

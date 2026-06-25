@@ -86,3 +86,34 @@ def test_declarative_assignments():
     assert t2.value == 6
     assert not t1.annotations
     assert not t2.annotations
+
+
+def test_integer_value_not_coerced():
+    """Integer inputs are kept as integers, not coerced to float."""
+    tendency = ConstantTendency(user_duration=1, user_value=5)
+    assert tendency.value == 5
+    assert isinstance(tendency.value, int)
+    assert not tendency.is_string
+    assert not tendency.annotations
+
+
+def test_string_value():
+    """A constant tendency can hold a string (non-numeric) value."""
+    tendency = ConstantTendency(user_duration=2, user_value="nbi")
+    assert tendency.value == "nbi"
+    assert tendency.is_string
+    assert tendency.start_value == "nbi"
+    assert tendency.end_value == "nbi"
+
+    _, values = tendency.get_value(np.array([0.0, 1.0, 2.0]))
+    assert list(values) == ["nbi", "nbi", "nbi"]
+    assert not tendency.annotations
+
+
+def test_string_value_chained():
+    """A value-less string constant inherits the previous string value."""
+    prev = ConstantTendency(user_value="ec", user_start=0, user_duration=1)
+    tendency = ConstantTendency(user_duration=1)
+    tendency.set_previous_tendency(prev)
+    assert tendency.value == "ec"
+    assert tendency.is_string
