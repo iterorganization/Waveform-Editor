@@ -20,9 +20,11 @@ class ConstantTendency(BaseTendency):
         super().__init__(**kwargs)
 
     @property
-    def is_string(self):
-        """Whether this constant holds a string (non-numeric) value."""
-        return isinstance(self.value, str)
+    def is_categorical(self):
+        """Whether this constant holds a non-numeric (categorical) value, e.g. a
+        string or boolean, that is held as a step rather than interpolated."""
+        value = self.value
+        return isinstance(value, bool) or not isinstance(value, (int, float))
 
     def get_value(
         self, time: np.ndarray | None = None

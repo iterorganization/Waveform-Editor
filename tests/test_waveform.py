@@ -330,7 +330,7 @@ def test_string_waveform():
             {"user_type": "constant", "user_value": "nbi", "user_duration": 2},
         ]
     )
-    assert waveform.is_string
+    assert waveform.is_categorical
 
     _, values = waveform.get_value(np.array([0.0, 1.0, 2.0, 3.0]))
     # The switch happens at t=2; later tendencies take precedence at the boundary.
@@ -341,11 +341,48 @@ def test_string_waveform():
     assert list(extrap) == ["ohmic", "nbi"]
 
 
+def test_boolean_waveform():
+    """A waveform of boolean constants evaluates as a zero-order-hold step function."""
+    waveform = Waveform(
+        waveform=[
+            {"user_type": "constant", "user_value": False, "user_duration": 2},
+            {"user_type": "constant", "user_value": True, "user_duration": 2},
+        ]
+    )
+    assert waveform.is_categorical
+
+    _, values = waveform.get_value(np.array([0.0, 1.0, 2.0, 3.0]))
+    assert [bool(v) for v in values] == [False, False, True, True]
+
+
 def test_numeric_waveform_evaluates_to_float():
     """A numeric waveform evaluates to a float array (the int value is not stepwise)."""
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 8, "user_duration": 3}]
     )
-    assert not waveform.is_string
+    assert not waveform.is_categorical
     _, values = waveform.get_value(np.array([0.0, 1.0, 2.0, 3.0]))
     assert values.dtype == float
+
+
+def test_mixing_categorical_and_numeric_is_flagged():
+    """Mixing categorical (string/bool) and numeric tendencies adds an annotation."""
+    waveform = Waveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "nbi", "user_duration": 2},
+            {"user_type": "constant", "user_value": 3, "user_duration": 2},
+        ]
+    )
+    assert waveform.annotations
+    assert any("mix" in a["text"].lower() for a in waveform.annotations)
+
+
+def test_homogeneous_categorical_not_flagged():
+    """A waveform of only categorical values is not flagged as mixed."""
+    waveform = Waveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "nbi", "user_duration": 2},
+            {"user_type": "constant", "user_value": "ec", "user_duration": 2},
+        ]
+    )
+    assert not waveform.annotations

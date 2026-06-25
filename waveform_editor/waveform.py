@@ -70,9 +70,10 @@ class Waveform(BaseWaveform):
                 tendency.default_path = self.name
 
     @property
-    def is_string(self):
-        """Whether this waveform produces string (non-numeric) values."""
-        return any(t.is_string for t in self.tendencies)
+    def is_categorical(self):
+        """Whether this waveform produces non-numeric (categorical) values, e.g.
+        strings or booleans, which are held as steps rather than interpolated."""
+        return any(t.is_categorical for t in self.tendencies)
 
     def get_value(
         self, time: np.ndarray | None = None
@@ -130,8 +131,8 @@ class Waveform(BaseWaveform):
         Returns:
             numpy array containing the computed values.
         """
-        is_string = self.is_string and not eval_derivatives
-        if is_string:
+        is_categorical = self.is_categorical and not eval_derivatives
+        if is_categorical:
             values = np.empty(len(time), dtype=object)
         else:
             values = np.zeros_like(time, dtype=float)
@@ -153,7 +154,7 @@ class Waveform(BaseWaveform):
                         values[mask] = (
                             tendency.start_value - prev_tendency.end_value
                         ) / (tendency.start - prev_tendency.end)
-                    elif is_string:
+                    elif is_categorical:
                         values[mask] = prev_tendency.end_value
                     else:
                         values[mask] = np.interp(
@@ -210,10 +211,28 @@ class Waveform(BaseWaveform):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
+        self._validate_value_types()
+
         self.update_annotations()
 
         for tendency in self.tendencies:
             tendency.param.watch(self.update_annotations, "annotations")
+
+    def _validate_value_types(self):
+        """Categorical (e.g. string or boolean) and numeric tendencies cannot be
+        mixed within a single waveform, as the gaps between them cannot be
+        interpolated. Flag the first tendency whose type breaks the pattern."""
+        if not self.tendencies:
+            return
+        first_is_categorical = self.tendencies[0].is_categorical
+        for tendency in self.tendencies[1:]:
+            if tendency.is_categorical != first_is_categorical:
+                error_msg = (
+                    "Cannot mix categorical (e.g. string or boolean) and numeric "
+                    "values within a single waveform.\n"
+                )
+                self.annotations.add(tendency.line_number, error_msg)
+                break
 
     def update_annotations(self, event=None):
         """Merges the annotations of the individual tendencies into the annotations

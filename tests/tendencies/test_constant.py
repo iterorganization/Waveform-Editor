@@ -93,7 +93,7 @@ def test_integer_value_not_coerced():
     tendency = ConstantTendency(user_duration=1, user_value=5)
     assert tendency.value == 5
     assert isinstance(tendency.value, int)
-    assert not tendency.is_string
+    assert not tendency.is_categorical
     assert not tendency.annotations
 
 
@@ -101,12 +101,27 @@ def test_string_value():
     """A constant tendency can hold a string (non-numeric) value."""
     tendency = ConstantTendency(user_duration=2, user_value="nbi")
     assert tendency.value == "nbi"
-    assert tendency.is_string
+    assert tendency.is_categorical
     assert tendency.start_value == "nbi"
     assert tendency.end_value == "nbi"
 
     _, values = tendency.get_value(np.array([0.0, 1.0, 2.0]))
     assert list(values) == ["nbi", "nbi", "nbi"]
+    assert not tendency.annotations
+
+
+def test_boolean_value():
+    """A constant tendency can hold a boolean value, kept as a (categorical) bool."""
+    tendency = ConstantTendency(user_duration=2, user_value=True)
+    assert tendency.value is True
+    assert tendency.is_categorical
+    # start/end values round-trip through numpy, so compare by value (np.bool_)
+    assert bool(tendency.start_value) is True
+    assert bool(tendency.end_value) is True
+
+    _, values = tendency.get_value(np.array([0.0, 1.0, 2.0]))
+    assert [bool(v) for v in values] == [True, True, True]
+    assert values.dtype == bool
     assert not tendency.annotations
 
 
@@ -116,4 +131,4 @@ def test_string_value_chained():
     tendency = ConstantTendency(user_duration=1)
     tendency.set_previous_tendency(prev)
     assert tendency.value == "ec"
-    assert tendency.is_string
+    assert tendency.is_categorical

@@ -77,7 +77,7 @@ class BaseTendency(param.Parameterized):
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
     allow_zero_duration = False
-    is_string = False
+    is_categorical = False
 
     def __init__(self, **kwargs):
         super().__init__()

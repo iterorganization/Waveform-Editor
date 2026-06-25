@@ -53,6 +53,27 @@ If the ``value`` is not specified, it will be set to the last value of the previ
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
 
+Value types
+-----------
+
+The ``value`` is type-aware and is not restricted to floating-point numbers:
+
+*   **Floats** are interpolated across gaps between tendencies, as usual.
+*   **Integers** are preserved as integers (they are not coerced to float).
+*   **Categorical values** (strings or booleans) describe non-numeric signals, such
+    as a heating scheme (``"nbi"``, ``"ec"``) or an on/off flag. These are held as a
+    step (zero-order hold) rather than interpolated: across a gap, the previous value
+    is carried forward, and the same applies when extrapolating beyond the waveform.
+
+.. code-block:: yaml
+
+    - {type: constant, value: ohmic, duration: 2}
+    - {type: constant, value: nbi, duration: 2}
+
+.. note::
+    Categorical and numeric values cannot be mixed within a single waveform, because
+    the gaps between them cannot be interpolated. Doing so raises a validation error.
+
 Linear Tendency
 ===============
 
