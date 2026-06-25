@@ -6,6 +6,7 @@ from ruamel.yaml.comments import CommentedSeq
 
 from waveform_editor.base_waveform import BaseWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
+from waveform_editor.tendencies.expression import ExpressionTendency
 from waveform_editor.tendencies.import_tendency import ImportTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -53,8 +54,9 @@ class Waveform(BaseWaveform):
         super().__init__(yaml_str, name, dd_version)
         self.line_number = line_number
         self.is_repeated = is_repeated
-        # Used to reach the import resolver for {ref: ...} tendencies (None when the
-        # waveform is built outside a configuration, e.g. a repeated sub-waveform).
+        # Used to reach the import resolver for {ref: ...} tendencies and to resolve
+        # expression dependencies (None when the waveform is built outside a
+        # configuration, e.g. a repeated sub-waveform).
         self.config = config
         if waveform is not None:
             self._process_waveform(waveform)
@@ -77,6 +79,31 @@ class Waveform(BaseWaveform):
         strings or booleans, which are held as steps rather than interpolated."""
         return any(t.is_categorical for t in self.tendencies)
 
+    @property
+    def is_expression(self):
+        """Whether this waveform is computed from an expression."""
+        return any(isinstance(t, ExpressionTendency) for t in self.tendencies)
+
+    @property
+    def dependencies(self):
+        """Names of other waveforms this waveform references through expressions."""
+        deps = set()
+        for tendency in self.tendencies:
+            deps |= getattr(tendency, "dependencies", set())
+        return deps
+
+    def prepare_expression(self):
+        """Re-parse any expression tendencies (e.g. after dependencies change)."""
+        for tendency in self.tendencies:
+            if isinstance(tendency, ExpressionTendency):
+                tendency.prepare_expression()
+
+    def rename_dependency(self, old_name, new_name):
+        """Rename a referenced waveform in any expression tendencies."""
+        for tendency in self.tendencies:
+            if isinstance(tendency, ExpressionTendency):
+                tendency.rename_dependency(old_name, new_name)
+
     def get_value(
         self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -92,6 +119,12 @@ class Waveform(BaseWaveform):
         """
         if not self.tendencies:
             return np.array([]), np.array([])
+
+        # A sole expression tendency spans the whole domain and is evaluated directly.
+        if len(self.tendencies) == 1 and isinstance(
+            self.tendencies[0], ExpressionTendency
+        ):
+            return self.tendencies[0].get_value(time)
 
         self._bind_imports()
 
@@ -326,6 +359,10 @@ class Waveform(BaseWaveform):
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
+        if "user_expression" in entry:
+            entry.pop("user_type", None)
+            return ExpressionTendency(config=self.config, **entry)
+
         if self._has_type_error(entry):
             return None
         else:

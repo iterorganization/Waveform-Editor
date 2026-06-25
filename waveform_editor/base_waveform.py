@@ -28,6 +28,23 @@ class BaseWaveform(ABC):
     def get_yaml_string(self) -> str:
         raise NotImplementedError
 
+    @property
+    def dependencies(self):
+        """Names of other waveforms this waveform depends on. Empty unless the waveform
+        contains expressions (overridden by :class:`Waveform`)."""
+        return set()
+
+    @property
+    def is_expression(self):
+        """Whether this waveform is computed from an expression. False by default."""
+        return False
+
+    def prepare_expression(self):  # noqa: B027
+        """Re-parse expression tendencies. No-op for waveforms without expressions."""
+
+    def rename_dependency(self, old_name, new_name):  # noqa: B027
+        """Rename a referenced waveform. No-op for waveforms without expressions."""
+
     def get_metadata(self, dd_version):
         """Parses the name of the waveform and returns the IDS metadata for this
         waveform. The name must be formatted as follows: ``<IDS-Name>/<IDS-path>``

@@ -1,4 +1,5 @@
 globals:
+  version: 2
   dd_version: 4.0.0
   imports: {}
 dummy_waveform:

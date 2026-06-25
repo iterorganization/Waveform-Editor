@@ -4,7 +4,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.import_waveform import ImportWaveform
 from waveform_editor.static_waveform import StaticWaveform
 from waveform_editor.waveform import Waveform
@@ -14,7 +13,7 @@ class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
     waveform = param.ClassSelector(
-        class_=(Waveform, DerivedWaveform, ImportWaveform, StaticWaveform),
+        class_=(Waveform, ImportWaveform, StaticWaveform),
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
     stored_string = param.String(
@@ -113,7 +112,7 @@ class WaveformEditor(Viewer):
             )
             self.alert_type = "warning"
         else:
-            if isinstance(waveform, DerivedWaveform):
+            if waveform.dependencies:
                 try:
                     self.config.check_safe_to_replace(waveform)
                 except Exception as e:

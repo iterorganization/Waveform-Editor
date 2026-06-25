@@ -255,6 +255,7 @@ def test_dump_comments():
 
     yaml_str = dedent("""
     globals:
+      version: 2
       dd_version: 3.42.0
       imports:
         ec_launchers: imas:hdf5?path=test_md
@@ -284,6 +285,7 @@ def test_dump_globals():
     dumped_yaml = config.dump()
     expected_dump = dedent("""
     globals:
+      version: 2
       dd_version: 3.41.0
       imports:
         ec_launchers: imas:mdsplus?path=test

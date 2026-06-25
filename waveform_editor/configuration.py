@@ -6,7 +6,6 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from waveform_editor.dependency_graph import DependencyGraph
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
 from waveform_editor.import_resolver import ImportResolver
 from waveform_editor.yaml.yaml_globals import YamlGlobals
@@ -94,8 +93,7 @@ class WaveformConfiguration(param.Parameterized):
             self._calculate_bounds()
             for name, group in self.waveform_map.items():
                 waveform = group[name]
-                if isinstance(waveform, DerivedWaveform):
-                    waveform.prepare_expression()
+                waveform.prepare_expression()
             self.has_changed = False
         except Exception as e:
             self.clear()
@@ -119,7 +117,7 @@ class WaveformConfiguration(param.Parameterized):
                 f"The group {group.name!r} already contains {waveform.name!r}."
             )
 
-        if isinstance(waveform, DerivedWaveform):
+        if waveform.dependencies:
             self.dependency_graph.add_node(waveform.name, waveform.dependencies)
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
@@ -193,7 +191,7 @@ class WaveformConfiguration(param.Parameterized):
                 f"Waveform '{waveform.name}' does not exist in the configuration."
             )
 
-        if isinstance(waveform, DerivedWaveform):
+        if waveform.dependencies:
             self.dependency_graph.replace_node(waveform.name, waveform.dependencies)
         elif waveform.name in self.dependency_graph:
             self.dependency_graph.remove_node(waveform.name)
@@ -235,9 +233,7 @@ class WaveformConfiguration(param.Parameterized):
         for wf_name, grp in self.waveform_map.items():
             if wf_name not in to_remove:
                 wf = grp[wf_name]
-                if isinstance(wf, DerivedWaveform) and to_remove.intersection(
-                    wf.dependencies
-                ):
+                if to_remove.intersection(wf.dependencies):
                     raise RuntimeError(
                         f"Cannot remove group {group.name}. "
                         f"{wf.name!r} depends on a waveform in it."
@@ -354,7 +350,7 @@ class WaveformConfiguration(param.Parameterized):
 
         for name in self.waveform_map:
             waveform = self[name]
-            if not isinstance(waveform, DerivedWaveform) and waveform.tendencies:
+            if not waveform.dependencies and waveform.tendencies:
                 min_start = min(min_start, waveform.tendencies[0].start)
                 max_end = max(max_end, waveform.tendencies[-1].end)
 

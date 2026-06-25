@@ -1,3 +1,4 @@
+import ast
 import logging
 import re
 from io import StringIO
@@ -7,10 +8,10 @@ import yaml
 from imas.ids_path import IDSPath
 from ruamel.yaml import YAML
 
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.import_waveform import ImportWaveform
 from waveform_editor.static_waveform import StaticWaveform
 from waveform_editor.waveform import Waveform
+from waveform_editor.yaml.yaml_globals import CURRENT_SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,29 @@ def _is_import_entry(entry):
     return isinstance(entry, dict) and (
         "user_ref" in entry or entry.get("user_type") in ("import", "reference")
     )
+
+
+def _looks_like_expression(value):
+    """Whether a bare string value should be read as an expression rather than a
+    literal string constant.
+
+    Waveform references are quoted strings, so an expression is anything *dynamic* (it
+    contains a quoted reference) or *functional* (it uses a call or an operator). A
+    plain word (``nbi``) or an unparseable string is a literal constant. The explicit
+    ``{value: ...}`` / ``{expression: ...}`` forms override this heuristic.
+    """
+    try:
+        tree = ast.parse(value, mode="eval")
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return True  # a quoted waveform reference -> dynamic
+        if isinstance(
+            node, (ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare, ast.Call)
+        ):
+            return True  # uses an operator or function -> functional
+    return False
 
 
 def _import_is_non_scalar(name, entry, dd_version):
@@ -90,6 +114,17 @@ class YamlParser:
 
         yaml_data = self.yaml.load(yaml_str) if yaml_str else {}
         globals = yaml_data.get("globals", {})
+        file_version = globals.get("version")
+        if file_version is None or file_version < CURRENT_SCHEMA_VERSION:
+            logger.warning(
+                "Configuration schema version (%s) is older than the current version "
+                "(%s). A bare string is now an expression only if it references "
+                "another waveform or uses an operator/function; a plain word is a "
+                "literal constant. Use `{value: ...}` or `{expression: ...}` to be "
+                "explicit.",
+                file_version,
+                CURRENT_SCHEMA_VERSION,
+            )
         self.config.globals.set_globals(globals)
 
         if not isinstance(yaml_data, dict):
@@ -183,14 +218,14 @@ class YamlParser:
                 raise yaml.YAMLError("Cannot have an empty waveform.")
             if not isinstance(waveform, (list, int, float, str)):
                 raise yaml.YAMLError(
-                    "Waveform must either be a list of tendencies, "
-                    "a single constant value (int/float), or a derived waveform (str)."
+                    "Waveform must either be a list of tendencies or a bare constant "
+                    "value (number or string)."
                 )
             line_number = waveform_yaml.get("line_number", 0)
             dd_version = self.config.globals.dd_version
             if isinstance(waveform, list):
-                # A single {value: <string>} entry is a static constant (e.g. an
-                # identifier name) -- strings don't fit the numeric tendency value flow.
+                # A single {value: <string>} entry is a static string constant (e.g.
+                # an identifier name).
                 if (
                     len(waveform) == 1
                     and isinstance(waveform[0], dict)
@@ -216,7 +251,7 @@ class YamlParser:
                         name=name,
                         dd_version=dd_version,
                     )
-                waveform = Waveform(
+                return Waveform(
                     waveform=waveform,
                     yaml_str=yaml_str,
                     line_number=line_number,
@@ -224,11 +259,26 @@ class YamlParser:
                     dd_version=dd_version,
                     config=self.config,
                 )
+            # A bare scalar is shorthand. A number is a constant; a string that
+            # references other waveforms or uses operators/functions is an expression,
+            # otherwise it is a static (literal) string constant.
+            if isinstance(waveform, str):
+                if _looks_like_expression(waveform):
+                    entry = {"user_expression": waveform, "line_number": line_number}
+                else:
+                    return StaticWaveform(
+                        waveform, yaml_str=yaml_str, name=name, dd_version=dd_version
+                    )
             else:
-                waveform = DerivedWaveform(
-                    yaml_str, name, self.config, dd_version=dd_version
-                )
-            return waveform
+                entry = {"user_value": waveform, "line_number": line_number}
+            return Waveform(
+                waveform=[entry],
+                yaml_str=yaml_str,
+                line_number=line_number,
+                name=name,
+                dd_version=dd_version,
+                config=self.config,
+            )
         except yaml.YAMLError as e:
             self.parse_errors.append(str(e))
             empty_waveform = Waveform()

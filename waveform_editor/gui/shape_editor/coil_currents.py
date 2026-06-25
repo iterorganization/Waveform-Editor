@@ -7,7 +7,6 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.settings import settings
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 
@@ -175,7 +174,7 @@ class CoilCurrents(Viewer):
                 new_waveforms_created = True
             else:
                 waveform = config[name]
-                if isinstance(waveform, DerivedWaveform):
+                if waveform.is_expression:
                     pn.state.notifications.error(
                         f"Could not store coil current in waveform {name!r}, "
                         "because it is a derived waveform"

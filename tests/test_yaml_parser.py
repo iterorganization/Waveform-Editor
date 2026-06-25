@@ -2,7 +2,7 @@ import pytest
 from pytest import approx
 
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.static_waveform import StaticWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -132,17 +132,45 @@ def test_scientific_notation(yaml_parser):
 
 
 def test_constant_shorthand_notation(yaml_parser):
-    """Test if shorthand notation is parsed correctly."""
+    """A bare scalar is shorthand for a single constant tendency."""
 
     waveforms = {"waveform: 5": 5, "waveform: 1.23": 1.23}
 
-    for waveform, expected_value in waveforms.items():
-        waveform = yaml_parser.parse_waveform(waveform)
-        assert isinstance(waveform, DerivedWaveform)
-        assert waveform.yaml == expected_value
-        assert not waveform.annotations
+    for waveform_str, expected_value in waveforms.items():
+        waveform = yaml_parser.parse_waveform(waveform_str)
+        assert isinstance(waveform, Waveform)
+        assert not waveform.is_expression
         assert waveform.dependencies == set()
+        assert waveform.tendencies[0].value == expected_value
+        assert not waveform.annotations
         assert not yaml_parser.parse_errors
+
+
+def test_bare_word_is_literal_string(yaml_parser):
+    """A bare plain word is a literal string constant, not an expression."""
+    waveform = yaml_parser.parse_waveform("waveform: total")
+    assert isinstance(waveform, StaticWaveform)
+    assert not waveform.is_expression
+    assert waveform.value == "total"
+    assert not yaml_parser.parse_errors
+
+
+def test_bare_number_is_constant(yaml_parser):
+    """A bare number is a constant tendency, not an expression."""
+    waveform = yaml_parser.parse_waveform("waveform: 3.5")
+    assert isinstance(waveform, Waveform)
+    assert not waveform.is_expression
+    assert waveform.tendencies[0].value == 3.5
+    assert not yaml_parser.parse_errors
+
+
+def test_bare_reference_is_expression(yaml_parser):
+    """A bare string that references another waveform (quoted) is an expression."""
+    waveform = yaml_parser.parse_waveform('waveform: \'"other/1" * 2\'')
+    assert isinstance(waveform, Waveform)
+    assert waveform.is_expression
+    assert waveform.dependencies == {"other/1"}
+    assert not yaml_parser.parse_errors
 
 
 def test_load_yaml(config):

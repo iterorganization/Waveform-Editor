@@ -6,8 +6,17 @@ from waveform_editor.util import AVAILABLE_DD_VERSIONS, LATEST_DD_VERSION
 
 logger = logging.getLogger(__name__)
 
+# Configuration schema version. Bumped to 2 when bare-string values became literal
+# string constants instead of derived-waveform expressions.
+CURRENT_SCHEMA_VERSION = 2
+
 
 class YamlGlobals(param.Parameterized):
+    version = param.Integer(
+        default=CURRENT_SCHEMA_VERSION,
+        label="Schema Version",
+        doc="Waveform Editor configuration schema version.",
+    )
     dd_version = param.Selector(
         label="DD Version",
         default=LATEST_DD_VERSION,
