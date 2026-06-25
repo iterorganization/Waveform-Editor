@@ -1,8 +1,15 @@
 import type {
   EvaluateResponse,
+  GapDefinition,
+  GapsResponse,
+  InverseMillerResponse,
   MachineGeometries,
   ParsedConfig,
   SettingsData,
+  ShapeOutlineResponse,
+  SyncResponse,
+  TendenciesBatchResponse,
+  TendenciesResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -47,5 +54,39 @@ export const api = {
     post<MachineGeometries>("/machine/geometries", {
       md_pf_active_uri,
       md_wall_uri,
+    }),
+
+  getTendencies: (yaml_content: string, waveform_name: string) =>
+    post<TendenciesResponse>("/waveform/tendencies", { yaml_content, waveform_name }),
+
+  getTendenciesBatch: (yaml_content: string, waveform_names: string[]) =>
+    post<TendenciesBatchResponse>("/waveform/tendencies_batch", { yaml_content, waveform_names }),
+
+  /** Parse + evaluate preview + tendencies in a single round trip */
+  sync: (yaml_content: string, tendency_names: string[], min_points = 200, max_points = 2000) =>
+    post<SyncResponse>("/yaml/sync", { yaml_content, tendency_names, min_points, max_points }),
+
+  loadShapeGaps: (uri: string, time: number) =>
+    post<GapsResponse>("/shape/gaps", { uri, time }),
+
+  getShapeOutline: (
+    yaml_content: string,
+    time: number,
+    mode: "params" | "gaps",
+    gap_waveform_names: string[],
+    gap_definitions: GapDefinition[],
+  ) =>
+    post<ShapeOutlineResponse>("/shape/outline", {
+      yaml_content, time, mode, gap_waveform_names, gap_definitions,
+    }),
+
+  inverseMillerFit: (
+    current_params: Record<string, number>,
+    drag_r: number,
+    drag_z: number,
+    theta: number,
+  ) =>
+    post<InverseMillerResponse>("/shape/inverse_miller", {
+      current_params, drag_r, drag_z, theta,
     }),
 };

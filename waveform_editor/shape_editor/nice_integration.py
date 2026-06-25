@@ -8,12 +8,14 @@ import signal
 import subprocess
 import tempfile
 from collections.abc import Callable
+from pathlib import Path
 
 import param
 import ymmsl
 from imas.ids_toplevel import IDSToplevel
 from libmuscle import Instance, Message
 from libmuscle.manager.manager import Manager
+from libmuscle.manager.run_dir import RunDir
 from ymmsl import Operator
 
 from waveform_editor.settings import settings
@@ -120,7 +122,11 @@ def run_muscle_manager(
         _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
     )
     config = ymmsl.load(config_str.format(xml_path=xml_path))
-    manager = Manager(config)
+    # Keep MUSCLE's log and profiling output (muscle3_manager.log,
+    # performance.sqlite) out of the working directory: a --reload dev server
+    # watches the repo and would restart after every NICE run otherwise.
+    run_dir = RunDir(Path(tempfile.mkdtemp(prefix="muscle3_run_")))
+    manager = Manager(config, run_dir=run_dir)
     server_location = manager.get_server_location()
     pipe.send(server_location)
     pipe.recv()  # Blocks until we're instructed to stop

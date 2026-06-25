@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Header } from "../../components/Header";
 import { useStore } from "../../store";
@@ -6,14 +6,22 @@ import { useStore } from "../../store";
 vi.mock("../../api", () => ({
   api: {
     parseYaml: vi.fn().mockResolvedValue({ waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" }),
+    sync: vi.fn().mockResolvedValue({
+      parsed: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
+      times: [], values: {}, tendencies: {}, tendency_errors: {},
+    }),
+    getTendenciesBatch: vi.fn().mockResolvedValue({ tendencies: {}, tendency_errors: {} }),
     saveSettings: vi.fn().mockResolvedValue({ ok: true }),
   },
 }));
 
 // Suppress URL.createObjectURL which is not available in jsdom
 beforeAll(() => {
-  global.URL.createObjectURL = vi.fn(() => "blob:fake");
-  global.URL.revokeObjectURL = vi.fn();
+  (globalThis as unknown as Record<string, unknown>).URL = {
+    ...(globalThis as unknown as Record<string, { createObjectURL?: unknown; revokeObjectURL?: unknown }>).URL,
+    createObjectURL: vi.fn(() => "blob:fake"),
+    revokeObjectURL: vi.fn(),
+  };
 });
 
 beforeEach(() => {

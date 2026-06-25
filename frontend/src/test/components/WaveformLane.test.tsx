@@ -10,6 +10,11 @@ vi.mock("../../api", () => ({
       error: "",
     }),
     parseYaml: vi.fn().mockResolvedValue({ waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" }),
+    sync: vi.fn().mockResolvedValue({
+      parsed: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
+      times: [], values: {}, tendencies: {}, tendency_errors: {},
+    }),
+    getTendenciesBatch: vi.fn().mockResolvedValue({ tendencies: {}, tendency_errors: {} }),
   },
 }));
 

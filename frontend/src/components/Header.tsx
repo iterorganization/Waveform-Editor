@@ -1,14 +1,19 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "../store";
+import { RunNiceModal } from "./RunNiceModal";
 
 export function Header() {
   const {
     yamlContent, setYamlContent, parseCurrentYaml,
-    niceRunning, runNice, stopNice,
+    niceRunning, stopNice, runNice,
     niceProgress, niceStatus,
+    shapePreviewData, shapePreviewIndex,
     setShowSettings, showAdvancedEditor, setShowAdvancedEditor,
   } = useStore();
 
+  const scrubTime = shapePreviewData?.times[shapePreviewIndex] ?? null;
+
+  const [showRunModal, setShowRunModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openFile = () => fileInputRef.current?.click();
@@ -72,10 +77,22 @@ export function Header() {
           </button>
         </>
       ) : (
-        <button className="btn btn-sm btn-success" onClick={runNice} title="Run NICE across timeline">
-          ▶ Run NICE
-        </button>
+        <>
+          <button className="btn btn-sm btn-success" onClick={() => setShowRunModal(true)} title="Configure and run NICE">
+            ▶ Run NICE
+          </button>
+          {scrubTime != null && (
+            <button
+              className="btn btn-sm"
+              onClick={() => runNice([scrubTime])}
+              title={`Run NICE only at t = ${scrubTime.toFixed(2)} s (merges into existing results)`}
+            >
+              ▶ NICE @ {scrubTime.toFixed(1)}s
+            </button>
+          )}
+        </>
       )}
+      {showRunModal && <RunNiceModal onClose={() => setShowRunModal(false)} />}
 
       {!niceRunning && niceStatus && (
         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{niceStatus}</span>

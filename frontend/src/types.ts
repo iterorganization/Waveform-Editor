@@ -12,6 +12,7 @@ export interface ParsedConfig {
   time_end: number;
   yaml_content: string;
   load_error: string;
+  annotations?: string[];
 }
 
 export interface WaveformValues {
@@ -128,13 +129,79 @@ export interface WaveformGroup {
 export type WsMessage =
   | { type: "status"; message: string }
   | { type: "error"; message: string }
-  | { type: "started"; total: number }
+  | { type: "started"; total: number; workers?: number }
   | { type: "timestep_result" } & TimestepResult
   | { type: "completed"; total: number };
+
+// ── Tendency metadata (from /api/waveform/tendencies) ─────────────────────────
+
+export interface TendencyInfo {
+  index: number;
+  type: string;
+  line_number: number;  // 0-based YAML line
+  start_time: number;
+  end_time: number;
+  params: Record<string, number>;
+  piecewise_times?: number[];
+  piecewise_values?: number[];
+  inner_tendencies?: TendencyInfo[];
+}
+
+export interface TendenciesResponse {
+  tendencies: TendencyInfo[];
+  error: string;
+}
+
+export interface TendenciesBatchResponse {
+  tendencies: Record<string, TendencyInfo[]>;
+  tendency_errors: Record<string, string>;
+}
+
+/** Combined parse + preview evaluation + tendencies — one round trip per edit */
+export interface SyncResponse extends TendenciesBatchResponse {
+  parsed: ParsedConfig;
+  times: number[];
+  values: Record<string, number[]>;
+}
+
+// ── Shape editor ───────────────────────────────────────────────────────────────
+
+export interface GapDefinition {
+  name: string;
+  r: number;
+  z: number;
+  angle: number;
+  value: number;
+}
+
+export interface GapsResponse {
+  gaps: GapDefinition[];
+  error: string;
+}
+
+export interface ShapeOutlineResponse {
+  outline_r: number[];
+  outline_z: number[];
+  param_values: Record<string, number>;
+  error: string;
+}
+
+export interface InverseMillerResponse {
+  new_params: Record<string, number>;
+  error: string;
+}
 
 // ── NICE interval config ───────────────────────────────────────────────────────
 
 export interface NiceIntervalConfig {
-  uniformStep: number;
-  extraTimesteps: number[];
+  /** Selected region of the timeline (null = full timeline) */
+  rangeStart: number | null;
+  rangeEnd: number | null;
+  /** Number of linearly spaced timesteps in the region */
+  nPoints: number;
+  /** Seed each timestep with the previous converged equilibrium */
+  warmStart: boolean;
+  /** Parallel NICE instances; timesteps are split into contiguous chunks
+   *  (warm start still chains within each chunk). Default 1. */
+  parallelWorkers?: number;
 }

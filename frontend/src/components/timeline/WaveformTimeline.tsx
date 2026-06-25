@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../../store";
-import { NiceIntervalConfig } from "./NiceIntervalConfig";
 import { PlasmaPropertiesSection } from "./PlasmaPropertiesSection";
 import { PlasmaShapeSection } from "./PlasmaShapeSection";
 import { WaveformLane } from "./WaveformLane";
@@ -95,23 +94,9 @@ export function WaveformTimeline() {
 
   return (
     <>
-      <div className="left-panel-toolbar">
-        <span className="label">Timeline</span>
-        {parsedConfig && (
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            {parsedConfig.time_start.toFixed(1)}s – {parsedConfig.time_end.toFixed(1)}s
-          </span>
-        )}
-        {yamlError && (
-          <span style={{ fontSize: 11, color: "var(--red)" }} title={yamlError}>
-            ⚠ Error
-          </span>
-        )}
-      </div>
       <div className="left-panel-body">
         <PlasmaShapeSection />
         <PlasmaPropertiesSection />
-        <NiceIntervalConfig />
 
         {flatGroups.size > 0 && (
           <div className="section">

@@ -15,6 +15,20 @@ vi.mock("../api", () => ({
       yaml_content: "",
       load_error: "",
     }),
+    sync: vi.fn().mockResolvedValue({
+      parsed: {
+        waveforms: [{ name: "kappa", group_path: ["NICE Shape"], is_derived: false }],
+        time_start: 0,
+        time_end: 100,
+        yaml_content: "",
+        load_error: "",
+      },
+      times: [0, 50, 100],
+      values: { kappa: [1.8, 1.8, 1.8] },
+      tendencies: {},
+      tendency_errors: {},
+    }),
+    getTendenciesBatch: vi.fn().mockResolvedValue({ tendencies: {}, tendency_errors: {} }),
     saveSettings: vi.fn().mockResolvedValue({ ok: true }),
     getSettings: vi.fn().mockResolvedValue({
       nice_inv_executable: "nice",
@@ -83,7 +97,7 @@ beforeEach(() => {
     showSettings: false,
     machineGeometries: null,
     machineLoading: false,
-    niceInterval: { uniformStep: 10, extraTimesteps: [] },
+    niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 11, warmStart: true },
   });
 });
 
@@ -108,9 +122,10 @@ describe("initial state", () => {
     expect(useStore.getState().niceRunning).toBe(false);
   });
 
-  it("has default NICE interval of 10s", () => {
-    expect(useStore.getState().niceInterval.uniformStep).toBe(10);
-    expect(useStore.getState().niceInterval.extraTimesteps).toEqual([]);
+  it("has default NICE interval (full range, 11 points)", () => {
+    expect(useStore.getState().niceInterval.rangeStart).toBeNull();
+    expect(useStore.getState().niceInterval.rangeEnd).toBeNull();
+    expect(useStore.getState().niceInterval.nPoints).toBe(11);
   });
 
   it("has default settings", () => {
@@ -132,22 +147,23 @@ describe("setYamlContent", () => {
 });
 
 describe("setNiceInterval", () => {
-  it("updates uniformStep", () => {
-    useStore.getState().setNiceInterval({ uniformStep: 25 });
-    expect(useStore.getState().niceInterval.uniformStep).toBe(25);
+  it("updates nPoints", () => {
+    useStore.getState().setNiceInterval({ nPoints: 25 });
+    expect(useStore.getState().niceInterval.nPoints).toBe(25);
   });
 
-  it("updates extraTimesteps", () => {
-    useStore.getState().setNiceInterval({ extraTimesteps: [15.0, 37.5] });
-    expect(useStore.getState().niceInterval.extraTimesteps).toEqual([15.0, 37.5]);
+  it("updates the region", () => {
+    useStore.getState().setNiceInterval({ rangeStart: 15.0, rangeEnd: 37.5 });
+    expect(useStore.getState().niceInterval.rangeStart).toBe(15.0);
+    expect(useStore.getState().niceInterval.rangeEnd).toBe(37.5);
   });
 
   it("merges partial updates", () => {
-    useStore.getState().setNiceInterval({ uniformStep: 5 });
-    useStore.getState().setNiceInterval({ extraTimesteps: [42.0] });
+    useStore.getState().setNiceInterval({ nPoints: 5 });
+    useStore.getState().setNiceInterval({ rangeStart: 42.0 });
     const { niceInterval } = useStore.getState();
-    expect(niceInterval.uniformStep).toBe(5);
-    expect(niceInterval.extraTimesteps).toEqual([42.0]);
+    expect(niceInterval.nPoints).toBe(5);
+    expect(niceInterval.rangeStart).toBe(42.0);
   });
 });
 
@@ -223,11 +239,12 @@ describe("setIsPlaying", () => {
     useStore.setState({
       results: [makeResult(0), makeResult(1), makeResult(2)],
       currentResultIndex: 0,
+      playbackFps: 10, // 100 ms per frame
     });
     useStore.getState().setIsPlaying(true);
-    vi.advanceTimersByTime(150);
+    vi.advanceTimersByTime(100);
     expect(useStore.getState().currentResultIndex).toBe(1);
-    vi.advanceTimersByTime(150);
+    vi.advanceTimersByTime(100);
     expect(useStore.getState().currentResultIndex).toBe(2);
   });
 
@@ -256,7 +273,7 @@ describe("runNice", () => {
   it("sets niceRunning to true", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 10, extraTimesteps: [] },
+      niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 11, warmStart: true },
     });
     useStore.getState().runNice();
     expect(useStore.getState().niceRunning).toBe(true);
@@ -265,7 +282,7 @@ describe("runNice", () => {
   it("sends correct timesteps to WebSocket for 0-100 with step 10", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 10, extraTimesteps: [] },
+      niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 11, warmStart: true },
     });
     useStore.getState().runNice();
 
@@ -281,24 +298,30 @@ describe("runNice", () => {
     expect(payload.timesteps[10]).toBe(100);
   });
 
-  it("includes extra timesteps in sorted order", async () => {
+  it("spaces timesteps linearly over the selected region", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 50, extraTimesteps: [25.0, 75.0] },
+      niceInterval: { rangeStart: 20, rangeEnd: 60, nPoints: 3, warmStart: true },
     });
     useStore.getState().runNice();
     await Promise.resolve();
 
     const ws = MockWebSocket.instances[0];
     const payload = JSON.parse(ws.sent[0]);
-    // Should have: 0, 25, 50, 75, 100
-    expect(payload.timesteps).toContain(25.0);
-    expect(payload.timesteps).toContain(75.0);
-    // Must be sorted
-    const ts: number[] = payload.timesteps;
-    for (let i = 1; i < ts.length; i++) {
-      expect(ts[i]).toBeGreaterThanOrEqual(ts[i - 1]);
-    }
+    expect(payload.timesteps).toEqual([20, 40, 60]);
+  });
+
+  it("runs a single timestep at the region midpoint when nPoints is 1", async () => {
+    useStore.setState({
+      parsedConfig: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
+      niceInterval: { rangeStart: 10, rangeEnd: 30, nPoints: 1, warmStart: true },
+    });
+    useStore.getState().runNice();
+    await Promise.resolve();
+
+    const ws = MockWebSocket.instances[0];
+    const payload = JSON.parse(ws.sent[0]);
+    expect(payload.timesteps).toEqual([20]);
   });
 
   it("does not start if already running", () => {
@@ -310,7 +333,7 @@ describe("runNice", () => {
   it("resets results on new run", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 100, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 100, extraTimesteps: [] },
+      niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 2, warmStart: true },
       results: [makeResult(0)],
     });
     useStore.getState().runNice();
@@ -320,7 +343,7 @@ describe("runNice", () => {
   it("updates results when timestep_result message received", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 10, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 10, extraTimesteps: [] },
+      niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 11, warmStart: true },
     });
     useStore.getState().runNice();
     await Promise.resolve();
@@ -343,7 +366,7 @@ describe("runNice", () => {
   it("sets niceRunning false on completed message", async () => {
     useStore.setState({
       parsedConfig: { waveforms: [], time_start: 0, time_end: 10, yaml_content: "", load_error: "" },
-      niceInterval: { uniformStep: 10, extraTimesteps: [] },
+      niceInterval: { rangeStart: null, rangeEnd: null, nPoints: 11, warmStart: true },
     });
     useStore.getState().runNice();
     await Promise.resolve();

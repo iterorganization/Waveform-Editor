@@ -3,7 +3,7 @@ import type { TendencyData, TendencyType } from "../../types";
 const TENDENCY_TYPES: TendencyType[] = [
   "constant", "linear", "smooth",
   "sine-wave", "square-wave", "sawtooth-wave", "triangle-wave",
-  "piecewise",
+  "piecewise", "repeat",
 ];
 
 const TENDENCY_FIELDS: Record<TendencyType, string[]> = {
@@ -15,6 +15,7 @@ const TENDENCY_FIELDS: Record<TendencyType, string[]> = {
   "sawtooth-wave":["duration", "base", "amplitude", "frequency"],
   "triangle-wave":["duration", "base", "amplitude", "frequency"],
   piecewise:      ["duration"],
+  repeat:         ["times"],
 };
 
 interface Props {

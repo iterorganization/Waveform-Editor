@@ -12,3 +12,11 @@ vi.mock("@monaco-editor/react", () => ({
     return null;
   }),
 }));
+
+// jsdom has no ResizeObserver (used by the SVG chart components)
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = globalThis.ResizeObserver ?? (ResizeObserverStub as unknown as typeof ResizeObserver);
