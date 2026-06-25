@@ -8,7 +8,7 @@ This document describes the different types of tendencies available in the Wavef
 
 Each tendency defines the behavior of the signal over a specific time interval. You can chain multiple tendencies together to create complex waveforms.
 
-If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → :ref:`import <import-tendency>`, ``to`` → linear, ``time`` → :ref:`piecewise <piecewise-linear-tendency>`, ``value`` → constant; anything else defaults to ``linear`` (so a ``from``-only, ``rate``-only, or bare segment is still a linear ramp). Tendencies with no distinguishing key -- the periodic shapes, ``smooth``, and a value-less ``constant`` -- must name their ``type`` explicitly.
+If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → :ref:`import <import-tendency>`, ``to`` → :ref:`linear <linear-tendency>`, ``time`` → :ref:`piecewise <piecewise-linear-tendency>`, ``value`` → :ref:`constant <constant-tendency>`; anything else defaults to ``linear`` (so a ``from``-only, ``rate``-only, or bare segment is still a linear ramp). Tendencies with no distinguishing key -- the :ref:`periodic shapes <periodic-tendencies>`, :ref:`smooth <smooth-tendency>`, and a value-less :ref:`constant <constant-tendency>` -- must name their ``type`` explicitly.
 
 Common Time Parameters
 ======================
@@ -21,6 +21,8 @@ Most tendencies accept the following parameters to define their time interval. Y
 
 .. note::
     The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
+
+.. _constant-tendency:
 
 Constant Tendency
 =================
@@ -52,6 +54,8 @@ If the ``value`` is not specified, it will be set to the last value of the previ
 
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
+
+.. _linear-tendency:
 
 Linear Tendency
 ===============
@@ -94,6 +98,8 @@ If the ``from`` or ``to`` values are not specified, they will be taken from the 
 
         - {type: linear, from: 3, to: 5, rate: 2, duration: 10}
 
+
+.. _smooth-tendency:
 
 Smooth Tendency
 ===============
@@ -231,6 +237,8 @@ Non-0D imports (a profile, a wildcard subtree) own the whole waveform. Only **0D
     equilibrium/time_slice/global_quantities/ip:
       - {type: constant, value: -1.0, duration: 1}   # analytic on [0, 1] s
       - {ref: scenario, duration: 1}                 # imported on [1, 2] s
+
+.. _periodic-tendencies:
 
 Periodic Tendencies
 ===================
