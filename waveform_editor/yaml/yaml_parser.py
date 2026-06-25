@@ -202,15 +202,16 @@ class YamlParser:
                         name=name,
                         dd_version=dd_version,
                     )
-                # A non-0D or wildcard import owns the whole waveform; 0D imports
-                # stay as tendency segments, combinable with analytic ones.
+                # A non-0D or wildcard import owns the whole waveform (and may list
+                # several overlays); 0D imports stay as tendency segments, combinable
+                # with analytic ones.
                 if (
-                    len(waveform) == 1
-                    and _is_import_entry(waveform[0])
+                    waveform
+                    and all(_is_import_entry(entry) for entry in waveform)
                     and _import_is_non_scalar(name, waveform[0], dd_version)
                 ):
                     return ImportWaveform(
-                        waveform[0],
+                        waveform,
                         yaml_str=yaml_str,
                         name=name,
                         dd_version=dd_version,
@@ -221,6 +222,7 @@ class YamlParser:
                     line_number=line_number,
                     name=name,
                     dd_version=dd_version,
+                    config=self.config,
                 )
             else:
                 waveform = DerivedWaveform(

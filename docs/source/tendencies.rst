@@ -8,9 +8,7 @@ This document describes the different types of tendencies available in the Wavef
 
 Each tendency defines the behavior of the signal over a specific time interval. You can chain multiple tendencies together to create complex waveforms.
 
-The ``type`` may be omitted, in which case it is inferred from the entry's keys: ``to`` implies a :ref:`Linear <available-tendencies>` tendency, ``time`` a :ref:`Piecewise Linear <piecewise-linear-tendency>` tendency, and ``value`` a :ref:`Constant <available-tendencies>` tendency. Anything else falls back to ``linear`` -- so a linear tendency does *not* require ``to``; a ``from``-only, ``rate``-only, or bare segment is still linear and takes its endpoints from its neighbours.
-
-A segment whose distinguishing key is absent must therefore name its ``type`` explicitly: the periodic shapes (sine, sawtooth, triangle, square), a :ref:`Smooth <available-tendencies>` tendency, and a value-less :ref:`Constant <available-tendencies>` (a bare ``{duration: ...}`` is read as a linear ramp, not a held constant).
+If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → :ref:`import <import-tendency>`, ``to`` → linear, ``time`` → :ref:`piecewise <piecewise-linear-tendency>`, ``value`` → constant; anything else defaults to ``linear`` (so a ``from``-only, ``rate``-only, or bare segment is still a linear ramp). Tendencies with no distinguishing key -- the periodic shapes, ``smooth``, and a value-less ``constant`` -- must name their ``type`` explicitly.
 
 Common Time Parameters
 ======================
@@ -197,30 +195,36 @@ Parameters
 Import
 ======
 
-Takes its values from an external entry declared in :ref:`globals.imports <global_properties>` instead of an analytic shape. By default the same DD path the waveform sits at is read from the import and resampled onto the export time base.
+Takes its values from an external entry in :ref:`globals.imports <global_properties>` instead of an analytic shape, resampled onto the export time base. By default it reads the waveform's own DD path.
 
 *Type:* ``import`` (inferred when ``ref`` is present)
 
 Parameters
 ----------
-*   ``ref``: Name of the entry in ``globals.imports`` to read from.
-*   ``path``: DD path to read from the import. Defaults to the waveform's own path.
-*   ``time_offset``: Offset added to the export time when sampling the import. Defaults to ``0``.
-*   ``interp``: Resampling mode onto the export time base: ``closest`` (default), ``linear`` or ``previous``.
+*   ``ref``: Entry in ``globals.imports`` to read from.
+*   ``path``: DD path to read. Defaults to the waveform's own path.
+*   ``time_offset``: Offset added to the export time when sampling. Defaults to ``0``.
+*   ``interp``: Resampling mode: ``closest`` (default), ``linear`` or ``previous``.
 
 .. code-block:: yaml
 
     core_sources/source(1)/profiles_1d/electrons/energy:
       - {ref: scenario, interp: linear}
 
-Wildcards expand against the source: a trailing ``*`` imports every filled leaf of that subtree (e.g. ``core_sources/source(1)/profiles_1d/*``), an ``<ids>/*`` import copies a whole IDS and acts as an overlay base, and a ``(*)`` index wildcard imports the leaf for every element of that array of structure. Several ``(*)`` may be combined for higher-dimensional imports, e.g. every ion of every source:
+Wildcards expand against the source: a trailing ``*`` imports a whole subtree (``<ids>/*`` copies a whole IDS), and a ``(*)`` index wildcard iterates every element of an array of structure -- several may be combined, e.g. every ion of every source. A bare ``*`` imports the whole entry: every IDS the source provides (a URI is scanned for filled IDSs; a ``{port: ...}`` source contributes the IDS it received), loading a machine description in one line. An overlay may list several sources, applied in order:
 
 .. code-block:: yaml
 
     core_sources/source(*)/profiles_1d/ion(*)/z_ion:
       - {ref: scenario}
 
-Non-0D imports (a value per radial point, a wildcard subtree) own the whole waveform. Only **0D (scalar)** imports may be combined with analytic segments, each filling its ``[start, end]`` window:
+    '*':                  # whole-entry overlay; sources stack
+      - {ref: machine}
+      - {ref: scenario}
+
+**Precedence.** Where imports or explicit waveforms write the same node, the most specific wins regardless of order: ``*`` < ``<ids>/*`` < subtree ``.../*`` < explicit leaf. Equal specificity falls back to listing order (last wins).
+
+Non-0D imports (a profile, a wildcard subtree) own the whole waveform. Only **0D (scalar)** imports combine with analytic segments, each filling its ``[start, end]`` window:
 
 .. code-block:: yaml
 

@@ -50,11 +50,10 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
        globals:
          dd_version: 3.42.0
 
-*   **imports:** Named external data entries that waveforms can import values from
-    (see :ref:`Import <import-tendency>`). Each value is either an IMAS URI, or a
-    mapping ``{port: <name>}`` referring to an IDS received on a MUSCLE3 port at run
-    time (used by the actor). Use a dictionary where the keys are names you choose and
-    refer to with ``{ref: <name>}``.
+*   **imports:** Named external data entries that waveforms read from (see
+    :ref:`Import <import-tendency>`), keyed by names you choose and refer to with
+    ``{ref: <name>}``. Each value is an IMAS URI, or ``{port: <name>}`` for an IDS
+    received on a MUSCLE3 port at run time (used by the actor).
 
     .. code-block:: yaml
 
@@ -65,16 +64,15 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
            scenario: imas:hdf5?path=scenario_run
            live_eq: {port: equilibrium_in}
 
-    A machine description is expressed as an import overlaid whole onto an IDS: list an
-    ``<ids>/*`` import first (its filled leaves are copied in as a base), then add the
-    waveforms that override individual nodes.
+    Overlay a whole machine description with a wildcard import, then override individual
+    nodes; ``<ids>/*`` overlays one IDS, a bare ``*`` overlays every IDS the source has.
 
     .. code-block:: yaml
 
        ec_launchers:
          ec_launchers/*:
-           - {ref: machine}          # overlay the whole machine-description IDS first
-         ec_launchers/beam(1)/phase/angle: -1.65898  # then override specific leaves
+           - {ref: machine}                            # overlay base
+         ec_launchers/beam(1)/phase/angle: -1.65898    # then override leaves
 
 Grouping Waveforms
 ------------------
@@ -116,7 +114,7 @@ a list of waveforms, or a single number (float or integer).
                # Implicit linear ramp back to 0 over 25 seconds
              - { duration: 25, to: 0 }
 
-        The ``type`` may be omitted, in which case it is inferred from the entry's keys: ``to`` implies ``linear``, ``time`` implies ``piecewise``, and ``value`` implies ``constant``. Anything else falls back to ``linear`` -- a linear tendency does not require ``to`` (a ``from``-only, ``rate``-only, or bare segment is still linear, taking its endpoints from its neighbours). A segment whose distinguishing key is absent must name its ``type`` explicitly: the periodic shapes, ``smooth``, and a value-less ``constant`` (a bare ``{duration: ...}`` is read as a linear ramp).
+        If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → ``import``, ``to`` → ``linear``, ``time`` → ``piecewise``, ``value`` → ``constant``; anything else defaults to ``linear``. Tendencies with no distinguishing key (the periodic shapes, ``smooth``, a value-less ``constant``) must name their ``type``.
 
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 

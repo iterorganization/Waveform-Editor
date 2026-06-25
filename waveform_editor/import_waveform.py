@@ -1,36 +1,61 @@
+from collections import namedtuple
+
 import numpy as np
 
 from waveform_editor.base_waveform import BaseWaveform
-from waveform_editor.tendencies.import_tendency import INTERP_MODES
+from waveform_editor.import_resolver import INTERP_MODES
+
+# One import within an ImportWaveform: which entry to read (ref) and how.
+ImportSpec = namedtuple("ImportSpec", ["ref", "path", "time_offset", "interp"])
+
+
+def _spec_from_entry(entry):
+    interp = entry.get("user_interp", "closest")
+    return ImportSpec(
+        ref=entry.get("user_ref", ""),
+        path=entry.get("user_path") or None,
+        time_offset=entry.get("user_time_offset", 0.0) or 0.0,
+        interp=interp if interp in INTERP_MODES else "closest",
+    )
 
 
 class ImportWaveform(BaseWaveform):
-    """A waveform whose entire content is imported from an external entry.
+    """A waveform whose entire content is imported from external entries.
 
     Used for imports that cannot be expressed as a single analytic segment: non-0D
     quantities (a value per radial point, etc.) and wildcard paths (``.../*``) that
-    mirror a whole subtree. The values are read from a named ``globals.imports`` entry
-    and resampled onto the export time base by the exporter (which has IMAS and the
-    export times); this class only carries the import's configuration.
+    mirror a whole subtree. This class only carries the imports' configuration; the
+    exporter copies the (resampled) source into the target IDS via the ImportResolver.
 
-    A whole-IDS import (``<ids>/*``) acts as an overlay base: it is applied before the
-    other waveforms of that IDS, which then override individual leaves.
+    It may carry **several** imports (``[{ref: a}, {ref: b}]``), overlaid in listed
+    order. A whole-IDS import (``<ids>/*``) is an overlay base for that IDS; a bare
+    ``*`` (:meth:`is_root`) overlays every IDS the sources provide. Overlays are applied
+    broadest-first (see :meth:`specificity`), so more specific imports win.
     """
 
-    def __init__(self, entry, *, yaml_str="", name="waveform", dd_version=None):
+    def __init__(self, entries, *, yaml_str="", name="waveform", dd_version=None):
         super().__init__(yaml_str, name, dd_version)
         self.yaml_str = yaml_str
-        self.ref = entry.get("user_ref", "")
-        self.path = entry.get("user_path") or None
-        self.time_offset = entry.get("user_time_offset", 0.0) or 0.0
-        interp = entry.get("user_interp", "closest")
-        self.interp = interp if interp in INTERP_MODES else "closest"
-        self.line_number = entry.get("line_number", 0)
+        if isinstance(entries, dict):
+            entries = [entries]
+        self.specs = [_spec_from_entry(e) for e in entries]
+        self.line_number = entries[0].get("line_number", 0) if entries else 0
 
     @property
-    def is_wildcard(self):
-        """Whether this import mirrors a whole subtree (its path contains ``*``)."""
-        return "*" in (self.path or self.name)
+    def is_root(self):
+        """Whether this is a whole-entry import (``*``): every IDS the sources provide
+        is overlaid, each as if it were an ``<ids>/*`` whole-IDS import."""
+        return self.name == "*"
+
+    @property
+    def specificity(self):
+        """Concrete (pre-wildcard) path length. Broader overlays have a lower value and
+        are applied first, so more specific imports win; ``*`` (whole entry) is 0."""
+        segments = self.name.split("/")
+        for i, segment in enumerate(segments):
+            if segment == "*" or segment.endswith("(*)"):
+                return i
+        return len(segments)
 
     def get_value(
         self, time: np.ndarray | None = None

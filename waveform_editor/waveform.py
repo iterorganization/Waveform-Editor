@@ -46,12 +46,28 @@ class Waveform(BaseWaveform):
         is_repeated=False,
         name="waveform",
         dd_version=None,
+        config=None,
     ):
         super().__init__(yaml_str, name, dd_version)
         self.line_number = line_number
         self.is_repeated = is_repeated
+        # Used to reach the import resolver for {ref: ...} tendencies (None when the
+        # waveform is built outside a configuration, e.g. a repeated sub-waveform).
+        self.config = config
         if waveform is not None:
             self._process_waveform(waveform)
+
+    def _bind_imports(self):
+        """Give import tendencies the resolver and default DD path so they can produce
+        their values. Read fresh each call: the resolver may be rebound for a run (e.g.
+        with IDSs received on MUSCLE3 ports)."""
+        if not any(isinstance(t, ImportTendency) for t in self.tendencies):
+            return
+        resolver = self.config.ensure_resolver() if self.config else None
+        for tendency in self.tendencies:
+            if isinstance(tendency, ImportTendency):
+                tendency.resolver = resolver
+                tendency.default_path = self.name
 
     def get_value(
         self, time: np.ndarray | None = None
@@ -69,10 +85,18 @@ class Waveform(BaseWaveform):
         if not self.tendencies:
             return np.array([]), np.array([])
 
+        self._bind_imports()
+
         if time is None:
             time, values = zip(*(t.get_value() for t in self.tendencies), strict=True)
             time = np.concatenate(time)
             values = np.concatenate(values)
+        elif len(self.tendencies) == 1 and isinstance(
+            self.tendencies[0], ImportTendency
+        ):
+            # A lone import spans the whole waveform, rather than a default [0, 1]
+            # segment window; sample it across the full requested time base.
+            return self.tendencies[0].get_value(time)
         else:
             values = self._evaluate_tendencies(time)
 

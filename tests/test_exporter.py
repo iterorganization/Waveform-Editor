@@ -1072,3 +1072,179 @@ Plasma:
     # overlaid base field survived, while ip was overridden by the explicit waveform:
     assert eq.vacuum_toroidal_field.r0 == 6.2
     assert eq.time_slice[0].global_quantities.ip == 5.0
+
+
+def test_scalar_import_resolves_in_waveform(equilibrium_ext_uri):
+    """The scalar import value is produced by the waveform itself (get_value), not the
+    exporter: the editor/CSV path resolves it directly via the import resolver."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{equilibrium_ext_uri}"
+Plasma current:
+  equilibrium/time_slice/global_quantities/ip:
+    - {{ref: ext, interp: linear}}
+"""
+    )
+    waveform = config["equilibrium/time_slice/global_quantities/ip"]
+    times = np.array([0.5, 1.5])
+    _, values = waveform.get_value(times)
+    # ip is 0, 10, 20 at t = 0, 1, 2 -> linear interpolation gives 5 and 15:
+    assert np.allclose(values, [5.0, 15.0])
+
+
+def test_scalar_import_raw_in_editor(equilibrium_ext_uri):
+    """With no time array (the editor plot), a lone import returns the raw source
+    samples on the source's own time base -- not resampled onto a foreign grid."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    ext: "{equilibrium_ext_uri}"
+Plasma current:
+  equilibrium/time_slice/global_quantities/ip:
+    - {{ref: ext}}
+"""
+    )
+    waveform = config["equilibrium/time_slice/global_quantities/ip"]
+    times, values = waveform.get_value()
+    # the source's own samples: ip = 0, 10, 20 at t = 0, 1, 2
+    assert np.allclose(times, [0.0, 1.0, 2.0])
+    assert np.allclose(values, [0.0, 10.0, 20.0])
+
+
+@pytest.fixture
+def machine_ext_uri(tmp_path):
+    """An external entry with two filled IDSs, for a whole-entry (root `*`) import: a
+    homogeneous equilibrium with ip(t) and a time-independent ec_launchers."""
+    uri = f"imas:hdf5?path={tmp_path}/machine"
+    with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+        eq = dbentry.factory.new("equilibrium")
+        eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        eq.time = [0.0, 1.0, 2.0]
+        eq.time_slice.resize(3)
+        for t in range(3):
+            eq.time_slice[t].global_quantities.ip = t * 10.0
+        dbentry.put(eq)
+
+        ec = dbentry.factory.new("ec_launchers")
+        ec.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
+        ec.beam.resize(2)
+        ec.beam[0].name = "beam0"
+        ec.beam[1].name = "beam1"
+        dbentry.put(ec)
+    return uri
+
+
+def test_root_import(machine_ext_uri):
+    """A root `*` import overlays every IDS the source provides, each as a whole-IDS
+    overlay base; explicit leaf waveforms still override afterwards."""
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    machine: "{machine_ext_uri}"
+Machine:
+  '*':
+    - {{ref: machine}}
+  equilibrium/time_slice/global_quantities/ip:
+    - {{type: constant, value: 5.0}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    idss = ConfigurationExporter(config, times).to_ids_dict()
+
+    # both filled IDSs of the entry were overlaid:
+    assert set(idss) == {"equilibrium", "ec_launchers"}
+    assert [str(b.name) for b in idss["ec_launchers"].beam] == ["beam0", "beam1"]
+    # the explicit ip waveform overrode the overlaid equilibrium values:
+    assert np.allclose(
+        [idss["equilibrium"].time_slice[t].global_quantities.ip for t in range(3)],
+        [5.0, 5.0, 5.0],
+    )
+
+
+@pytest.fixture
+def two_equilibria(tmp_path):
+    """Two external equilibria for overlay-precedence tests: 'a' has ip(t) = 0,10,20 and
+    r0 = 6.2; 'b' has a constant ip = 100 and r0 = 9.9."""
+    a = f"imas:hdf5?path={tmp_path}/a"
+    b = f"imas:hdf5?path={tmp_path}/b"
+    for uri, const_ip, r0 in ((a, None, 6.2), (b, 100.0, 9.9)):
+        with imas.DBEntry(uri, "w", dd_version="4.0.0") as dbentry:
+            eq = dbentry.factory.new("equilibrium")
+            eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+            eq.time = [0.0, 1.0, 2.0]
+            eq.vacuum_toroidal_field.r0 = r0
+            eq.time_slice.resize(3)
+            for t in range(3):
+                eq.time_slice[t].global_quantities.ip = (
+                    const_ip if const_ip is not None else t * 10.0
+                )
+            dbentry.put(eq)
+    return a, b
+
+
+def test_multiple_root_imports(two_equilibria):
+    """A root `*` may list several sources; they overlay in listed order, so the last
+    wins at a shared leaf (equal specificity)."""
+    a, b = two_equilibria
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    a: "{a}"
+    b: "{b}"
+Machine:
+  '*':
+    - {{ref: a}}
+    - {{ref: b}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    eq = ConfigurationExporter(config, times).to_ids_dict()["equilibrium"]
+
+    # 'b' is listed last, so its values win:
+    assert eq.vacuum_toroidal_field.r0 == 9.9
+    assert np.allclose(
+        [eq.time_slice[t].global_quantities.ip for t in range(3)], [100.0, 100.0, 100.0]
+    )
+
+
+def test_specificity_beats_order(two_equilibria):
+    """A more specific overlay wins over a broader one regardless of listing order: the
+    broad `equilibrium/*` is listed last but applied first, so the narrower
+    `equilibrium/vacuum_toroidal_field/*` still wins for r0."""
+    a, b = two_equilibria
+    config = WaveformConfiguration()
+    config.load_yaml(
+        f"""
+globals:
+  dd_version: 4.0.0
+  imports:
+    a: "{a}"
+    b: "{b}"
+Machine:
+  equilibrium/vacuum_toroidal_field/*:
+    - {{ref: b}}
+  equilibrium/*:
+    - {{ref: a}}
+"""
+    )
+    times = np.array([0.0, 1.0, 2.0])
+    eq = ConfigurationExporter(config, times).to_ids_dict()["equilibrium"]
+
+    # r0 from the more specific 'b' subtree, ip from the broad 'a' whole-IDS import:
+    assert eq.vacuum_toroidal_field.r0 == 9.9
+    assert np.allclose(
+        [eq.time_slice[t].global_quantities.ip for t in range(3)], [0.0, 10.0, 20.0]
+    )

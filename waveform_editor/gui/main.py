@@ -78,6 +78,13 @@ class WaveformEditorGui(param.Parameterized):
                     "widget_type": DictEditor,
                     "key_options": None,
                     "names": ("Name", "URI"),
+                    "description": (
+                        "Named external data entries to import from. Each value is an "
+                        "IMAS URI, or <code>{port: &lt;name&gt;}</code> for an IDS "
+                        "received on a MUSCLE3 port at run time. Reference one from a "
+                        "waveform with <code>{ref: &lt;name&gt;}</code>; a waveform "
+                        "named <code>*</code> overlays the whole entry."
+                    ),
                 }
             },
         )
