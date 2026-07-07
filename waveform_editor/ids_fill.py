@@ -7,6 +7,8 @@ writes each waveform's values. The resolver reuses :func:`fill_nodes` for struct
 imports, which size themselves as they copy.
 """
 
+import numpy as np
+
 
 def size_arrays(node, paths, time_len, path_index=0):
     """Resize every array of structure crossed by ``paths`` to the size it needs.
@@ -75,7 +77,20 @@ def fill_nodes(node, path, values, path_index=0):
     """Write ``values`` at ``path`` in ``node``, growing arrays of structure crossed on
     the way to fit (so it is correct without a prior :func:`size_arrays` pass too)."""
     if path_index == len(path.parts):
-        if not node.metadata.type.is_dynamic and hasattr(values, "__len__"):
+        if (
+            not node.metadata.type.is_dynamic
+            and isinstance(values, np.ndarray)
+            and values.ndim > 0
+        ):
+            # A static (time-independent) destination leaf can still receive an
+            # explicit scalar import: ImportResolver.sample() broadcasts a static
+            # source across the full export time base so the analytic-waveform
+            # machinery can treat every import uniformly as a per-time array. All
+            # elements are identical for a genuinely static source, so collapse back
+            # to a single value rather than assigning a multi-element array to a 0D
+            # leaf (which imas-python's scalar cast rejects). Restricted to ndarray
+            # (as returned by ImportResolver.sample()/raw()) so a StaticWaveform's
+            # bare constant (e.g. a string name) is never indexed into.
             values = values[0]
         node.value = values
         return
