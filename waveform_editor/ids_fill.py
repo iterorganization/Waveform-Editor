@@ -75,6 +75,8 @@ def fill_nodes(node, path, values, path_index=0):
     """Write ``values`` at ``path`` in ``node``, growing arrays of structure crossed on
     the way to fit (so it is correct without a prior :func:`size_arrays` pass too)."""
     if path_index == len(path.parts):
+        if not node.metadata.type.is_dynamic and hasattr(values, "__len__"):
+            values = values[0]
         node.value = values
         return
     part = path.parts[path_index]
