@@ -6,6 +6,7 @@ from ruamel.yaml.comments import CommentedSeq
 
 from waveform_editor.base_waveform import BaseWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
+from waveform_editor.tendencies.import_tendency import ImportTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
@@ -29,6 +30,9 @@ tendency_map = {
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
     "repeat": RepeatTendency,
+    "import": ImportTendency,
+    # `reference` kept as an alias for the import tendency type.
+    "reference": ImportTendency,
 }
 
 
@@ -42,12 +46,28 @@ class Waveform(BaseWaveform):
         is_repeated=False,
         name="waveform",
         dd_version=None,
+        config=None,
     ):
         super().__init__(yaml_str, name, dd_version)
         self.line_number = line_number
         self.is_repeated = is_repeated
+        # Used to reach the import resolver for {ref: ...} tendencies (None when the
+        # waveform is built outside a configuration, e.g. a repeated sub-waveform).
+        self.config = config
         if waveform is not None:
             self._process_waveform(waveform)
+
+    def _bind_imports(self):
+        """Give import tendencies the resolver and default DD path so they can produce
+        their values. Read fresh each call: the resolver may be rebound for a run (e.g.
+        with IDSs received on MUSCLE3 ports)."""
+        if not any(isinstance(t, ImportTendency) for t in self.tendencies):
+            return
+        resolver = self.config.ensure_resolver() if self.config else None
+        for tendency in self.tendencies:
+            if isinstance(tendency, ImportTendency):
+                tendency.resolver = resolver
+                tendency.default_path = self.name
 
     def get_value(
         self, time: np.ndarray | None = None
@@ -65,10 +85,18 @@ class Waveform(BaseWaveform):
         if not self.tendencies:
             return np.array([]), np.array([])
 
+        self._bind_imports()
+
         if time is None:
             time, values = zip(*(t.get_value() for t in self.tendencies), strict=True)
             time = np.concatenate(time)
             values = np.concatenate(values)
+        elif len(self.tendencies) == 1 and isinstance(
+            self.tendencies[0], ImportTendency
+        ):
+            # A lone import spans the whole waveform, rather than a default [0, 1]
+            # segment window; sample it across the full requested time base.
+            return self.tendencies[0].get_value(time)
         else:
             values = self._evaluate_tendencies(time)
 
@@ -186,6 +214,23 @@ class Waveform(BaseWaveform):
             if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
 
+    @staticmethod
+    def _infer_tendency_type(entry):
+        """Infer the tendency type from an entry's keys when ``type`` is omitted.
+
+        Unambiguous keys map directly; periodic shapes share keys (period/amplitude) so
+        they still need an explicit ``type``. Falls back to ``linear``.
+        """
+        for key, tendency_type in (
+            ("user_ref", "import"),
+            ("user_to", "linear"),
+            ("user_time", "piecewise"),
+            ("user_value", "constant"),
+        ):
+            if key in entry:
+                return tendency_type
+        return "linear"
+
     def _has_type_error(self, entry):
         """Check if the YAML entry contains an error related to the tendency type.
 
@@ -198,9 +243,9 @@ class Waveform(BaseWaveform):
         line_number = entry.get("line_number", 0)
         ignore_msg = "This tendency will be ignored.\n"
 
-        # If no type is given, take linear as default
+        # If no type is given, infer it from the entry's keys (linear by default)
         if "user_type" not in entry:
-            entry["user_type"] = "linear"
+            entry["user_type"] = self._infer_tendency_type(entry)
 
         tendency_type = entry.get("user_type", None)
         if tendency_type is None:

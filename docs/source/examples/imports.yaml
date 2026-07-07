@@ -1,0 +1,49 @@
+# Reference example for the `imports` mechanism. The URIs are illustrative.
+globals:
+  dd_version: 4.0.0
+  imports:
+    machine:  imas:hdf5?path=/path/to/machine_description    # static (no /time)
+    scenario: imas:hdf5?path=/path/to/scenario_run           # time-dependent
+    live_eq:  {port: equilibrium_in}                         # received at run time
+
+ec_launchers:
+  # Whole-IDS import = machine-description overlay: copied in first (as a base),
+  # then the leaves below override individual nodes.
+  ec_launchers/*:
+    - {ref: machine}
+  ec_launchers/beam(1)/phase/angle:
+    - {type: linear, to: 1.65, duration: 100}
+
+Heating:
+  # Scalar (0D) import, resampled onto the export /time with linear interpolation.
+  core_sources/source(1)/global_quantities/total_ion_power:
+    - {ref: scenario, interp: linear}
+
+  # Static value (not a time series) -- names the source.
+  core_sources/source(1)/identifier/name:
+    - {value: ec}
+
+  # Trailing /* -- mirror every filled leaf of the subtree from the entry.
+  core_sources/source(1)/profiles_1d/*:
+    - {ref: scenario}
+
+  # Index wildcard -- import the leaf for every source.
+  core_sources/source(*)/global_quantities/total_ion_power:
+    - {ref: scenario}
+
+  # Multiple index wildcards -- every (source, ion) combination.
+  core_sources/source(*)/profiles_1d/ion(*)/z_ion:
+    - {ref: scenario}
+
+Plasma current:
+  # Composite (0D only): an analytic segment, then an imported segment. Each fills its
+  # [start, end] window.
+  equilibrium/time_slice/global_quantities/ip:
+    - {type: constant, value: -1.0e6, duration: 1}
+    - {ref: scenario, duration: 1, time_offset: 0.5}
+
+  # Overlay onto a live IDS received over a MUSCLE3 port (the actor's equilibrium_in),
+  # then override a leaf. Same shape as the machine-description overlay above, but the
+  # source is runtime data rather than a file.
+  equilibrium/*:
+    - {ref: live_eq}

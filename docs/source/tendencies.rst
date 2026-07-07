@@ -8,6 +8,8 @@ This document describes the different types of tendencies available in the Wavef
 
 Each tendency defines the behavior of the signal over a specific time interval. You can chain multiple tendencies together to create complex waveforms.
 
+If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → :ref:`import <import-tendency>`, ``to`` → linear, ``time`` → :ref:`piecewise <piecewise-linear-tendency>`, ``value`` → constant; anything else defaults to ``linear`` (so a ``from``-only, ``rate``-only, or bare segment is still a linear ramp). Tendencies with no distinguishing key -- the periodic shapes, ``smooth``, and a value-less ``constant`` -- must name their ``type`` explicitly.
+
 Common Time Parameters
 ======================
 
@@ -187,6 +189,48 @@ Parameters
 
 .. warning::
     This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.
+
+.. _import-tendency:
+
+Import
+======
+
+Takes its values from an external entry in :ref:`globals.imports <global_properties>` instead of an analytic shape, resampled onto the export time base. By default it reads the waveform's own DD path.
+
+*Type:* ``import`` (inferred when ``ref`` is present)
+
+Parameters
+----------
+*   ``ref``: Entry in ``globals.imports`` to read from.
+*   ``path``: DD path to read. Defaults to the waveform's own path.
+*   ``time_offset``: Offset added to the export time when sampling. Defaults to ``0``.
+*   ``interp``: Resampling mode: ``closest`` (default), ``linear`` or ``previous``.
+
+.. code-block:: yaml
+
+    core_sources/source(1)/profiles_1d/electrons/energy:
+      - {ref: scenario, interp: linear}
+
+Wildcards expand against the source: a trailing ``*`` imports a whole subtree (``<ids>/*`` copies a whole IDS), and a ``(*)`` index wildcard iterates every element of an array of structure -- several may be combined, e.g. every ion of every source. An overlay may list several sources, applied in order:
+
+.. code-block:: yaml
+
+    core_sources/source(*)/profiles_1d/ion(*)/z_ion:
+      - {ref: scenario}
+
+    ec_launchers/*:        # whole-IDS overlay; sources stack
+      - {ref: machine}
+      - {ref: scenario}
+
+**Precedence.** Where imports or explicit waveforms write the same node, the most specific wins regardless of order: ``<ids>/*`` < subtree ``.../*`` < explicit leaf. Equal specificity falls back to listing order (last wins).
+
+Non-0D imports (a profile, a wildcard subtree) own the whole waveform. Only **0D (scalar)** imports combine with analytic segments, each filling its ``[start, end]`` window:
+
+.. code-block:: yaml
+
+    equilibrium/time_slice/global_quantities/ip:
+      - {type: constant, value: -1.0, duration: 1}   # analytic on [0, 1] s
+      - {ref: scenario, duration: 1}                 # imported on [1, 2] s
 
 Periodic Tendencies
 ===================

@@ -4,6 +4,7 @@ import pytest
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.waveform import Waveform
 
@@ -69,6 +70,52 @@ def test_tendencies(waveform):
     assert isinstance(waveform.tendencies[1], SineWaveTendency)
     assert isinstance(waveform.tendencies[2], ConstantTendency)
     assert isinstance(waveform.tendencies[3], SmoothTendency)
+
+
+@pytest.mark.parametrize(
+    "entry, expected",
+    [
+        ({"user_to": 8, "user_duration": 5}, LinearTendency),
+        ({"user_time": [0, 1, 2], "user_value": [1, 2, 3]}, PiecewiseLinearTendency),
+        ({"user_value": 4, "user_duration": 2}, ConstantTendency),
+        # Linear does not require `to`; its other forms fall back to linear:
+        ({"user_from": 3, "user_duration": 1}, LinearTendency),
+        ({"user_rate": 2, "user_duration": 1}, LinearTendency),
+        ({"user_duration": 1}, LinearTendency),  # bare -> linear (inferred from peers)
+    ],
+)
+def test_infer_tendency_type(entry, expected):
+    """When `type` is omitted, the tendency type is inferred from the entry's keys:
+    `to` -> linear, `time` -> piecewise, `value` -> constant, else linear. Linear does
+    not require `to` -- a `from`/`rate`/bare segment falls back to linear and takes its
+    endpoints from its neighbours."""
+    waveform = Waveform(waveform=[entry])
+    assert isinstance(waveform.tendencies[0], expected)
+    assert not waveform.annotations  # inference produced no errors
+
+
+def test_infer_value_less_segment_is_linear():
+    """A value-less segment between two constants is ambiguous from its keys alone
+    (a linear ramp vs. a constant holding the previous value); inference resolves it to
+    a linear ramp, so a value-less constant must set `type: constant` explicitly."""
+    waveform = Waveform(
+        waveform=[
+            {"user_value": 3, "user_duration": 1},
+            {"user_duration": 1},
+            {"user_value": 10, "user_duration": 1},
+        ]
+    )
+    assert isinstance(waveform.tendencies[1], LinearTendency)
+    assert not waveform.annotations
+
+
+def test_explicit_type_overrides_inference():
+    """An explicit `type` is honoured even when the keys would infer another type
+    (here `to` would otherwise infer linear, but `smooth` is requested)."""
+    waveform = Waveform(
+        waveform=[{"user_type": "smooth", "user_from": 0, "user_to": 5, "duration": 2}]
+    )
+    assert isinstance(waveform.tendencies[0], SmoothTendency)
 
 
 def test_get_value(waveform):

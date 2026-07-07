@@ -8,7 +8,7 @@ ymmsl = pytest.importorskip("ymmsl")
 
 # This cannot be imported if libmuscle is not available
 from waveform_editor.muscle3 import (  # noqa: E402
-    _time_base_and_base_ids,
+    _time_base_and_received_idss,
     waveform_actor,
 )
 
@@ -106,13 +106,17 @@ def test_muscle3(tmp_path, monkeypatch):
 # --- whole-trace mode: an '<ids>_in' port carrying an IDS -> overlay on its /time ----
 
 TRACE_YAML = """
+globals:
+  dd_version: 4.0.0
+  imports:
+    eq_in: {port: equilibrium_in}
 equilibrium:
+  equilibrium/*:
+    - {ref: eq_in}
   equilibrium/time_slice/global_quantities/ip:
     - {to: 8.33e5, duration: 20}
     - {type: constant, duration: 20}
     - {duration: 25, to: 0}
-globals:
-  dd_version: 4.0.0
 """
 # Same waveform as the per-slice test, but now interpolated onto a whole trace at once:
 TRACE_TIMES = [1.0, 21.0, 50.0]
@@ -192,7 +196,124 @@ def test_muscle3_whole_trace(tmp_path, monkeypatch):
     libmuscle.runner.run_simulation(configuration, implementations)
 
 
-# --- overlay-mode validation of the incoming base IDS ---------------------------------
+# --- multiple F_INIT ports: the first declared carries the time base, the rest are ----
+# --- port-imports only, resampled onto it (even with a different number of slices) ----
+
+MULTI_PORT_YAML = """
+globals:
+  dd_version: 4.0.0
+  imports:
+    eq_in: {port: equilibrium_in}
+    cp_in: {port: core_profiles_in}
+equilibrium:
+  equilibrium/*:
+    - {ref: eq_in}
+core_profiles:
+  core_profiles/*:
+    - {ref: cp_in}
+"""
+EQ_TIMES = [1.0, 21.0, 50.0]
+CP_TIMES = [0.0, 50.0]  # fewer, different slices than EQ_TIMES -- must be resampled
+CP_IP = [1e6, 2e6]
+
+MULTI_PORT_YMMSL = """
+ymmsl_version: v0.1
+
+model:
+  name: test_waveform_actor_multi_port
+
+  components:
+    eq_generator:
+      implementation: eq_generator
+    cp_generator:
+      implementation: cp_generator
+    waveform_actor:
+      implementation: waveform_actor
+    multi_port_validator:
+      implementation: multi_port_validator
+
+  conduits:
+    eq_generator.output: waveform_actor.equilibrium_in
+    cp_generator.output: waveform_actor.core_profiles_in
+    waveform_actor.equilibrium_out: multi_port_validator.equilibrium_in
+    waveform_actor.core_profiles_out: multi_port_validator.core_profiles_in
+
+settings:
+  waveform_actor.waveforms: {waveform_yaml}
+"""
+
+
+def eq_generator():
+    instance = libmuscle.Instance({ymmsl.Operator.O_I: ["output"]})
+
+    while instance.reuse_instance():
+        eq = imas.IDSFactory("4.0.0").equilibrium()
+        eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        eq.time = EQ_TIMES
+        eq.time_slice.resize(len(EQ_TIMES))
+        for ts in eq.time_slice:
+            ts.boundary.outline.r = BOUNDARY_R
+        instance.send("output", libmuscle.Message(EQ_TIMES[0], data=eq.serialize()))
+
+
+def cp_generator():
+    instance = libmuscle.Instance({ymmsl.Operator.O_I: ["output"]})
+
+    while instance.reuse_instance():
+        cp = imas.IDSFactory("4.0.0").core_profiles()
+        cp.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cp.time = CP_TIMES
+        cp.global_quantities.ip = CP_IP
+        instance.send("output", libmuscle.Message(CP_TIMES[0], data=cp.serialize()))
+
+
+def multi_port_validator():
+    instance = libmuscle.Instance(
+        {
+            ymmsl.Operator.F_INIT: ["equilibrium_in", "core_profiles_in"],
+        }
+    )
+
+    i = 0
+    while instance.reuse_instance():
+        eq_msg = instance.receive("equilibrium_in")
+        cp_msg = instance.receive("core_profiles_in")
+
+        eq = imas.IDSFactory("4.0.0").equilibrium()
+        eq.deserialize(eq_msg.data)
+        # The first-declared port (equilibrium_in) drives the time base and its
+        # non-overlaid data (the boundary) survives untouched.
+        assert np.array_equal(eq.time, EQ_TIMES)
+        for ts in eq.time_slice:
+            assert np.array_equal(ts.boundary.outline.r, BOUNDARY_R)
+
+        cp = imas.IDSFactory("4.0.0").core_profiles()
+        cp.deserialize(cp_msg.data)
+        # core_profiles is a secondary port-import: it is resampled onto the
+        # equilibrium time base rather than kept on its own (shorter) time array.
+        assert np.array_equal(cp.time, EQ_TIMES)
+        assert np.allclose(cp.global_quantities.ip, [CP_IP[0], CP_IP[0], CP_IP[1]])
+
+        i += 1
+    assert i == 1
+
+
+@pytest.mark.filterwarnings("ignore:.*use of fork():DeprecationWarning")
+def test_muscle3_multiple_finit_ports(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    waveform_yaml = (tmp_path / "multi_port.yml").resolve()
+    waveform_yaml.write_text(MULTI_PORT_YAML)
+    configuration = ymmsl.load(MULTI_PORT_YMMSL.format(waveform_yaml=waveform_yaml))
+    implementations = {
+        "eq_generator": eq_generator,
+        "cp_generator": cp_generator,
+        "waveform_actor": waveform_actor,
+        "multi_port_validator": multi_port_validator,
+    }
+    libmuscle.runner.run_simulation(configuration, implementations)
+
+
+# --- the input port carrying an IDS becomes a port-import -----------------------------
 
 
 class _Msg:
@@ -211,33 +332,34 @@ def _eq_msg(homogeneous_time, time):
     return _Msg(eq.serialize())
 
 
-def test_overlay_non_homogeneous_warns(caplog):
-    """A non-homogeneous base is overlaid but warns; INFO names the selected mode."""
+def test_received_non_homogeneous_warns(caplog):
+    """A non-homogeneous IDS is still exposed as a port-import but warns; the export
+    times are taken from its /time. The IDS is keyed by the input port name."""
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HETEROGENEOUS, TRACE_TIMES)
     with caplog.at_level("INFO"):
-        times, base_idss = _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        times, received = _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
     assert np.array_equal(times, TRACE_TIMES)
-    assert set(base_idss) == {"equilibrium"}
-    assert "overlay mode" in caplog.text
+    assert set(received) == {"equilibrium_in"}
     assert "homogeneous time mode" in caplog.text
 
 
-def test_overlay_homogeneous_does_not_warn(caplog):
+def test_received_homogeneous_does_not_warn(caplog):
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, TRACE_TIMES)
     with caplog.at_level("WARNING"):
-        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
     assert "homogeneous time mode" not in caplog.text
 
 
-def test_overlay_missing_time_raises():
+def test_received_missing_time_raises():
     msg = _eq_msg(imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS, None)
     with pytest.raises(RuntimeError, match="no root '/time'"):
-        _time_base_and_base_ids(msg, "equilibrium_in", "4.0.0")
+        _time_base_and_received_idss(msg, "equilibrium_in", "4.0.0")
 
 
 def test_fresh_export_mode(caplog):
     """A port whose name is not a valid IDS selects fresh-export mode."""
     with caplog.at_level("INFO"):
-        times, base_idss = _time_base_and_base_ids(_Msg(None, 3.0), "input", "4.0.0")
-    assert np.array_equal(times, [3.0]) and base_idss == {}
+        msg = _Msg(None, 3.0)
+        times, received = _time_base_and_received_idss(msg, "input", "4.0.0")
+    assert np.array_equal(times, [3.0]) and received == {}
     assert "fresh-export mode" in caplog.text

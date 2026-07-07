@@ -15,15 +15,21 @@ class DictEditor(pn.widgets.CompositeWidget):
 
     _composite_type = pn.Column
 
-    def __init__(self, key_options, names, **params):
+    def __init__(self, key_options=None, names=("Key", "Value"), **params):
         """Initialize the DictEditor widget.
 
         Args:
-            key_options: List of allowed keys shown in the dropdown editor.
+            key_options: List of allowed keys shown in a dropdown editor, or None to
+                allow free-text keys.
             names: Tuple of column names to display for keys and values.
         """
+        key_editor = (
+            {"type": "list", "values": key_options}
+            if key_options is not None
+            else {"type": "input"}
+        )
         self.tabulator = pn.widgets.Tabulator(
-            editors={"key": {"type": "list", "values": key_options}, "delete": None},
+            editors={"key": key_editor, "delete": None},
             titles={"delete": "🗑️", "key": names[0], "value": names[1]},
             layout="fit_data_stretch",
             sizing_mode="stretch_width",

@@ -14,7 +14,7 @@ model:
     waveform_actor:
       implementation: waveform_actor
       ports:
-        # An IDS-named input port selects overlay mode:
+        # An IDS-named input port exposes the received IDS as a port-import:
         f_init: equilibrium_in
         # Name of the output port is "<ids_name>_out":
         o_f:

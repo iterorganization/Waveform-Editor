@@ -14,10 +14,15 @@ class YamlGlobals(param.Parameterized):
         objects=AVAILABLE_DD_VERSIONS,
         doc="IMAS Data Dictionary version",
     )
-    machine_description = param.Dict(
-        label="Machine Description URIs",
+    imports = param.Dict(
+        label="Imports",
         default={},
-        doc="Machine description URIs for each IDS.",
+        doc=(
+            "Named external data entries to import values from. Each value is either "
+            "an IMAS URI string, or a mapping ``{port: <name>}`` referring to an IDS "
+            "received on a MUSCLE3 port at run time. Consumed by ``{ref: <name>}`` "
+            "import entries in waveforms."
+        ),
     )
 
     def __init__(self, **params):
