@@ -16,15 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 def _time_base_and_received_idss(msg, input_port, dd_version):
-    """Resolve the export time base and the IDS received on the input port.
+    """Resolve one F_INIT port's candidate export time base and received IDS.
 
-    The input port name selects the mode. A port named ``<ids>_in`` (a valid IDS name)
-    carrying that IDS exposes it as a *port-import*: the IDS is keyed by the port name
-    so a config import ``{port: <input_port>}`` can read it, and the waveforms are
-    evaluated on its ``time`` array. Combined with an ``<ids>/*`` import this overlays
-    the waveforms onto the received IDS (e.g. adding Ip to an equilibrium). Any other
-    port name selects *fresh export*: the waveforms are evaluated at ``msg.timestamp``
-    into a single slice.
+    Called once per connected F_INIT port; the caller picks which result (if any)
+    becomes the actor's actual time base. The port name selects the mode. A port named
+    ``<ids>_in`` (a valid IDS name) carrying that IDS exposes it as a *port-import*: the
+    IDS is keyed by the port name so a config import ``{port: <input_port>}`` can read
+    it, and its ``time`` array is offered as a candidate export time base. Combined
+    with an ``<ids>/*`` import this overlays the waveforms onto the received IDS (e.g.
+    adding Ip to an equilibrium). Any other port name yields no candidate time base
+    (the caller falls back to *fresh export*, evaluating at ``msg.timestamp``).
     """
     name = input_port.removesuffix("_in")
     factory = imas.IDSFactory(dd_version)
@@ -53,9 +54,14 @@ def waveform_actor():
     logger.info("Starting waveform actor")
 
     # Ports are created by libmuscle from the yMMSL conduits, not named here.
-    # - Exactly one input port. If named '<ids>_in' and the message carries that IDS,
-    #   the waveforms are exported on its /time and overlaid onto it; otherwise a single
-    #   slice at the message timestamp is exported.
+    # - One or more input ports, received in their yMMSL declaration order. The first
+    #   one named '<ids>_in' whose message carries that IDS selects overlay mode: the
+    #   waveforms are exported on its /time and the result overlaid onto it. Every
+    #   other '<ids>_in' port carrying an IDS is a port-import only -- available as
+    #   {ref: <name>} via a `{port: <that port>}` globals.imports entry, resampled onto
+    #   the primary time base -- without affecting which port drives the time base. If
+    #   no port selects overlay mode, a single slice is exported at the first message's
+    #   timestamp.
     # - Output port names must be '<ids>_out' or '<ids>'.
     instance = Instance(flags=InstanceFlags.KEEPS_NO_STATE_FOR_NEXT_USE)
 
@@ -74,14 +80,27 @@ def waveform_actor():
             load_config(config, fname)
 
         ports = instance.list_ports()
-        if len(ports.get(Operator.F_INIT, [])) != 1:
-            raise RuntimeError("Exactly one F_INIT port must be connected.")
-        input_port = ports[Operator.F_INIT][0]
-        msg = instance.receive(input_port)
+        input_ports = ports.get(Operator.F_INIT, [])
+        if not input_ports:
+            raise RuntimeError("At least one F_INIT port must be connected.")
 
-        times, received_idss = _time_base_and_received_idss(
-            msg, input_port, config.globals.dd_version
-        )
+        times = None
+        received_idss = {}
+        primary_msg = None
+        for input_port in input_ports:
+            msg = instance.receive(input_port)
+            primary_msg = primary_msg or msg
+            port_times, port_received = _time_base_and_received_idss(
+                msg, input_port, config.globals.dd_version
+            )
+            received_idss.update(port_received)
+            if times is None and port_received:
+                times, primary_msg = port_times, msg
+        if times is None:
+            # No F_INIT port selected overlay mode: fresh export at the first
+            # message's timestamp.
+            times = np.array([primary_msg.timestamp])
+
         exporter = ConfigurationExporter(config, times, received_idss=received_idss)
         idss = exporter.to_ids_dict()
 
@@ -97,7 +116,10 @@ def waveform_actor():
                 )
 
             data = idss[idsname].serialize()
-            instance.send(portname, Message(msg.timestamp, msg.next_timestamp, data))
+            instance.send(
+                portname,
+                Message(primary_msg.timestamp, primary_msg.next_timestamp, data),
+            )
 
 
 if __name__ == "__main__":

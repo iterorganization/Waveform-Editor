@@ -196,6 +196,123 @@ def test_muscle3_whole_trace(tmp_path, monkeypatch):
     libmuscle.runner.run_simulation(configuration, implementations)
 
 
+# --- multiple F_INIT ports: the first declared carries the time base, the rest are ----
+# --- port-imports only, resampled onto it (even with a different number of slices) ----
+
+MULTI_PORT_YAML = """
+globals:
+  dd_version: 4.0.0
+  imports:
+    eq_in: {port: equilibrium_in}
+    cp_in: {port: core_profiles_in}
+equilibrium:
+  equilibrium/*:
+    - {ref: eq_in}
+core_profiles:
+  core_profiles/*:
+    - {ref: cp_in}
+"""
+EQ_TIMES = [1.0, 21.0, 50.0]
+CP_TIMES = [0.0, 50.0]  # fewer, different slices than EQ_TIMES -- must be resampled
+CP_IP = [1e6, 2e6]
+
+MULTI_PORT_YMMSL = """
+ymmsl_version: v0.1
+
+model:
+  name: test_waveform_actor_multi_port
+
+  components:
+    eq_generator:
+      implementation: eq_generator
+    cp_generator:
+      implementation: cp_generator
+    waveform_actor:
+      implementation: waveform_actor
+    multi_port_validator:
+      implementation: multi_port_validator
+
+  conduits:
+    eq_generator.output: waveform_actor.equilibrium_in
+    cp_generator.output: waveform_actor.core_profiles_in
+    waveform_actor.equilibrium_out: multi_port_validator.equilibrium_in
+    waveform_actor.core_profiles_out: multi_port_validator.core_profiles_in
+
+settings:
+  waveform_actor.waveforms: {waveform_yaml}
+"""
+
+
+def eq_generator():
+    instance = libmuscle.Instance({ymmsl.Operator.O_I: ["output"]})
+
+    while instance.reuse_instance():
+        eq = imas.IDSFactory("4.0.0").equilibrium()
+        eq.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        eq.time = EQ_TIMES
+        eq.time_slice.resize(len(EQ_TIMES))
+        for ts in eq.time_slice:
+            ts.boundary.outline.r = BOUNDARY_R
+        instance.send("output", libmuscle.Message(EQ_TIMES[0], data=eq.serialize()))
+
+
+def cp_generator():
+    instance = libmuscle.Instance({ymmsl.Operator.O_I: ["output"]})
+
+    while instance.reuse_instance():
+        cp = imas.IDSFactory("4.0.0").core_profiles()
+        cp.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+        cp.time = CP_TIMES
+        cp.global_quantities.ip = CP_IP
+        instance.send("output", libmuscle.Message(CP_TIMES[0], data=cp.serialize()))
+
+
+def multi_port_validator():
+    instance = libmuscle.Instance(
+        {
+            ymmsl.Operator.F_INIT: ["equilibrium_in", "core_profiles_in"],
+        }
+    )
+
+    i = 0
+    while instance.reuse_instance():
+        eq_msg = instance.receive("equilibrium_in")
+        cp_msg = instance.receive("core_profiles_in")
+
+        eq = imas.IDSFactory("4.0.0").equilibrium()
+        eq.deserialize(eq_msg.data)
+        # The first-declared port (equilibrium_in) drives the time base and its
+        # non-overlaid data (the boundary) survives untouched.
+        assert np.array_equal(eq.time, EQ_TIMES)
+        for ts in eq.time_slice:
+            assert np.array_equal(ts.boundary.outline.r, BOUNDARY_R)
+
+        cp = imas.IDSFactory("4.0.0").core_profiles()
+        cp.deserialize(cp_msg.data)
+        # core_profiles is a secondary port-import: it is resampled onto the
+        # equilibrium time base rather than kept on its own (shorter) time array.
+        assert np.array_equal(cp.time, EQ_TIMES)
+        assert np.allclose(cp.global_quantities.ip, [CP_IP[0], CP_IP[0], CP_IP[1]])
+
+        i += 1
+    assert i == 1
+
+
+@pytest.mark.filterwarnings("ignore:.*use of fork():DeprecationWarning")
+def test_muscle3_multiple_finit_ports(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    waveform_yaml = (tmp_path / "multi_port.yml").resolve()
+    waveform_yaml.write_text(MULTI_PORT_YAML)
+    configuration = ymmsl.load(MULTI_PORT_YMMSL.format(waveform_yaml=waveform_yaml))
+    implementations = {
+        "eq_generator": eq_generator,
+        "cp_generator": cp_generator,
+        "waveform_actor": waveform_actor,
+        "multi_port_validator": multi_port_validator,
+    }
+    libmuscle.runner.run_simulation(configuration, implementations)
+
+
 # --- the input port carrying an IDS becomes a port-import -----------------------------
 
 
