@@ -40,7 +40,10 @@ class ConstantTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        values = np.full(len(time), self.value)
+        # Numeric values evaluate as floats (ints included); categorical values keep
+        # their native dtype (str stays str, bool stays bool).
+        dtype = None if self.is_categorical else float
+        values = np.full(len(time), self.value, dtype=dtype)
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
