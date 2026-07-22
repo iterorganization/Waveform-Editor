@@ -1,5 +1,6 @@
 import logging
 
+import imas
 import panel as pn
 import param
 
@@ -19,7 +20,7 @@ from waveform_editor.gui.waveform_content import (
     WAVEFORM_EDITOR_PAGE,
     WaveformContent,
 )
-from waveform_editor.util import State
+from waveform_editor.util import LATEST_DD_VERSION, State
 
 logger = logging.getLogger(__name__)
 
@@ -74,17 +75,10 @@ class WaveformEditorGui(param.Parameterized):
             self.config.globals.param,
             show_name=False,
             widgets={
-                "imports": {
+                "machine_description": {
                     "widget_type": DictEditor,
-                    "key_options": None,
-                    "names": ("Name", "URI"),
-                    "description": (
-                        "Named external data entries to import from. Each value is an "
-                        "IMAS URI, or <code>{port: &lt;name&gt;}</code> for an IDS "
-                        "received on a MUSCLE3 port at run time. Reference one from a "
-                        "waveform with <code>{ref: &lt;name&gt;}</code>; a waveform "
-                        "named <code>*</code> overlays the whole entry."
-                    ),
+                    "key_options": imas.IDSFactory(LATEST_DD_VERSION).ids_names(),
+                    "names": ("IDS", "URI"),
                 }
             },
         )
