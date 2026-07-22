@@ -8,7 +8,6 @@ from ruamel.yaml.comments import CommentedMap
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
-from waveform_editor.import_resolver import ImportResolver
 from waveform_editor.yaml.yaml_globals import YamlGlobals
 from waveform_editor.yaml.yaml_parser import YamlParser
 
@@ -33,9 +32,6 @@ class WaveformConfiguration(param.Parameterized):
         self.dependency_graph = DependencyGraph()
         self.start = self.DEFAULT_START
         self.end = self.DEFAULT_END
-        # Reads external data for import (``{ref: ...}``) waveforms. Rebuilt lazily;
-        # invalidated when globals (imports / dd_version) change.
-        self.import_resolver = None
 
         # Trigger has_changed boolean when a global param is changed
         for param_name in self.globals.param:
@@ -43,28 +39,6 @@ class WaveformConfiguration(param.Parameterized):
 
     def _set_changed(self, event):
         self.has_changed = True
-        # Imports or dd_version may have changed: drop the cached resolver.
-        self.import_resolver = None
-
-    @property
-    def imports(self):
-        """Named external data entries (name -> URI or {port: name}), stored under
-        globals and consumed by import (``{ref: ...}``) entries in waveforms."""
-        return self.globals.imports
-
-    def ensure_resolver(self, received_idss=None):
-        """Return the import resolver, building it if needed.
-
-        ``received_idss`` (IDSs received on MUSCLE3 ports at run time) is passed by the
-        exporter for a fresh export; the editor builds a resolver with none, so only URI
-        imports resolve there. The resolver caches source reads, so it is shared across
-        all waveforms of one export.
-        """
-        if self.import_resolver is None or received_idss is not None:
-            self.import_resolver = ImportResolver(
-                self.imports, self.globals.dd_version, received_idss
-            )
-        return self.import_resolver
 
     def __getitem__(self, key):
         """Retrieves a waveform or group by name/path.

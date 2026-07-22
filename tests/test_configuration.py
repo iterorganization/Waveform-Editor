@@ -256,7 +256,7 @@ def test_dump_comments():
     yaml_str = dedent("""
     globals:
       dd_version: 3.42.0
-      imports:
+      machine_description:
         ec_launchers: imas:hdf5?path=test_md
     ec_launchers:
       beams:
@@ -280,12 +280,12 @@ def test_dump_globals():
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     config.globals.dd_version = "3.41.0"
-    config.globals.imports = {"ec_launchers": "imas:mdsplus?path=test"}
+    config.globals.machine_description = {"ec_launchers": "imas:mdsplus?path=test"}
     dumped_yaml = config.dump()
     expected_dump = dedent("""
     globals:
       dd_version: 3.41.0
-      imports:
+      machine_description:
         ec_launchers: imas:mdsplus?path=test
     ec_launchers:
       ec_launchers/beam(1)/phase/angle:
@@ -326,7 +326,7 @@ def test_load_yaml_globals():
     yaml_str = """
     globals:
       dd_version: 3.42.0
-      imports: 
+      machine_description: 
         ec_launchers: imas:hdf5?path=testdb
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
@@ -334,7 +334,7 @@ def test_load_yaml_globals():
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     assert config.globals.dd_version == "3.42.0"
-    assert config.globals.imports["ec_launchers"] == "imas:hdf5?path=testdb"
+    assert config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
 
     yaml_str = """
     ec_launchers:
@@ -342,7 +342,7 @@ def test_load_yaml_globals():
     """
     config.load_yaml(yaml_str)
     assert config.globals.dd_version == LATEST_DD_VERSION
-    assert not config.globals.imports
+    assert not config.globals.machine_description
 
 
 def test_bounds(config):

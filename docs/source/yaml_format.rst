@@ -50,29 +50,21 @@ These parameters can be changed under the "Edit Global Properties" tab in the GU
        globals:
          dd_version: 3.42.0
 
-*   **imports:** Named external data entries that waveforms read from (see
-    :ref:`Import <import-tendency>`), keyed by names you choose and refer to with
-    ``{ref: <name>}``. Each value is an IMAS URI, or ``{port: <name>}`` for an IDS
-    received on a MUSCLE3 port at run time (used by the actor).
+*   **machine_description:** Provides URIs for IMAS machine description entries.
+    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
+    When exporting, any existing data from the given machine description will be copied
+    to the new IDS, before the waveforms from the configuration are added.
+    To specify machine descriptions for a target IDS, use a dictionary where keys are 
+    the IDS names and values are their corresponding machine description URIs.
 
     .. code-block:: yaml
 
        globals:
          dd_version: 3.42.0
-         imports:
-           machine: imas:hdf5?path=machine_description1
-           scenario: imas:hdf5?path=scenario_run
-           live_eq: {port: equilibrium_in}
-
-    Overlay a machine-description IDS with an ``<ids>/*`` wildcard import, then override
-    individual nodes.
-
-    .. code-block:: yaml
-
-       ec_launchers:
-         ec_launchers/*:
-           - {ref: machine}                            # overlay base
-         ec_launchers/beam(1)/phase/angle: -1.65898    # then override leaves
+         machine_description:
+           ec_launchers: imas:hdf5?path=machine_description1
+           nbi: imas:hdf5?path=machine_description2
+           # Add other IDSs as needed
 
 Grouping Waveforms
 ------------------
@@ -113,8 +105,6 @@ a list of waveforms, or a single number (float or integer).
              - { type: constant, duration: 20 }
                # Implicit linear ramp back to 0 over 25 seconds
              - { duration: 25, to: 0 }
-
-        If ``type`` is omitted it is inferred from the entry's keys: ``ref`` → ``import``, ``to`` → ``linear``, ``time`` → ``piecewise``, ``value`` → ``constant``; anything else defaults to ``linear``. Tendencies with no distinguishing key (the periodic shapes, ``smooth``, a value-less ``constant``) must name their ``type``.
 
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
@@ -163,13 +153,5 @@ Slicing can be applied at multiple nested levels. For example, the following fil
 .. code-block:: yaml
 
    interferometer/channel(2:3)/wavelength(1:4)/phase_corrected/data: 15.0
-
-Complete Example
-----------------
-
-The following configuration exercises the full :ref:`imports <import-tendency>` mechanism: a machine-description overlay (``<ids>/*``), a scalar import with interpolation, a static value, trailing-subtree and index wildcards (``source(*)``, ``ion(*)``), a 0D composite, and a runtime port-import.
-
-.. literalinclude:: examples/imports.yaml
-   :language: yaml
 
 

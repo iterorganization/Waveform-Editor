@@ -190,7 +190,7 @@ def test_load_yaml_globals_full(yaml_parser, config):
     yaml_str = """
     globals:
       dd_version: 3.42.0
-      imports: 
+      machine_description: 
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
@@ -198,15 +198,19 @@ def test_load_yaml_globals_full(yaml_parser, config):
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == "3.42.0"
-    assert config.globals.imports["ec_launchers"] == "imas:hdf5?path=test_md"
-    assert config.globals.imports["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert (
+        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    )
+    assert (
+        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    )
     assert not config.load_error
 
 
 def test_load_yaml_globals_missing_dd_version(yaml_parser, config):
     yaml_str = """
     globals:
-      imports: 
+      machine_description: 
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
@@ -214,15 +218,19 @@ def test_load_yaml_globals_missing_dd_version(yaml_parser, config):
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == LATEST_DD_VERSION
-    assert config.globals.imports["ec_launchers"] == "imas:hdf5?path=test_md"
-    assert config.globals.imports["equilibrium"] == "imas:hdf5?path=test_md2"
+    assert (
+        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
+    )
+    assert (
+        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
+    )
     assert not config.load_error
 
 
-def test_load_yaml_globals_invalid_imports(yaml_parser):
+def test_load_yaml_globals_invalid_machine_description(yaml_parser):
     yaml_str = """
     globals:
-      imports: imas:hdf5?path=test_md
+      machine_description: imas:hdf5?path=test_md
     """
     with pytest.raises(ValueError):
         yaml_parser.load_yaml(yaml_str)
@@ -237,5 +245,5 @@ def test_load_yaml_globals_dd_version_only(yaml_parser, config):
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == "4.0.0"
-    assert not config.globals.imports
+    assert not config.globals.machine_description
     assert not config.load_error
