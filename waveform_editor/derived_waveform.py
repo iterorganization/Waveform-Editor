@@ -72,7 +72,6 @@ class DerivedWaveform(BaseWaveform):
         self.dependencies = set()
         self.is_constant = False
         self.expression = None
-        self.prepare_expression()
 
     def prepare_expression(self):
         """Parse the YAML expression, extract dependencies, transform it for
@@ -93,6 +92,7 @@ class DerivedWaveform(BaseWaveform):
         self.is_constant = not extractor.string_nodes
         self.expression = ast.unparse(modified_tree)
         self.dependencies = set(extractor.string_nodes)
+        self._validate_type()
 
     def rename_dependency(self, old_name, new_name):
         """Rename a dependency waveform in the expression.
@@ -109,6 +109,34 @@ class DerivedWaveform(BaseWaveform):
         ast.fix_missing_locations(renamer.visit(tree))
         self.yaml = renamer.yaml
         self.prepare_expression()
+
+    def _validate_type(self):
+        """Warn if a dependency doesn't exist, or if the dependencies that do
+        exist don't share a common type.
+        """
+        if not self.dependencies:
+            return
+
+        dependency_types = set()
+        missing = set()
+        for dependency in self.dependencies:
+            try:
+                dependency_types.add(self.config[dependency].value_type)
+            except KeyError:
+                missing.add(dependency)
+
+        if missing:
+            self.annotations.add(0, f"Unknown dependency: {sorted(missing)!r}\n")
+            return
+
+        if len(dependency_types) > 1:
+            self.annotations.add(
+                0,
+                "All dependencies of a derived waveform must have the same "
+                f"type. Found: {dependency_types}\n",
+            )
+        else:
+            self.value_type = dependency_types.pop()
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
         """Build the evaluation context dictionary with dependencies resolved.

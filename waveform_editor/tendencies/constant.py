@@ -10,7 +10,7 @@ class ConstantTendency(BaseTendency):
     Constant tendency class for a constant signal.
     """
 
-    user_value = param.Number(
+    user_value = param.Parameter(
         default=None,
         doc="The constant value of the tendency provided by the user.",
     )
@@ -33,7 +33,7 @@ class ConstantTendency(BaseTendency):
         """
         if time is None:
             time = np.array([self.start, self.end])
-        values = self.value * np.ones(len(time))
+        values = np.full(len(time), self.value)
         return time, values
 
     def get_derivative(self, time: np.ndarray) -> np.ndarray:
@@ -73,4 +73,5 @@ class ConstantTendency(BaseTendency):
         self.param.update(
             values_changed=values_changed,
             start_value_set=self.user_value is not None,
+            value_type=type(value),
         )

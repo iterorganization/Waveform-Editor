@@ -61,8 +61,8 @@ class BaseTendency(param.Parameterized):
         values from the start value of this tendency.
         """,
     )
-    start_value = param.Number(default=0.0, doc="Value at self.start")
-    end_value = param.Number(default=0.0, doc="Value at self.end")
+    start_value = param.Parameter(default=0.0, doc="Value at self.start")
+    end_value = param.Parameter(default=0.0, doc="Value at self.end")
 
     start_derivative = param.Number(default=0.0, doc="Derivative at self.start")
     end_derivative = param.Number(default=0.0, doc="Derivative at self.end")
@@ -77,6 +77,10 @@ class BaseTendency(param.Parameterized):
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
     allow_zero_duration = False
+    value_type = param.Parameter(
+        default=float,
+        doc="The type of the value this tendency produces. May be float, int, str, or bool.",
+    )
 
     def __init__(self, **kwargs):
         super().__init__()

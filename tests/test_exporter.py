@@ -647,6 +647,44 @@ def test_export_constant(tmp_path):
         assert np.array_equal(ids.beam[2].phase.angle, [3.3e3] * 3)
 
 
+def test_export_typed_waveforms(tmp_path):
+    """Check that constant waveforms of each supported value type (float, int,
+    str, bool) are exported correctly to their respective IDS nodes."""
+
+    yaml_str = """
+    globals:
+      dd_version: 4.0.0
+    core_profiles:
+      core_profiles/profiles_1d/electrons/temperature_validity:
+      - {type: constant, value: 0, duration: 2}
+      - {type: constant, value: 1, duration: 2}
+      core_profiles/profiles_1d/grid/psi_magnetic_axis:
+      - {type: constant, value: 1.5, duration: 2}
+      - {type: constant, value: 3.0, duration: 2}
+      core_profiles/profiles_1d/ion(1)/name:
+      - {type: constant, value: D, duration: 2}
+      - {type: constant, value: He, duration: 2}
+      core_profiles/profiles_1d/ion(1)/multiple_states_flag:
+      - {type: constant, value: true, duration: 2}
+      - {type: constant, value: false, duration: 2}
+    """
+    file_path = f"{tmp_path}/test.nc"
+    times = np.array([0, 2.0])
+    _export_ids(file_path, yaml_str, times)
+
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        core_profiles = dbentry.get("core_profiles", autoconvert=False)
+        assert core_profiles.profiles_1d[0].grid.psi_magnetic_axis == 1.5
+        assert core_profiles.profiles_1d[0].electrons.temperature_validity == 0
+        assert core_profiles.profiles_1d[0].ion[0].multiple_states_flag == 1
+        assert core_profiles.profiles_1d[0].ion[0].name == "D"
+
+        assert core_profiles.profiles_1d[1].grid.psi_magnetic_axis == 3.0
+        assert core_profiles.profiles_1d[1].electrons.temperature_validity == 1
+        assert core_profiles.profiles_1d[1].ion[0].multiple_states_flag == 0
+        assert core_profiles.profiles_1d[1].ion[0].name == "He"
+
+
 def test_example_yaml(tmp_path):
     """Test for an example YAML file if all IDSs are correctly filled."""
 

@@ -69,6 +69,39 @@ def test_generate():
     assert not tendency.annotations
 
 
+def test_categorical_string_value():
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value="ec")
+    assert tendency.value == "ec"
+    assert tendency.value_type is str
+    assert not tendency.annotations
+
+    time, values = tendency.get_value()
+    assert np.all(time == np.array([0, 1]))
+    assert list(values) == ["ec", "ec"]
+
+
+def test_categorical_bool_value():
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=True)
+    assert tendency.value is True
+    assert tendency.value_type is bool
+    assert not tendency.annotations
+
+    time, values = tendency.get_value()
+    assert np.all(time == np.array([0, 1]))
+    assert list(values) == [True, True]
+
+
+def test_categorical_int_value():
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=3)
+    assert tendency.value == 3
+    assert tendency.value_type is int
+    assert not tendency.annotations
+
+    time, values = tendency.get_value()
+    assert np.all(time == np.array([0, 1]))
+    assert list(values) == [3, 3]
+
+
 def test_declarative_assignments():
     t1 = ConstantTendency(user_duration=1)
     t2 = ConstantTendency(user_duration=1)

@@ -37,6 +37,7 @@ def const_waveform(config):
     const_value = 3
     yaml_str = f"{name}: {const_value}"
     waveform = DerivedWaveform(yaml_str, name, config)
+    waveform.prepare_expression()
     config.add_waveform(waveform, ["root_group"])
     return waveform, const_value, name, config
 
@@ -78,6 +79,7 @@ def test_dependent_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
+    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -92,6 +94,7 @@ def test_dependent_waveform_calc(filled_config):
     name = "waveform/2"
     yaml_str = f'{name}: |\n  "waveform/1" * 10'
     waveform = DerivedWaveform(yaml_str, name, filled_config)
+    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -106,6 +109,7 @@ def test_dependent_waveform_numpy(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  maximum('waveform/1' * 10, 150)"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
+    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -120,9 +124,11 @@ def test_rename_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
+    waveform.prepare_expression()
+    filled_config.add_waveform(waveform, ["root_group"])
     assert waveform.dependencies == {"waveform/1"}
     assert waveform.get_yaml_string() == "'waveform/1'"
-    waveform.rename_dependency("waveform/1", "waveform/3")
+    filled_config.rename_waveform("waveform/1", "waveform/3")
     assert waveform.dependencies == {"waveform/3"}
     assert waveform.get_yaml_string() == "'waveform/3'"
 
@@ -144,6 +150,7 @@ def test_function_access_control(filled_config):
         name = "waveform/2"
         yaml_str = f"{name}: |\n  {expr}"
         waveform = DerivedWaveform(yaml_str, name, filled_config)
+        waveform.prepare_expression()
         time_ret = np.linspace(filled_config.start, filled_config.end, 100)
         if allowed:
             _, result = waveform.get_value(time_ret)
@@ -151,3 +158,47 @@ def test_function_access_control(filled_config):
         else:
             with pytest.raises(NameError):
                 waveform.get_value(time_ret)
+
+
+def test_derived_waveform_type_matches_original(config):
+    original_name = "wf1"
+    original = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
+        name=original_name,
+    )
+    assert not original.annotations
+    assert original.value_type is int
+    config.add_waveform(original, ["root_group"])
+
+    derived_name = "wf2"
+    yaml_str = f"{derived_name}: |\n  '{original_name}'"
+    derived = DerivedWaveform(yaml_str, derived_name, config)
+    derived.prepare_expression()
+    assert derived.dependencies == {original_name}
+    assert derived.value_type == original.value_type
+
+
+def test_derived_waveform_type_mixing(config):
+    wf1_name = "wf1"
+    wf1 = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
+        name=wf1_name,
+    )
+    assert not wf1.annotations
+    assert wf1.value_type is int
+    config.add_waveform(wf1, ["root_group"])
+
+    wf2_name = "wf2"
+    wf2 = Waveform(
+        waveform=[{"user_type": "constant", "user_value": "test", "line_number": 2}],
+        name=wf2_name,
+    )
+    assert not wf2.annotations
+    assert wf2.value_type is str
+    config.add_waveform(wf2, ["root_group"])
+
+    derived_name = "derived_waveform"
+    yaml_str = f"{derived_name}: |\n  '{wf1_name}' + '{wf2_name}'"
+    derived = DerivedWaveform(yaml_str, derived_name, config)
+    derived.prepare_expression()
+    assert derived.annotations  # not allowed to mix str and int type waveforms
