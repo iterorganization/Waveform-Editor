@@ -28,7 +28,20 @@ class RepeatTendency(BaseTendency):
 
         self.waveform = Waveform(waveform=waveform, is_repeated=True)
         self.period = 1
+        # Categorical values are not supported inside a repeat tendency.
+        has_categorical_value = any(
+            t.value_type in (str, bool) for t in self.waveform.tendencies
+        )
+        if has_categorical_value:
+            self.waveform.tendencies = []
         super().__init__(**kwargs)
+        if has_categorical_value:
+            error_msg = (
+                "Categorical (str/bool) values are not supported inside a repeat "
+                "tendency.\n"
+            )
+            self.annotations.add(self.line_number, error_msg)
+            return
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform.\n"
             self.annotations.add(self.line_number, error_msg)

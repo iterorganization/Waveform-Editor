@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from waveform_editor.tendencies.constant import ConstantTendency
 
@@ -69,37 +70,36 @@ def test_generate():
     assert not tendency.annotations
 
 
-def test_categorical_string_value():
-    tendency = ConstantTendency(user_start=0, user_duration=1, user_value="ec")
-    assert tendency.value == "ec"
-    assert tendency.value_type is str
+@pytest.mark.parametrize(
+    "value", ["ec", True, 3, 3.5], ids=["str", "bool", "int", "float"]
+)
+def test_categorical_value(value):
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=value)
+    assert tendency.value == value
+    assert tendency.value_type is type(value)
     assert not tendency.annotations
 
     time, values = tendency.get_value()
     assert np.all(time == np.array([0, 1]))
-    assert list(values) == ["ec", "ec"]
+    assert list(values) == [value, value]
 
 
-def test_categorical_bool_value():
-    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=True)
-    assert tendency.value is True
-    assert tendency.value_type is bool
-    assert not tendency.annotations
-
-    time, values = tendency.get_value()
-    assert np.all(time == np.array([0, 1]))
-    assert list(values) == [True, True]
+def test_unsupported_value_type():
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=[1, 2, 3])
+    assert tendency.annotations
+    assert tendency.value == 0.0
 
 
-def test_categorical_int_value():
-    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=3)
-    assert tendency.value == 3
-    assert tendency.value_type is int
-    assert not tendency.annotations
+@pytest.mark.parametrize(
+    "value", [5, 5.5, "ec", True], ids=["int", "float", "str", "bool"]
+)
+def test_inherited_value(value):
+    t1 = ConstantTendency(user_value=value, user_start=0, user_duration=1)
+    t2 = ConstantTendency(user_duration=1)
+    t2.set_previous_tendency(t1)
 
-    time, values = tendency.get_value()
-    assert np.all(time == np.array([0, 1]))
-    assert list(values) == [3, 3]
+    assert t2.value_type is type(value)
+    assert type(t2.value) is type(value)
 
 
 def test_declarative_assignments():

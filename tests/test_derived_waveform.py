@@ -37,7 +37,6 @@ def const_waveform(config):
     const_value = 3
     yaml_str = f"{name}: {const_value}"
     waveform = DerivedWaveform(yaml_str, name, config)
-    waveform.prepare_expression()
     config.add_waveform(waveform, ["root_group"])
     return waveform, const_value, name, config
 
@@ -79,7 +78,6 @@ def test_dependent_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -94,7 +92,6 @@ def test_dependent_waveform_calc(filled_config):
     name = "waveform/2"
     yaml_str = f'{name}: |\n  "waveform/1" * 10'
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -109,7 +106,6 @@ def test_dependent_waveform_numpy(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  maximum('waveform/1' * 10, 150)"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    waveform.prepare_expression()
     assert waveform.dependencies == {"waveform/1"}
     time_ret, value_ret = waveform.get_value()
     assert time_ret[0] == 5
@@ -124,7 +120,6 @@ def test_rename_waveform(filled_config):
     name = "waveform/2"
     yaml_str = f"{name}: |\n  'waveform/1'"
     waveform = DerivedWaveform(yaml_str, name, filled_config)
-    waveform.prepare_expression()
     filled_config.add_waveform(waveform, ["root_group"])
     assert waveform.dependencies == {"waveform/1"}
     assert waveform.get_yaml_string() == "'waveform/1'"
@@ -150,7 +145,6 @@ def test_function_access_control(filled_config):
         name = "waveform/2"
         yaml_str = f"{name}: |\n  {expr}"
         waveform = DerivedWaveform(yaml_str, name, filled_config)
-        waveform.prepare_expression()
         time_ret = np.linspace(filled_config.start, filled_config.end, 100)
         if allowed:
             _, result = waveform.get_value(time_ret)
@@ -173,9 +167,37 @@ def test_derived_waveform_type_matches_original(config):
     derived_name = "wf2"
     yaml_str = f"{derived_name}: |\n  '{original_name}'"
     derived = DerivedWaveform(yaml_str, derived_name, config)
-    derived.prepare_expression()
     assert derived.dependencies == {original_name}
     assert derived.value_type == original.value_type
+
+
+def test_derived_waveform_chain_type_order_independent():
+    yaml_str = """
+    root_group:
+      wf1: |
+        'wf2' + 'wf3'
+      wf2: |
+        'wf3'
+      wf3: |
+        'wf4'
+      wf4:
+        - {type: constant, value: hello, duration: 2}
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+
+    wf4 = config["wf4"]
+    wf3 = config["wf3"]
+    wf2 = config["wf2"]
+    wf1 = config["wf1"]
+    assert wf4.value_type is str
+    assert wf3.value_type is str
+    assert wf2.value_type is str
+    assert wf1.value_type is str
+    assert not wf4.annotations
+    assert not wf3.annotations
+    assert not wf2.annotations
+    assert not wf1.annotations
 
 
 def test_derived_waveform_type_mixing(config):
@@ -200,5 +222,4 @@ def test_derived_waveform_type_mixing(config):
     derived_name = "derived_waveform"
     yaml_str = f"{derived_name}: |\n  '{wf1_name}' + '{wf2_name}'"
     derived = DerivedWaveform(yaml_str, derived_name, config)
-    derived.prepare_expression()
     assert derived.annotations  # not allowed to mix str and int type waveforms

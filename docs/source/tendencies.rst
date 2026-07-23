@@ -51,6 +51,22 @@ If the ``value`` is not specified, it will be set to the last value of the previ
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
 
+.. _constant-value-types:
+
+Value Types
+-----------
+
+The ``value`` of a constant tendency may be a number, a string, or a boolean:
+
+.. code-block:: yaml
+
+    - {type: constant, value: ohmic, duration: 2}
+    - {type: constant, value: nbi, duration: 2}
+
+.. warning::
+    Integers and floats may be freely combined within a single waveform, but other
+    value types may not be combined with each other.
+
 Linear Tendency
 ===============
 

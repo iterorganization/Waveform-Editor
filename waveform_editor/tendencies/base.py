@@ -79,7 +79,7 @@ class BaseTendency(param.Parameterized):
     allow_zero_duration = False
     value_type = param.Parameter(
         default=float,
-        doc="The type of the value this tendency produces. May be float, int, str, or bool.",
+        doc="The value type of the this tendency. May be float, int, str, or bool.",
     )
 
     def __init__(self, **kwargs):

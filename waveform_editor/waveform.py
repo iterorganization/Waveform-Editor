@@ -23,11 +23,6 @@ IDS_DATATYPE_MAP = {
     bool: IDSDataType.INT,  # Booleans don't exist in DD
 }
 
-# Numpy dtype to build the evaluated values array with, keyed by value_type. Ints are
-# evaluated as floats. Str/bool are categorical: held as a step across gaps rather than
-# interpolated, so they use dtype=object -- NOT dtype=str, which numpy would fix at a
-# single character's width (silently truncating any longer values written into it
-# later) rather than sizing to what's actually assigned.
 NUMPY_DTYPE_MAP = {
     float: float,
     int: float,

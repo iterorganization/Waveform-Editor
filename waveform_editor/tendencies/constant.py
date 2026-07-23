@@ -10,7 +10,8 @@ class ConstantTendency(BaseTendency):
     Constant tendency class for a constant signal.
     """
 
-    user_value = param.Parameter(
+    user_value = param.ClassSelector(
+        class_=(bool, int, float, str),
         default=None,
         doc="The constant value of the tendency provided by the user.",
     )
@@ -64,6 +65,11 @@ class ConstantTendency(BaseTendency):
                 value = self.prev_tendency.end_value
         else:
             value = self.user_value
+
+        # If value is inherited from previous tendency, value normalize it back to
+        # a plain Python type
+        if isinstance(value, np.generic):
+            value = value.item()
 
         # Update state and cast to bool, as param does not like numpy booleans
         values_changed = bool(self.value != value)

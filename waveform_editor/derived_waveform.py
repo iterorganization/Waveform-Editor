@@ -72,11 +72,13 @@ class DerivedWaveform(BaseWaveform):
         self.dependencies = set()
         self.is_constant = False
         self.expression = None
+        self.prepare_expression()
 
     def prepare_expression(self):
         """Parse the YAML expression, extract dependencies, transform it for
         evaluation, and compile it.
         """
+        self.annotations.clear()
         if self.yaml is None:
             return
 
@@ -130,10 +132,11 @@ class DerivedWaveform(BaseWaveform):
             return
 
         if len(dependency_types) > 1:
+            type_names = sorted(t.__name__ for t in dependency_types)
             self.annotations.add(
                 0,
                 "All dependencies of a derived waveform must have the same "
-                f"type. Found: {dependency_types}\n",
+                f"type. Found: {type_names}\n",
             )
         else:
             self.value_type = dependency_types.pop()

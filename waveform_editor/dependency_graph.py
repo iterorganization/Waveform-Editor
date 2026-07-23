@@ -101,6 +101,29 @@ class DependencyGraph:
             dependencies.add(new_name)
         return dependents
 
+    def topological_order(self):
+        """Return the nodes in dependency-first order: a node's dependencies always
+        appear before the node itself.
+
+        Returns:
+            List of node names.
+        """
+        visited = set()
+        result = []
+
+        def visit(node):
+            if node in visited:
+                return
+            visited.add(node)
+            for neighbor in self.graph.get(node, []):
+                visit(neighbor)
+            if node in self.graph:
+                result.append(node)
+
+        for node in self.graph:
+            visit(node)
+        return result
+
     def detect_cycles(self, start_node=None):
         """Detect cycles in the graph, optionally starting from a specific node. Raises
         RuntimeError if a circular dependency is found.

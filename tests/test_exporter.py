@@ -648,8 +648,7 @@ def test_export_constant(tmp_path):
 
 
 def test_export_typed_waveforms(tmp_path):
-    """Check that constant waveforms of each supported value type (float, int,
-    str, bool) are exported correctly to their respective IDS nodes."""
+    """Check that constant waveforms of each supported value type"""
 
     yaml_str = """
     globals:

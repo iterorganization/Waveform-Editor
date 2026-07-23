@@ -105,6 +105,11 @@ In the example below, waveform ``test/3`` is the sum of the waveforms ``test/1``
    :width: 600px
    :align: center
 
+.. note::
+    A derived waveform's value type mirrors that of the waveform(s) it depends on.
+    When an expression references multiple waveforms, they must all share the same
+    value type (see :ref:`Value Types <constant-value-types>`).
+
 
 Using NumPy Functions
 ---------------------

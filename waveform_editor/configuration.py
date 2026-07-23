@@ -66,10 +66,8 @@ class WaveformConfiguration(param.Parameterized):
         try:
             self.parser.load_yaml(yaml_str)
             self._calculate_bounds()
-            for name, group in self.waveform_map.items():
-                waveform = group[name]
-                if isinstance(waveform, DerivedWaveform):
-                    waveform.prepare_expression()
+            for name in self.dependency_graph.topological_order():
+                self[name].prepare_expression()
             self.has_changed = False
         except Exception as e:
             self.clear()
@@ -313,10 +311,7 @@ class WaveformConfiguration(param.Parameterized):
             The parsed waveform object.
         """
         self.parser.parse_errors = []
-        waveform = self.parser.parse_waveform(yaml_str)
-        if isinstance(waveform, DerivedWaveform):
-            waveform.prepare_expression()
-        return waveform
+        return self.parser.parse_waveform(yaml_str)
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
