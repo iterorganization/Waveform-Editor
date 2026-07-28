@@ -16,10 +16,10 @@ from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 
-IDS_DATATYPE_MAP = {
-    float: IDSDataType.FLT,
-    str: IDSDataType.STR,
-    int: IDSDataType.INT,
+IDS_DATATYPES = {
+    float: {IDSDataType.FLT},
+    str: {IDSDataType.STR},
+    int: {IDSDataType.INT, IDSDataType.FLT},  # An int is also valid for a float field
 }
 
 NUMPY_DTYPE_MAP = {
@@ -207,31 +207,23 @@ class Waveform(BaseWaveform):
         if not self.tendencies:
             return
 
-        self.value_type = self.tendencies[0].value_type
-        for tendency in self.tendencies[1:]:
-            if {tendency.value_type, self.value_type} <= {int, float}:
-                if tendency.value_type is float:
-                    self.value_type = float
-                continue
-            if tendency.value_type != self.value_type:
-                error_msg = (
-                    f"Cannot mix {self.value_type.__name__} and "
-                    f"{tendency.value_type.__name__} values within a single "
-                    "waveform.\n"
-                )
-                self.annotations.add(tendency.line_number, error_msg)
+        value_types = set(tendency.value_type for tendency in self.tendencies)
+        if len(value_types) == 1:
+            self.value_type = value_types.pop()
+        elif value_types == {int, float}:
+            self.value_type = float
+        else:
+            type_names = ", ".join(sorted(t.__name__ for t in value_types))
+            error_msg = (
+                f"Cannot mix string and numerical tendency value types within a single "
+                f"waveform. Found: {type_names}."
+            )
+            self.annotations.add(0, error_msg)
 
         # If a valid DD path is chosen, check if the value_type matches the DD type
-        if self.metadata is None:
-            return
-
-        # An int value is also valid for a float field
-        int_for_flt = (
-            self.value_type is int and self.metadata.data_type is IDSDataType.FLT
-        )
         if (
-            not int_for_flt
-            and IDS_DATATYPE_MAP[self.value_type] != self.metadata.data_type
+            self.metadata is not None
+            and self.metadata.data_type not in IDS_DATATYPES[self.value_type]
         ):
             error_msg = (
                 "Type is not valid here: this waveform expects a "
