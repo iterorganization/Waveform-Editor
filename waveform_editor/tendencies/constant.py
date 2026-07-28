@@ -11,7 +11,7 @@ class ConstantTendency(BaseTendency):
     """
 
     user_value = param.ClassSelector(
-        class_=(bool, int, float, str),
+        class_=(int, float, str),
         default=None,
         doc="The constant value of the tendency provided by the user.",
     )

@@ -20,14 +20,12 @@ IDS_DATATYPE_MAP = {
     float: IDSDataType.FLT,
     str: IDSDataType.STR,
     int: IDSDataType.INT,
-    bool: IDSDataType.INT,  # Booleans don't exist in DD
 }
 
 NUMPY_DTYPE_MAP = {
     float: float,
     int: float,
     str: object,
-    bool: object,
 }
 
 

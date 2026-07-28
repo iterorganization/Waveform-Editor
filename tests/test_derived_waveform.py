@@ -223,3 +223,27 @@ def test_derived_waveform_type_mixing(config):
     yaml_str = f"{derived_name}: |\n  '{wf1_name}' + '{wf2_name}'"
     derived = DerivedWaveform(yaml_str, derived_name, config)
     assert derived.annotations  # not allowed to mix str and int type waveforms
+
+
+def test_derived_waveform_int_float_mixing(config):
+    int_name = "wf1"
+    int_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
+        name=int_name,
+    )
+    assert int_waveform.value_type is int
+    config.add_waveform(int_waveform, ["root_group"])
+
+    float_name = "wf2"
+    float_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3.5, "line_number": 2}],
+        name=float_name,
+    )
+    assert float_waveform.value_type is float
+    config.add_waveform(float_waveform, ["root_group"])
+
+    derived_name = "derived_waveform"
+    yaml_str = f"{derived_name}: |\n  '{int_name}' + '{float_name}'"
+    derived = DerivedWaveform(yaml_str, derived_name, config)
+    assert not derived.annotations
+    assert derived.value_type is float

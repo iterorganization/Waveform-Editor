@@ -70,9 +70,7 @@ def test_generate():
     assert not tendency.annotations
 
 
-@pytest.mark.parametrize(
-    "value", ["ec", True, 3, 3.5], ids=["str", "bool", "int", "float"]
-)
+@pytest.mark.parametrize("value", ["ec", 3, 3.5], ids=["str", "int", "float"])
 def test_categorical_value(value):
     tendency = ConstantTendency(user_start=0, user_duration=1, user_value=value)
     assert tendency.value == value
@@ -90,9 +88,7 @@ def test_unsupported_value_type():
     assert tendency.value == 0.0
 
 
-@pytest.mark.parametrize(
-    "value", [5, 5.5, "ec", True], ids=["int", "float", "str", "bool"]
-)
+@pytest.mark.parametrize("value", [5, 5.5, "ec"], ids=["int", "float", "str"])
 def test_inherited_value(value):
     t1 = ConstantTendency(user_value=value, user_start=0, user_duration=1)
     t2 = ConstantTendency(user_duration=1)

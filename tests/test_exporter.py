@@ -664,8 +664,8 @@ def test_export_typed_waveforms(tmp_path):
       - {type: constant, value: D, duration: 2}
       - {type: constant, value: He, duration: 2}
       core_profiles/profiles_1d/ion(1)/multiple_states_flag:
-      - {type: constant, value: true, duration: 2}
-      - {type: constant, value: false, duration: 2}
+      - {type: constant, value: 1, duration: 2}
+      - {type: constant, value: 0, duration: 2}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 2.0])

@@ -177,13 +177,12 @@ def test_too_short(repeat_waveform):
     assert repeat_tendency.annotations[0]["type"] == "warning"
 
 
-@pytest.mark.parametrize("value", ["ec", True], ids=["str", "bool"])
-def test_categorical_value_not_supported(value):
-    """Categorical values inside a repeat tendency are not allowed"""
+def test_string_value_not_supported():
+    """String values inside a repeat tendency are not allowed"""
     repeat_tendency = RepeatTendency(
         user_duration=4,
         user_waveform=[
-            {"user_type": "constant", "user_value": value, "user_duration": 1},
+            {"user_type": "constant", "user_value": "ec", "user_duration": 1},
         ],
     )
     assert repeat_tendency.annotations

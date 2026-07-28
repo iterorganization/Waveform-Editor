@@ -325,13 +325,6 @@ def test_dtype_flt_dd_path():
     assert not waveform.annotations
     assert waveform.value_type is float
 
-    waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": True, "line_number": 1}],
-        name=flt_dd_path,
-        dd_version=DD_VERSION,
-    )
-    assert waveform.annotations
-
 
 def test_dtype_int_dd_path():
     """Test int field types."""
@@ -360,14 +353,6 @@ def test_dtype_int_dd_path():
     )
     assert waveform.annotations
 
-    waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": True, "line_number": 1}],
-        name=int_dd_path,
-        dd_version=DD_VERSION,
-    )
-    assert not waveform.annotations
-    assert waveform.value_type is bool
-
 
 def test_dtype_str_dd_path():
     """Test string field types."""
@@ -390,13 +375,6 @@ def test_dtype_str_dd_path():
 
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
-        name=str_dd_path,
-        dd_version=DD_VERSION,
-    )
-    assert waveform.annotations
-
-    waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": True, "line_number": 1}],
         name=str_dd_path,
         dd_version=DD_VERSION,
     )
@@ -425,13 +403,6 @@ def test_no_metadata_allows_any_type():
 
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
-        name=name,
-    )
-    assert waveform.metadata is None
-    assert not waveform.annotations
-
-    waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": True, "line_number": 1}],
         name=name,
     )
     assert waveform.metadata is None
