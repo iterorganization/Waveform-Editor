@@ -9,8 +9,6 @@ from waveform_editor.annotations import Annotations
 
 
 class BaseWaveform(ABC):
-    value_type = float
-
     def __init__(self, yaml_str, name, dd_version):
         yaml_dict = YAML().load(yaml_str)
         self.yaml = yaml_dict[name] if yaml_dict else None
@@ -19,6 +17,7 @@ class BaseWaveform(ABC):
         self.metadata = self.get_metadata(dd_version)
         self.annotations = Annotations()
         self.units = self.metadata.units if self.metadata else "a.u."
+        self.value_type = float
 
     @abstractmethod
     def get_value(

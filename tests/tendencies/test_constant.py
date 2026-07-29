@@ -98,6 +98,22 @@ def test_inherited_value(value):
     assert type(t2.value) is type(value)
 
 
+@pytest.mark.parametrize("value", [5, 5.5, "ec"], ids=["int", "float", "str"])
+def test_inherited_value_stays_plain_type_across_chain(value):
+    """start_value/end_value/value must be plain Python types"""
+    t1 = ConstantTendency(user_value=value, user_start=0, user_duration=1)
+    t2 = ConstantTendency(user_duration=1)
+    t2.set_previous_tendency(t1)
+    t3 = ConstantTendency(user_duration=1)
+    t3.set_previous_tendency(t2)
+
+    for tendency in (t1, t2, t3):
+        assert tendency.value_type is type(value)
+        assert type(tendency.value) is type(value)
+        assert type(tendency.start_value) is type(value)
+        assert type(tendency.end_value) is type(value)
+
+
 def test_declarative_assignments():
     t1 = ConstantTendency(user_duration=1)
     t2 = ConstantTendency(user_duration=1)

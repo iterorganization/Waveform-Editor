@@ -66,11 +66,6 @@ class ConstantTendency(BaseTendency):
         else:
             value = self.user_value
 
-        # If value is inherited from previous tendency, value normalize it back to
-        # a plain Python type
-        if isinstance(value, np.generic):
-            value = value.item()
-
         # Update state and cast to bool, as param does not like numpy booleans
         values_changed = bool(self.value != value)
         if values_changed:

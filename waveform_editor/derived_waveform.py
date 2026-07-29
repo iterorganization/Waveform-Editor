@@ -78,6 +78,8 @@ class DerivedWaveform(BaseWaveform):
         """Parse the YAML expression, extract dependencies, transform it for
         evaluation, and compile it.
         """
+        # This method can be called multiple times so clear stale annotations from a
+        # previous call before re-validating.
         self.annotations.clear()
         if self.yaml is None:
             return
