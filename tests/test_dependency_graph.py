@@ -106,3 +106,17 @@ def test_topological_order_ignores_leaf_dependencies():
     dg.add_node("A", ["leaf"])
 
     assert dg.topological_order() == ["A"]
+
+
+def test_get_dependents():
+    """Test if direct and dependent waveforms are found."""
+    dg = DependencyGraph()
+    dg.add_node("A", [])
+    dg.add_node("B", ["A"])
+    dg.add_node("C", ["B"])
+    dg.add_node("D", [])
+
+    assert dg.get_dependents("A") == ["B", "C"]
+    assert dg.get_dependents("B") == ["C"]
+    assert dg.get_dependents("C") == []
+    assert dg.get_dependents("D") == []

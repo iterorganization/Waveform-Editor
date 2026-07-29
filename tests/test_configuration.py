@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
@@ -107,6 +108,54 @@ def test_replace_waveform(config):
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform2
     with pytest.raises(ValueError):
         config.replace_waveform(waveform3)
+
+
+def test_replace_waveform_revalidates_dependents(config):
+    """Test if replacing a waveform re-evaluates the value_type of derived waveforms"""
+    path = ["ec_launchers"]
+
+    int_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "user_duration": 1}],
+        name="A",
+    )
+    config.add_waveform(int_waveform, path)
+
+    derived_b = DerivedWaveform("B: \"'A'\"", "B", config)
+    config.add_waveform(derived_b, path)
+    derived_c = DerivedWaveform("C: \"'B'\"", "C", config)
+    config.add_waveform(derived_c, path)
+
+    assert derived_b.value_type is int
+    assert derived_c.value_type is int
+
+    str_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": "ec", "user_duration": 1}],
+        name="A",
+    )
+    config.replace_waveform(str_waveform)
+
+    assert derived_b.value_type is str
+    assert derived_c.value_type is str
+
+
+def test_add_waveform_revalidates_previously_missing_dependency(config):
+    """Test if a derived waveform's error is cleared once its dependency is added to
+    the configuration."""
+    path = ["ec_launchers"]
+
+    derived = DerivedWaveform("B: \"'A'\"", "B", config)
+    config.add_waveform(derived, path)
+    assert derived.annotations
+    assert derived.value_type is float
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "user_duration": 1}],
+        name="A",
+    )
+    config.add_waveform(waveform, path)
+
+    assert not derived.annotations
+    assert derived.value_type is int
 
 
 def test_remove_waveform(config):

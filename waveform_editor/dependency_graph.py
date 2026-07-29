@@ -101,6 +101,25 @@ class DependencyGraph:
             dependencies.add(new_name)
         return dependents
 
+    def get_dependents(self, name):
+        """Return all nodes that depend on ``name``.
+
+        Args:
+            name: Node to find the dependents of.
+
+        Returns:
+            List of node names that depend on ``name``.
+        """
+        dependents = set()
+        stack = [name]
+        while stack:
+            current = stack.pop()
+            for node, deps in self.graph.items():
+                if current in deps and node not in dependents:
+                    dependents.add(node)
+                    stack.append(node)
+        return [node for node in self.topological_order() if node in dependents]
+
     def topological_order(self):
         """Return the nodes in dependency-first order: a node's dependencies always
         appear before the node itself.

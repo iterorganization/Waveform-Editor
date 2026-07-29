@@ -96,6 +96,7 @@ class WaveformConfiguration(param.Parameterized):
         group.waveforms[waveform.name] = waveform
         self.waveform_map[waveform.name] = group
         self._calculate_bounds()
+        self._revalidate_dependents(waveform.name)
         self.has_changed = True
 
     def rename_waveform(self, old_name, new_name):
@@ -139,11 +140,15 @@ class WaveformConfiguration(param.Parameterized):
         self.dependency_graph.check_safe_to_replace(
             waveform.name, waveform.dependencies
         )
-        for dependent_wf in waveform.dependencies:
-            if dependent_wf not in self.waveform_map:
-                raise ValueError(
-                    f"Cannot depend on waveform '{dependent_wf}', it does not exist!"
-                )
+
+    def _revalidate_dependents(self, name):
+        """Re-run validation for all derived waveforms.
+
+        Args:
+            name: Name of the waveform whose dependents should be revalidated.
+        """
+        for dependent_name in self.dependency_graph.get_dependents(name):
+            self[dependent_name].prepare_expression()
 
     def _validate_name(self, name):
         """Check that name doesn't exist already. If it does a ValueError is raised.
@@ -173,6 +178,7 @@ class WaveformConfiguration(param.Parameterized):
         group = self.waveform_map[waveform.name]
         group.waveforms[waveform.name] = waveform
         self._calculate_bounds()
+        self._revalidate_dependents(waveform.name)
         self.has_changed = True
 
     def remove_waveform(self, name):
