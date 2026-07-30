@@ -108,6 +108,10 @@ a list of waveforms, or a single number (float or integer).
 
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
+        .. note::
+            The ``type`` may be omitted. The type of the tendency is then inferred from 
+            the other keys present, if possible.
+
     2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time.
 
         .. code-block:: yaml

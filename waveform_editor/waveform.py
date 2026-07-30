@@ -45,6 +45,33 @@ tendency_map = {
     "repeat": RepeatTendency,
 }
 
+INFERRED_TYPE_BY_KEY = {
+    "user_time": "piecewise",
+    "user_value": "constant",
+    "user_waveform": "repeat",
+    "user_base": "sine",
+    "user_amplitude": "sine",
+    "user_min": "sine",
+    "user_max": "sine",
+    "user_phase": "sine",
+}
+
+
+def _infer_tendency_type(entry):
+    """Infer a tendency's type from keys in the tendency entry, defaulting to
+    linear if nothing distinctive is present.
+
+    Args:
+        entry: Entry in the YAML file.
+
+    Returns:
+        The inferred tendency type.
+    """
+    for key, tendency_type in INFERRED_TYPE_BY_KEY.items():
+        if key in entry:
+            return tendency_type
+    return "linear"
+
 
 class Waveform(BaseWaveform):
     def __init__(
@@ -252,10 +279,6 @@ class Waveform(BaseWaveform):
         line_number = entry.get("line_number", 0)
         ignore_msg = "This tendency will be ignored.\n"
 
-        # If no type is given, take linear as default
-        if "user_type" not in entry:
-            entry["user_type"] = "linear"
-
         tendency_type = entry.get("user_type", None)
         if tendency_type is None:
             error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
@@ -305,6 +328,10 @@ class Waveform(BaseWaveform):
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
+        # If no type is given, infer it from the entry's keys
+        if "user_type" not in entry:
+            entry["user_type"] = _infer_tendency_type(entry)
+
         if self._has_type_error(entry):
             return None
         else:
