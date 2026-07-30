@@ -66,8 +66,13 @@ class ConstantTendency(BaseTendency):
         else:
             value = self.user_value
 
+        if isinstance(value, bool):
+            value = int(value)
+
         # Update state and cast to bool, as param does not like numpy booleans
-        values_changed = bool(self.value != value)
+        values_changed = bool(
+            self.value != value or type(self.value) is not type(value)
+        )
         if values_changed:
             self.value = value
         # Ensure watchers are called after both values are updated

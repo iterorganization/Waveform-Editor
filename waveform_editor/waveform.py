@@ -219,7 +219,7 @@ class Waveform(BaseWaveform):
                 f"waveform. Found: {type_names}."
             )
             self.annotations.add(0, error_msg)
-            self.value_type = str
+            return
 
         # If a valid DD path is chosen, check if the value_type matches the DD type
         if (

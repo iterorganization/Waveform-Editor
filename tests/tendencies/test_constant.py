@@ -82,6 +82,15 @@ def test_categorical_value(value):
     assert list(values) == [value, value]
 
 
+@pytest.mark.parametrize("value,expected", [(True, 1), (False, 0)])
+def test_bool_value_treated_as_int(value, expected):
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=value)
+    assert tendency.value == expected
+    assert type(tendency.value) is int
+    assert tendency.value_type is int
+    assert not tendency.annotations
+
+
 def test_unsupported_value_type():
     tendency = ConstantTendency(user_start=0, user_duration=1, user_value=[1, 2, 3])
     assert tendency.annotations

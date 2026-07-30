@@ -78,7 +78,7 @@ A string value:
     - {type: constant, value: nbi, duration: 2}
 
 It is also possible to use ``True`` and ``False`` as the ``value``, in which case the 
-waveform will be as an integer type (where ``True = 1``, and ``False = 0``):
+waveform will be considered an integer type (where ``True = 1``, and ``False = 0``):
 
 .. code-block:: yaml
 
