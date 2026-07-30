@@ -4,6 +4,7 @@ import numpy as np
 from asteval import Interpreter
 
 from waveform_editor.base_waveform import BaseWaveform
+from waveform_editor.tendencies.util import merge_value_types
 
 NUMPY_UFUNCS = {}
 for name in np.__all__:
@@ -115,9 +116,10 @@ class DerivedWaveform(BaseWaveform):
         self.prepare_expression()
 
     def _validate_dependencies(self):
-        """Warn if a dependency doesn't exist, or if the dependencies that do
-        exist don't have a compatible type. Mixing int and float dependencies
-        is allowed and results in a float-typed derived waveform.
+        """Warn if a dependency doesn't exist, if a dependency is string-typed, or
+        if the dependencies that do exist don't have a compatible type. Mixing int
+        and float dependencies is allowed and results in a float-typed derived
+        waveform.
         """
         if not self.dependencies:
             return
@@ -138,17 +140,18 @@ class DerivedWaveform(BaseWaveform):
             self.annotations.add(
                 0, "Derived waveforms cannot depend on string-typed waveforms.\n"
             )
-        elif dependency_types <= {int, float}:
-            self.value_type = float if float in dependency_types else int
-        elif len(dependency_types) == 1:
-            self.value_type = dependency_types.pop()
-        else:
+            return
+
+        merged_type = merge_value_types(dependency_types)
+        if merged_type is None:
             type_names = sorted(t.__name__ for t in dependency_types)
             self.annotations.add(
                 0,
                 "All dependencies of a derived waveform must have the same "
                 f"type, or be a mix of int and float. Found: {type_names}\n",
             )
+        else:
+            self.value_type = merged_type
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
         """Build the evaluation context dictionary with dependencies resolved.

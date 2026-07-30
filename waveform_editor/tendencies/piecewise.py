@@ -3,6 +3,7 @@ import param
 
 from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.base import BaseTendency
+from waveform_editor.tendencies.util import validate_time_array
 
 
 class PiecewiseLinearTendency(BaseTendency):
@@ -88,36 +89,19 @@ class PiecewiseLinearTendency(BaseTendency):
             encountered during the validation, the self.time and self.value defaults are
             returned instead.
         """
-        if time is None or value is None:
-            error_msg = "Both the `time` and `value` arrays must be specified.\n"
-            self.pre_check_annotations.add(self.line_number, error_msg)
-        elif len(time) != len(value):
-            error_msg = (
-                "The provided time and value arrays are not of the same length.\n"
-            )
-            self.pre_check_annotations.add(self.line_number, error_msg)
-        elif len(time) < 1:
-            error_msg = (
-                "The provided time and value arrays should have a length "
-                "of at least 1.\n"
-            )
-            self.pre_check_annotations.add(self.line_number, error_msg)
+        time = validate_time_array(
+            self.pre_check_annotations, self.line_number, time, value
+        )
+        if time is None:
+            return self.time, self.value
 
         try:
-            time = np.asarray_chkfinite(time, dtype=float)
             value = np.asarray_chkfinite(value, dtype=float)
-            is_monotonic = np.all(np.diff(time) > 0)
-            if not is_monotonic:
-                error_msg = "The provided time array is not monotonically increasing.\n"
-                self.pre_check_annotations.add(self.line_number, error_msg)
         except Exception as error:
             self.pre_check_annotations.add(self.line_number, str(error))
-
-        # If there are any errors, use the default values instead
-        if not self.pre_check_annotations:
-            return time, value
-        else:
             return self.time, self.value
+
+        return time, value
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,

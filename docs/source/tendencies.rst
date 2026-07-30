@@ -227,6 +227,47 @@ Parameters
 .. warning::
     This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.
 
+.. _steps-tendency:
+
+Steps Tendency
+==============
+
+Defines a a sequence of steps, each held constant from its time point until the next one (or until the end of the tendency for the last step). This is a compact alternative to writing out a sequence of :ref:`Constant Tendencies <constant-value-types>`.
+
+Parameters
+----------
+*   ``time``: A list of the start times of each step. Must be strictly monotonically increasing and must have at least 1 point.
+*   ``value``: A list of the values held during each step. Must have the same length as ``time``.
+*   ``duration``, ``end``: See :ref:`Common Time Parameters <available-tendencies>`. Either may be used to specify when the last step ends; if provided, it must be later than the last point in ``time``. If both are omitted, the tendency simply stops at the last point in ``time``.
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 2, 4], value: [1, 3, 5], end: 6}
+
+The same tendency can equivalently be written using ``duration`` instead of ``end``:
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 2, 4], value: [1, 3, 5], duration: 6}
+
+If both ``duration`` and ``end`` are omitted, the tendency simply stops at the last point in ``time`` (so the last value only holds for an instant):
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 2, 4], value: [1, 3, 5]}
+
+Just like the :ref:`Constant Tendency <constant-value-types>`, the ``value`` list may contain numbers or strings:
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 10, 20], value: [ohmic, nbi, ec], end: 30}
+
+.. warning::
+    Integers and floats may be freely combined within the ``value`` list, but other value types may not be combined with each other.
+
+.. warning::
+    This tendency does **not** accept the common ``start`` parameter. The start of the tendency is always derived from the first point in ``time``.
+
 Periodic Tendencies
 ===================
 
