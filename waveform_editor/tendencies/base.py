@@ -227,11 +227,7 @@ class BaseTendency(param.Parameterized):
         """Get the value and derivative of the tendency at a given time."""
         _, value_array = self.get_value(np.array([time]))
         derivative_array = self.get_derivative(np.array([time]))
-        value = value_array[0]
-        # Normalize numpy scalars back to plain Python types
-        if isinstance(value, np.generic):
-            value = value.item()
-        return value, derivative_array[0]
+        return value_array.item(0), derivative_array.item(0)
 
     @abstractmethod
     def get_value(

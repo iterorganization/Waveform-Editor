@@ -96,7 +96,7 @@ class DerivedWaveform(BaseWaveform):
         self.is_constant = not extractor.string_nodes
         self.expression = ast.unparse(modified_tree)
         self.dependencies = set(extractor.string_nodes)
-        self._validate_type()
+        self._validate_dependencies()
 
     def rename_dependency(self, old_name, new_name):
         """Rename a dependency waveform in the expression.
@@ -114,7 +114,7 @@ class DerivedWaveform(BaseWaveform):
         self.yaml = renamer.yaml
         self.prepare_expression()
 
-    def _validate_type(self):
+    def _validate_dependencies(self):
         """Warn if a dependency doesn't exist, or if the dependencies that do
         exist don't have a compatible type. Mixing int and float dependencies
         is allowed and results in a float-typed derived waveform.
