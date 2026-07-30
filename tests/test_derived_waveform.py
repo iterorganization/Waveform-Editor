@@ -154,21 +154,21 @@ def test_function_access_control(filled_config):
                 waveform.get_value(time_ret)
 
 
-def test_derived_waveform_type_matches_original(config):
-    original_name = "wf1"
-    original = Waveform(
-        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
-        name=original_name,
-    )
-    assert not original.annotations
-    assert original.value_type is int
-    config.add_waveform(original, ["root_group"])
+def test_derived_waveform_type_matches_original():
+    yaml_str = """
+    root_group:
+      wf1:
+        - {type: constant, value: 3, duration: 2}
+      wf2: |
+        'wf1'
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
 
-    derived_name = "wf2"
-    yaml_str = f"{derived_name}: |\n  '{original_name}'"
-    derived = DerivedWaveform(yaml_str, derived_name, config)
-    assert derived.dependencies == {original_name}
-    assert derived.value_type == original.value_type
+    assert not config["wf1"].annotations
+    assert config["wf1"].value_type is int
+    assert config["wf2"].dependencies == {"wf1"}
+    assert config["wf2"].value_type == config["wf1"].value_type
 
 
 def test_derived_waveform_chain_type_order_independent():
@@ -181,69 +181,48 @@ def test_derived_waveform_chain_type_order_independent():
       wf3: |
         'wf4'
       wf4:
-        - {type: constant, value: hello, duration: 2}
+        - {type: constant, value: 3, duration: 2}
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
 
-    wf4 = config["wf4"]
-    wf3 = config["wf3"]
-    wf2 = config["wf2"]
-    wf1 = config["wf1"]
-    assert wf4.value_type is str
-    assert wf3.value_type is str
-    assert wf2.value_type is str
-    assert wf1.value_type is str
-    assert not wf4.annotations
-    assert not wf3.annotations
-    assert not wf2.annotations
-    assert not wf1.annotations
+    for wf in ["wf1", "wf2", "wf3", "wf4"]:
+        assert config[wf].value_type is int
+        assert not config[wf].annotations
 
 
-def test_derived_waveform_type_mixing(config):
-    wf1_name = "wf1"
-    wf1 = Waveform(
-        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
-        name=wf1_name,
-    )
-    assert not wf1.annotations
-    assert wf1.value_type is int
-    config.add_waveform(wf1, ["root_group"])
+def test_derived_waveform_type_mixing():
+    yaml_str = """
+    root_group:
+      wf1:
+        - {type: constant, value: 3, duration: 2}
+      wf2:
+        - {type: constant, value: test, duration: 2}
+      derived_waveform: |
+        'wf1' + 'wf2'
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
 
-    wf2_name = "wf2"
-    wf2 = Waveform(
-        waveform=[{"user_type": "constant", "user_value": "test", "line_number": 2}],
-        name=wf2_name,
-    )
-    assert not wf2.annotations
-    assert wf2.value_type is str
-    config.add_waveform(wf2, ["root_group"])
-
-    derived_name = "derived_waveform"
-    yaml_str = f"{derived_name}: |\n  '{wf1_name}' + '{wf2_name}'"
-    derived = DerivedWaveform(yaml_str, derived_name, config)
-    assert derived.annotations  # not allowed to mix str and int type waveforms
+    assert config["wf1"].value_type is int
+    assert config["wf2"].value_type is str
+    assert config["derived_waveform"].annotations  # not allowed to mix str and int
 
 
-def test_derived_waveform_int_float_mixing(config):
-    int_name = "wf1"
-    int_waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": 3, "line_number": 1}],
-        name=int_name,
-    )
-    assert int_waveform.value_type is int
-    config.add_waveform(int_waveform, ["root_group"])
+def test_derived_waveform_int_float_mixing():
+    yaml_str = """
+    root_group:
+      wf1:
+        - {type: constant, value: 3, duration: 2}
+      wf2:
+        - {type: constant, value: 3.5, duration: 2}
+      derived_waveform: |
+        'wf1' + 'wf2'
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
 
-    float_name = "wf2"
-    float_waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": 3.5, "line_number": 2}],
-        name=float_name,
-    )
-    assert float_waveform.value_type is float
-    config.add_waveform(float_waveform, ["root_group"])
-
-    derived_name = "derived_waveform"
-    yaml_str = f"{derived_name}: |\n  '{int_name}' + '{float_name}'"
-    derived = DerivedWaveform(yaml_str, derived_name, config)
-    assert not derived.annotations
-    assert derived.value_type is float
+    assert config["wf1"].value_type is int
+    assert config["wf2"].value_type is float
+    assert not config["derived_waveform"].annotations
+    assert config["derived_waveform"].value_type is float
