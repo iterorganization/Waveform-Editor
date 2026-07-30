@@ -134,7 +134,11 @@ class DerivedWaveform(BaseWaveform):
             self.annotations.add(0, f"Unknown dependency: {sorted(missing)!r}\n")
             return
 
-        if dependency_types <= {int, float}:
+        if str in dependency_types:
+            self.annotations.add(
+                0, "Derived waveforms cannot depend on string-typed waveforms.\n"
+            )
+        elif dependency_types <= {int, float}:
             self.value_type = float if float in dependency_types else int
         elif len(dependency_types) == 1:
             self.value_type = dependency_types.pop()

@@ -209,6 +209,21 @@ def test_derived_waveform_type_mixing():
     assert config["derived_waveform"].annotations  # not allowed to mix str and int
 
 
+def test_derived_waveform_disallows_string_dependency():
+    yaml_str = """
+    root_group:
+      wf1:
+        - {type: constant, value: ohmic, duration: 2}
+      derived_waveform: |
+        'wf1'
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+
+    assert config["wf1"].value_type is str
+    assert config["derived_waveform"].annotations
+
+
 def test_derived_waveform_int_float_mixing():
     yaml_str = """
     root_group:

@@ -128,14 +128,14 @@ def test_replace_waveform_revalidates_dependents(config):
     assert derived_b.value_type is int
     assert derived_c.value_type is int
 
-    str_waveform = Waveform(
-        waveform=[{"user_type": "constant", "user_value": "ec", "user_duration": 1}],
+    flt_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3.5, "user_duration": 1}],
         name="A",
     )
-    config.replace_waveform(str_waveform)
+    config.replace_waveform(flt_waveform)
 
-    assert derived_b.value_type is str
-    assert derived_c.value_type is str
+    assert derived_b.value_type is float
+    assert derived_c.value_type is float
 
 
 def test_add_waveform_revalidates_previously_missing_dependency(config):
