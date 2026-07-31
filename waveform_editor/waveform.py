@@ -29,7 +29,7 @@ NUMPY_DTYPE_MAP = {
 }
 
 
-tendency_map = {
+TENDENCY_MAP = {
     "linear": LinearTendency,
     "sine-wave": SineWaveTendency,
     "sine": SineWaveTendency,
@@ -46,31 +46,31 @@ tendency_map = {
 }
 
 INFERRED_TYPE_BY_KEY = {
-    "user_time": "piecewise",
-    "user_value": "constant",
-    "user_waveform": "repeat",
-    "user_base": "sine",
-    "user_amplitude": "sine",
-    "user_min": "sine",
-    "user_max": "sine",
-    "user_phase": "sine",
+    "user_time": PiecewiseLinearTendency,
+    "user_value": ConstantTendency,
+    "user_waveform": RepeatTendency,
+    "user_base": SineWaveTendency,
+    "user_amplitude": SineWaveTendency,
+    "user_min": SineWaveTendency,
+    "user_max": SineWaveTendency,
+    "user_phase": SineWaveTendency,
 }
 
 
-def _infer_tendency_type(entry):
-    """Infer a tendency's type from keys in the tendency entry, defaulting to
-    linear if nothing distinctive is present.
+def _infer_tendency_class(entry):
+    """Infer a tendency's class from keys in the tendency entry, defaulting to
+    linear tendency if no distinctive keys are present.
 
     Args:
         entry: Entry in the YAML file.
 
     Returns:
-        The inferred tendency type.
+        The inferred tendency class.
     """
-    for key, tendency_type in INFERRED_TYPE_BY_KEY.items():
+    for key, tendency_class in INFERRED_TYPE_BY_KEY.items():
         if key in entry:
-            return tendency_type
-    return "linear"
+            return tendency_class
+    return LinearTendency
 
 
 class Waveform(BaseWaveform):
@@ -290,8 +290,8 @@ class Waveform(BaseWaveform):
             self.annotations.add(line_number, error_msg)
             return True
 
-        if tendency_type not in tendency_map:
-            suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
+        if tendency_type not in TENDENCY_MAP:
+            suggestion = self.annotations.suggest(tendency_type, TENDENCY_MAP.keys())
 
             error_msg = (
                 f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
@@ -330,12 +330,12 @@ class Waveform(BaseWaveform):
         """
         # If no type is given, infer it from the entry's keys
         if "user_type" not in entry:
-            entry["user_type"] = _infer_tendency_type(entry)
+            return _infer_tendency_class(entry)(**entry)
 
         if self._has_type_error(entry):
             return None
         else:
             tendency_type = entry.pop("user_type")
-            tendency_class = tendency_map[tendency_type]
+            tendency_class = TENDENCY_MAP[tendency_type]
             tendency = tendency_class(**entry)
             return tendency
