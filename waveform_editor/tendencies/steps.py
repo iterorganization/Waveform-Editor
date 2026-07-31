@@ -15,15 +15,20 @@ class StepsTendency(BaseTendency):
     value = param.Array(
         default=np.array([0.0], dtype=object), doc="The values of each step."
     )
-    allow_zero_duration = True
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
         time, value, value_type = self._validate_time_value(user_time, user_value)
-        self._remove_user_start_param(kwargs)
+
+        if "user_start" in kwargs:
+            kwargs.pop("user_start")
+            line_number = kwargs.get("line_number", 0)
+            self.pre_check_annotations.add(
+                line_number, "'start' is not allowed in a steps tendency\n"
+            )
 
         # If neither `duration` nor `end` is given, the tendency simply stops at the
-        # last time point instead of defaulting to a 1 second duration.
+        # last time point
         end_given = "user_duration" in kwargs or "user_end" in kwargs
         if not end_given:
             kwargs["user_end"] = time[-1]
@@ -46,14 +51,13 @@ class StepsTendency(BaseTendency):
             self.annotations.add(self.line_number, error_msg)
 
         self.start_value_set = True
+        self.allow_zero_duration = True
         self.param.update(values_changed=True)
 
     def get_value(
         self, time: np.ndarray | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the tendency values at the provided time array. If no time array is
-        provided, points describing the step shape (including the vertical drops at
-        each transition) are returned.
+        """Get the tendency values at the provided time array.
 
         Args:
             time: The time array on which to generate points.
@@ -62,8 +66,7 @@ class StepsTendency(BaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            # Duplicate each time point (and self.end) so that connecting the
-            # returned points with straight lines draws the vertical steps.
+            # Duplicate each time point so that vertical steps are covered
             time = np.repeat(np.append(self.time, self.end), 2)[1:-1]
             value = np.repeat(self.value, 2)
             return time, value
@@ -110,30 +113,15 @@ class StepsTendency(BaseTendency):
                 self.pre_check_annotations.add(self.line_number, error_msg)
                 return self.time, self.value, self.value_type
 
-        value_type = merge_value_types(type(element) for element in value)
+        value_types = {type(element) for element in value}
+        value_type = merge_value_types(value_types)
         if value_type is None:
-            type_names = sorted({type(element).__name__ for element in value})
             error_msg = (
-                "All values of a steps tendency must have the same type, or be a "
-                f"mix of int and float. Found: {type_names}\n"
+                "All values of a steps tendency must have the same type, or be a mix "
+                f"of int and float. Found: {sorted(t.__name__ for t in value_types)}\n"
             )
             self.pre_check_annotations.add(self.line_number, error_msg)
             return self.time, self.value, self.value_type
 
         value_array = np.array(list(value), dtype=object)
         return time, value_array, value_type
-
-    def _remove_user_start_param(self, kwargs):
-        """Remove user_start if it is passed as a kwarg, and add an error message as
-        an annotation. The start of a steps tendency is always derived from the
-        `time` parameter instead.
-
-        Args:
-            kwargs: the keyword arguments.
-        """
-        if "user_start" in kwargs:
-            kwargs.pop("user_start")
-            line_number = kwargs.get("line_number", 0)
-            self.pre_check_annotations.add(
-                line_number, "'start' is not allowed in a steps tendency\n"
-            )
