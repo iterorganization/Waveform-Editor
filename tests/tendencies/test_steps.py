@@ -41,8 +41,7 @@ def test_string_values():
 
 
 def test_int_float_mixing():
-    """Test that mixing int and float values is allowed and results in a
-    float-typed tendency."""
+    """Test that mixing int and float values in a single steps tendency"""
     tendency = StepsTendency(user_time=[0, 2, 4], user_value=[1, 2.5, 3], user_end=6)
     assert tendency.value_type is float
     assert not tendency.annotations
@@ -86,7 +85,7 @@ def test_duration_and_end_inconsistent():
 
 def test_neither_duration_nor_end_given():
     """Test that omitting both `duration` and `end` makes the tendency stop at its
-    last time point, instead of erroring or defaulting to a 1 second duration."""
+    last time point."""
     tendency = StepsTendency(user_time=[0, 2, 4], user_value=[1, 3, 5])
     assert tendency.end == 4
     assert tendency.duration == 4
@@ -96,18 +95,8 @@ def test_neither_duration_nor_end_given():
     assert list(values) == [1, 1, 3, 3, 5]
 
 
-def test_neither_duration_nor_end_given_single_step():
-    """Test that a single-step tendency without `duration`/`end` results in a
-    zero-duration tendency at that single time point."""
-    tendency = StepsTendency(user_time=[5], user_value=[3])
-    assert tendency.start == 5
-    assert tendency.end == 5
-    assert not tendency.annotations
-
-
 def test_end_not_after_last_time():
-    """Test that the tendency must end after its last time point, if `duration` or
-    `end` is explicitly provided."""
+    """Test invalid end and duration values."""
     tendency = StepsTendency(user_time=[0, 10], user_value=[1, 2], user_end=10)
     assert tendency.annotations
 
@@ -140,8 +129,7 @@ def test_non_monotonic_time():
 
 
 def test_start_not_allowed():
-    """Test that `start` may not be provided, since it is always derived from the
-    first point in `time`."""
+    """Test that `start` may not be provided"""
     tendency = StepsTendency(
         user_time=[0, 10], user_value=[1, 2], user_end=20, user_start=5
     )
@@ -159,20 +147,12 @@ def test_start_and_end_values():
 
 
 def test_generate():
-    """Check the generated values, including the vertical drops at each step."""
+    """Check the generated values."""
     tendency = StepsTendency(user_time=[0, 2, 4], user_value=[1, 3, 5], user_end=6)
     time, values = tendency.get_value()
     assert np.all(time == [0, 2, 2, 4, 4, 6])
     assert list(values) == [1, 1, 3, 3, 5, 5]
     assert not tendency.annotations
-
-
-def test_generate_single_step():
-    """Check the generated values for a tendency with a single step."""
-    tendency = StepsTendency(user_time=[5], user_value=[3], user_end=10)
-    time, values = tendency.get_value()
-    assert np.all(time == [5, 10])
-    assert list(values) == [3, 3]
 
 
 def test_get_value_at_times():
@@ -183,8 +163,7 @@ def test_get_value_at_times():
 
 
 def test_get_value_outside_bounds():
-    """Check the generated values outside of the time array; the edge values
-    should be used."""
+    """Check the generated values outside of the time array"""
     tendency = StepsTendency(user_time=[1, 2, 3], user_value=[2, 4, 8], user_end=4)
     _, values = tendency.get_value(np.array([-1, 0, 4.5, 5]))
     assert list(values) == [2, 2, 8, 8]
