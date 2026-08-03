@@ -2,7 +2,6 @@ import pytest
 from pytest import approx
 
 from waveform_editor.configuration import WaveformConfiguration
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
