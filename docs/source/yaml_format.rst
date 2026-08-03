@@ -109,14 +109,16 @@ a list of waveforms, or a single number (float or integer).
         Refer to the :ref:`Available Tendencies <available-tendencies>` documentation for details on the different tendency types and their parameters.
 
         .. note::
-            The ``type`` may be omitted. The type of the tendency is then inferred from 
+            The ``type`` may be omitted. The type of the tendency is then inferred from
             the other keys present, if possible.
 
-    2.  **Constant Value:** A simple number (integer or float) defines a constant waveform over time.
+    2.  **Constant Value:** A bare number (integer or float) or string defines a constant waveform over time, equivalent to a single :ref:`constant tendency <constant-tendency>`.
 
         .. code-block:: yaml
 
-           ec_launchers/beam(1)/phase/angle: -1.65898 # Constant value
+           ec_launchers/beam(1)/phase/angle: -1.65898 # Constant float value
+           pulse_schedule/ec/mode: 3                  # Constant int value
+           core_sources/source(1)/identifier/name: ec  # Constant string value
 
     3.  **Empty Waveform:** An empty list ``[{}]`` defines a waveform that is constantly zero.
 

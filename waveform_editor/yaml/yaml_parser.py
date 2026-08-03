@@ -165,6 +165,26 @@ class YamlParser:
                     name=name,
                     dd_version=dd_version,
                 )
+            # Shorthand notation for waveforms containing a constant tendency, e.g.
+            #  ec_launchers/beam(1)/phase/angle: -1.65898  # float
+            #  pulse_schedule/ec/mode: 3                   # int
+            #  core_sources/source(1)/identifier/name: ec  # string
+            elif isinstance(waveform, (int, float)) or (
+                "'" not in waveform and '"' not in waveform
+            ):
+                waveform = Waveform(
+                    waveform=[
+                        {
+                            "user_type": "constant",
+                            "user_value": waveform,
+                            "line_number": line_number,
+                        }
+                    ],
+                    yaml_str=yaml_str,
+                    line_number=line_number,
+                    name=name,
+                    dd_version=dd_version,
+                )
             else:
                 waveform = DerivedWaveform(
                     yaml_str, name, self.config, dd_version=dd_version
