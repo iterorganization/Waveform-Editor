@@ -20,6 +20,8 @@ Most tendencies accept the following parameters to define their time interval. Y
 .. note::
     The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
 
+.. _constant-tendency:
+
 Constant Tendency
 =================
 
