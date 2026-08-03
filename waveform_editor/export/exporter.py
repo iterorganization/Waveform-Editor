@@ -232,6 +232,15 @@ class ConfigurationExporter:
         """
         if path_index == len(path.parts):
             if fill:
+                if (
+                    not node.metadata.type.is_dynamic
+                    and isinstance(values, np.ndarray)
+                    and values.ndim > 0
+                ):
+                    # A static IDS node must be filled by a single constant tendency, so
+                    # every entry of `values` should be identical. Collapse it to one
+                    assert np.all(values == values[0])
+                    values = values[0]
                 node.value = values
             return
         part = path.parts[path_index]

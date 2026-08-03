@@ -647,6 +647,24 @@ def test_export_constant(tmp_path):
         assert np.array_equal(ids.beam[2].phase.angle, [3.3e3] * 3)
 
 
+def test_export_constant_static_field(tmp_path):
+    """A constant waveform bound to a static DD node must export its single value."""
+
+    yaml_str = """
+    globals:
+      dd_version: 4.0.0
+    edge_profiles:
+      edge_profiles/midplane/name:
+      - {type: constant, value: asdf, duration: 2}
+    """
+    file_path = f"{tmp_path}/test.nc"
+    times = np.array([0, 1, 2])
+    _export_ids(file_path, yaml_str, times)
+    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+        ids = dbentry.get("edge_profiles", autoconvert=False)
+        assert ids.midplane.name == "asdf"
+
+
 def test_export_typed_waveforms(tmp_path):
     """Check that constant waveforms of each supported value type"""
 
