@@ -244,14 +244,43 @@ class Waveform(BaseWaveform):
             return
         self.value_type = merged_type
 
+        if self.metadata is None:
+            return
+
         # If a valid DD path is chosen, check if the value_type matches the DD type
-        if (
-            self.metadata is not None
-            and self.metadata.data_type not in IDS_DATATYPES[self.value_type]
-        ):
+        if self.metadata.data_type not in IDS_DATATYPES[self.value_type]:
             error_msg = (
                 "Type is not valid here: this waveform expects a "
                 f"{self.metadata.data_type}.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        if self.metadata.ndim > 1:
+            error_msg = (
+                f"{self.metadata.data_type.name}_{self.metadata.ndim}D quantities are "
+                "not supported.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        if self.metadata.ndim == 1 and not self.metadata.timebasepath:
+            error_msg = (
+                "This 1D quantity's coordinate is not time, so it cannot be filled "
+                "by a waveform.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        # A static DD node cannot hold different values, so it may only be filled
+        # with a single constant tendency
+        if not self.metadata.type.is_dynamic and (
+            len(self.tendencies) != 1
+            or not isinstance(self.tendencies[0], ConstantTendency)
+        ):
+            error_msg = (
+                "This DD node does not vary in time, so it can only "
+                "be filled by a single constant tendency.\n"
             )
             self.annotations.add(self.tendencies[0].line_number, error_msg)
 
