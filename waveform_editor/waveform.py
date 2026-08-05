@@ -262,40 +262,6 @@ class Waveform(BaseWaveform):
             if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
 
-    def _has_type_error(self, entry):
-        """Check if the YAML entry contains an error related to the tendency type.
-
-        Args:
-            entry: Entry in the YAML file.
-
-        Returns:
-            True if there is a type error, False otherwise.
-        """
-        line_number = entry.get("line_number", 0)
-        ignore_msg = "This tendency will be ignored.\n"
-
-        tendency_type = entry.get("user_type", None)
-        if tendency_type is None:
-            error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
-            self.annotations.add(line_number, error_msg)
-            return True
-
-        if not isinstance(tendency_type, str):
-            error_msg = f"The tendency type should be of type 'string'.\n{ignore_msg}"
-            self.annotations.add(line_number, error_msg)
-            return True
-
-        if tendency_type not in TENDENCY_MAP:
-            suggestion = self.annotations.suggest(tendency_type, TENDENCY_MAP.keys())
-
-            error_msg = (
-                f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
-                f"{ignore_msg}"
-            )
-            self.annotations.add(line_number, error_msg)
-            return True
-        return False
-
     def get_yaml_string(self):
         """Converts the internal YAML waveform description to a string.
 
@@ -325,12 +291,30 @@ class Waveform(BaseWaveform):
         """
         # If no type is given, infer it from the entry's keys
         if "user_type" not in entry:
-            return _infer_tendency_class(entry)(**entry)
-
-        if self._has_type_error(entry):
-            return None
+            tendency_class = _infer_tendency_class(entry)
         else:
-            tendency_type = entry.pop("user_type")
-            tendency_class = TENDENCY_MAP[tendency_type]
-            tendency = tendency_class(**entry)
-            return tendency
+            user_type = entry.pop("user_type")
+            tendency_class = (
+                TENDENCY_MAP.get(user_type) if isinstance(user_type, str) else None
+            )
+            if tendency_class is None:
+                line_number = entry.get("line_number", 0)
+                ignore_msg = "This tendency will be ignored.\n"
+                if user_type is None:
+                    error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
+                elif not isinstance(user_type, str):
+                    error_msg = (
+                        f"The tendency type should be of type 'string'.\n{ignore_msg}"
+                    )
+                else:
+                    suggestion = self.annotations.suggest(
+                        user_type, TENDENCY_MAP.keys()
+                    )
+                    error_msg = (
+                        f"Unsupported tendency type: '{user_type}'. "
+                        f"{suggestion}{ignore_msg}"
+                    )
+                self.annotations.add(line_number, error_msg)
+                return None
+
+        return tendency_class(**entry)
