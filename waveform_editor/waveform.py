@@ -49,11 +49,6 @@ INFERRED_TYPE_BY_KEY = {
     "user_time": PiecewiseLinearTendency,
     "user_value": ConstantTendency,
     "user_waveform": RepeatTendency,
-    "user_base": SineWaveTendency,
-    "user_amplitude": SineWaveTendency,
-    "user_min": SineWaveTendency,
-    "user_max": SineWaveTendency,
-    "user_phase": SineWaveTendency,
 }
 
 

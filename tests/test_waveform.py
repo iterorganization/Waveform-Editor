@@ -35,11 +35,10 @@ def test_empty():
             },
             RepeatTendency,
         ),
-        ({"user_base": 5, "user_amplitude": 2, "user_duration": 2}, SineWaveTendency),
         ({"user_to": 5, "user_duration": 2}, LinearTendency),
         ({"user_duration": 2}, LinearTendency),
     ],
-    ids=["value", "time+value", "waveform", "periodic", "to-only", "no-keys"],
+    ids=["value", "time+value", "waveform", "to-only", "no-keys"],
 )
 def test_infer_tendency_type(entry, expected_type):
     waveform = Waveform(waveform=[entry], name="w")
