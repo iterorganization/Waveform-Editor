@@ -1,6 +1,7 @@
 import io
 
 import numpy as np
+from imas.ids_data_type import IDSDataType
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
@@ -14,6 +15,19 @@ from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTenden
 from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+
+IDS_DATATYPES = {
+    float: {IDSDataType.FLT},
+    str: {IDSDataType.STR},
+    int: {IDSDataType.INT, IDSDataType.FLT},  # An int is also valid for a float field
+}
+
+NUMPY_DTYPE_MAP = {
+    float: float,
+    int: float,
+    str: object,
+}
+
 
 tendency_map = {
     "linear": LinearTendency,
@@ -97,7 +111,13 @@ class Waveform(BaseWaveform):
         Returns:
             numpy array containing the computed values.
         """
-        values = np.zeros_like(time, dtype=float)
+        dtype = float if eval_derivatives else NUMPY_DTYPE_MAP[self.value_type]
+        is_categorical = dtype is object
+        values = (
+            np.empty(len(time), dtype=object)
+            if is_categorical
+            else np.zeros_like(time, dtype=dtype)
+        )
 
         for i, tendency in enumerate(self.tendencies):
             mask = (time >= tendency.start) & (time <= tendency.end)
@@ -107,17 +127,18 @@ class Waveform(BaseWaveform):
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
-            # Handle gaps between tendencies, we linearly interpolate between the
-            # gap values.
+            # Handle gaps between tendencies: interpolate for numeric values, hold
+            # the previous value for categorical ones.
             if i and tendency.prev_tendency.end < tendency.start:
                 prev_tendency = tendency.prev_tendency
                 mask = (time < tendency.start) & (time > prev_tendency.end)
-                slope = (tendency.start_value - prev_tendency.end_value) / (
-                    tendency.start - prev_tendency.end
-                )
                 if np.any(mask):
                     if eval_derivatives:
-                        values[mask] = slope
+                        values[mask] = (
+                            tendency.start_value - prev_tendency.end_value
+                        ) / (tendency.start - prev_tendency.end)
+                    elif is_categorical:
+                        values[mask] = prev_tendency.end_value
                     else:
                         values[mask] = np.interp(
                             time[mask],
@@ -173,10 +194,43 @@ class Waveform(BaseWaveform):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
+        self._validate_value_type()
         self.update_annotations()
 
         for tendency in self.tendencies:
             tendency.param.watch(self.update_annotations, "annotations")
+
+    def _validate_value_type(self):
+        """Determine this waveform's value type from its tendencies and set
+        ``self.value_type`` to reflect it.
+        """
+        if not self.tendencies:
+            return
+
+        value_types = set(tendency.value_type for tendency in self.tendencies)
+        if len(value_types) == 1:
+            self.value_type = value_types.pop()
+        elif value_types == {int, float}:
+            self.value_type = float
+        else:
+            type_names = ", ".join(sorted(t.__name__ for t in value_types))
+            error_msg = (
+                f"Cannot mix string and numerical tendency value types within a single "
+                f"waveform. Found: {type_names}."
+            )
+            self.annotations.add(0, error_msg)
+            return
+
+        # If a valid DD path is chosen, check if the value_type matches the DD type
+        if (
+            self.metadata is not None
+            and self.metadata.data_type not in IDS_DATATYPES[self.value_type]
+        ):
+            error_msg = (
+                "Type is not valid here: this waveform expects a "
+                f"{self.metadata.data_type}.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
 
     def update_annotations(self, event=None):
         """Merges the annotations of the individual tendencies into the annotations

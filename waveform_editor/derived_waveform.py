@@ -78,6 +78,9 @@ class DerivedWaveform(BaseWaveform):
         """Parse the YAML expression, extract dependencies, transform it for
         evaluation, and compile it.
         """
+        # This method can be called multiple times so clear stale annotations from a
+        # previous call before re-validating.
+        self.annotations.clear()
         if self.yaml is None:
             return
 
@@ -93,6 +96,7 @@ class DerivedWaveform(BaseWaveform):
         self.is_constant = not extractor.string_nodes
         self.expression = ast.unparse(modified_tree)
         self.dependencies = set(extractor.string_nodes)
+        self._validate_dependencies()
 
     def rename_dependency(self, old_name, new_name):
         """Rename a dependency waveform in the expression.
@@ -109,6 +113,42 @@ class DerivedWaveform(BaseWaveform):
         ast.fix_missing_locations(renamer.visit(tree))
         self.yaml = renamer.yaml
         self.prepare_expression()
+
+    def _validate_dependencies(self):
+        """Warn if a dependency doesn't exist, or if the dependencies that do
+        exist don't have a compatible type. Mixing int and float dependencies
+        is allowed and results in a float-typed derived waveform.
+        """
+        if not self.dependencies:
+            return
+
+        dependency_types = set()
+        missing = set()
+        for dependency in self.dependencies:
+            try:
+                dependency_types.add(self.config[dependency].value_type)
+            except KeyError:
+                missing.add(dependency)
+
+        if missing:
+            self.annotations.add(0, f"Unknown dependency: {sorted(missing)!r}\n")
+            return
+
+        if str in dependency_types:
+            self.annotations.add(
+                0, "Derived waveforms cannot depend on string-typed waveforms.\n"
+            )
+        elif dependency_types <= {int, float}:
+            self.value_type = float if float in dependency_types else int
+        elif len(dependency_types) == 1:
+            self.value_type = dependency_types.pop()
+        else:
+            type_names = sorted(t.__name__ for t in dependency_types)
+            self.annotations.add(
+                0,
+                "All dependencies of a derived waveform must have the same "
+                f"type, or be a mix of int and float. Found: {type_names}\n",
+            )
 
     def _build_eval_context(self, time: np.ndarray) -> dict:
         """Build the evaluation context dictionary with dependencies resolved.

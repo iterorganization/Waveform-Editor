@@ -51,6 +51,45 @@ If the ``value`` is not specified, it will be set to the last value of the previ
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
 
+.. _constant-value-types:
+
+Value Types
+-----------
+
+The ``value`` of a constant tendency may be a number (integer or floating-point) or a string.
+
+An integer value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: 3, duration: 2}
+
+A floating-point value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: 3.5, duration: 2}
+
+A string value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: ohmic, duration: 2}
+    - {type: constant, value: nbi, duration: 2}
+
+It is also possible to use ``True`` and ``False`` as the ``value``, in which case the 
+waveform will be considered an integer type (where ``True = 1``, and ``False = 0``):
+
+.. code-block:: yaml
+
+    - {type: constant, value: True, duration: 2}
+    - {type: constant, value: False, duration: 2}
+
+.. warning::
+    Integers and floats may be freely combined within a single waveform (the
+    resulting waveform will be float-typed), but it's not allowed to combine string 
+    values with numbers in a waveform.
+
 Linear Tendency
 ===============
 

@@ -17,6 +17,7 @@ class BaseWaveform(ABC):
         self.metadata = self.get_metadata(dd_version)
         self.annotations = Annotations()
         self.units = self.metadata.units if self.metadata else "a.u."
+        self.value_type = float
 
     @abstractmethod
     def get_value(

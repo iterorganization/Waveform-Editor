@@ -61,8 +61,8 @@ class BaseTendency(param.Parameterized):
         values from the start value of this tendency.
         """,
     )
-    start_value = param.Number(default=0.0, doc="Value at self.start")
-    end_value = param.Number(default=0.0, doc="Value at self.end")
+    start_value = param.Parameter(default=0.0, doc="Value at self.start")
+    end_value = param.Parameter(default=0.0, doc="Value at self.end")
 
     start_derivative = param.Number(default=0.0, doc="Derivative at self.start")
     end_derivative = param.Number(default=0.0, doc="Derivative at self.end")
@@ -77,6 +77,10 @@ class BaseTendency(param.Parameterized):
     )
     annotations = param.ClassSelector(class_=Annotations, default=Annotations())
     allow_zero_duration = False
+    value_type = param.Parameter(
+        default=float,
+        doc="The value type of the this tendency. May be float, int, or str.",
+    )
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -223,7 +227,7 @@ class BaseTendency(param.Parameterized):
         """Get the value and derivative of the tendency at a given time."""
         _, value_array = self.get_value(np.array([time]))
         derivative_array = self.get_derivative(np.array([time]))
-        return value_array[0], derivative_array[0]
+        return value_array.item(0), derivative_array.item(0)
 
     @abstractmethod
     def get_value(
