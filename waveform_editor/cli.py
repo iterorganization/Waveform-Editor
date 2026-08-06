@@ -74,7 +74,13 @@ def parse_linspace(ctx, param, value):
 @click.option(
     "-p", "--port", type=int, default=0, help="Specify port to host application."
 )
-def launch_gui(file, port):
+@click.option(
+    "--standalone",
+    is_flag=True,
+    default=False,
+    help="Launch as a standalone desktop window using pywebview instead of a browser.",
+)
+def launch_gui(file, port, standalone):
     """Launch the Waveform Editor GUI using Panel.
 
     \b
@@ -85,13 +91,20 @@ def launch_gui(file, port):
     # cases:
     import panel as pn
 
-    from waveform_editor.gui.main import WaveformEditorGui
+    from waveform_editor.gui.main import PanelDesktop, WaveformEditorGui
 
     try:
-        app = WaveformEditorGui()
-        if file is not None:
-            app.load_yaml_from_file(Path(file))
-        pn.serve(app, port=port, threaded=True)
+
+        def create_app():
+            app = WaveformEditorGui()
+            if file is not None:
+                app.load_yaml_from_file(Path(file))
+            return app.__panel__()
+
+        if standalone:
+            PanelDesktop().serve(create_app, port=port)
+        else:
+            pn.serve(create_app, port=port, threaded=True)
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 

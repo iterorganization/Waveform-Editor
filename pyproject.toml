@@ -29,6 +29,8 @@ dependencies = [
     "kaleido", # required for exporting PNG to disk
     "asteval",
     "muscle3",
+    "pywebview[qt]",
+    "pyinstaller",
 ]
 dynamic = ["version"]
 
