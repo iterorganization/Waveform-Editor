@@ -41,7 +41,9 @@ class WaveformContent(param.Parameterized):
             sizing_mode="stretch_both",
             visible=is_waveform_page,
         )
-        plasma_page = pn.Column(shape_editor, visible=is_plasma_page)
+        plasma_page = pn.Column(
+            shape_editor, sizing_mode="stretch_both", visible=is_plasma_page
+        )
         self._layout = pn.Column(waveform_page, plasma_page, sizing_mode="stretch_both")
 
     def __panel__(self):

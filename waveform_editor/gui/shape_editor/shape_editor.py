@@ -162,27 +162,21 @@ class ShapeEditor(Viewer):
             ),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
-        header = pn.Row(
-            pn.HSpacer(),
-            settings_modal,
-            sizing_mode="stretch_width",
-        )
-
-        left_col = pn.Column(
-            header,
-            self.nice_plotter.flux_map_pane,
-            self.metrics,
-            width=self.nice_plotter.flux_map_pane.width,
-        )
 
         self.panel = pn.Row(
-            left_col,
+            pn.Column(
+                pn.Row(settings_modal, align="end"),
+                self.nice_plotter.flux_map_pane,
+                self.metrics,
+                sizing_mode="stretch_both",
+            ),
             pn.Column(
                 menu,
                 pn.layout.Divider(),
                 inputs,
                 sizing_mode="stretch_both",
             ),
+            sizing_mode="stretch_both",
         )
 
     def _create_card(
