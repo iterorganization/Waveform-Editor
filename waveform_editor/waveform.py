@@ -293,24 +293,15 @@ class Waveform(BaseWaveform):
         if "user_type" not in entry:
             tendency_class = _infer_tendency_class(entry)
         else:
-            user_type = entry.pop("user_type")
-            tendency_class = (
-                TENDENCY_MAP.get(user_type) if isinstance(user_type, str) else None
-            )
+            user_type = str(entry.pop("user_type"))
+            tendency_class = TENDENCY_MAP.get(user_type)
             if tendency_class is None:
-                line_number = entry.get("line_number", 0)
-                ignore_msg = "This tendency will be ignored.\n"
-                if user_type is None:
-                    error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
-                else:
-                    suggestion = self.annotations.suggest(
-                        str(user_type), TENDENCY_MAP.keys()
-                    )
-                    error_msg = (
-                        f"Unsupported tendency type: '{user_type}'. "
-                        f"{suggestion}{ignore_msg}"
-                    )
-                self.annotations.add(line_number, error_msg)
+                suggestion = self.annotations.suggest(user_type, TENDENCY_MAP.keys())
+                error_msg = (
+                    f"Unsupported tendency type: '{user_type}'. "
+                    f"{suggestion}This tendency will be ignored.\n"
+                )
+                self.annotations.add(entry.get("line_number", 0), error_msg)
                 return None
 
         return tendency_class(**entry)
