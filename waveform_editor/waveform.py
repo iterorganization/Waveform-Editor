@@ -293,7 +293,8 @@ class Waveform(BaseWaveform):
         if "user_type" not in entry:
             tendency_class = _infer_tendency_class(entry)
         else:
-            user_type = str(entry.pop("user_type"))
+            user_type = entry.pop("user_type")
+            user_type = "" if user_type is None else str(user_type)
             tendency_class = TENDENCY_MAP.get(user_type)
             if tendency_class is None:
                 suggestion = self.annotations.suggest(user_type, TENDENCY_MAP.keys())
