@@ -302,13 +302,9 @@ class Waveform(BaseWaveform):
                 ignore_msg = "This tendency will be ignored.\n"
                 if user_type is None:
                     error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
-                elif not isinstance(user_type, str):
-                    error_msg = (
-                        f"The tendency type should be of type 'string'.\n{ignore_msg}"
-                    )
                 else:
                     suggestion = self.annotations.suggest(
-                        user_type, TENDENCY_MAP.keys()
+                        str(user_type), TENDENCY_MAP.keys()
                     )
                     error_msg = (
                         f"Unsupported tendency type: '{user_type}'. "
