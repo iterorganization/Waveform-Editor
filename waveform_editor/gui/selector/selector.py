@@ -1,8 +1,8 @@
 import panel as pn
 import param
 from panel.viewable import Viewer
+from panel_jstree import Tree
 
-from waveform_editor.gui.selector.selection_group import SelectionGroup
 from waveform_editor.util import State
 
 
@@ -18,22 +18,32 @@ class WaveformSelector(Viewer):
         doc="Allow selecting multiple waveforms",
         allow_refs=True,
     )
+    active_group_path = param.List(
+        doc="Path to the currently active group (list of group names)",
+    )
 
     def __init__(self, main_gui):
         super().__init__()
-        self.main_gui = main_gui  # options_button_row needs the modals from main_gui
+        self.main_gui = main_gui
         self.config = main_gui.config
         self.is_removing_waveform = State()
         self._ignore_selection_change = State()
 
-        # UI
         self.filter_input = pn.widgets.TextInput(
             placeholder="Filter waveforms...", sizing_mode="stretch_width"
         )
-        self.selection_group = SelectionGroup(self, self.config, [])
-        self.selection_group.visible = self.filter_input.param.value_input.rx.not_()
 
-        # Flat selection group for filtered results
+        self.tree = Tree(
+            data=self._build_tree_data(),
+            checkbox=True,
+            select_multiple=True,
+            cascade=False,
+            show_icons=False,
+            sizing_mode="stretch_width",
+        )
+        self.tree.param.watch(self._on_tree_value_change, "value")
+
+        # Flat view for filter results
         self.filtered_results = pn.widgets.CheckButtonGroup(
             button_type="primary",
             button_style="outline",
@@ -51,7 +61,6 @@ class WaveformSelector(Viewer):
             visible=self.filter_input.param.value_input.rx.bool(),
             on_click=lambda event: setattr(self.filter_input, "value_input", ""),
         )
-
         filter_empty_text = pn.pane.Markdown(
             "_No waveforms found_",
             visible=pn.bind(
@@ -63,93 +72,143 @@ class WaveformSelector(Viewer):
         self.filtered_results.param.watch(self.on_select, "value")
         self.filter_input.param.watch(self._update_filter_view, "value_input")
 
+        from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
+
+        self.button_row = OptionsButtonRow(main_gui, self)
+
         self.panel = pn.Column(
             pn.Row(self.filter_input, clear_filter_button),
-            self.selection_group,
+            self.button_row,
+            pn.Column(self.tree, visible=self.filter_input.param.value_input.rx.not_()),
             self.filtered_results,
             filter_empty_text,
             visible=self.param.visible,
         )
 
-    def _update_filter_view(self, event):
-        """Update the appropriate view based on whether a filter is active."""
-        filter_text = self.filter_input.value_input.lower()
-        if not filter_text:
+    def _build_tree_data(self):
+        """Build jstree data structure from config."""
+
+        def build_group_node(group, parent_path):
+            path = parent_path + [group.name]
+            node_id = "grp:" + "/".join(path)
+            children = [
+                {"id": f"wf:{wf_name}", "text": wf_name} for wf_name in group.waveforms
+            ]
+            children += [build_group_node(sg, path) for sg in group.groups.values()]
+            return {
+                "id": node_id,
+                "text": group.name,
+                "children": children,
+                "state": {"opened": True},
+            }
+
+        return [build_group_node(g, []) for g in self.config.groups.values()]
+
+    def _on_tree_value_change(self, event):
+        """Handle changes to tree selection."""
+        if self._ignore_selection_change:
             return
 
+        new_value = event.new or []
+        old_value = event.old or []
+
+        # Update active group when a group node is newly selected
+        new_grp_ids = [
+            v for v in new_value if v.startswith("grp:") and v not in old_value
+        ]
+        if new_grp_ids:
+            self.active_group_path = new_grp_ids[-1][4:].split("/")  # strip "grp:"
+
+        wf_names = [v[3:] for v in new_value if v.startswith("wf:")]
+
+        if not self.multiselect:
+            old_wf_names = [v[3:] for v in old_value if v.startswith("wf:")]
+            newly_added = [n for n in wf_names if n not in old_wf_names]
+            new_sel = [newly_added[-1]] if newly_added else wf_names[:1]
+            self.set_selection(new_sel)
+        else:
+            self.set_selection(wf_names)
+
+    def _rebuild_tree(self):
+        """Rebuild tree from config, preserving current selection."""
         with self._ignore_selection_change:
-            filtered = [w for w in self.config.waveform_map if filter_text in w.lower()]
-            self.filtered_results.options = sorted(filtered)
-            self._sync_filtered_view()
+            self.tree.data = self._build_tree_data()
+            self._sync_tree_selection()
+
+    def _sync_tree_selection(self):
+        """Sync tree.value to reflect self.selection.
+
+        Must be called within _ignore_selection_change.
+        """
+        existing_wf_ids = {f"wf:{wf}" for wf in self.config.waveform_map}
+        current_grp = [v for v in (self.tree.value or []) if v.startswith("grp:")]
+        valid_wf_ids = [
+            f"wf:{n}" for n in self.selection if f"wf:{n}" in existing_wf_ids
+        ]
+        self.tree.value = current_grp + valid_wf_ids
 
     def refresh(self):
-        """Discard the current UI state and re-build from self.config.
-
-        Should be called after loading a new configuration.
-        """
+        """Discard current UI state and re-build from self.config."""
         self.filter_input.value = ""
-        self.selection_group = SelectionGroup(self, self.config, [])
-        self.selection_group.visible = self.filter_input.param.value_input.rx.not_()
-        self.panel[1] = self.selection_group
         self.selection = []
+        self.active_group_path = []
+        with self._ignore_selection_change:
+            self.tree.data = self._build_tree_data()
+            self.tree.value = []
 
     @param.depends("multiselect", watch=True)
     def _multiselect_changed(self):
-        """Update selection when multiselect True -> False: keep at most one item."""
         if not self.multiselect:
             self.set_selection(self.selection[:1])
 
     @param.depends("selection", watch=True)
     def _sync_filtered_view(self):
-        """Syncs the main selection list to the filtered view's value."""
         self.filtered_results.value = [
             s for s in self.selection if s in self.filtered_results.options
         ]
 
+    def _update_filter_view(self, event):
+        filter_text = self.filter_input.value_input.lower()
+        if not filter_text:
+            return
+        with self._ignore_selection_change:
+            filtered = [w for w in self.config.waveform_map if filter_text in w.lower()]
+            self.filtered_results.options = sorted(filtered)
+            self._sync_filtered_view()
+
     def set_selection(self, new_selection: list[str]):
-        """Update the active selection."""
-        with self._ignore_selection_change:  # Don't listen to the widget callbacks
-            if not self.multiselect:
-                assert len(new_selection) <= 1
+        """Update the active selection and sync the tree."""
+        if not self.multiselect:
+            assert len(new_selection) <= 1
+        with self._ignore_selection_change:
             self.selection = new_selection
+            self._sync_tree_selection()
 
     def remove_group(self, path: list[str]):
-        """Remove the UI element for the group at the specified path."""
-        parent_group, group_ui = None, self.selection_group
-        for part in path:
-            parent_group, group_ui = group_ui, group_ui.selection_groups[part]
-
-        selection_to_delete = group_ui.get_selection(True)
-        parent_group.remove_group(path[-1])
-        del group_ui
-        if selection_to_delete:
-            new_sel = [val for val in self.selection if val not in selection_to_delete]
-            with self.is_removing_waveform:  # Flag that we're removing waveforms
+        """Remove the UI element for the group at path and update selection."""
+        new_sel = [v for v in self.selection if v in self.config.waveform_map]
+        self._rebuild_tree()
+        if new_sel != self.selection:
+            with self.is_removing_waveform:
                 self.set_selection(new_sel)
+        if self.active_group_path[: len(path)] == path:
+            self.active_group_path = []
 
     def on_select(self, event):
-        """Handles the selection and deselection of waveforms in the check button
-        groups.
-
-        Args:
-            event: list containing the new selection.
-        """
+        """Handle selection in the filtered results view."""
         if self._ignore_selection_change:
             return
-
         if self.multiselect:
             if self.filter_input.value_input:
-                preserved_selection = [
+                preserved = [
                     s for s in self.selection if s not in self.filtered_results.options
                 ]
-                self.set_selection(preserved_selection + event.new)
-            else:  # Just update all selected
-                self.selection = self.selection_group.get_selection(True)
-        else:  # Check which one is new and deselect anything else
+                self.set_selection(preserved + event.new)
+            else:
+                self.set_selection(event.new)
+        else:
             new_selection = [name for name in event.new if name not in event.old]
-            assert len(new_selection) <= 1
-            self.set_selection(new_selection)
+            self.set_selection(new_selection[:1])
 
     def __panel__(self):
-        """Returns the waveform selector UI component."""
         return self.panel
