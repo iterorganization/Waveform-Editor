@@ -1,5 +1,6 @@
 import io
 import logging
+from pathlib import Path
 
 import param
 from ruamel.yaml import YAML
@@ -36,6 +37,8 @@ class WaveformConfiguration(param.Parameterized):
         # Reads external data for import (``{ref: ...}``) waveforms. Rebuilt lazily;
         # invalidated when globals (imports / dd_version) change.
         self.import_resolver = None
+        # Directory of the file this configuration was loaded from, if any.
+        self.base_dir = None
 
         # Trigger has_changed boolean when a global param is changed
         for param_name in self.globals.param:
@@ -62,7 +65,7 @@ class WaveformConfiguration(param.Parameterized):
         """
         if self.import_resolver is None or received_idss is not None:
             self.import_resolver = ImportResolver(
-                self.imports, self.globals.dd_version, received_idss
+                self.imports, self.globals.dd_version, received_idss, self.base_dir
             )
         return self.import_resolver
 
@@ -89,6 +92,9 @@ class WaveformConfiguration(param.Parameterized):
             yaml_str: The YAML string to load YAML for.
         """
         self.clear()
+
+        if isinstance(yaml_str, Path):
+            self.base_dir = yaml_str.parent.resolve()
         try:
             self.parser.load_yaml(yaml_str)
             self._calculate_bounds()
