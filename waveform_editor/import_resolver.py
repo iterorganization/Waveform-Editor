@@ -67,9 +67,10 @@ class ImportResolver:
 
         if "path" in query_params:
             assert len(query_params["path"]) == 1
-            rel_path = query_params["path"][0]
-            abs_path = str(Path(self.base_dir, rel_path).resolve())
-            query_params["path"] = [abs_path]
+            path = Path(query_params["path"][0])
+            if not path.is_absolute():
+                abs_path = str(Path(self.base_dir, path).resolve())
+                query_params["path"] = [abs_path]
 
         new_query = urlencode(query_params, doseq=True, safe="/")
 
