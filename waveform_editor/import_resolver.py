@@ -1,6 +1,8 @@
 import logging
 import re
 from contextlib import contextmanager
+from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import imas
 import numpy as np
@@ -38,11 +40,12 @@ class ImportResolver:
     (netCDF does not support get_slice directly).
     """
 
-    def __init__(self, imports, dd_version, received_idss=None):
+    def __init__(self, imports, dd_version, received_idss=None, base_dir=None):
         self.imports = imports or {}
         self.dd_version = dd_version
         # {port_name: IDS} received over MUSCLE3 ports at run time.
         self.received_idss = received_idss or {}
+        self.base_dir = base_dir
         # full source IDSs, keyed by (source_key, ids_name)
         self._full_cache = {}
 
@@ -52,7 +55,35 @@ class ImportResolver:
         """The import spec (URI string or ``{port: ...}``) for import name ``ref``."""
         if ref not in self.imports:
             raise KeyError(f"unknown import '{ref}'")
-        return self.imports[ref]
+        return self._resolve_uri(self.imports[ref])
+
+    def _resolve_uri(self, source):
+        """Make a relative ``path=`` in an IMAS URI absolute, against ``base_dir``."""
+        if self.base_dir is None or not isinstance(source, str):
+            return source
+
+        parsed = urlparse(source)
+        query_params = parse_qs(parsed.query)
+
+        if "path" in query_params:
+            assert len(query_params["path"]) == 1
+            path = Path(query_params["path"][0])
+            if not path.is_absolute():
+                abs_path = str(Path(self.base_dir, path).resolve())
+                query_params["path"] = [abs_path]
+
+        new_query = urlencode(query_params, doseq=True, safe="/")
+
+        return urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment,
+            )
+        )
 
     @staticmethod
     def _port_of(source):
