@@ -26,7 +26,8 @@ you can simply load the latest NICE module:
 
 .. code-block:: bash
 
-   module load NICE
+
+   module load NICE/3.0.0-intel-2025b-DD-4.1.1
 
 If the NICE module is not available, you must compile NICE manually.
 See the following page for further details on how to set this up:
