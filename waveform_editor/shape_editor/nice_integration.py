@@ -20,51 +20,62 @@ from waveform_editor.settings import settings
 
 # YMMSL configuration for NICE inverse mode
 _muscle3_inv_configuration = """
-ymmsl_version: v0.1
-model:
-    name: shape_editor
+ymmsl_version: v0.2
+
+models:
+  shape_editor:
     components:
-        shape_editor:
-            implementation: shape_editor
-        nice_inv:
-            implementation: nice_inv
+      shape_editor:
+        ports:
+          o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
+          s: [equilibrium_in, pf_active_in]
+      nice_inv:
+        description: NICE, inverse mode
+        ports:
+          f_init: [equilibrium_in, pf_active_in, pf_passive_in, wall_in, iron_core_in]
+          o_f: [equilibrium_out, pf_active_out]
 
     conduits:
-        shape_editor.equilibrium_out: nice_inv.equilibrium_in
-        shape_editor.pf_passive_out: nice_inv.pf_passive_in
-        shape_editor.pf_active_out: nice_inv.pf_active_in
-        shape_editor.iron_core_out: nice_inv.iron_core_in
-        shape_editor.wall_out: nice_inv.wall_in
-        nice_inv.equilibrium_out: shape_editor.equilibrium_in
-        nice_inv.pf_active_out: shape_editor.pf_active_in
+      shape_editor.equilibrium_out: nice_inv.equilibrium_in
+      shape_editor.pf_passive_out: nice_inv.pf_passive_in
+      shape_editor.pf_active_out: nice_inv.pf_active_in
+      shape_editor.iron_core_out: nice_inv.iron_core_in
+      shape_editor.wall_out: nice_inv.wall_in
+      nice_inv.equilibrium_out: shape_editor.equilibrium_in
+      nice_inv.pf_active_out: shape_editor.pf_active_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
-    nice_inv.xml_path: {xml_path}
+  muscle_profile_level: none  # Disable profiling
+  nice_inv.xml_path: {xml_path}
 """
 
 # YMMSL configuration for NICE direct mode
 _muscle3_dir_configuration = """
-ymmsl_version: v0.1
-model:
-    name: shape_editor
+ymmsl_version: v0.2
+
+models:
+  shape_editor:
     components:
-        shape_editor:
-            implementation: shape_editor
-        nice_dir:
-            implementation: nice_dir
+      shape_editor:
+        ports:
+          o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
+          s: [equilibrium_in]
+      nice_dir:
+        ports:
+          f_init: [equilibrium_in, pf_active_in, pf_passive_in, wall_in, iron_core_in]
+          o_f: [equilibrium_out]
 
     conduits:
-        shape_editor.equilibrium_out: nice_dir.equilibrium_in
-        shape_editor.pf_passive_out: nice_dir.pf_passive_in
-        shape_editor.pf_active_out: nice_dir.pf_active_in
-        shape_editor.iron_core_out: nice_dir.iron_core_in
-        shape_editor.wall_out: nice_dir.wall_in
-        nice_dir.equilibrium_out: shape_editor.equilibrium_in
+      shape_editor.equilibrium_out: nice_dir.equilibrium_in
+      shape_editor.pf_passive_out: nice_dir.pf_passive_in
+      shape_editor.pf_active_out: nice_dir.pf_active_in
+      shape_editor.iron_core_out: nice_dir.iron_core_in
+      shape_editor.wall_out: nice_dir.wall_in
+      nice_dir.equilibrium_out: shape_editor.equilibrium_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
-    nice_dir.xml_path: {xml_path}
+  muscle_profile_level: none  # Disable profiling
+  nice_dir.xml_path: {xml_path}
 """
 
 

@@ -46,7 +46,7 @@ Installing dependencies
 
             # Install imas_core and muscle3 with pip
             pip install 'imas_core @ git+ssh://git@git.iter.org/imas/al-core.git'
-            pip install 'muscle3==0.8.0'
+            pip install 'muscle3==0.10.0'
 
             # Install AL-CPP in ~/.local
             git clone ssh://git@git.iter.org/imas/al-cpp.git
@@ -60,9 +60,9 @@ Installing dependencies
             cd ..
 
             # Install C++ libs of MUSCLE3 in ~/.local
-            wget https://github.com/multiscale/muscle3/archive/0.8.0/muscle3-0.8.0.tar.gz
-            tar xf muscle3-0.8.0.tar.gz
-            cd muscle3-0.8.0
+            wget https://github.com/multiscale/muscle3/archive/0.10.0/muscle3-0.10.0.tar.gz
+            tar xf muscle3-0.10.0.tar.gz
+            cd muscle3-0.10.0
             make
             PREFIX=~/.local make install
             cd ..
