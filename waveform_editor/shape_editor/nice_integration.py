@@ -26,6 +26,7 @@ models:
   shape_editor:
     components:
       shape_editor:
+        description: Shape editor
         ports:
           o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
           s: [equilibrium_in, pf_active_in]
@@ -57,10 +58,12 @@ models:
   shape_editor:
     components:
       shape_editor:
+        description: Shape editor
         ports:
           o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
           s: [equilibrium_in]
       nice_dir:
+        description: NICE, direct mode
         ports:
           f_init: [equilibrium_in, pf_active_in, pf_passive_in, wall_in, iron_core_in]
           o_f: [equilibrium_out]
