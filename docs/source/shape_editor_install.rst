@@ -22,7 +22,7 @@ Installing dependencies
 
         .. code-block:: bash
 
-            module load IMAS-Python IMAS-AL-Cpp/5.4.0-intel-2023b-DD-4.0.0 \
+            module load IMAS-Python IMAS-AL-Cpp/5.4.0-intel-2023b-DD-4.1.1 \
                 SuiteSparse/7.7.0-intel-2023b MUSCLE3
             
     .. md-tab-item:: Ubuntu 24.04
@@ -54,7 +54,7 @@ Installing dependencies
             cmake -B build -D AL_EXAMPLES=OFF -D AL_HLI_DOCS=OFF -D AL_PLUGINS=OFF \
                 -D AL_TESTS=OFF -D CMAKE_INSTALL_PREFIX=~/.local \
                 -D DD_GIT_REPOSITORY=https://github.com/iterorganization/IMAS-Data-Dictionary.git \
-                -D DD_VERSION=4.0.0
+                -D DD_VERSION=4.1.1
             make -C build -j
             make -C build install
             cd ..
@@ -85,6 +85,7 @@ https://blfauger.gitlabpages.inria.fr/nice/install.html.
 
     git clone https://gitlab.inria.fr/blfauger/nice.git
     cd nice
+    git checkout v3.0.0
     git submodule init
     git submodule update
     cd src
