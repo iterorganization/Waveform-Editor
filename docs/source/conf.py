@@ -30,9 +30,6 @@ copyright = f"2020-{datetime.datetime.now().year}, ITER Organization"
 author = "ITER Organization"
 src_host = "https://github.com/iterorganization/"
 
-# Warn about missing references
-nitpicky = True
-
 # Parse urls here for convenience, to be re-used
 # ITER docs
 iter_projects = "https://github.com/iterorganization/"
@@ -292,18 +289,6 @@ intersphinx_mapping = {
     "panel": ("https://panel.holoviz.org", None),
 }
 intersphinx_timeout = 60  # Downloads time out after 1 minute
-
-nitpick_ignore_regex = [
-    ("py:obj", r"^waveform_editor\..*"),
-    ("py:class", r"^(t\.)?[A-Za-z_][A-Za-z0-9_]*$"),
-    ("py:class", r".*\s.*"),
-    ("py:class", r"^pathlib\._local\..*"),
-]
-
-nitpick_ignore = [
-    ("py:class", "yaml.loader.SafeLoader"),
-    ("py:class", "asyncio.protocols.SubprocessProtocol"),
-]
 
 smartquotes = False
 
