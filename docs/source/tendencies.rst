@@ -18,7 +18,8 @@ Most tendencies accept the following parameters to define their time interval. Y
 *   ``end``: The absolute time at which the tendency ends. If omitted, it's calculated from ``start + duration``.
 
 .. note::
-    The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
+    The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` and :ref:`Steps <steps-tendency>` are an exception, they derive their time interval solely from the ``time`` parameter list. 
+    These tendencies do *not* accept ``start``, ``duration``, or ``end``.
 
 Constant Tendency
 =================
@@ -212,7 +213,7 @@ Defines a sequence of points connected by straight lines.
 
 Parameters
 ----------
-*   ``time``: A list of time points. Must be strictly monotonically increasing and must have at least 1 point.
+*   ``time``: A list of the tendency's time points. The time points are absolute, and must be strictly monotonically increasing and must have at least 1 point.
 *   ``value``: A list of corresponding values at each time point in the ``time`` list. Must have the same length as ``time``.
 
 .. image:: images/piecewise.png
@@ -238,7 +239,7 @@ alternative to writing out a sequence of :ref:`Constant Tendencies <constant-val
 
 Parameters
 ----------
-*   ``time``: A list of the tendency's time points. Must be strictly monotonically increasing and must have at least 1 point.
+*   ``time``: A list of the tendency's time points. The time points are absolute, and must be strictly monotonically increasing and must have at least 1 point.
 *   ``value``: A list of the values held during each step. Must have the same length as ``time``.
 
 .. image:: images/steps_1.png
