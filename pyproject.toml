@@ -28,7 +28,7 @@ dependencies = [
     "ruamel.yaml",
     "kaleido", # required for exporting PNG to disk
     "asteval",
-    "muscle3",
+    "muscle3>=0.10",
 ]
 dynamic = ["version"]
 
