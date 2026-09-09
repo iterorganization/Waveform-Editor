@@ -2,6 +2,7 @@ import imas
 import numpy as np
 import pytest
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.export.exporter import ConfigurationExporter
 
@@ -9,7 +10,7 @@ from waveform_editor.export.exporter import ConfigurationExporter
 @pytest.fixture
 def ec_launchers_md_uri(tmp_path):
     md_uri = f"{tmp_path}/md.nc"
-    with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(md_uri, "w", dd_version=TEST_DD_VERSION) as dbentry:
         ec = dbentry.factory.new("ec_launchers")
         ec.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
         ec.beam.resize(4)
@@ -31,7 +32,7 @@ def assert_ec_launchers_md(ec):
 @pytest.fixture
 def core_sources_md_uri(tmp_path):
     md_uri = f"{tmp_path}/md.nc"
-    with imas.DBEntry(md_uri, "w", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(md_uri, "w", dd_version=TEST_DD_VERSION) as dbentry:
         cs = dbentry.factory.new("core_sources")
         cs.ids_properties.homogeneous_time = imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
         cs.source.resize(4)
@@ -71,7 +72,7 @@ def test_to_ids(tmp_path):
     times = np.array([0, 0.5, 1])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         # FLT_1D
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
@@ -108,7 +109,7 @@ def test_to_ids_inverted(tmp_path):
     times = np.array([0, 0.5, 1])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         # FLT_1D
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
@@ -129,7 +130,7 @@ def test_to_ids_python_notation(tmp_path):
     times = np.array([0, 0.5, 1])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.all(ids.time == times)
         assert np.array_equal(ids.beam[2].phase.angle, [5] * 3)
@@ -153,7 +154,7 @@ def test_to_ids_aos(tmp_path):
     times = np.array([0, 0.5, 1])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("edge_profiles", autoconvert=False)
         assert np.all(ids.time == times)
         assert len(ids.profiles_1d) == 3
@@ -178,7 +179,7 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
     """Test export if machine description is provided."""
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
@@ -186,7 +187,7 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
@@ -200,7 +201,7 @@ def test_export_full_slice_flt_1d(tmp_path):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 1
         assert np.array_equal(ids.beam[0].phase.angle, [111] * 3)
@@ -209,7 +210,7 @@ def test_export_full_slice_flt_1d(tmp_path):
 def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
@@ -217,7 +218,7 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
@@ -232,7 +233,7 @@ def test_export_slice_flt_1d(tmp_path):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
         assert not ids.beam[0].phase.angle
@@ -243,7 +244,7 @@ def test_export_slice_flt_1d(tmp_path):
 def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
@@ -251,7 +252,7 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
@@ -268,7 +269,7 @@ def test_export_half_slice_forward_flt_1d(tmp_path):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
         assert not ids.beam[0].phase.angle
@@ -283,7 +284,7 @@ def test_export_half_slice_backward_flt_1d(tmp_path):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 3
         for i in range(0, 3):
@@ -294,7 +295,7 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     """Load the yaml string into a waveform config and export to an IDS."""
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
@@ -302,7 +303,7 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
@@ -314,7 +315,7 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
 def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
     ec_launchers:
@@ -322,7 +323,7 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         assert_ec_launchers_md(ids)
@@ -340,7 +341,7 @@ def test_export_multiple_slices_flt_1d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("interferometer", autoconvert=False)
         channels = ids.channel
         assert len(channels) == 3
@@ -365,7 +366,7 @@ def test_export_full_slice_flt_0d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 1
         assert len(ids.source[0].global_quantities) == len(times)
@@ -376,7 +377,7 @@ def test_export_full_slice_flt_0d(tmp_path):
 def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
     core_sources:
@@ -386,7 +387,7 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
         assert_core_sources_md(ids)
@@ -405,7 +406,7 @@ def test_export_slice_flt_0d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 3
         assert not ids.source[0].has_value
@@ -418,7 +419,7 @@ def test_export_slice_flt_0d(tmp_path):
 def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
     core_sources:
@@ -429,7 +430,7 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
 
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
         assert_core_sources_md(ids)
@@ -451,7 +452,7 @@ def test_export_half_slice_forward_flt_0d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 3
         assert not ids.source[0].has_value
@@ -470,7 +471,7 @@ def test_export_half_slice_backward_flt_0d(tmp_path):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 3
         for i in range(3):
@@ -482,7 +483,7 @@ def test_export_half_slice_backward_flt_0d(tmp_path):
 def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
     core_sources:
@@ -492,7 +493,7 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
         assert_core_sources_md(ids)
@@ -506,7 +507,7 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
 def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
     core_sources:
@@ -516,7 +517,7 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
     _export_ids(uri, yaml_str, times)
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("core_sources")
         assert len(ids.source) == 4
         assert_core_sources_md(ids)
@@ -553,7 +554,7 @@ def test_export_multiple_slices_flt_0d_python_notation(tmp_path):
 
 
 def _assert_distributions_ids(uri):
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("distributions", autoconvert=False)
         distributions = ids.distribution
         assert len(distributions) == 3
@@ -598,7 +599,7 @@ def test_export_ordering(tmp_path):
 
 
 def _assert_ordering(uri):
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers")
         assert len(ids.beam) == 4
         for i in range(0, 4):
@@ -640,7 +641,7 @@ def test_export_constant(tmp_path):
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 1, 2])
     _export_ids(file_path, yaml_str, times)
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("ec_launchers", autoconvert=False)
         assert np.array_equal(ids.beam[0].phase.angle, [1] * 3)
         assert np.array_equal(ids.beam[1].phase.angle, [2.2] * 3)
@@ -650,17 +651,17 @@ def test_export_constant(tmp_path):
 def test_export_constant_static_field(tmp_path):
     """A constant waveform bound to a static DD node must export its single value."""
 
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
     edge_profiles:
       edge_profiles/midplane/name:
-      - {type: constant, value: asdf, duration: 2}
+      - {{type: constant, value: asdf, duration: 2}}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 1, 2])
     _export_ids(file_path, yaml_str, times)
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         ids = dbentry.get("edge_profiles", autoconvert=False)
         assert ids.midplane.name == "asdf"
 
@@ -668,28 +669,28 @@ def test_export_constant_static_field(tmp_path):
 def test_export_typed_waveforms(tmp_path):
     """Check that constant waveforms of each supported value type"""
 
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
     core_profiles:
       core_profiles/profiles_1d/electrons/temperature_validity:
-      - {type: constant, value: 0, duration: 2}
-      - {type: constant, value: 1, duration: 2}
+      - {{type: constant, value: 0, duration: 2}}
+      - {{type: constant, value: 1, duration: 2}}
       core_profiles/profiles_1d/grid/psi_magnetic_axis:
-      - {type: constant, value: 1.5, duration: 2}
-      - {type: constant, value: 3.0, duration: 2}
+      - {{type: constant, value: 1.5, duration: 2}}
+      - {{type: constant, value: 3.0, duration: 2}}
       core_profiles/profiles_1d/ion(1)/name:
-      - {type: constant, value: D, duration: 2}
-      - {type: constant, value: He, duration: 2}
+      - {{type: constant, value: D, duration: 2}}
+      - {{type: constant, value: He, duration: 2}}
       core_profiles/profiles_1d/ion(1)/multiple_states_flag:
-      - {type: constant, value: 1, duration: 2}
-      - {type: constant, value: 0, duration: 2}
+      - {{type: constant, value: 1, duration: 2}}
+      - {{type: constant, value: 0, duration: 2}}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 2.0])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         core_profiles = dbentry.get("core_profiles", autoconvert=False)
         assert core_profiles.profiles_1d[0].grid.psi_magnetic_axis == 1.5
         assert core_profiles.profiles_1d[0].electrons.temperature_validity == 0
@@ -712,7 +713,7 @@ def test_example_yaml(tmp_path):
     values = np.array([0, 1e5, 1e5, 1e5, 1e5, 0])
     _export_ids(file_path, yaml_str, times)
 
-    with imas.DBEntry(file_path, "r", dd_version="4.0.0") as dbentry:
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
         core_profiles = dbentry.get("core_profiles", autoconvert=False)
         equilibrium = dbentry.get("equilibrium", autoconvert=False)
         ic_antennas = dbentry.get("ic_antennas", autoconvert=False)
@@ -776,7 +777,7 @@ def test_overlay_base_without_waveforms_warns(caplog):
     config.load_yaml(yaml_str)
 
     # Provide a 'core_profiles' base that the configuration says nothing about.
-    base = imas.IDSFactory("4.0.0").new("core_profiles")
+    base = imas.IDSFactory(TEST_DD_VERSION).new("core_profiles")
     exporter = ConfigurationExporter(
         config, np.array([0.0, 1.0]), base_idss={"core_profiles": base}
     )

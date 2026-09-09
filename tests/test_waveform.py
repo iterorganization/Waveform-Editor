@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
@@ -9,8 +10,6 @@ from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.waveform import ConstantWaveform, Waveform
-
-DD_VERSION = "3.42.0"
 
 
 def test_empty():
@@ -381,14 +380,14 @@ def test_dtype_flt_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
         name=flt_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
         name=flt_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
     assert waveform.value_type is int
@@ -396,7 +395,7 @@ def test_dtype_flt_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
         name=flt_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
     assert waveform.value_type is float
@@ -410,14 +409,14 @@ def test_dtype_int_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
         name=int_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
         name=int_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
     assert waveform.value_type is int
@@ -425,7 +424,7 @@ def test_dtype_int_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
         name=int_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
@@ -437,7 +436,7 @@ def test_dtype_str_dd_path():
     waveform = ConstantWaveform(
         waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
         name=str_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
     assert waveform.value_type is str
@@ -445,14 +444,14 @@ def test_dtype_str_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
         name=str_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
         name=str_dd_path,
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
@@ -464,7 +463,7 @@ def test_static_0d_dd_path():
             {"user_type": "constant", "user_value": "a comment", "line_number": 1}
         ],
         name="ec_launchers/ids_properties/comment",
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
 
@@ -487,7 +486,7 @@ def test_static_0d_dd_path_rejects_varying_waveform():
             },
         ],
         name="ec_launchers/ids_properties/comment",
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 
@@ -497,13 +496,13 @@ def test_1d_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
         name="ec_launchers/beam(1)/phase/angle",
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert not waveform.annotations
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
         name="core_profiles/profiles_1d/electrons/temperature",
-        dd_version=DD_VERSION,
+        dd_version=TEST_DD_VERSION,
     )
     assert waveform.annotations
 

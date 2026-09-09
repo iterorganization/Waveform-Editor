@@ -2,6 +2,7 @@ from textwrap import dedent
 
 import pytest
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -302,19 +303,19 @@ def test_dump():
 def test_dump_comments():
     """Check if comments for waveforms are preserved."""
 
-    yaml_str = dedent("""
+    yaml_str = dedent(f"""
     globals:
-      dd_version: 3.42.0
+      dd_version: {TEST_DD_VERSION}
       machine_description:
         ec_launchers: imas:hdf5?path=test_md
     ec_launchers:
       beams:
         power_launched:
           ec_launchers/beam(0)/power_launched: # comment1
-          - {to: 8.33e5, duration: 20} # comment2
-          - {type: constant, duration: 20}
+          - {{to: 8.33e5, duration: 20}} # comment2
+          - {{type: constant, duration: 20}}
           # comment3
-          - {duration: 25, to: 0}""")
+          - {{duration: 25, to: 0}}""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     dumped_yaml = config.dump()
@@ -328,17 +329,17 @@ def test_dump_globals():
       - {to: 8.33e5, duration: 20} # comment""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
-    config.globals.dd_version = "3.41.0"
+    config.globals.dd_version = TEST_DD_VERSION
     config.globals.machine_description = {"ec_launchers": "imas:mdsplus?path=test"}
     dumped_yaml = config.dump()
-    expected_dump = dedent("""
+    expected_dump = dedent(f"""
     globals:
-      dd_version: 3.41.0
+      dd_version: {TEST_DD_VERSION}
       machine_description:
         ec_launchers: imas:mdsplus?path=test
     ec_launchers:
       ec_launchers/beam(1)/phase/angle:
-      - {to: 8.33e5, duration: 20} # comment""")
+      - {{to: 8.33e5, duration: 20}} # comment""")
     assert expected_dump.strip() == dumped_yaml.strip()
 
 
@@ -372,17 +373,17 @@ def test_load_yaml_bounds():
 
 def test_load_yaml_globals():
     """Check if global variables are loaded from YAML."""
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 3.42.0
-      machine_description: 
+      dd_version: {TEST_DD_VERSION}
+      machine_description:
         ec_launchers: imas:hdf5?path=testdb
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
-    assert config.globals.dd_version == "3.42.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
 
     yaml_str = """

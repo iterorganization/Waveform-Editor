@@ -17,7 +17,7 @@ def solver():
         }
     )
 
-    factory = imas.IDSFactory("4.0.0")
+    factory = imas.IDSFactory("4.1.1")
 
     while instance.reuse_instance():
         # Build an equilibrium carrying pre-existing data (a boundary outline):
