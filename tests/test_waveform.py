@@ -8,7 +8,7 @@ from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-from waveform_editor.waveform import Waveform
+from waveform_editor.waveform import ConstantWaveform, Waveform
 
 DD_VERSION = "3.42.0"
 
@@ -434,7 +434,7 @@ def test_dtype_str_dd_path():
     """Test string field types."""
     str_dd_path = "ec_launchers/ids_properties/comment"
 
-    waveform = Waveform(
+    waveform = ConstantWaveform(
         waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
         name=str_dd_path,
         dd_version=DD_VERSION,
@@ -452,6 +452,57 @@ def test_dtype_str_dd_path():
     waveform = Waveform(
         waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
         name=str_dd_path,
+        dd_version=DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_static_0d_dd_path():
+    """A constant waveform may fill a static (non time-dependent) 0D DD node."""
+    waveform = ConstantWaveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "a comment", "line_number": 1}
+        ],
+        name="ec_launchers/ids_properties/comment",
+        dd_version=DD_VERSION,
+    )
+    assert not waveform.annotations
+
+
+def test_static_0d_dd_path_rejects_varying_waveform():
+    """A static DD node cannot hold different values at different times"""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "constant",
+                "user_value": "a",
+                "user_duration": 1,
+                "line_number": 1,
+            },
+            {
+                "user_type": "constant",
+                "user_value": "b",
+                "user_duration": 1,
+                "line_number": 2,
+            },
+        ],
+        name="ec_launchers/ids_properties/comment",
+        dd_version=DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_1d_dd_path():
+    """Tests 1D waveforms whose coordinate is and isn't time"""
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
+        name="ec_launchers/beam(1)/phase/angle",
+        dd_version=DD_VERSION,
+    )
+    assert not waveform.annotations
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
+        name="core_profiles/profiles_1d/electrons/temperature",
         dd_version=DD_VERSION,
     )
     assert waveform.annotations
