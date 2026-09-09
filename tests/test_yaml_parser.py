@@ -1,6 +1,7 @@
 import pytest
 from pytest import approx
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -189,20 +190,20 @@ def test_bare_expression_is_evaluated_not_treated_as_constant(yaml_parser):
 
 def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
-    yaml_str = """
+    yaml_str = f"""
     ec_launchers:
       beams:
         power_launched:
           ec_launchers/beam(:)/power_launched:
-              - {to: 8.33e5, duration: 20} # implicit linear ramp
-              - {type: constant, duration: 20}
-              - {duration: 25, to: 0} # implicit linear back to 0
+              - {{to: 8.33e5, duration: 20}} # implicit linear ramp
+              - {{type: constant, duration: 20}}
+              - {{duration: 25, to: 0}} # implicit linear back to 0
         phase_angles:
           ec_launchers/beam(1)/phase/angle: 1
           ec_launchers/beam(2)/phase/angle: 2e3
           ec_launchers/beam(3)/phase/angle: 3.5
     globals:
-      dd_version: 3.42.0
+      dd_version: {TEST_DD_VERSION}
     """
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
@@ -229,17 +230,17 @@ def test_load_yaml(config):
 
 
 def test_load_yaml_globals_full(yaml_parser, config):
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 3.42.0
-      machine_description: 
+      dd_version: {TEST_DD_VERSION}
+      machine_description:
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.globals.dd_version == "3.42.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert (
         config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
     )
@@ -279,13 +280,13 @@ def test_load_yaml_globals_invalid_machine_description(yaml_parser):
 
 
 def test_load_yaml_globals_dd_version_only(yaml_parser, config):
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.globals.dd_version == "4.0.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert not config.globals.machine_description
     assert not config.load_error
