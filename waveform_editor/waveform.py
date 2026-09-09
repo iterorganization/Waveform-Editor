@@ -12,10 +12,10 @@ from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTenden
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-from waveform_editor.tendencies.steps import StepsTendency
 from waveform_editor.tendencies.util import merge_value_types
 
 IDS_DATATYPES = {
