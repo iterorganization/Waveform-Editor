@@ -4,6 +4,8 @@ import pytest
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.tendencies.steps import StepsTendency
 from waveform_editor.waveform import Waveform
@@ -15,6 +17,34 @@ def test_empty():
     waveform = Waveform()
     assert waveform.tendencies == []
     assert waveform.annotations == []
+
+
+@pytest.mark.parametrize(
+    "entry,expected_type",
+    [
+        ({"user_value": 3, "user_duration": 2}, ConstantTendency),
+        (
+            {"user_time": [0, 1, 2], "user_value": [0, 1, 0]},
+            PiecewiseLinearTendency,
+        ),
+        (
+            {
+                "user_waveform": [
+                    {"user_type": "constant", "user_value": 1, "user_duration": 1}
+                ],
+                "user_duration": 2,
+            },
+            RepeatTendency,
+        ),
+        ({"user_to": 5, "user_duration": 2}, LinearTendency),
+        ({"user_duration": 2}, LinearTendency),
+    ],
+    ids=["value", "time+value", "waveform", "to-only", "no-keys"],
+)
+def test_infer_tendency_type(entry, expected_type):
+    waveform = Waveform(waveform=[entry], name="w")
+    assert not waveform.annotations
+    assert type(waveform.tendencies[0]) is expected_type
 
 
 @pytest.fixture
