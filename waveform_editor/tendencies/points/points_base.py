@@ -5,28 +5,26 @@ from waveform_editor.annotations import Annotations
 from waveform_editor.tendencies.base import BaseTendency
 
 
-class PiecewiseLinearTendency(BaseTendency):
+class PointsBaseTendency(BaseTendency):
     """
-    A tendency representing a piecewise linear function.
+    Base class for tendencies defined by parallel ``time`` and ``value`` lists, such as
+    piecewise or steps tendencies.
     """
 
-    time = param.Array(
-        default=np.array([0, 1, 2]), doc="The times of the piecewise tendency."
-    )
-    value = param.Array(
-        default=np.array([0, 1, 2]), doc="The values of the piecewise tendency."
-    )
+    time = param.Array(default=np.array([0, 1, 2]), doc="The time of each point.")
+    value = param.Array(default=np.array([0, 1, 2]), doc="The value at each point.")
     allow_zero_duration = True
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
-        time, value = self._validate_time_value(user_time, user_value)
+        time, value, value_type = self._validate_time_value(user_time, user_value)
         self._remove_user_time_params(kwargs)
         super().__init__(
             user_start=time[0],
             user_end=time[-1],
             time=time,
             value=value,
+            value_type=value_type,
             **kwargs,
         )
         self.annotations.add_annotations(self.pre_check_annotations)
@@ -34,59 +32,17 @@ class PiecewiseLinearTendency(BaseTendency):
         self.start_value_set = True
         self.param.update(values_changed=True)
 
-    def get_value(
-        self, time: np.ndarray | None = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Get the tendency values at the provided time array. If a time array is
-        provided, the values will be linearly interpolated between the piecewise linear
-        points.
-
-        Args:
-            time: The time array on which to generate points.
-
-        Returns:
-            Tuple containing the time and its tendency values.
-        """
-        if time is None:
-            return self.time, self.value
-
-        interpolated_values = np.interp(time, self.time, self.value)
-        return time, interpolated_values
-
-    def get_derivative(self, time: np.ndarray) -> np.ndarray:
-        """Get the values of the derivatives at the provided time array.
-
-        Args:
-            time: The time array on which to generate points.
-
-        Returns:
-            numpy array containing the derivatives
-        """
-        if len(self.time) == 1:
-            return np.zeros_like(time, dtype=float)
-
-        # Compute piecewise derivatives
-        dv = np.diff(self.value)
-        dt = np.diff(self.time)
-        piecewise_derivatives = dv / dt
-
-        # Assign derivatives based on which interval each time point falls into
-        indices = np.searchsorted(self.time, time, side="right") - 1
-        indices = np.clip(indices, 0, len(piecewise_derivatives) - 1)
-
-        return piecewise_derivatives[indices]
-
     def _validate_time_value(self, time, value):
         """Validates the provided time and value lists.
 
         Args:
             time: List of time values.
-            value: List of values defined on each time step.
+            value: List of values defined on each time point.
 
         Returns:
-            Tuple containing the validated time and value arrays. If any errors are
-            encountered during the validation, the self.time and self.value defaults are
-            returned instead.
+            Tuple containing the validated time array, value array, and value type. If
+            any errors are encountered during the validation, the self.time, self.value,
+            and self.value_type defaults are returned instead.
         """
         if time is None or value is None:
             error_msg = "Both the `time` and `value` arrays must be specified.\n"
@@ -105,7 +61,7 @@ class PiecewiseLinearTendency(BaseTendency):
 
         try:
             time = np.asarray_chkfinite(time, dtype=float)
-            value = np.asarray_chkfinite(value, dtype=float)
+            value, value_type = self._process_value(value)
             is_monotonic = np.all(np.diff(time) > 0)
             if not is_monotonic:
                 error_msg = "The provided time array is not monotonically increasing.\n"
@@ -115,21 +71,32 @@ class PiecewiseLinearTendency(BaseTendency):
 
         # If there are any errors, use the default values instead
         if not self.pre_check_annotations:
-            return time, value
+            return time, value, value_type
         else:
-            return self.time, self.value
+            return self.time, self.value, self.value_type
+
+    def _process_value(self, value):
+        """Validate and cast the user-provided `value` list to the array used
+        internally, alongside the resulting value type.
+
+        Args:
+            value: List of values defined on each time point.
+
+        Returns:
+            Tuple of the cast value array and its value type.
+        """
+        return np.asarray_chkfinite(value, dtype=float), float
 
     def _remove_user_time_params(self, kwargs):
         """Remove user_start, user_duration, and user_end if they are passed as kwargs,
-        and add error messages as annotations. These variables will be set from the
-        self.time array.
+        and add error messages as annotations. These variables are always derived from
+        the `time` array.
 
         Args:
             kwargs: the keyword arguments.
         """
-        line_number = kwargs.get("user_line_number", 0)
-
-        error_msg = "is not allowed in a piecewise tendency\n"
+        line_number = kwargs.get("line_number", 0)
+        error_msg = "is not allowed in this tendency\n"
         for key in ["user_start", "user_duration", "user_end"]:
             if key in kwargs:
                 kwargs.pop(key)

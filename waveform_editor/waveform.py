@@ -12,9 +12,11 @@ from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTenden
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.tendencies.util import merge_value_types
 
 IDS_DATATYPES = {
     float: {IDSDataType.FLT},
@@ -43,6 +45,7 @@ TENDENCY_MAP = {
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
     "repeat": RepeatTendency,
+    "steps": StepsTendency,
 }
 
 INFERRED_TYPE_BY_KEY = {
@@ -230,11 +233,8 @@ class Waveform(BaseWaveform):
             return
 
         value_types = set(tendency.value_type for tendency in self.tendencies)
-        if len(value_types) == 1:
-            self.value_type = value_types.pop()
-        elif value_types == {int, float}:
-            self.value_type = float
-        else:
+        merged_type = merge_value_types(value_types)
+        if merged_type is None:
             type_names = ", ".join(sorted(t.__name__ for t in value_types))
             error_msg = (
                 f"Cannot mix string and numerical tendency value types within a single "
@@ -242,6 +242,7 @@ class Waveform(BaseWaveform):
             )
             self.annotations.add(0, error_msg)
             return
+        self.value_type = merged_type
 
         # If a valid DD path is chosen, check if the value_type matches the DD type
         if (

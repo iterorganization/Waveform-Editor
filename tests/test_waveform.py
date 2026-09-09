@@ -4,7 +4,8 @@ import pytest
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.waveform import Waveform
@@ -325,6 +326,51 @@ def test_multiple_tendencies_mixed():
         ]
     )
     assert waveform.annotations
+
+
+def test_steps_tendency_chained():
+    """Test a steps tendency chained with a constant tendency in a waveform."""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "steps",
+                "user_time": [0, 2, 4, 6],
+                "user_value": [1, 3, 5, 5],
+                "line_number": 1,
+            },
+            {
+                "user_type": "constant",
+                "user_duration": 2,
+                "line_number": 2,
+            },
+        ]
+    )
+    assert not waveform.annotations
+    assert isinstance(waveform.tendencies[0], StepsTendency)
+    assert isinstance(waveform.tendencies[1], ConstantTendency)
+    # The constant tendency without an explicit value inherits the last step's value
+    assert waveform.tendencies[1].value == 5
+
+    times, values = waveform.get_value(np.linspace(0, 8, 9))
+    assert np.allclose(values, [1, 1, 3, 3, 5, 5, 5, 5, 5])
+
+
+def test_steps_tendency_string_values():
+    """Test a steps tendency with string values."""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "steps",
+                "user_time": [0, 10, 20, 30],
+                "user_value": ["ohmic", "nbi", "ec", "ec"],
+                "line_number": 1,
+            },
+        ]
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is str
+    _, values = waveform.get_value(np.array([0, 15, 25]))
+    assert list(values) == ["ohmic", "nbi", "ec"]
 
 
 def test_dtype_flt_dd_path():
