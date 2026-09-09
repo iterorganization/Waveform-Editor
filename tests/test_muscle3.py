@@ -34,22 +34,31 @@ TIMES = [1, 21, 50]
 VALUES_PER_TIME = [8.33e5 / 20, 8.33e5, 8.33e5 * 15 / 25]
 
 YMMSL = """
-ymmsl_version: v0.1
+ymmsl_version: v0.2
 
-model:
-  name: test_waveform_actor
+models:
+  test_waveform_actor:
+    components:
+      time_generator:
+        description: Emits a fixed time sequence
+        implementation: time_generator
+        ports:
+          o_i: [output]
+      waveform_actor:
+        description: The actor under test
+        implementation: waveform_actor
+        ports:
+          f_init: [input]
+          o_f: [ec_launchers_out]
+      waveform_validator:
+        description: Validates the exported waveform
+        implementation: waveform_validator
+        ports:
+          f_init: [ec_launchers_in]
 
-  components:
-    time_generator:
-      implementation: time_generator
-    waveform_actor:
-      implementation: waveform_actor
-    waveform_validator:
-      implementation: waveform_validator
-
-  conduits:
-    time_generator.output: waveform_actor.input
-    waveform_actor.ec_launchers_out: waveform_validator.ec_launchers_in
+    conduits:
+      time_generator.output: waveform_actor.input
+      waveform_actor.ec_launchers_out: waveform_validator.ec_launchers_in
 
 settings:
   waveform_actor.waveforms: {waveform_yaml}
@@ -120,22 +129,31 @@ TRACE_IP = [8.33e5 / 20, 8.33e5, 8.33e5 * 15 / 25]
 BOUNDARY_R = [4.0, 5.0, 6.0]  # pre-existing data the overlay must preserve
 
 TRACE_YMMSL = """
-ymmsl_version: v0.1
+ymmsl_version: v0.2
 
-model:
-  name: test_waveform_actor_trace
+models:
+  test_waveform_actor_trace:
+    components:
+      trace_generator:
+        description: Emits a whole-trace equilibrium
+        implementation: trace_generator
+        ports:
+          o_i: [output]
+      waveform_actor:
+        description: The actor under test
+        implementation: waveform_actor
+        ports:
+          f_init: [equilibrium_in]
+          o_f: [equilibrium_out]
+      trace_validator:
+        description: Validates the exported trace
+        implementation: trace_validator
+        ports:
+          f_init: [equilibrium_in]
 
-  components:
-    trace_generator:
-      implementation: trace_generator
-    waveform_actor:
-      implementation: waveform_actor
-    trace_validator:
-      implementation: trace_validator
-
-  conduits:
-    trace_generator.output: waveform_actor.equilibrium_in
-    waveform_actor.equilibrium_out: trace_validator.equilibrium_in
+    conduits:
+      trace_generator.output: waveform_actor.equilibrium_in
+      waveform_actor.equilibrium_out: trace_validator.equilibrium_in
 
 settings:
   waveform_actor.waveforms: {waveform_yaml}
