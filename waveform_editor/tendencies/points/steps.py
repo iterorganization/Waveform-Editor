@@ -7,19 +7,13 @@ from waveform_editor.tendencies.util import merge_value_types
 
 class StepsTendency(PointsBaseTendency):
     """
-    A tendency representing a step function. ``time`` and ``value`` must have equal
-    length: the tendency holds ``value[i]`` from ``time[i]`` until ``time[i+1]``, for
-    each ``i`` up to the second-to-last point. The last entry of ``value`` is only
-    reached at the tendency's very last time point; repeat the previous value there to
-    hold it until the tendency ends.
+    A tendency representing a step function.
     """
 
     time = param.Array(default=np.array([0.0]), doc="The time of each point.")
     value = param.Array(
         default=np.array([0.0], dtype=object), doc="The value at each point."
     )
-
-    _tendency_name = "steps"
 
     def _process_value(self, value):
         """Validate that all values are int/float/str of a single mergeable type.
@@ -60,9 +54,7 @@ class StepsTendency(PointsBaseTendency):
             Tuple containing the time and its tendency values.
         """
         if time is None:
-            # Duplicate each time point so that vertical steps are covered; the very
-            # last point is not duplicated on the value side, since its value is only
-            # reached at that single instant (no interval extends from it).
+            # Duplicate each time point so that vertical steps are covered
             time = np.repeat(self.time, 2)[1:]
             value = np.repeat(self.value, 2)[:-1]
             return time, value

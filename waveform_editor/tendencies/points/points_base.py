@@ -6,23 +6,14 @@ from waveform_editor.tendencies.base import BaseTendency
 
 
 class PointsBaseTendency(BaseTendency):
-    """Base class for tendencies defined by parallel ``time`` and ``value`` lists of
-    equal length, one value per time point. ``start`` and ``end`` are always derived
-    from ``time[0]``/``time[-1]``; ``start``, ``duration``, and ``end`` may not be
-    supplied by the user.
-
-    Subclasses provide the shape of the tendency between (and derivative at) those
-    points via :meth:`get_value` and :meth:`get_derivative`, and may customize how the
-    raw ``value`` list is validated and cast via :meth:`_process_value` (default:
-    numeric-only).
+    """
+    Base class for tendencies defined by parallel ``time`` and ``value`` lists, such as
+    piecewise or steps tendencies.
     """
 
     time = param.Array(default=np.array([0, 1, 2]), doc="The time of each point.")
     value = param.Array(default=np.array([0, 1, 2]), doc="The value at each point.")
     allow_zero_duration = True
-
-    #: Name used in "'<param>' is not allowed in a <name> tendency" error messages.
-    _tendency_name = "piecewise"
 
     def __init__(self, user_time=None, user_value=None, **kwargs):
         self.pre_check_annotations = Annotations()
@@ -92,9 +83,7 @@ class PointsBaseTendency(BaseTendency):
             value: List of values defined on each time point.
 
         Returns:
-            Tuple of the cast value array and its value type. Raise to reject the
-            value list; the exception message is reported as an annotation. Default:
-            numeric-only (float). Override to support other value types.
+            Tuple of the cast value array and its value type.
         """
         return np.asarray_chkfinite(value, dtype=float), float
 
@@ -107,7 +96,7 @@ class PointsBaseTendency(BaseTendency):
             kwargs: the keyword arguments.
         """
         line_number = kwargs.get("line_number", 0)
-        error_msg = f"is not allowed in a {self._tendency_name} tendency\n"
+        error_msg = "is not allowed in this tendency\n"
         for key in ["user_start", "user_duration", "user_end"]:
             if key in kwargs:
                 kwargs.pop(key)
