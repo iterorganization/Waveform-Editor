@@ -8,7 +8,7 @@ from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-from waveform_editor.waveform import Waveform
+from waveform_editor.waveform import ConstantWaveform, Waveform
 
 DD_VERSION = "3.42.0"
 
@@ -434,7 +434,7 @@ def test_dtype_str_dd_path():
     """Test string field types."""
     str_dd_path = "ec_launchers/ids_properties/comment"
 
-    waveform = Waveform(
+    waveform = ConstantWaveform(
         waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
         name=str_dd_path,
         dd_version=DD_VERSION,
@@ -459,7 +459,7 @@ def test_dtype_str_dd_path():
 
 def test_static_0d_dd_path():
     """A constant waveform may fill a static (non time-dependent) 0D DD node."""
-    waveform = Waveform(
+    waveform = ConstantWaveform(
         waveform=[
             {"user_type": "constant", "user_value": "a comment", "line_number": 1}
         ],

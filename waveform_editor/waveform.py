@@ -273,11 +273,8 @@ class Waveform(BaseWaveform):
             return
 
         # A static DD node cannot hold different values, so it may only be filled
-        # with a single constant tendency
-        if not self.metadata.type.is_dynamic and (
-            len(self.tendencies) != 1
-            or not isinstance(self.tendencies[0], ConstantTendency)
-        ):
+        # by a ConstantWaveform
+        if not self.metadata.type.is_dynamic and not isinstance(self, ConstantWaveform):
             error_msg = (
                 "This DD node does not vary in time, so it can only "
                 "be filled by a single constant tendency.\n"
@@ -336,3 +333,12 @@ class Waveform(BaseWaveform):
                 return None
 
         return tendency_class(**entry)
+
+
+class ConstantWaveform(Waveform):
+    """A waveform that is always filled by exactly one constant tendency."""
+
+    @property
+    def value(self):
+        """The constant value of this waveform."""
+        return self.tendencies[0].value

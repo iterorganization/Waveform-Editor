@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from imas.ids_path import IDSPath
 
 from waveform_editor.export.pcssp_exporter import PCSSPExporter
+from waveform_editor.waveform import ConstantWaveform
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,13 @@ class ConfigurationExporter:
         for waveform in reversed(waveforms):
             logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
-            _, values = waveform.get_value(self.times)
+            if (
+                isinstance(waveform, ConstantWaveform)
+                and not waveform.metadata.type.is_dynamic
+            ):
+                values = waveform.value
+            else:
+                _, values = waveform.get_value(self.times)
             values_per_waveform.append((path, values))
             self._fill_nodes_recursively(ids, path, values, fill=False)
             self._increment_progress()
@@ -232,15 +239,6 @@ class ConfigurationExporter:
         """
         if path_index == len(path.parts):
             if fill:
-                if (
-                    not node.metadata.type.is_dynamic
-                    and isinstance(values, np.ndarray)
-                    and values.ndim > 0
-                ):
-                    # A static IDS node must be filled by a single constant tendency, so
-                    # every entry of `values` should be identical. Collapse it to one
-                    assert np.all(values == values[0])
-                    values = values[0]
                 node.value = values
             return
         part = path.parts[path_index]

@@ -1,3 +1,4 @@
+import ast
 import logging
 import re
 from io import StringIO
@@ -6,9 +7,21 @@ import yaml
 from ruamel.yaml import YAML
 
 from waveform_editor.derived_waveform import DerivedWaveform
-from waveform_editor.waveform import Waveform
+from waveform_editor.waveform import ConstantWaveform, Waveform
 
 logger = logging.getLogger(__name__)
+
+
+def _is_literal_string(value):
+    """A bare word (e.g. ``ec``) is ambiguous between a label and a dependency
+    reference, so it's treated as a literal constant. Anything else that parses as
+    a Python expression - arithmetic like ``2*10``, or a quoted dependency like
+    ``'other_waveform' * 10`` - is evaluated as a derived waveform instead.
+    """
+    try:
+        return isinstance(ast.parse(value, mode="eval").body, ast.Name)
+    except SyntaxError:
+        return True
 
 
 class LineNumberYamlLoader(yaml.SafeLoader):
@@ -158,38 +171,38 @@ class YamlParser:
             line_number = waveform_yaml.get("line_number", 0)
             dd_version = self.config.globals.dd_version
             if isinstance(waveform, list):
-                waveform = Waveform(
-                    waveform=waveform,
-                    yaml_str=yaml_str,
-                    line_number=line_number,
-                    name=name,
-                    dd_version=dd_version,
-                )
+                pass
             # Shorthand notation for waveforms containing a constant tendency, e.g.
             #  ec_launchers/beam(1)/phase/angle: -1.65898  # float
             #  pulse_schedule/ec/mode: 3                   # int
             #  core_sources/source(1)/identifier/name: ec  # string
-            elif isinstance(waveform, (int, float)) or (
-                "'" not in waveform and '"' not in waveform
-            ):
-                waveform = Waveform(
-                    waveform=[
-                        {
-                            "user_type": "constant",
-                            "user_value": waveform,
-                            "line_number": line_number,
-                        }
-                    ],
-                    yaml_str=yaml_str,
-                    line_number=line_number,
-                    name=name,
-                    dd_version=dd_version,
-                )
+            elif isinstance(waveform, (int, float)) or _is_literal_string(waveform):
+                waveform = [
+                    {
+                        "user_type": "constant",
+                        "user_value": waveform,
+                        "line_number": line_number,
+                    }
+                ]
             else:
-                waveform = DerivedWaveform(
+                return DerivedWaveform(
                     yaml_str, name, self.config, dd_version=dd_version
                 )
-            return waveform
+            # A single explicit constant tendency can be represented as a
+            # ConstantWaveform.
+            is_single_constant = (
+                len(waveform) == 1
+                and isinstance(waveform[0], dict)
+                and waveform[0].get("user_type") == "constant"
+            )
+            waveform_cls = ConstantWaveform if is_single_constant else Waveform
+            return waveform_cls(
+                waveform=waveform,
+                yaml_str=yaml_str,
+                line_number=line_number,
+                name=name,
+                dd_version=dd_version,
+            )
         except yaml.YAMLError as e:
             self.parse_errors.append(str(e))
             empty_waveform = Waveform()
