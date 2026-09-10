@@ -14,10 +14,18 @@ class YamlGlobals(param.Parameterized):
         objects=AVAILABLE_DD_VERSIONS,
         doc="IMAS Data Dictionary version",
     )
-    machine_description = param.Dict(
-        label="Machine Description URIs",
+    imports = param.Dict(
+        label="Imports",
         default={},
-        doc="Machine description URIs for each IDS.",
+        doc=(
+            "External data entries this configuration copies from, as "
+            "``{name: IMAS URI}``. A waveform reads one with ``{copy: <name>}``."
+        ),
+    )
+    version = param.String(
+        label="Format version",
+        default="",
+        doc="Version of the waveform file format this configuration is written in.",
     )
 
     def __init__(self, **params):

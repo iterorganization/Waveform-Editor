@@ -191,19 +191,19 @@ def test_bare_expression_is_evaluated_not_treated_as_constant(yaml_parser):
 def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
     yaml_str = f"""
-    ec_launchers:
-      beams:
-        power_launched:
-          ec_launchers/beam(:)/power_launched:
-              - {{to: 8.33e5, duration: 20}} # implicit linear ramp
-              - {{type: constant, duration: 20}}
-              - {{duration: 25, to: 0}} # implicit linear back to 0
-        phase_angles:
-          ec_launchers/beam(1)/phase/angle: 1
-          ec_launchers/beam(2)/phase/angle: 2e3
-          ec_launchers/beam(3)/phase/angle: 3.5
-    globals:
-      dd_version: {TEST_DD_VERSION}
+    dd_version: {TEST_DD_VERSION}
+    waveforms:
+      ec_launchers:
+        beams:
+          power_launched:
+            ec_launchers/beam(:)/power_launched:
+                - {{to: 8.33e5, duration: 20}} # implicit linear ramp
+                - {{type: constant, duration: 20}}
+                - {{duration: 25, to: 0}} # implicit linear back to 0
+          phase_angles:
+            ec_launchers/beam(1)/phase/angle: 1
+            ec_launchers/beam(2)/phase/angle: 2e3
+            ec_launchers/beam(3)/phase/angle: 3.5
     """
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
@@ -281,8 +281,7 @@ def test_load_yaml_globals_invalid_machine_description(yaml_parser):
 
 def test_load_yaml_globals_dd_version_only(yaml_parser, config):
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
+    dd_version: {TEST_DD_VERSION}
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups

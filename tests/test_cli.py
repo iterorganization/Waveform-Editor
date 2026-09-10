@@ -14,17 +14,17 @@ from waveform_editor import cli as waveform_cli
 def test_yaml_file(tmp_path):
     """Creates a temporary YAML file with sample content."""
     yaml_content = f"""
-    ec_launchers:
-      beams:
-        ec_launchers/beam(1)/phase/angle: 1
-        ec_launchers/beam(2)/phase/angle: 2
-        ec_launchers/beam(3)/phase/angle: 3
-        ec_launchers/beam(4)/power_launched/data:
-            - {{to: 8.33e5, duration: 20}}
-            - {{type: constant, duration: 20}}
-            - {{duration: 25, to: 0}}
-    globals:
-      dd_version: {TEST_DD_VERSION}
+    dd_version: {TEST_DD_VERSION}
+    waveforms:
+      ec_launchers:
+        beams:
+          ec_launchers/beam(1)/phase/angle: 1
+          ec_launchers/beam(2)/phase/angle: 2
+          ec_launchers/beam(3)/phase/angle: 3
+          ec_launchers/beam(4)/power_launched/data:
+              - {{to: 8.33e5, duration: 20}}
+              - {{type: constant, duration: 20}}
+              - {{duration: 25, to: 0}}
     """
     yaml_file = tmp_path / "test_config.yaml"
     yaml_file.write_text(yaml_content)

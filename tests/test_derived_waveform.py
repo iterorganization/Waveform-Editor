@@ -156,11 +156,12 @@ def test_function_access_control(filled_config):
 
 def test_derived_waveform_type_matches_original():
     yaml_str = """
-    root_group:
-      wf1:
-        - {type: constant, value: 3, duration: 2}
-      wf2: |
-        'wf1'
+    waveforms:
+      root_group:
+        wf1:
+          - {type: constant, value: 3, duration: 2}
+        wf2: |
+          'wf1'
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -173,15 +174,16 @@ def test_derived_waveform_type_matches_original():
 
 def test_derived_waveform_chain_type_order_independent():
     yaml_str = """
-    root_group:
-      wf1: |
-        'wf2' + 'wf3'
-      wf2: |
-        'wf3'
-      wf3: |
-        'wf4'
-      wf4:
-        - {type: constant, value: 3, duration: 2}
+    waveforms:
+      root_group:
+        wf1: |
+          'wf2' + 'wf3'
+        wf2: |
+          'wf3'
+        wf3: |
+          'wf4'
+        wf4:
+          - {type: constant, value: 3, duration: 2}
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -193,13 +195,14 @@ def test_derived_waveform_chain_type_order_independent():
 
 def test_derived_waveform_type_mixing():
     yaml_str = """
-    root_group:
-      wf1:
-        - {type: constant, value: 3, duration: 2}
-      wf2:
-        - {type: constant, value: test, duration: 2}
-      derived_waveform: |
-        'wf1' + 'wf2'
+    waveforms:
+      root_group:
+        wf1:
+          - {type: constant, value: 3, duration: 2}
+        wf2:
+          - {type: constant, value: test, duration: 2}
+        derived_waveform: |
+          'wf1' + 'wf2'
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -211,11 +214,12 @@ def test_derived_waveform_type_mixing():
 
 def test_derived_waveform_disallows_string_dependency():
     yaml_str = """
-    root_group:
-      wf1:
-        - {type: constant, value: ohmic, duration: 2}
-      derived_waveform: |
-        'wf1'
+    waveforms:
+      root_group:
+        wf1:
+          - {type: constant, value: ohmic, duration: 2}
+        derived_waveform: |
+          'wf1'
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -226,13 +230,14 @@ def test_derived_waveform_disallows_string_dependency():
 
 def test_derived_waveform_int_float_mixing():
     yaml_str = """
-    root_group:
-      wf1:
-        - {type: constant, value: 3, duration: 2}
-      wf2:
-        - {type: constant, value: 3.5, duration: 2}
-      derived_waveform: |
-        'wf1' + 'wf2'
+    waveforms:
+      root_group:
+        wf1:
+          - {type: constant, value: 3, duration: 2}
+        wf2:
+          - {type: constant, value: 3.5, duration: 2}
+        derived_waveform: |
+          'wf1' + 'wf2'
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)

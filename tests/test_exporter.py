@@ -55,18 +55,19 @@ def test_to_ids(tmp_path):
     """Check if to_ids fills the correct quantities."""
 
     yaml_str = """
-    equilibrium:
-      equilibrium/time_slice/global_quantities/ip:
-      - {from: 2, to: 3, duration: 0.5}
-      - {from: 3, to: 1, duration: 0.5}
-    ec_launchers:
-      phase_angles:
-        ec_launchers/beam(1)/phase/angle: 1e-3
-        ec_launchers/beam(2)/phase/angle: 2
-        ec_launchers/beam(3)/phase/angle: 3
-      power_launched:
-        ec_launchers/beam(4)/power_launched/data:
-        - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+    waveforms:
+      equilibrium:
+        equilibrium/time_slice/global_quantities/ip:
+        - {from: 2, to: 3, duration: 0.5}
+        - {from: 3, to: 1, duration: 0.5}
+      ec_launchers:
+        phase_angles:
+          ec_launchers/beam(1)/phase/angle: 1e-3
+          ec_launchers/beam(2)/phase/angle: 2
+          ec_launchers/beam(3)/phase/angle: 3
+        power_launched:
+          ec_launchers/beam(4)/power_launched/data:
+          - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -96,14 +97,15 @@ def test_to_ids_inverted(tmp_path):
     order."""
 
     yaml_str = """
-    ec_launchers:
-      power_launched:
-        ec_launchers/beam(4)/power_launched/data:
-        - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
-      phase_angles:
-        ec_launchers/beam(3)/phase/angle: 3
-        ec_launchers/beam(2)/phase/angle: 2
-        ec_launchers/beam(1)/phase/angle: 1e-3
+    waveforms:
+      ec_launchers:
+        power_launched:
+          ec_launchers/beam(4)/power_launched/data:
+          - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+        phase_angles:
+          ec_launchers/beam(3)/phase/angle: 3
+          ec_launchers/beam(2)/phase/angle: 2
+          ec_launchers/beam(1)/phase/angle: 1e-3
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -123,8 +125,9 @@ def test_to_ids_inverted(tmp_path):
 def test_to_ids_python_notation(tmp_path):
     """Check if to_ids fills correctly using 0-based indexing."""
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam[2]/phase/angle: 5
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam[2]/phase/angle: 5
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -142,13 +145,14 @@ def test_to_ids_aos(tmp_path):
     with another AoS."""
 
     yaml_str = """
-    edge_profiles:
-      # time dependent AoS before other AoS
-      edge_profiles/profiles_1d/ion[4]/state[5]/z_max: [{from: 3, to: 5}]
-    core_sources:
-      # time dependent AoS after other AoS
-      core_sources/source(5)/global_quantities/total_ion_power:
-      - {from: 0, to: 2}
+    waveforms:
+      edge_profiles:
+        # time dependent AoS before other AoS
+        edge_profiles/profiles_1d/ion[4]/state[5]/z_max: [{from: 3, to: 5}]
+      core_sources:
+        # time dependent AoS after other AoS
+        core_sources/source(5)/global_quantities/total_ion_power:
+        - {from: 0, to: 2}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 0.5, 1])
@@ -182,8 +186,9 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
-    ec_launchers:
-      ec_launchers/beam(2)/phase/angle: 1
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(2)/phase/angle: 1
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -196,8 +201,9 @@ def test_export_with_md(tmp_path, ec_launchers_md_uri):
 
 def test_export_full_slice_flt_1d(tmp_path):
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(:)/phase/angle: 111
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(:)/phase/angle: 111
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -213,8 +219,9 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
-    ec_launchers:
-      ec_launchers/beam(:)/phase/angle: 123
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(:)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -228,8 +235,9 @@ def test_export_full_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
 
 def test_export_slice_flt_1d(tmp_path):
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(2:3)/phase/angle: 111
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(2:3)/phase/angle: 111
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -247,8 +255,9 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
-    ec_launchers:
-      ec_launchers/beam(2:3)/phase/angle: 123
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(2:3)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -264,8 +273,9 @@ def test_export_slice_md_flt_1d(tmp_path, ec_launchers_md_uri):
 
 def test_export_half_slice_forward_flt_1d(tmp_path):
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(3:)/phase/angle: 111
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(3:)/phase/angle: 111
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -279,8 +289,9 @@ def test_export_half_slice_forward_flt_1d(tmp_path):
 
 def test_export_half_slice_backward_flt_1d(tmp_path):
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(:3)/phase/angle: 111
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(:3)/phase/angle: 111
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -298,8 +309,9 @@ def test_export_half_slice_md_forward_flt_1d(tmp_path, ec_launchers_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
-    ec_launchers:
-      ec_launchers/beam(2:)/phase/angle: 123
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(2:)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -318,8 +330,9 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         ec_launchers: {ec_launchers_md_uri}
-    ec_launchers:
-      ec_launchers/beam(:2)/phase/angle: 123
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(:2)/phase/angle: 123
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
@@ -335,8 +348,9 @@ def test_export_half_slice_md_backward_flt_1d(tmp_path, ec_launchers_md_uri):
 
 def test_export_multiple_slices_flt_1d(tmp_path):
     yaml_str = """
-    interferometer:
-      interferometer/channel(2:3)/wavelength(:4)/phase_corrected/data: 15
+    waveforms:
+      interferometer:
+        interferometer/channel(2:3)/wavelength(:4)/phase_corrected/data: 15
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -359,9 +373,10 @@ def test_export_multiple_slices_flt_1d(tmp_path):
 
 def test_export_full_slice_flt_0d(tmp_path):
     yaml_str = """
-    core_sources:
-      core_sources/source(:)/global_quantities/power:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      core_sources:
+        core_sources/source(:)/global_quantities/power:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -380,9 +395,10 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
-    core_sources:
-      core_sources/source(:)/global_quantities/power:
-      - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
+    waveforms:
+      core_sources:
+        core_sources/source(:)/global_quantities/power:
+        - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -399,9 +415,10 @@ def test_export_full_slice_md_flt_0d(tmp_path, core_sources_md_uri):
 
 def test_export_slice_flt_0d(tmp_path):
     yaml_str = """
-    core_sources:
-      core_sources/source(2:3)/global_quantities/power:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      core_sources:
+        core_sources/source(2:3)/global_quantities/power:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -422,9 +439,10 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
-    core_sources:
-      core_sources/source(2:3)/global_quantities/power:
-      - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
+    waveforms:
+      core_sources:
+        core_sources/source(2:3)/global_quantities/power:
+        - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -445,9 +463,10 @@ def test_export_slice_md_flt_0d(tmp_path, core_sources_md_uri):
 
 def test_export_half_slice_forward_flt_0d(tmp_path):
     yaml_str = """
-    core_sources:
-      core_sources/source(3:)/global_quantities/power:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      core_sources:
+        core_sources/source(3:)/global_quantities/power:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -464,9 +483,10 @@ def test_export_half_slice_forward_flt_0d(tmp_path):
 
 def test_export_half_slice_backward_flt_0d(tmp_path):
     yaml_str = """
-    core_sources:
-      core_sources/source(:3)/global_quantities/power:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      core_sources:
+        core_sources/source(:3)/global_quantities/power:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -486,9 +506,10 @@ def test_export_half_slice_md_forward_flt_0d(tmp_path, core_sources_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
-    core_sources:
-      core_sources/source(2:)/global_quantities/power:
-      - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
+    waveforms:
+      core_sources:
+        core_sources/source(2:)/global_quantities/power:
+        - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -510,9 +531,10 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
       dd_version: {TEST_DD_VERSION}
       machine_description: 
         core_sources: {core_sources_md_uri}
-    core_sources:
-      core_sources/source(:2)/global_quantities/power:
-      - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
+    waveforms:
+      core_sources:
+        core_sources/source(:2)/global_quantities/power:
+        - {{type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -531,9 +553,10 @@ def test_export_half_slice_md_backward_flt_0d(tmp_path, core_sources_md_uri):
 
 def test_export_multiple_slices_flt_0d(tmp_path):
     yaml_str = """
-    distributions:
-      distributions/distribution(2:3)/global_quantities/collisions/ion(3:)/state(:5)/z_max:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      distributions:
+        distributions/distribution(2:3)/global_quantities/collisions/ion(3:)/state(:5)/z_max:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -543,9 +566,10 @@ def test_export_multiple_slices_flt_0d(tmp_path):
 
 def test_export_multiple_slices_flt_0d_python_notation(tmp_path):
     yaml_str = """
-    distributions:
-      distributions/distribution[1:3]/global_quantities/collisions/ion[2:]/state[:5]/z_max:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
+    waveforms:
+      distributions:
+        distributions/distribution[1:3]/global_quantities/collisions/ion[2:]/state[:5]/z_max:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1,2,3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     times = np.array([0, 0.5, 1.0])
@@ -578,20 +602,22 @@ def _assert_distributions_ids(uri):
 
 def test_export_ordering(tmp_path):
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(:)/phase/angle: 111
-      ec_launchers/beam(4)/power_launched/data:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(:)/phase/angle: 111
+        ec_launchers/beam(4)/power_launched/data:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
     """
     uri = f"{tmp_path}/test_db.nc"
     _export_ids(uri, yaml_str, np.array([0, 0.5, 1.0]))
     _assert_ordering(uri)
 
     yaml_str2 = """
-    ec_launchers:
-      ec_launchers/beam(4)/power_launched/data:
-      - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
-      ec_launchers/beam(:)/phase/angle: 111
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(4)/power_launched/data:
+        - {type: piecewise, time: [0, 0.5, 1], value: [1.1, 2.2, 3.3]}
+        ec_launchers/beam(:)/phase/angle: 111
     """
     uri2 = f"{tmp_path}/test_db2.nc"
     _export_ids(uri2, yaml_str2, np.array([0, 0.5, 1.0]))
@@ -633,10 +659,11 @@ def test_export_constant(tmp_path):
     """Check if constant waveforms are exported correctly"""
 
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle: 1
-      ec_launchers/beam(2)/phase/angle: 2.2
-      ec_launchers/beam(3)/phase/angle: 3.3e3
+    waveforms:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle: 1
+        ec_launchers/beam(2)/phase/angle: 2.2
+        ec_launchers/beam(3)/phase/angle: 3.3e3
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 1, 2])
@@ -652,11 +679,11 @@ def test_export_constant_static_field(tmp_path):
     """A constant waveform bound to a static DD node must export its single value."""
 
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-    edge_profiles:
-      edge_profiles/midplane/name:
-      - {{type: constant, value: asdf, duration: 2}}
+    dd_version: {TEST_DD_VERSION}
+    waveforms:
+      edge_profiles:
+        edge_profiles/midplane/name:
+        - {{type: constant, value: asdf, duration: 2}}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 1, 2])
@@ -670,21 +697,21 @@ def test_export_typed_waveforms(tmp_path):
     """Check that constant waveforms of each supported value type"""
 
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-    core_profiles:
-      core_profiles/profiles_1d/electrons/temperature_validity:
-      - {{type: constant, value: 0, duration: 2}}
-      - {{type: constant, value: 1, duration: 2}}
-      core_profiles/profiles_1d/grid/psi_magnetic_axis:
-      - {{type: constant, value: 1.5, duration: 2}}
-      - {{type: constant, value: 3.0, duration: 2}}
-      core_profiles/profiles_1d/ion(1)/name:
-      - {{type: constant, value: D, duration: 2}}
-      - {{type: constant, value: He, duration: 2}}
-      core_profiles/profiles_1d/ion(1)/multiple_states_flag:
-      - {{type: constant, value: 1, duration: 2}}
-      - {{type: constant, value: 0, duration: 2}}
+    dd_version: {TEST_DD_VERSION}
+    waveforms:
+      core_profiles:
+        core_profiles/profiles_1d/electrons/temperature_validity:
+        - {{type: constant, value: 0, duration: 2}}
+        - {{type: constant, value: 1, duration: 2}}
+        core_profiles/profiles_1d/grid/psi_magnetic_axis:
+        - {{type: constant, value: 1.5, duration: 2}}
+        - {{type: constant, value: 3.0, duration: 2}}
+        core_profiles/profiles_1d/ion(1)/name:
+        - {{type: constant, value: D, duration: 2}}
+        - {{type: constant, value: He, duration: 2}}
+        core_profiles/profiles_1d/ion(1)/multiple_states_flag:
+        - {{type: constant, value: 1, duration: 2}}
+        - {{type: constant, value: 0, duration: 2}}
     """
     file_path = f"{tmp_path}/test.nc"
     times = np.array([0, 2.0])
@@ -769,9 +796,10 @@ def test_overlay_base_without_waveforms_warns(caplog):
     """An overlay base whose IDS has no waveforms in the config is dropped, with a
     warning, rather than silently passed through."""
     yaml_str = """
-    equilibrium:
-      equilibrium/time_slice/global_quantities/ip:
-      - {from: 2, to: 3, duration: 1}
+    waveforms:
+      equilibrium:
+        equilibrium/time_slice/global_quantities/ip:
+        - {from: 2, to: 3, duration: 1}
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)

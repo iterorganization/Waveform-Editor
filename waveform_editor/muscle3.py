@@ -15,50 +15,52 @@ from waveform_editor.export.exporter import ConfigurationExporter
 logger = logging.getLogger(__name__)
 
 
-def _time_base_and_base_ids(msg, input_port, dd_version):
-    """Resolve the export time base and the optional base IDS to overlay onto.
+def _export_times(msg, input_port, dd_version):
+    """The time base to evaluate the waveforms on, from the message on ``input_port``.
 
-    The input port name selects the mode. A port named ``<ids>_in`` (a valid IDS name)
-    selects *overlay*: the message must carry that IDS, and the waveforms are evaluated
-    on its ``time`` array and overlaid onto it in place, preserving its other data so it
-    can be passed on (e.g. adding Ip to an equilibrium). Any other name selects *fresh
-    export*: the waveforms are evaluated at ``msg.timestamp`` into a single slice.
+    The actor takes one input and takes one thing from it: the root ``/time`` of a
+    homogeneous IDS. That may be a single time step or a whole trace; the rest of the
+    message is ignored. The port is named ``<ids>_in`` so the IDS can be deserialized --
+    its content plays no part beyond ``/time``.
     """
     name = input_port.removesuffix("_in")
     factory = imas.IDSFactory(dd_version)
     if not factory.exists(name):
-        logger.info("fresh-export mode on '%s' (not an IDS name)", input_port)
-        return np.array([msg.timestamp]), {}
-
-    logger.info("overlay mode on '%s': overlaying onto '%s'", input_port, name)
+        raise RuntimeError(
+            f"input port '{input_port}' must be named '<ids>_in' so its time base can "
+            f"be read; '{name}' is not an IDS in DD {dd_version}"
+        )
     if msg.data is None:
         raise RuntimeError(
-            f"input port '{input_port}' selects overlay mode, but the message carried "
-            f"no '{name}' IDS"
+            f"no data on '{input_port}': nothing to take a time base from"
         )
-    base = factory.new(name)
-    base.deserialize(msg.data)
 
-    # Overlay evaluates the waveforms on '/time' and writes the result back homogeneous,
-    # so '/time' is not authoritative for a non-homogeneous base: warn rather than fail.
-    if int(base.ids_properties.homogeneous_time) != (
+    ids = factory.new(name)
+    ids.deserialize(msg.data)
+
+    times = np.asarray(ids.time, dtype=float)
+    if times.size == 0:
+        raise RuntimeError(f"the '{name}' received on '{input_port}' has no root /time")
+    if int(ids.ids_properties.homogeneous_time) != (
         imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
     ):
-        logger.warning("received '%s' IDS is not in homogeneous time mode", name)
-
-    times = np.asarray(base.time, dtype=float)
-    if times.size == 0:
-        raise RuntimeError(f"received '{name}' IDS has no root '/time' to overlay onto")
-    return times, {name: base}
+        logger.warning(
+            "the '%s' received on '%s' is in heterogeneous time mode; evaluating "
+            "on its root /time anyway",
+            name,
+            input_port,
+        )
+    logger.info("exporting on %d time step(s) from '%s'", times.size, input_port)
+    return times
 
 
 def waveform_actor():
     logger.info("Starting waveform actor")
 
     # Ports are created by libmuscle from the yMMSL conduits, not named here.
-    # - Exactly one input port. If named '<ids>_in' and the message carries that IDS,
-    #   the waveforms are exported on its /time and overlaid onto it; otherwise a single
-    #   slice at the message timestamp is exported.
+    # - Exactly one input port, named '<ids>_in'. Only the root /time of that message is
+    #   used: it is the time base the waveforms are evaluated on. Everything else the
+    #   design needs it reads itself, from the URIs in its `imports:`.
     # - Output port names must be '<ids>_out' or '<ids>'.
     instance = Instance(flags=InstanceFlags.KEEPS_NO_STATE_FOR_NEXT_USE)
 
@@ -77,15 +79,17 @@ def waveform_actor():
             load_config(config, fname)
 
         ports = instance.list_ports()
-        if len(ports.get(Operator.F_INIT, [])) != 1:
-            raise RuntimeError("Exactly one F_INIT port must be connected.")
-        input_port = ports[Operator.F_INIT][0]
+        input_ports = ports.get(Operator.F_INIT, [])
+        if len(input_ports) != 1:
+            raise RuntimeError(
+                "Exactly one F_INIT port must be connected, to supply the time base; "
+                f"got {len(input_ports)}: {', '.join(input_ports) or '<none>'}"
+            )
+        input_port = input_ports[0]
         msg = instance.receive(input_port)
+        times = _export_times(msg, input_port, config.globals.dd_version)
 
-        times, base_idss = _time_base_and_base_ids(
-            msg, input_port, config.globals.dd_version
-        )
-        exporter = ConfigurationExporter(config, times, base_idss=base_idss)
+        exporter = ConfigurationExporter(config, times)
         idss = exporter.to_ids_dict()
 
         for portname in ports[Operator.O_F]:

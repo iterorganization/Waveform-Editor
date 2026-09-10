@@ -5,9 +5,11 @@ import param
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
+from waveform_editor.imports import ImportReader
 from waveform_editor.yaml.yaml_globals import YamlGlobals
 from waveform_editor.yaml.yaml_parser import YamlParser
 
@@ -27,6 +29,7 @@ class WaveformConfiguration(param.Parameterized):
         # of waveforms
         self.waveform_map = {}
         self.globals = YamlGlobals()
+        self.reader = ImportReader({}, self.globals.dd_version)
         self.load_error = ""
         self.parser = YamlParser(self)
         self.dependency_graph = DependencyGraph()
@@ -56,15 +59,17 @@ class WaveformConfiguration(param.Parameterized):
             return self.groups[key]
         raise KeyError(f"{key!r} not found in waveforms/groups")
 
-    def load_yaml(self, yaml_str):
+    def load_yaml(self, yaml_str, base_dir=None):
         """Parses a YAML string and populates configuration.
 
         Args:
             yaml_str: The YAML string to load YAML for.
+            base_dir: Directory a relative ``path=`` in an import URI resolves against.
         """
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
+            self._build_reader(base_dir)
             self._calculate_bounds()
             for name in self.dependency_graph.topological_order():
                 self[name].prepare_expression()
@@ -317,10 +322,43 @@ class WaveformConfiguration(param.Parameterized):
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
-        result = CommentedMap(self.globals.get())
+        result = CommentedMap()
+        header = self.globals.get()["globals"]
+        for key in ("version", "dd_version"):
+            if header.get(key):
+                result[key] = header[key]
+        if header.get("imports"):
+            result["imports"] = CommentedMap(header["imports"])
+        waveforms = CommentedMap()
         for group_name, group in self.groups.items():
-            result[group_name] = group.to_commented_map()
+            waveforms[group_name] = group.to_commented_map()
+        result["waveforms"] = waveforms
         return result
+
+    def _build_reader(self, base_dir=None):
+        """Create the reader for this configuration's imports, and hand it to every
+        waveform that copies from one -- a copy cannot read anything without it."""
+        self.reader = ImportReader(
+            self.globals.imports, self.globals.dd_version, base_dir=base_dir
+        )
+        unknown = set()
+        for name, group in self.waveform_map.items():
+            waveform = group[name]
+            if isinstance(waveform, CopyWaveform):
+                waveform.reader = self.reader
+                if waveform.ref and waveform.ref not in self.globals.imports:
+                    unknown.add(waveform.ref)
+                    waveform.annotations.add(
+                        waveform.line_number,
+                        f"Unknown import {waveform.ref!r}. Declared imports: "
+                        f"{', '.join(sorted(self.globals.imports)) or '<none>'}.",
+                    )
+        if unknown:
+            raise ValueError(
+                f"Unknown import(s) in copy: {', '.join(sorted(unknown))}. "
+                f"Declared imports: "
+                f"{', '.join(sorted(self.globals.imports)) or '<none>'}."
+            )
 
     def _calculate_bounds(self):
         min_start = float("inf")
@@ -350,6 +388,7 @@ class WaveformConfiguration(param.Parameterized):
         self.groups = {}
         self.waveform_map = {}
         self.globals.reset()
+        self.reader = ImportReader({}, self.globals.dd_version)
         self.load_error = ""
         self.start = self.DEFAULT_START
         self.end = self.DEFAULT_END
