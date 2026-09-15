@@ -105,7 +105,6 @@ class WeightedPointsTable(param.Parameterized):
             on_click=self._on_delete_click,
             on_edit=self._on_edit,
         )
-        self.param.watch(self._update_tabulator, "points", onlychanged=True)
         self._update_tabulator()
 
     def _update_tabulator(self, event=None):
@@ -134,6 +133,7 @@ class WeightedPointsTable(param.Parameterized):
         # Convert columns to allow mixed types
         new_df[self.COL_R] = new_df[self.COL_R].astype(object)
         new_df[self.COL_Z] = new_df[self.COL_Z].astype(object)
+        new_df[self.COL_WEIGHT] = new_df[self.COL_WEIGHT].astype(object)
         self._tabulator.value = new_df
 
     def _on_delete_click(self, event):
@@ -143,6 +143,7 @@ class WeightedPointsTable(param.Parameterized):
                 df = self.points.copy()
                 df = df.drop(index=event.row).reset_index(drop=True)
                 self.param.update(points=df)
+                self._update_tabulator()
 
     def _on_edit(self, event):
         """Handle edits in the weighted points tabulator."""
@@ -154,26 +155,40 @@ class WeightedPointsTable(param.Parameterized):
             if col in df.columns:
                 df[col] = df[col].astype(object)
 
-        if event.column == self.COL_WEIGHT and (
-            event.value is None or event.value < 1 or event.value > 1000
-        ):
-            pn.state.notifications.error("Weight must be between 1 and 1000")
-            prev = (
-                self.points.iloc[event.row][self.COL_WEIGHT] if not is_empty_row else 1
-            )
-            self._tabulator.value.at[event.row, self.COL_WEIGHT] = prev
-            self._tabulator.param.trigger("value")
-            return
+        value = event.value
+        if event.column == self.COL_WEIGHT:
+            rounded = round(value) if value is not None else None
+            if rounded is None or rounded < 1 or rounded > 1000:
+                pn.state.notifications.error(
+                    "Weight must be a whole number between 1 and 1000"
+                )
+                prev = (
+                    self.points.iloc[event.row][self.COL_WEIGHT]
+                    if not is_empty_row
+                    else 1
+                )
+                self._tabulator.value.at[event.row, self.COL_WEIGHT] = prev
+                self._tabulator.param.trigger("value")
+                return
+            if rounded != value:
+                self._tabulator.value.at[event.row, self.COL_WEIGHT] = rounded
+                self._tabulator.param.trigger("value")
+            value = rounded
 
         if is_empty_row:
             new_row = {self.COL_R: "", self.COL_Z: "", self.COL_WEIGHT: 1}
-            new_row[event.column] = event.value
-            new_df = pd.DataFrame([new_row])
-            df = pd.concat([df, new_df], ignore_index=True)
+            new_row[event.column] = value
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         else:
-            df.at[event.row, event.column] = event.value
+            df.at[event.row, event.column] = value
 
-        self.param.update(points=df)
+        self.points = df
+
+        edited_row = df.iloc[event.row]
+        is_last_row = event.row == len(df) - 1
+        row_now_complete = edited_row[self.COL_R] != "" and edited_row[self.COL_Z] != ""
+        if is_last_row and row_now_complete:
+            self._update_tabulator()
 
     def get_outline_coordinates(self):
         """Generate outline coordinates from weighted points.
