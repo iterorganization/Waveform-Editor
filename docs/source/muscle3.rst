@@ -33,9 +33,9 @@ input port** selects between two modes:
   ``time`` array is empty.
 
 .. code-block:: yaml
-    :caption: Example ``implementations`` section for running the waveform-editor actor
+    :caption: Example ``programs`` section for running the waveform-editor actor
 
-    implementations:
+    programs:
       waveform_actor:
         executable: waveform-editor
         args: actor

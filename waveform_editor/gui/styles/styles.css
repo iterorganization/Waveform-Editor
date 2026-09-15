@@ -39,6 +39,10 @@ a.title, span.title { display: none !important; }
     white-space: nowrap;
 }
 
+.form-row-label--warning {
+    color: var(--warning-color, #856404);
+}
+
 /* Settings modal tabs */
 .bk-tab { flex: 1; text-align: center; }
 

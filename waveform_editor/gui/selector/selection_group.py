@@ -67,7 +67,7 @@ class SelectionGroup(Viewer):
         else:
             elems = [self.button_row, self.waveform_selector, self.accordion]
         self.panel = pn.Column(
-            *elems, sizing_mode="stretch_both", name=name, visible=self.param.visible
+            *elems, sizing_mode="stretch_width", name=name, visible=self.param.visible
         )
 
     def sync_waveforms(self, event=None):

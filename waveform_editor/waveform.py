@@ -1,6 +1,7 @@
 import io
 
 import numpy as np
+from imas.ids_data_type import IDSDataType
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
@@ -11,11 +12,26 @@ from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTenden
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
 from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.steps import StepsTendency
 from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
+from waveform_editor.tendencies.util import merge_value_types
 
-tendency_map = {
+IDS_DATATYPES = {
+    float: {IDSDataType.FLT},
+    str: {IDSDataType.STR},
+    int: {IDSDataType.INT, IDSDataType.FLT},  # An int is also valid for a float field
+}
+
+NUMPY_DTYPE_MAP = {
+    float: float,
+    int: float,
+    str: object,
+}
+
+
+TENDENCY_MAP = {
     "linear": LinearTendency,
     "sine-wave": SineWaveTendency,
     "sine": SineWaveTendency,
@@ -29,7 +45,30 @@ tendency_map = {
     "smooth": SmoothTendency,
     "piecewise": PiecewiseLinearTendency,
     "repeat": RepeatTendency,
+    "steps": StepsTendency,
 }
+
+INFERRED_TYPE_BY_KEY = {
+    "user_time": PiecewiseLinearTendency,
+    "user_value": ConstantTendency,
+    "user_waveform": RepeatTendency,
+}
+
+
+def _infer_tendency_class(entry):
+    """Infer a tendency's class from keys in the tendency entry, defaulting to
+    linear tendency if no distinctive keys are present.
+
+    Args:
+        entry: Entry in the YAML file.
+
+    Returns:
+        The inferred tendency class.
+    """
+    for key, tendency_class in INFERRED_TYPE_BY_KEY.items():
+        if key in entry:
+            return tendency_class
+    return LinearTendency
 
 
 class Waveform(BaseWaveform):
@@ -97,7 +136,13 @@ class Waveform(BaseWaveform):
         Returns:
             numpy array containing the computed values.
         """
-        values = np.zeros_like(time, dtype=float)
+        dtype = float if eval_derivatives else NUMPY_DTYPE_MAP[self.value_type]
+        is_categorical = dtype is object
+        values = (
+            np.empty(len(time), dtype=object)
+            if is_categorical
+            else np.zeros_like(time, dtype=dtype)
+        )
 
         for i, tendency in enumerate(self.tendencies):
             mask = (time >= tendency.start) & (time <= tendency.end)
@@ -107,17 +152,18 @@ class Waveform(BaseWaveform):
                 else:
                     _, values[mask] = tendency.get_value(time[mask])
 
-            # Handle gaps between tendencies, we linearly interpolate between the
-            # gap values.
+            # Handle gaps between tendencies: interpolate for numeric values, hold
+            # the previous value for categorical ones.
             if i and tendency.prev_tendency.end < tendency.start:
                 prev_tendency = tendency.prev_tendency
                 mask = (time < tendency.start) & (time > prev_tendency.end)
-                slope = (tendency.start_value - prev_tendency.end_value) / (
-                    tendency.start - prev_tendency.end
-                )
                 if np.any(mask):
                     if eval_derivatives:
-                        values[mask] = slope
+                        values[mask] = (
+                            tendency.start_value - prev_tendency.end_value
+                        ) / (tendency.start - prev_tendency.end)
+                    elif is_categorical:
+                        values[mask] = prev_tendency.end_value
                     else:
                         values[mask] = np.interp(
                             time[mask],
@@ -173,10 +219,67 @@ class Waveform(BaseWaveform):
             self.tendencies[i - 1].set_next_tendency(self.tendencies[i])
             self.tendencies[i].set_previous_tendency(self.tendencies[i - 1])
 
+        self._validate_value_type()
         self.update_annotations()
 
         for tendency in self.tendencies:
             tendency.param.watch(self.update_annotations, "annotations")
+
+    def _validate_value_type(self):
+        """Determine this waveform's value type from its tendencies and set
+        ``self.value_type`` to reflect it.
+        """
+        if not self.tendencies:
+            return
+
+        value_types = set(tendency.value_type for tendency in self.tendencies)
+        merged_type = merge_value_types(value_types)
+        if merged_type is None:
+            type_names = ", ".join(sorted(t.__name__ for t in value_types))
+            error_msg = (
+                f"Cannot mix string and numerical tendency value types within a single "
+                f"waveform. Found: {type_names}."
+            )
+            self.annotations.add(0, error_msg)
+            return
+        self.value_type = merged_type
+
+        if self.metadata is None:
+            return
+
+        # If a valid DD path is chosen, check if the value_type matches the DD type
+        if self.metadata.data_type not in IDS_DATATYPES[self.value_type]:
+            error_msg = (
+                "Type is not valid here: this waveform expects a "
+                f"{self.metadata.data_type}.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        if self.metadata.ndim > 1:
+            error_msg = (
+                f"{self.metadata.data_type.name}_{self.metadata.ndim}D quantities are "
+                "not supported.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        if self.metadata.ndim == 1 and not self.metadata.timebasepath:
+            error_msg = (
+                "This 1D quantity's coordinate is not time, so it cannot be filled "
+                "by a waveform.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
+            return
+
+        # A static DD node cannot hold different values, so it may only be filled
+        # by a ConstantWaveform
+        if not self.metadata.type.is_dynamic and not isinstance(self, ConstantWaveform):
+            error_msg = (
+                "This DD node does not vary in time, so it can only "
+                "be filled by a single constant tendency.\n"
+            )
+            self.annotations.add(self.tendencies[0].line_number, error_msg)
 
     def update_annotations(self, event=None):
         """Merges the annotations of the individual tendencies into the annotations
@@ -185,44 +288,6 @@ class Waveform(BaseWaveform):
         for tendency in self.tendencies:
             if tendency.annotations and tendency.annotations not in self.annotations:
                 self.annotations.add_annotations(tendency.annotations)
-
-    def _has_type_error(self, entry):
-        """Check if the YAML entry contains an error related to the tendency type.
-
-        Args:
-            entry: Entry in the YAML file.
-
-        Returns:
-            True if there is a type error, False otherwise.
-        """
-        line_number = entry.get("line_number", 0)
-        ignore_msg = "This tendency will be ignored.\n"
-
-        # If no type is given, take linear as default
-        if "user_type" not in entry:
-            entry["user_type"] = "linear"
-
-        tendency_type = entry.get("user_type", None)
-        if tendency_type is None:
-            error_msg = f"The tendency type cannot be empty.\n{ignore_msg}"
-            self.annotations.add(line_number, error_msg)
-            return True
-
-        if not isinstance(tendency_type, str):
-            error_msg = f"The tendency type should be of type 'string'.\n{ignore_msg}"
-            self.annotations.add(line_number, error_msg)
-            return True
-
-        if tendency_type not in tendency_map:
-            suggestion = self.annotations.suggest(tendency_type, tendency_map.keys())
-
-            error_msg = (
-                f"Unsupported tendency type: '{tendency_type}'. {suggestion}"
-                f"{ignore_msg}"
-            )
-            self.annotations.add(line_number, error_msg)
-            return True
-        return False
 
     def get_yaml_string(self):
         """Converts the internal YAML waveform description to a string.
@@ -251,10 +316,29 @@ class Waveform(BaseWaveform):
         Returns:
             The created tendency or None, if the tendency cannot be created
         """
-        if self._has_type_error(entry):
-            return None
+        # If no type is given, infer it from the entry's keys
+        if "user_type" not in entry:
+            tendency_class = _infer_tendency_class(entry)
         else:
-            tendency_type = entry.pop("user_type")
-            tendency_class = tendency_map[tendency_type]
-            tendency = tendency_class(**entry)
-            return tendency
+            user_type = entry.pop("user_type")
+            user_type = "" if user_type is None else str(user_type)
+            tendency_class = TENDENCY_MAP.get(user_type)
+            if tendency_class is None:
+                suggestion = self.annotations.suggest(user_type, TENDENCY_MAP.keys())
+                error_msg = (
+                    f"Unsupported tendency type: '{user_type}'. "
+                    f"{suggestion}This tendency will be ignored.\n"
+                )
+                self.annotations.add(entry.get("line_number", 0), error_msg)
+                return None
+
+        return tendency_class(**entry)
+
+
+class ConstantWaveform(Waveform):
+    """A waveform that is always filled by exactly one constant tendency."""
+
+    @property
+    def value(self):
+        """The constant value of this waveform."""
+        return self.tendencies[0].value

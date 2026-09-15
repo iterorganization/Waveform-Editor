@@ -9,7 +9,7 @@ from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
 from waveform_editor.derived_waveform import DerivedWaveform
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 from waveform_editor.util import State
 from waveform_editor.waveform import Waveform
 

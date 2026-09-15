@@ -21,13 +21,14 @@ dependencies = [
     "scipy",
     "imas-python[netcdf]",
     "panel>=1.6.3",
+    "param>=2.3.0",
     "pygments",
     "plotly",
     "holoviews",
     "ruamel.yaml",
     "kaleido", # required for exporting PNG to disk
     "asteval",
-    "muscle3",
+    "muscle3>=0.10",
 ]
 dynamic = ["version"]
 

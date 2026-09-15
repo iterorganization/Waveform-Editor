@@ -177,6 +177,19 @@ def test_too_short(repeat_waveform):
     assert repeat_tendency.annotations[0]["type"] == "warning"
 
 
+def test_string_value_not_supported():
+    """String values inside a repeat tendency are not allowed"""
+    repeat_tendency = RepeatTendency(
+        user_duration=4,
+        user_waveform=[
+            {"user_type": "constant", "user_value": "ec", "user_duration": 1},
+        ],
+    )
+    assert repeat_tendency.annotations
+    times = np.linspace(0, 4, 9)
+    repeat_tendency.get_value(times)
+
+
 def test_period(repeat_waveform):
     """Check values when period is provided."""
     repeat_waveform["user_period"] = 1

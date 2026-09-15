@@ -9,7 +9,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.settings import settings
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 
 
 class CoilCurrentEntry(param.Parameterized):

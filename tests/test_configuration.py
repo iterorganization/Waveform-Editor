@@ -2,7 +2,9 @@ from textwrap import dedent
 
 import pytest
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
@@ -107,6 +109,54 @@ def test_replace_waveform(config):
     assert config["ec_launchers"]["beams"]["steering_angles"]["waveform/1"] == waveform2
     with pytest.raises(ValueError):
         config.replace_waveform(waveform3)
+
+
+def test_replace_waveform_revalidates_dependents(config):
+    """Test if replacing a waveform re-evaluates the value_type of derived waveforms"""
+    path = ["ec_launchers"]
+
+    int_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "user_duration": 1}],
+        name="A",
+    )
+    config.add_waveform(int_waveform, path)
+
+    derived_b = DerivedWaveform("B: \"'A'\"", "B", config)
+    config.add_waveform(derived_b, path)
+    derived_c = DerivedWaveform("C: \"'B'\"", "C", config)
+    config.add_waveform(derived_c, path)
+
+    assert derived_b.value_type is int
+    assert derived_c.value_type is int
+
+    flt_waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3.5, "user_duration": 1}],
+        name="A",
+    )
+    config.replace_waveform(flt_waveform)
+
+    assert derived_b.value_type is float
+    assert derived_c.value_type is float
+
+
+def test_add_waveform_revalidates_previously_missing_dependency(config):
+    """Test if a derived waveform's error is cleared once its dependency is added to
+    the configuration."""
+    path = ["ec_launchers"]
+
+    derived = DerivedWaveform("B: \"'A'\"", "B", config)
+    config.add_waveform(derived, path)
+    assert derived.annotations
+    assert derived.value_type is float
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 3, "user_duration": 1}],
+        name="A",
+    )
+    config.add_waveform(waveform, path)
+
+    assert not derived.annotations
+    assert derived.value_type is int
 
 
 def test_remove_waveform(config):
@@ -253,19 +303,19 @@ def test_dump():
 def test_dump_comments():
     """Check if comments for waveforms are preserved."""
 
-    yaml_str = dedent("""
+    yaml_str = dedent(f"""
     globals:
-      dd_version: 3.42.0
+      dd_version: {TEST_DD_VERSION}
       machine_description:
         ec_launchers: imas:hdf5?path=test_md
     ec_launchers:
       beams:
         power_launched:
           ec_launchers/beam(0)/power_launched: # comment1
-          - {to: 8.33e5, duration: 20} # comment2
-          - {type: constant, duration: 20}
+          - {{to: 8.33e5, duration: 20}} # comment2
+          - {{type: constant, duration: 20}}
           # comment3
-          - {duration: 25, to: 0}""")
+          - {{duration: 25, to: 0}}""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     dumped_yaml = config.dump()
@@ -279,17 +329,17 @@ def test_dump_globals():
       - {to: 8.33e5, duration: 20} # comment""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
-    config.globals.dd_version = "3.41.0"
+    config.globals.dd_version = TEST_DD_VERSION
     config.globals.machine_description = {"ec_launchers": "imas:mdsplus?path=test"}
     dumped_yaml = config.dump()
-    expected_dump = dedent("""
+    expected_dump = dedent(f"""
     globals:
-      dd_version: 3.41.0
+      dd_version: {TEST_DD_VERSION}
       machine_description:
         ec_launchers: imas:mdsplus?path=test
     ec_launchers:
       ec_launchers/beam(1)/phase/angle:
-      - {to: 8.33e5, duration: 20} # comment""")
+      - {{to: 8.33e5, duration: 20}} # comment""")
     assert expected_dump.strip() == dumped_yaml.strip()
 
 
@@ -323,17 +373,17 @@ def test_load_yaml_bounds():
 
 def test_load_yaml_globals():
     """Check if global variables are loaded from YAML."""
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 3.42.0
-      machine_description: 
+      dd_version: {TEST_DD_VERSION}
+      machine_description:
         ec_launchers: imas:hdf5?path=testdb
     ec_launchers:
       ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
-    assert config.globals.dd_version == "3.42.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
 
     yaml_str = """
