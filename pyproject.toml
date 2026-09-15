@@ -29,6 +29,9 @@ dependencies = [
     "kaleido", # required for exporting PNG to disk
     "asteval",
     "muscle3>=0.10",
+    # 6.5.9 broke StaticFileHandler subclasses (e.g. bokeh's MultiRootStaticHandler)
+    # Pin below it until bokeh releases a fix.
+    "tornado<6.5.9",
 ]
 dynamic = ["version"]
 
