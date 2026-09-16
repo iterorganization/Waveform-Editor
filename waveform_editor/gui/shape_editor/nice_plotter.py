@@ -65,6 +65,8 @@ class NicePlotter(Viewer):
             title="Equilibrium poloidal flux",
             xlabel="r [m]",
             ylabel="z [m]",
+            data_aspect=1,
+            responsive=True,
         )
         self.nice_settings = settings.nice
         self._shape_plotters = {
@@ -93,8 +95,7 @@ class NicePlotter(Viewer):
         )
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
-            width=self.WIDTH,
-            height=self.HEIGHT,
+            sizing_mode="stretch_both",
             loading=self.communicator.param.processing,
         )
 
