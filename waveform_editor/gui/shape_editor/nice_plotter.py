@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
+from bokeh.models import HoverTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -16,6 +17,18 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
+
+
+def _no_hover(element):
+    """Exclude an element's renderer from every HoverTool in the shared figure."""
+
+    def hook(plot, _):
+        renderer = plot.handles.get("glyph_renderer")
+        for tool in plot.state.toolbar.tools:
+            if isinstance(tool, HoverTool) and renderer in (tool.renderers or []):
+                tool.renderers = [r for r in tool.renderers if r is not renderer]
+
+    return element.opts(hooks=[hook])
 
 
 class NicePlotter(Viewer):
@@ -138,13 +151,17 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews overlay containing gap representation.
         """
-        plot_elements = [hv.Scatter((r, z)).opts(color="blue", size=4)]
+        plot_elements = [_no_hover(hv.Scatter((r, z)).opts(color="blue", size=4))]
         for gap in self.plasma_shape.gaps:
             plot_elements.append(
-                hv.Scatter(([gap.r], [gap.z])).opts(color="red", size=6)
+                _no_hover(hv.Scatter(([gap.r], [gap.z])).opts(color="red", size=6))
             )
             plot_elements.append(
-                hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(color="black")
+                _no_hover(
+                    hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(
+                        color="black"
+                    )
+                )
             )
         return hv.Overlay(plot_elements)
 
@@ -158,7 +175,8 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews overlay with scatter plot of the points.
         """
-        return hv.Overlay([hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")])
+        scatter = hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")
+        return hv.Overlay([_no_hover(scatter)])
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):
