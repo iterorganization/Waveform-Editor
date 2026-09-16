@@ -195,7 +195,7 @@ class WeightedPointsTable(param.Parameterized):
 
         Returns:
             tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if
-                fewer than 2 valid points
+                no valid points have been entered yet
         """
         if self.points.empty:
             return None, None
@@ -204,7 +204,7 @@ class WeightedPointsTable(param.Parameterized):
         valid_df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
         valid_df = valid_df[(valid_df[self.COL_R] != "") & (valid_df[self.COL_Z] != "")]
 
-        if len(valid_df) < 2:
+        if len(valid_df) < 1:
             return None, None
 
         # Duplicate points according to their weight
@@ -263,7 +263,7 @@ class PlasmaShape(Viewer):
             visible=self.param.has_shape.rx.not_(),
         )
         self.weighted_points_indicator = WarningIndicator(
-            tooltip="At least 2 points are required to define a plasma shape",
+            tooltip="At least 1 point is required to define a plasma shape",
             visible=self.param.has_shape.rx.not_(),
         )
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
