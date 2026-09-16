@@ -13,7 +13,7 @@ def controller():
         }
     )
 
-    factory = imas.IDSFactory("4.0.0")
+    factory = imas.IDSFactory("4.1.1")
 
     while instance.reuse_instance():
         for time in np.linspace(0, 50, 20):

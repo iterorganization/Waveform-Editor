@@ -1,17 +1,49 @@
 import numpy as np
 import pytest
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sine_wave import SineWaveTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.steps import StepsTendency
+from waveform_editor.tendencies.repeat import RepeatTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
-from waveform_editor.waveform import Waveform
+from waveform_editor.waveform import ConstantWaveform, Waveform
 
 
 def test_empty():
     waveform = Waveform()
     assert waveform.tendencies == []
     assert waveform.annotations == []
+
+
+@pytest.mark.parametrize(
+    "entry,expected_type",
+    [
+        ({"user_value": 3, "user_duration": 2}, ConstantTendency),
+        (
+            {"user_time": [0, 1, 2], "user_value": [0, 1, 0]},
+            PiecewiseLinearTendency,
+        ),
+        (
+            {
+                "user_waveform": [
+                    {"user_type": "constant", "user_value": 1, "user_duration": 1}
+                ],
+                "user_duration": 2,
+            },
+            RepeatTendency,
+        ),
+        ({"user_to": 5, "user_duration": 2}, LinearTendency),
+        ({"user_duration": 2}, LinearTendency),
+    ],
+    ids=["value", "time+value", "waveform", "to-only", "no-keys"],
+)
+def test_infer_tendency_type(entry, expected_type):
+    waveform = Waveform(waveform=[entry], name="w")
+    assert not waveform.annotations
+    assert type(waveform.tendencies[0]) is expected_type
 
 
 @pytest.fixture
@@ -273,3 +305,231 @@ def test_overlap_derivatives():
     expected = [2, 2, -1.5, -1.5, -1.5, -1.5, -1.5]
     values = waveform.get_derivative(np.linspace(0, 3, 7))
     assert np.allclose(values, expected)
+
+
+def test_multiple_tendencies_mixed():
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "constant",
+                "user_value": "ec",
+                "user_duration": 2,
+                "line_number": 1,
+            },
+            {
+                "user_type": "constant",
+                "user_value": 3,
+                "user_duration": 2,
+                "line_number": 2,
+            },
+        ]
+    )
+    assert waveform.annotations
+
+
+def test_steps_tendency_chained():
+    """Test a steps tendency chained with a constant tendency in a waveform."""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "steps",
+                "user_time": [0, 2, 4, 6],
+                "user_value": [1, 3, 5, 5],
+                "line_number": 1,
+            },
+            {
+                "user_type": "constant",
+                "user_duration": 2,
+                "line_number": 2,
+            },
+        ]
+    )
+    assert not waveform.annotations
+    assert isinstance(waveform.tendencies[0], StepsTendency)
+    assert isinstance(waveform.tendencies[1], ConstantTendency)
+    # The constant tendency without an explicit value inherits the last step's value
+    assert waveform.tendencies[1].value == 5
+
+    times, values = waveform.get_value(np.linspace(0, 8, 9))
+    assert np.allclose(values, [1, 1, 3, 3, 5, 5, 5, 5, 5])
+
+
+def test_steps_tendency_string_values():
+    """Test a steps tendency with string values."""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "steps",
+                "user_time": [0, 10, 20, 30],
+                "user_value": ["ohmic", "nbi", "ec", "ec"],
+                "line_number": 1,
+            },
+        ]
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is str
+    _, values = waveform.get_value(np.array([0, 15, 25]))
+    assert list(values) == ["ohmic", "nbi", "ec"]
+
+
+def test_dtype_flt_dd_path():
+    """Test float field types."""
+
+    flt_dd_path = "ec_launchers/beam(1)/phase/angle"
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
+        name=flt_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
+        name=flt_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is int
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
+        name=flt_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is float
+
+
+def test_dtype_int_dd_path():
+    """Test int field types."""
+
+    int_dd_path = "pulse_schedule/ec/mode"
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
+        name=int_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
+        name=int_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is int
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
+        name=int_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_dtype_str_dd_path():
+    """Test string field types."""
+    str_dd_path = "ec_launchers/ids_properties/comment"
+
+    waveform = ConstantWaveform(
+        waveform=[{"user_type": "constant", "user_value": "test", "line_number": 1}],
+        name=str_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+    assert waveform.value_type is str
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
+        name=str_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
+        name=str_dd_path,
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_static_0d_dd_path():
+    """A constant waveform may fill a static (non time-dependent) 0D DD node."""
+    waveform = ConstantWaveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "a comment", "line_number": 1}
+        ],
+        name="ec_launchers/ids_properties/comment",
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+
+
+def test_static_0d_dd_path_rejects_varying_waveform():
+    """A static DD node cannot hold different values at different times"""
+    waveform = Waveform(
+        waveform=[
+            {
+                "user_type": "constant",
+                "user_value": "a",
+                "user_duration": 1,
+                "line_number": 1,
+            },
+            {
+                "user_type": "constant",
+                "user_value": "b",
+                "user_duration": 1,
+                "line_number": 2,
+            },
+        ],
+        name="ec_launchers/ids_properties/comment",
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_1d_dd_path():
+    """Tests 1D waveforms whose coordinate is and isn't time"""
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
+        name="ec_launchers/beam(1)/phase/angle",
+        dd_version=TEST_DD_VERSION,
+    )
+    assert not waveform.annotations
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 5, "line_number": 1}],
+        name="core_profiles/profiles_1d/electrons/temperature",
+        dd_version=TEST_DD_VERSION,
+    )
+    assert waveform.annotations
+
+
+def test_no_metadata_allows_any_type():
+    """A waveform whose path does not resolve to any DD node is not restricted
+    to any particular value type."""
+    name = "not_a_real_ids/path"
+    waveform = Waveform(
+        waveform=[
+            {"user_type": "constant", "user_value": "anything", "line_number": 1}
+        ],
+        name=name,
+    )
+    assert waveform.metadata is None
+    assert not waveform.annotations
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 1, "line_number": 1}],
+        name=name,
+    )
+    assert waveform.metadata is None
+    assert not waveform.annotations
+
+    waveform = Waveform(
+        waveform=[{"user_type": "constant", "user_value": 2.5, "line_number": 1}],
+        name=name,
+    )
+    assert waveform.metadata is None
+    assert not waveform.annotations

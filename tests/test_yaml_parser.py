@@ -1,6 +1,7 @@
 import pytest
 from pytest import approx
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
@@ -11,7 +12,7 @@ from waveform_editor.tendencies.periodic.square_wave import SquareWaveTendency
 from waveform_editor.tendencies.periodic.triangle_wave import TriangleWaveTendency
 from waveform_editor.tendencies.smooth import SmoothTendency
 from waveform_editor.util import LATEST_DD_VERSION
-from waveform_editor.waveform import Waveform
+from waveform_editor.waveform import ConstantWaveform, Waveform
 from waveform_editor.yaml.yaml_parser import YamlParser
 
 
@@ -132,35 +133,77 @@ def test_scientific_notation(yaml_parser):
 
 
 def test_constant_shorthand_notation(yaml_parser):
-    """Test if shorthand notation is parsed correctly."""
+    """Test if shorthand notation is parsed as a constant tendency."""
 
-    waveforms = {"waveform: 5": 5, "waveform: 1.23": 1.23}
+    waveforms = {
+        "waveform: 5": (5, int),
+        "waveform: 1.23": (1.23, float),
+        "waveform: test": ("test", str),
+    }
 
-    for waveform, expected_value in waveforms.items():
+    for waveform, (expected_value, expected_type) in waveforms.items():
         waveform = yaml_parser.parse_waveform(waveform)
-        assert isinstance(waveform, DerivedWaveform)
-        assert waveform.yaml == expected_value
+        assert isinstance(waveform, ConstantWaveform)
+        assert len(waveform.tendencies) == 1
+        assert isinstance(waveform.tendencies[0], ConstantTendency)
+        assert waveform.value_type is expected_type
+        assert waveform.value == expected_value
         assert not waveform.annotations
-        assert waveform.dependencies == set()
         assert not yaml_parser.parse_errors
+
+        _, values = waveform.get_value()
+        assert all(v == expected_value for v in values)
+
+
+def test_explicit_constant_is_constant_waveform(yaml_parser):
+    """A waveform written as a single explicit is a ConstantTendency"""
+    waveform = yaml_parser.parse_waveform("waveform:\n- {type: constant, value: 6.2}")
+    assert isinstance(waveform, ConstantWaveform)
+    assert waveform.value == 6.2
+    assert not waveform.annotations
+
+
+def test_multiple_tendencies_is_not_constant_waveform(yaml_parser):
+    """A waveform with more than one tendency, even if all constant, is not a
+    ConstantWaveform."""
+    waveform = yaml_parser.parse_waveform(
+        "waveform:\n"
+        "- {type: constant, value: 1, duration: 2}\n"
+        "- {type: constant, value: 2, duration: 2}\n"
+    )
+    assert isinstance(waveform, Waveform)
+    assert not isinstance(waveform, ConstantWaveform)
+    assert not waveform.annotations
+
+
+def test_bare_expression_is_evaluated_not_treated_as_constant(yaml_parser):
+    """A bare arithmetic expression (no quotes, no dependencies) must be evaluated as
+    a derived waveform, not treated as a literal constant string."""
+    waveform = yaml_parser.parse_waveform("waveform: 2*10")
+    assert isinstance(waveform, DerivedWaveform)
+    assert not waveform.annotations
+    assert not yaml_parser.parse_errors
+
+    _, values = waveform.get_value()
+    assert all(v == 20 for v in values)
 
 
 def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
-    yaml_str = """
+    yaml_str = f"""
     ec_launchers:
       beams:
         power_launched:
           ec_launchers/beam(:)/power_launched:
-              - {to: 8.33e5, duration: 20} # implicit linear ramp
-              - {type: constant, duration: 20}
-              - {duration: 25, to: 0} # implicit linear back to 0
+              - {{to: 8.33e5, duration: 20}} # implicit linear ramp
+              - {{type: constant, duration: 20}}
+              - {{duration: 25, to: 0}} # implicit linear back to 0
         phase_angles:
           ec_launchers/beam(1)/phase/angle: 1
           ec_launchers/beam(2)/phase/angle: 2e3
           ec_launchers/beam(3)/phase/angle: 3.5
     globals:
-      dd_version: 3.42.0
+      dd_version: {TEST_DD_VERSION}
     """
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
@@ -187,17 +230,17 @@ def test_load_yaml(config):
 
 
 def test_load_yaml_globals_full(yaml_parser, config):
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 3.42.0
-      machine_description: 
+      dd_version: {TEST_DD_VERSION}
+      machine_description:
         ec_launchers: imas:hdf5?path=test_md
         equilibrium: imas:hdf5?path=test_md2
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.globals.dd_version == "3.42.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert (
         config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
     )
@@ -237,13 +280,13 @@ def test_load_yaml_globals_invalid_machine_description(yaml_parser):
 
 
 def test_load_yaml_globals_dd_version_only(yaml_parser, config):
-    yaml_str = """
+    yaml_str = f"""
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
-    assert config.globals.dd_version == "4.0.0"
+    assert config.globals.dd_version == TEST_DD_VERSION
     assert not config.globals.machine_description
     assert not config.load_error

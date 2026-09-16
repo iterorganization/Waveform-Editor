@@ -29,6 +29,11 @@ class RepeatTendency(BaseTendency):
         self.waveform = Waveform(waveform=waveform, is_repeated=True)
         self.period = 1
         super().__init__(**kwargs)
+        if self.waveform.value_type is str:
+            self.waveform.tendencies = []
+            error_msg = "String values are not supported inside a repeat tendency.\n"
+            self.annotations.add(self.line_number, error_msg)
+            return
         if not self.waveform.tendencies:
             error_msg = "There are no tendencies in the repeated waveform.\n"
             self.annotations.add(self.line_number, error_msg)

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from waveform_editor.tendencies.constant import ConstantTendency
 
@@ -67,6 +68,59 @@ def test_generate():
     assert np.all(time == np.array([0, 1]))
     assert np.all(values == np.array([5, 5]))
     assert not tendency.annotations
+
+
+@pytest.mark.parametrize("value", ["ec", 3, 3.5], ids=["str", "int", "float"])
+def test_categorical_value(value):
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=value)
+    assert tendency.value == value
+    assert tendency.value_type is type(value)
+    assert not tendency.annotations
+
+    time, values = tendency.get_value()
+    assert np.all(time == np.array([0, 1]))
+    assert list(values) == [value, value]
+
+
+@pytest.mark.parametrize("value,expected", [(True, 1), (False, 0)])
+def test_bool_value_treated_as_int(value, expected):
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=value)
+    assert tendency.value == expected
+    assert type(tendency.value) is int
+    assert tendency.value_type is int
+    assert not tendency.annotations
+
+
+def test_unsupported_value_type():
+    tendency = ConstantTendency(user_start=0, user_duration=1, user_value=[1, 2, 3])
+    assert tendency.annotations
+    assert tendency.value == 0.0
+
+
+@pytest.mark.parametrize("value", [5, 5.5, "ec"], ids=["int", "float", "str"])
+def test_inherited_value(value):
+    t1 = ConstantTendency(user_value=value, user_start=0, user_duration=1)
+    t2 = ConstantTendency(user_duration=1)
+    t2.set_previous_tendency(t1)
+
+    assert t2.value_type is type(value)
+    assert type(t2.value) is type(value)
+
+
+@pytest.mark.parametrize("value", [5, 5.5, "ec"], ids=["int", "float", "str"])
+def test_inherited_value_stays_plain_type_across_chain(value):
+    """start_value/end_value/value must be plain Python types"""
+    t1 = ConstantTendency(user_value=value, user_start=0, user_duration=1)
+    t2 = ConstantTendency(user_duration=1)
+    t2.set_previous_tendency(t1)
+    t3 = ConstantTendency(user_duration=1)
+    t3.set_previous_tendency(t2)
+
+    for tendency in (t1, t2, t3):
+        assert tendency.value_type is type(value)
+        assert type(tendency.value) is type(value)
+        assert type(tendency.start_value) is type(value)
+        assert type(tendency.end_value) is type(value)
 
 
 def test_declarative_assignments():

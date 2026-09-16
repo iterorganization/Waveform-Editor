@@ -87,3 +87,20 @@ def test_detect_cycles_with_start_node():
     dg.graph["C"] = {"A"}
     with pytest.raises(RuntimeError):
         dg.detect_cycles("A")
+
+
+def test_topological_order():
+    dg = DependencyGraph()
+    dg.add_node("A", ["B"])
+    dg.add_node("B", ["C"])
+    dg.add_node("C", [])
+
+    assert dg.topological_order() == ["C", "B", "A"]
+
+
+def test_topological_order_ignores_leaf_dependencies():
+    """Dependencies that are not nodes themselves should not show up."""
+    dg = DependencyGraph()
+    dg.add_node("A", ["leaf"])
+
+    assert dg.topological_order() == ["A"]

@@ -22,7 +22,7 @@ Installing dependencies
 
         .. code-block:: bash
 
-            module load IMAS-Python IMAS-AL-Cpp/5.4.0-intel-2023b-DD-4.0.0 \
+            module load IMAS-Python IMAS-AL-Cpp/5.4.0-intel-2023b-DD-4.1.1 \
                 SuiteSparse/7.7.0-intel-2023b MUSCLE3
             
     .. md-tab-item:: Ubuntu 24.04
@@ -46,7 +46,7 @@ Installing dependencies
 
             # Install imas_core and muscle3 with pip
             pip install 'imas_core @ git+ssh://git@git.iter.org/imas/al-core.git'
-            pip install 'muscle3==0.8.0'
+            pip install 'muscle3==0.10.0'
 
             # Install AL-CPP in ~/.local
             git clone ssh://git@git.iter.org/imas/al-cpp.git
@@ -54,15 +54,15 @@ Installing dependencies
             cmake -B build -D AL_EXAMPLES=OFF -D AL_HLI_DOCS=OFF -D AL_PLUGINS=OFF \
                 -D AL_TESTS=OFF -D CMAKE_INSTALL_PREFIX=~/.local \
                 -D DD_GIT_REPOSITORY=https://github.com/iterorganization/IMAS-Data-Dictionary.git \
-                -D DD_VERSION=4.0.0
+                -D DD_VERSION=4.1.1
             make -C build -j
             make -C build install
             cd ..
 
             # Install C++ libs of MUSCLE3 in ~/.local
-            wget https://github.com/multiscale/muscle3/archive/0.8.0/muscle3-0.8.0.tar.gz
-            tar xf muscle3-0.8.0.tar.gz
-            cd muscle3-0.8.0
+            wget https://github.com/multiscale/muscle3/archive/0.10.0/muscle3-0.10.0.tar.gz
+            tar xf muscle3-0.10.0.tar.gz
+            cd muscle3-0.10.0
             make
             PREFIX=~/.local make install
             cd ..
@@ -85,6 +85,7 @@ https://blfauger.gitlabpages.inria.fr/nice/install.html.
 
     git clone https://gitlab.inria.fr/blfauger/nice.git
     cd nice
+    git checkout v3.0.0
     git submodule init
     git submodule update
     cd src

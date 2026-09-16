@@ -6,24 +6,25 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
+from tests.conftest import TEST_DD_VERSION
 from waveform_editor import cli as waveform_cli
 
 
 @pytest.fixture
 def test_yaml_file(tmp_path):
     """Creates a temporary YAML file with sample content."""
-    yaml_content = """
+    yaml_content = f"""
     ec_launchers:
       beams:
         ec_launchers/beam(1)/phase/angle: 1
         ec_launchers/beam(2)/phase/angle: 2
         ec_launchers/beam(3)/phase/angle: 3
         ec_launchers/beam(4)/power_launched/data:
-            - {to: 8.33e5, duration: 20}
-            - {type: constant, duration: 20}
-            - {duration: 25, to: 0}
+            - {{to: 8.33e5, duration: 20}}
+            - {{type: constant, duration: 20}}
+            - {{duration: 25, to: 0}}
     globals:
-      dd_version: 4.0.0
+      dd_version: {TEST_DD_VERSION}
     """
     yaml_file = tmp_path / "test_config.yaml"
     yaml_file.write_text(yaml_content)
@@ -174,7 +175,7 @@ def test_export_ids(runner, tmp_path, test_yaml_file):
         ["export-ids", str(test_yaml_file), str(uri), "--linspace", "0,3,5"],
     )
     assert result.exit_code == 0
-    with imas.DBEntry(uri, "r", dd_version="4.0.0") as entry:
+    with imas.DBEntry(uri, "r", dd_version=TEST_DD_VERSION) as entry:
         ids = entry.get("ec_launchers")
         assert np.all(ids.beam[0].phase.angle == 1)
         assert np.all(ids.beam[1].phase.angle == 2)

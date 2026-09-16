@@ -20,51 +20,65 @@ from waveform_editor.settings import settings
 
 # YMMSL configuration for NICE inverse mode
 _muscle3_inv_configuration = """
-ymmsl_version: v0.1
-model:
-    name: shape_editor
+ymmsl_version: v0.2
+
+models:
+  shape_editor:
     components:
-        shape_editor:
-            implementation: shape_editor
-        nice_inv:
-            implementation: nice_inv
+      shape_editor:
+        description: Shape editor
+        ports:
+          o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
+          s: [equilibrium_in, pf_active_in]
+      nice_inv:
+        description: NICE, inverse mode
+        ports:
+          f_init: [equilibrium_in, pf_active_in, pf_passive_in, wall_in, iron_core_in]
+          o_f: [equilibrium_out, pf_active_out]
 
     conduits:
-        shape_editor.equilibrium_out: nice_inv.equilibrium_in
-        shape_editor.pf_passive_out: nice_inv.pf_passive_in
-        shape_editor.pf_active_out: nice_inv.pf_active_in
-        shape_editor.iron_core_out: nice_inv.iron_core_in
-        shape_editor.wall_out: nice_inv.wall_in
-        nice_inv.equilibrium_out: shape_editor.equilibrium_in
-        nice_inv.pf_active_out: shape_editor.pf_active_in
+      shape_editor.equilibrium_out: nice_inv.equilibrium_in
+      shape_editor.pf_passive_out: nice_inv.pf_passive_in
+      shape_editor.pf_active_out: nice_inv.pf_active_in
+      shape_editor.iron_core_out: nice_inv.iron_core_in
+      shape_editor.wall_out: nice_inv.wall_in
+      nice_inv.equilibrium_out: shape_editor.equilibrium_in
+      nice_inv.pf_active_out: shape_editor.pf_active_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
-    nice_inv.xml_path: {xml_path}
+  muscle_profile_level: none  # Disable profiling
+  nice_inv.xml_path: {xml_path}
 """
 
 # YMMSL configuration for NICE direct mode
 _muscle3_dir_configuration = """
-ymmsl_version: v0.1
-model:
-    name: shape_editor
+ymmsl_version: v0.2
+
+models:
+  shape_editor:
     components:
-        shape_editor:
-            implementation: shape_editor
-        nice_dir:
-            implementation: nice_dir
+      shape_editor:
+        description: Shape editor
+        ports:
+          o_i: [equilibrium_out, pf_active_out, pf_passive_out, wall_out, iron_core_out]
+          s: [equilibrium_in]
+      nice_dir:
+        description: NICE, direct mode
+        ports:
+          f_init: [equilibrium_in, pf_active_in, pf_passive_in, wall_in, iron_core_in]
+          o_f: [equilibrium_out]
 
     conduits:
-        shape_editor.equilibrium_out: nice_dir.equilibrium_in
-        shape_editor.pf_passive_out: nice_dir.pf_passive_in
-        shape_editor.pf_active_out: nice_dir.pf_active_in
-        shape_editor.iron_core_out: nice_dir.iron_core_in
-        shape_editor.wall_out: nice_dir.wall_in
-        nice_dir.equilibrium_out: shape_editor.equilibrium_in
+      shape_editor.equilibrium_out: nice_dir.equilibrium_in
+      shape_editor.pf_passive_out: nice_dir.pf_passive_in
+      shape_editor.pf_active_out: nice_dir.pf_active_in
+      shape_editor.iron_core_out: nice_dir.iron_core_in
+      shape_editor.wall_out: nice_dir.wall_in
+      nice_dir.equilibrium_out: shape_editor.equilibrium_in
 
 settings:
-    muscle_profile_level: none  # Disable profiling
-    nice_dir.xml_path: {xml_path}
+  muscle_profile_level: none  # Disable profiling
+  nice_dir.xml_path: {xml_path}
 """
 
 
@@ -142,23 +156,26 @@ class NiceIntegration(param.Parameterized):
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
+    can_warm_start = param.Boolean(default=False)
 
     def __init__(
         self,
         imas_factory,
-        on_output: Callable[[str | bytes], None] | None = None,
+        on_output: Callable[[str | bytes], None],
+        on_run_finished: Callable[[bool], None],
     ):
         super().__init__()
         self.imas_factory = imas_factory
         self.on_output = on_output
+        self.on_run_finished = on_run_finished
+        self.last_run_successful = False
         self.running = False
         self.closing = False
         self.pf_active = None
         self._poll_task = None
 
     def _write_output(self, text: str | bytes):
-        if self.on_output is not None:
-            self.on_output(text)
+        self.on_output(text)
 
     def create_communicator_protocol(self):
         """Instantiate protocol to handle NICE subprocess output."""
@@ -286,10 +303,21 @@ class NiceIntegration(param.Parameterized):
             and self.nice_transport.get_returncode() is None
         )
 
+    @param.depends("equilibrium", watch=True)
+    def _update_can_warm_start(self):
+        if self.equilibrium is None:
+            self.can_warm_start = False
+        else:
+            self.can_warm_start = bool(self.equilibrium.code.output_flag[0] == 0)
+
     @param.depends("nice_running", watch=True)
     async def _nice_running_changed(self):
         if not self.nice_running:  # figure out why:
             retcode = self.nice_transport.get_returncode()
+            self.last_run_successful = retcode == 0
+            if not self.last_run_successful:
+                self.can_warm_start = False
+                self.on_run_finished(False)
             # Bold green on success, bold red on failure:
             color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
@@ -352,6 +380,7 @@ class NiceIntegration(param.Parameterized):
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
         self.pf_active = pf_active
+        self.on_run_finished(self.can_warm_start)
         self.processing = False
 
 

@@ -18,7 +18,10 @@ Most tendencies accept the following parameters to define their time interval. Y
 *   ``end``: The absolute time at which the tendency ends. If omitted, it's calculated from ``start + duration``.
 
 .. note::
-    The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` is an exception and derives its time interval solely from its ``time`` parameter list. It does *not* accept ``start``, ``duration``, or ``end``.
+    The :ref:`Piecewise Linear Tendency <piecewise-linear-tendency>` and :ref:`Steps <steps-tendency>` are an exception, they derive their time interval solely from the ``time`` parameter list. 
+    These tendencies do *not* accept ``start``, ``duration``, or ``end``.
+
+.. _constant-tendency:
 
 Constant Tendency
 =================
@@ -50,6 +53,45 @@ If the ``value`` is not specified, it will be set to the last value of the previ
 
     - {type: linear, to: 3, duration: 10}
     - {type: constant, duration: 10}
+
+.. _constant-value-types:
+
+Value Types
+-----------
+
+The ``value`` of a constant tendency may be a number (integer or floating-point) or a string.
+
+An integer value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: 3, duration: 2}
+
+A floating-point value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: 3.5, duration: 2}
+
+A string value:
+
+.. code-block:: yaml
+
+    - {type: constant, value: ohmic, duration: 2}
+    - {type: constant, value: nbi, duration: 2}
+
+It is also possible to use ``True`` and ``False`` as the ``value``, in which case the 
+waveform will be considered an integer type (where ``True = 1``, and ``False = 0``):
+
+.. code-block:: yaml
+
+    - {type: constant, value: True, duration: 2}
+    - {type: constant, value: False, duration: 2}
+
+.. warning::
+    Integers and floats may be freely combined within a single waveform (the
+    resulting waveform will be float-typed), but it's not allowed to combine string 
+    values with numbers in a waveform.
 
 Linear Tendency
 ===============
@@ -173,7 +215,7 @@ Defines a sequence of points connected by straight lines.
 
 Parameters
 ----------
-*   ``time``: A list of time points. Must be strictly monotonically increasing and must have at least 1 point.
+*   ``time``: A list of the tendency's time points. The time points are absolute, and must be strictly monotonically increasing and must have at least 1 point.
 *   ``value``: A list of corresponding values at each time point in the ``time`` list. Must have the same length as ``time``.
 
 .. image:: images/piecewise.png
@@ -184,6 +226,43 @@ Parameters
 .. code-block:: yaml
 
     - {type: piecewise, time: [0,1,2,3,6,7], value: [5,3,4,1,8,4]}
+
+.. warning::
+    This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.
+
+.. _steps-tendency:
+
+Steps Tendency
+==============
+
+Defines a sequence of steps, each held constant from its time point until the next one.
+``time`` and ``value`` must have the same length. This is a compact
+alternative to writing out a sequence of :ref:`Constant Tendencies <constant-value-types>`.
+
+Parameters
+----------
+*   ``time``: A list of the tendency's time points. The time points are absolute, and must be strictly monotonically increasing and must have at least 1 point.
+*   ``value``: A list of the values held during each step. Must have the same length as ``time``.
+
+.. image:: images/steps_1.png
+   :alt: Example plot of a Steps Tendency
+   :width: 400px
+   :align: center
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 2, 4, 6], value: [1, 3, 5, 5]}
+
+Just like the :ref:`Constant Tendency <constant-value-types>`, the ``value`` list may contain numbers or strings:
+
+.. image:: images/steps_2.png
+   :alt: Example plot of a Steps Tendency containing string values
+   :width: 400px
+   :align: center
+
+.. code-block:: yaml
+
+    - {type: steps, time: [0, 10, 20, 30], value: [ohmic, nbi, ec, ec]}
 
 .. warning::
     This tendency does **not** accept the common ``start``, ``duration``, or ``end`` parameters. These are derived directly from the required ``time`` list.

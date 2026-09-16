@@ -285,6 +285,8 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "packaging": ("https://packaging.pypa.io/en/stable/", None),
+    "param": ("https://param.holoviz.org", None),
+    "panel": ("https://panel.holoviz.org", None),
 }
 intersphinx_timeout = 60  # Downloads time out after 1 minute
 

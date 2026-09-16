@@ -1,7 +1,7 @@
 import numpy as np
 from pytest import approx
 
-from waveform_editor.tendencies.piecewise import PiecewiseLinearTendency
+from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 
 
 def test_empty():
