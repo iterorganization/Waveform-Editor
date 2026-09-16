@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import holoviews as hv
 import imas
 import panel as pn
@@ -7,24 +5,22 @@ import param
 import scipy.constants
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import FormattedEditableFloatSlider
+from waveform_editor.gui.util import CARD_CSS, FormattedEditableFloatSlider
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
 )
-
-_CARD_CSS = (Path(__file__).parent.parent / "styles" / "property_card.css").read_text()
 
 
 def _make_badges(input_state_param, on_reset):
     """Create badge components wired to input_state_param and return them."""
     from_ids = pn.pane.HTML(
         '<span class="ids-badge from-ids">from IDS</span>',
-        stylesheets=[_CARD_CSS],
+        stylesheets=[CARD_CSS],
         margin=(0, 0, 0, 4),
     )
     edited = pn.pane.HTML(
         '<span class="ids-badge edited">edited</span>',
-        stylesheets=[_CARD_CSS],
+        stylesheets=[CARD_CSS],
         margin=(5, 0, 0, 4),
     )
     reset_btn = pn.widgets.Button(
@@ -112,8 +108,8 @@ class PropertyInput(Viewer):
             header,
             self._value_input,
             css_classes=["property-card"],
-            stylesheets=[_CARD_CSS],
-            max_width=600,
+            stylesheets=[CARD_CSS],
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
 
@@ -149,13 +145,13 @@ class PlasmaProfiles(Viewer):
         self._resetting = False
 
         self._alpha_input = FormattedEditableFloatSlider.from_param(
-            self.param.alpha, name="Alpha", margin=0
+            self.param.alpha, name="Alpha", margin=0, stretch_width=True
         )
         self._beta_input = FormattedEditableFloatSlider.from_param(
-            self.param.beta, name="Beta", margin=0
+            self.param.beta, name="Beta", margin=0, stretch_width=True
         )
         self._gamma_input = FormattedEditableFloatSlider.from_param(
-            self.param.gamma, name="Gamma", margin=0
+            self.param.gamma, name="Gamma", margin=0, stretch_width=True
         )
         self._profiles_pane = pn.pane.HoloViews(
             hv.DynamicMap(self._plot_profiles), width=350, height=350
@@ -310,8 +306,8 @@ class PlasmaProfiles(Viewer):
             ),
             self._profiles_pane,
             css_classes=["property-card"],
-            stylesheets=[_CARD_CSS],
-            max_width=600,
+            stylesheets=[CARD_CSS],
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
 
@@ -435,8 +431,8 @@ class PlasmaProperties(Viewer):
                 align="end",
             ),
             css_classes=["property-card", "ids-source-card"],
-            stylesheets=[_CARD_CSS],
-            max_width=600,
+            stylesheets=[CARD_CSS],
+            sizing_mode="stretch_width",
             margin=(0, 0, 8, 0),
         )
         return pn.Column(

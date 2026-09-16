@@ -138,6 +138,8 @@ class ShapeEditor(Viewer):
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
+            max_width=800,
+            sizing_mode="stretch_width",
             align="center",
         )
 
@@ -179,7 +181,6 @@ class ShapeEditor(Viewer):
             left_col,
             pn.Column(
                 menu,
-                pn.layout.Divider(),
                 inputs,
                 sizing_mode="stretch_both",
             ),
@@ -204,6 +205,7 @@ class ShapeEditor(Viewer):
             panel_object,
             title=title,
             sizing_mode="stretch_width",
+            max_width=800,
             collapsed=collapsed,
             visible=visible,
         )
