@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import imas
 import pandas as pd
 import panel as pn
@@ -7,6 +5,7 @@ import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
+    CARD_CSS,
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
@@ -17,8 +16,6 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_outline_from_params,
     update_outline_from_gaps,
 )
-
-_CARD_CSS = (Path(__file__).parent.parent / "styles" / "property_card.css").read_text()
 
 
 class PlasmaShapeParams(Viewer):
@@ -48,10 +45,9 @@ class PlasmaShapeParams(Viewer):
     def __panel__(self):
         def _slider(n):
             p = getattr(self.param, n)
-            kwargs = {"sizing_mode": "stretch_width", "width": None}
             if isinstance(self.param[n], param.Integer):
-                return FixedWidthEditableIntSlider.from_param(p, **kwargs)
-            return FormattedEditableFloatSlider.from_param(p, **kwargs)
+                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
+            return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
 
         def _group(title, *param_names):
             return pn.Column(
@@ -62,7 +58,7 @@ class PlasmaShapeParams(Viewer):
                 ),
                 *[_slider(n) for n in param_names],
                 css_classes=["property-card"],
-                stylesheets=[_CARD_CSS],
+                stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
             )
 
@@ -254,17 +250,18 @@ class PlasmaShape(Viewer):
 
     def __init__(self):
         super().__init__()
-        self.outline_indicator = WarningIndicator(
-            tooltip="No valid equilibrium IDS with outline loaded",
-            visible=self.param.has_shape.rx.not_(),
+
+        def _indicator(tooltip):
+            return WarningIndicator(
+                tooltip=tooltip, visible=self.param.has_shape.rx.not_()
+            )
+
+        self.outline_indicator = _indicator(
+            "No valid equilibrium IDS with outline loaded"
         )
-        self.gap_indicator = WarningIndicator(
-            tooltip="No valid equilibrium IDS with gaps loaded",
-            visible=self.param.has_shape.rx.not_(),
-        )
-        self.weighted_points_indicator = WarningIndicator(
-            tooltip="At least 1 point is required to define a plasma shape",
-            visible=self.param.has_shape.rx.not_(),
+        self.gap_indicator = _indicator("No valid equilibrium IDS with gaps loaded")
+        self.weighted_points_indicator = _indicator(
+            "At least 1 point is required to define a plasma shape"
         )
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioButtonGroup(
@@ -279,7 +276,7 @@ class PlasmaShape(Viewer):
             sizing_mode="stretch_width",
             max_width=800,
             margin=(15, 20, 0, 20),
-            stylesheets=[_CARD_CSS],
+            stylesheets=[CARD_CSS],
         )
         self.radio_box.link(self, value="input_mode", bidirectional=True)
         self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)

@@ -4,15 +4,25 @@ import panel as pn
 import param
 
 STYLES = [(Path(__file__).parent / "styles" / "styles.css").read_text()]
+CARD_CSS = (Path(__file__).parent / "styles" / "property_card.css").read_text()
+
+
+def _resolve_width(width, stretch_width, params):
+    if stretch_width:
+        params.setdefault("sizing_mode", "stretch_width")
+        return None
+    return width
 
 
 class FormattedEditableFloatSlider(pn.widgets.EditableFloatSlider):
-    def __init__(self, format="1[.]000", width=450, **params):
+    def __init__(self, format="1[.]000", width=450, stretch_width=False, **params):
+        width = _resolve_width(width, stretch_width, params)
         super().__init__(format=format, width=width, **params)
 
 
 class FixedWidthEditableIntSlider(pn.widgets.EditableIntSlider):
-    def __init__(self, width=450, **params):
+    def __init__(self, width=450, stretch_width=False, **params):
+        width = _resolve_width(width, stretch_width, params)
         super().__init__(width=width, **params)
 
 
