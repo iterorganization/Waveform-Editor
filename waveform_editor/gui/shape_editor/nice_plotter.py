@@ -67,6 +67,10 @@ class NicePlotter(Viewer):
             ylabel="z [m]",
         )
         self.nice_settings = settings.nice
+        self._shape_plotters = {
+            self.plasma_shape.GAP_INPUT: self._plot_gaps,
+            self.plasma_shape.WEIGHTED_POINTS_INPUT: self._plot_weighted_points,
+        }
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -118,12 +122,10 @@ class NicePlotter(Viewer):
         r = self.plasma_shape.outline_r
         z = self.plasma_shape.outline_z
 
-        if self.plasma_shape.input_mode == self.plasma_shape.GAP_INPUT:
-            return self._plot_gaps(r, z)
-        elif self.plasma_shape.input_mode == self.plasma_shape.WEIGHTED_POINTS_INPUT:
-            return self._plot_weighted_points(r, z)
-        else:
-            return self._plot_outline_shape(r, z)
+        plotter = self._shape_plotters.get(
+            self.plasma_shape.input_mode, self._plot_outline_shape
+        )
+        return plotter(r, z)
 
     def _plot_outline_shape(self, r, z):
         """Plots closed plasma outline curve.

@@ -263,6 +263,31 @@ class PlasmaShape(Viewer):
         self.weighted_points_indicator = _indicator(
             "At least 1 point is required to define a plasma shape"
         )
+        self._mode_config = {
+            self.EQUILIBRIUM_INPUT: (
+                self._load_shape_from_ids,
+                lambda: pn.Row(
+                    pn.Param(self.input_outline, show_name=False),
+                    self.outline_indicator,
+                ),
+            ),
+            self.PARAMETERIZED_INPUT: (
+                self._load_shape_from_params,
+                lambda: self.shape_params,
+            ),
+            self.GAP_INPUT: (
+                self._load_shape_from_gaps,
+                lambda: pn.Row(
+                    pn.Param(self.input_gaps, show_name=False), self.gap_indicator
+                ),
+            ),
+            self.WEIGHTED_POINTS_INPUT: (
+                self._load_shape_from_weighted_points,
+                lambda: pn.Row(
+                    self.weighted_points_table, self.weighted_points_indicator
+                ),
+            ),
+        }
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioButtonGroup(
             options={
@@ -297,14 +322,8 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_z = None
         self.gaps = []
 
-        if self.input_mode == self.EQUILIBRIUM_INPUT:
-            self._load_shape_from_ids()
-        elif self.input_mode == self.PARAMETERIZED_INPUT:
-            self._load_shape_from_params()
-        elif self.input_mode == self.GAP_INPUT:
-            self._load_shape_from_gaps()
-        elif self.input_mode == self.WEIGHTED_POINTS_INPUT:
-            self._load_shape_from_weighted_points()
+        loader, _ = self._mode_config[self.input_mode]
+        loader()
 
         if self.outline_r and self.outline_z:
             self.has_shape = True
@@ -420,18 +439,8 @@ class PlasmaShape(Viewer):
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
-        if self.input_mode == self.PARAMETERIZED_INPUT:
-            return self.shape_params
-        elif self.input_mode == self.EQUILIBRIUM_INPUT:
-            return pn.Row(
-                pn.Param(self.input_outline, show_name=False), self.outline_indicator
-            )
-        elif self.input_mode == self.GAP_INPUT:
-            return pn.Row(
-                pn.Param(self.input_gaps, show_name=False), self.gap_indicator
-            )
-        elif self.input_mode == self.WEIGHTED_POINTS_INPUT:
-            return pn.Row(self.weighted_points_table, self.weighted_points_indicator)
+        _, panel_factory = self._mode_config[self.input_mode]
+        return panel_factory()
 
     def __panel__(self):
         return self.panel
