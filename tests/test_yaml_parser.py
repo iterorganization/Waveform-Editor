@@ -191,19 +191,19 @@ def test_bare_expression_is_evaluated_not_treated_as_constant(yaml_parser):
 def test_load_yaml(config):
     """Test if yaml is loaded correctly."""
     yaml_str = f"""
-    ec_launchers:
-      beams:
-        power_launched:
-          ec_launchers/beam(:)/power_launched:
-              - {{to: 8.33e5, duration: 20}} # implicit linear ramp
-              - {{type: constant, duration: 20}}
-              - {{duration: 25, to: 0}} # implicit linear back to 0
-        phase_angles:
-          ec_launchers/beam(1)/phase/angle: 1
-          ec_launchers/beam(2)/phase/angle: 2e3
-          ec_launchers/beam(3)/phase/angle: 3.5
-    globals:
-      dd_version: {TEST_DD_VERSION}
+    dd_version: {TEST_DD_VERSION}
+    output:
+      ec_launchers:
+        beams:
+          power_launched:
+            ec_launchers/beam(:)/power_launched:
+                - {{to: 8.33e5, duration: 20}} # implicit linear ramp
+                - {{type: constant, duration: 20}}
+                - {{duration: 25, to: 0}} # implicit linear back to 0
+          phase_angles:
+            ec_launchers/beam(1)/phase/angle: 1
+            ec_launchers/beam(2)/phase/angle: 2e3
+            ec_launchers/beam(3)/phase/angle: 3.5
     """
     parser = YamlParser(config)
     parser.load_yaml(yaml_str)
@@ -231,49 +231,38 @@ def test_load_yaml(config):
 
 def test_load_yaml_globals_full(yaml_parser, config):
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-      machine_description:
-        ec_launchers: imas:hdf5?path=test_md
-        equilibrium: imas:hdf5?path=test_md2
+    dd_version: {TEST_DD_VERSION}
+    input:
+      machine: imas:hdf5?path=test_md
+      scenario: imas:hdf5?path=test_md2
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == TEST_DD_VERSION
-    assert (
-        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
-    )
-    assert (
-        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
-    )
+    assert config.globals.imports["machine"] == "imas:hdf5?path=test_md"
+    assert config.globals.imports["scenario"] == "imas:hdf5?path=test_md2"
     assert not config.load_error
 
 
 def test_load_yaml_globals_missing_dd_version(yaml_parser, config):
     yaml_str = """
-    globals:
-      machine_description: 
-        ec_launchers: imas:hdf5?path=test_md
-        equilibrium: imas:hdf5?path=test_md2
+    input:
+      machine: imas:hdf5?path=test_md
+      scenario: imas:hdf5?path=test_md2
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == LATEST_DD_VERSION
-    assert (
-        config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=test_md"
-    )
-    assert (
-        config.globals.machine_description["equilibrium"] == "imas:hdf5?path=test_md2"
-    )
+    assert config.globals.imports["machine"] == "imas:hdf5?path=test_md"
+    assert config.globals.imports["scenario"] == "imas:hdf5?path=test_md2"
     assert not config.load_error
 
 
-def test_load_yaml_globals_invalid_machine_description(yaml_parser):
+def test_load_yaml_globals_invalid_imports(yaml_parser):
     yaml_str = """
-    globals:
-      machine_description: imas:hdf5?path=test_md
+    input: imas:hdf5?path=test_md
     """
     with pytest.raises(ValueError):
         yaml_parser.load_yaml(yaml_str)
@@ -281,12 +270,11 @@ def test_load_yaml_globals_invalid_machine_description(yaml_parser):
 
 def test_load_yaml_globals_dd_version_only(yaml_parser, config):
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
+    dd_version: {TEST_DD_VERSION}
     """
     yaml_parser.load_yaml(yaml_str)
     assert not config.groups
     assert not config.waveform_map
     assert config.globals.dd_version == TEST_DD_VERSION
-    assert not config.globals.machine_description
+    assert not config.globals.imports
     assert not config.load_error

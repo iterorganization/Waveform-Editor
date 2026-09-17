@@ -8,17 +8,18 @@ from holoviews import opts, streams
 from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
+from waveform_editor.config_entry import ConfigEntry
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 from waveform_editor.util import State
-from waveform_editor.waveform import Waveform
 
 
 class PlotterEdit(Viewer):
     """Class to plot a single waveform in edit mode."""
 
-    plotted_waveform: Waveform = param.ClassSelector(
-        class_=(Waveform, DerivedWaveform), allow_refs=True
+    plotted_waveform: ConfigEntry = param.ClassSelector(
+        class_=ConfigEntry, allow_refs=True
     )
 
     def __init__(self, editor, **params):
@@ -31,6 +32,17 @@ class PlotterEdit(Viewer):
         self.pipe = streams.Pipe()
 
         self.pane = pn.pane.HoloViews(sizing_mode="stretch_both")
+        self.no_preview_message = pn.pane.Markdown(
+            "*No preview available*",
+            sizing_mode="stretch_both",
+            styles={
+                "display": "flex",
+                "align-items": "center",
+                "justify-content": "center",
+                "color": "gray",
+            },
+        )
+        self.panel = pn.Column(self.pane, sizing_mode="stretch_both")
         # TODO: The y axis should show the units of the plotted waveform
         self.xlabel = "Time (s)"
         self.ylabel = "Value"
@@ -42,7 +54,13 @@ class PlotterEdit(Viewer):
         if self._update_plot_from_drag:
             return  # Skip update triggered from a drag-and-drop
 
-        if isinstance(self.plotted_waveform, DerivedWaveform):
+        waveform = self.plotted_waveform
+        if waveform is not None and not waveform.is_time_trace:
+            self.panel[:] = [self.no_preview_message]
+            return
+        self.panel[:] = [self.pane]
+
+        if isinstance(self.plotted_waveform, (DerivedWaveform, CopyWaveform)):
             try:
                 self.pane.object = self.main_curve()
             except Exception as e:
@@ -98,7 +116,11 @@ class PlotterEdit(Viewer):
 
     def main_curve(self, **kwargs):
         """Return a curve representing the whole waveform"""
-        return hv.Curve(self.plotted_waveform.get_value(), self.xlabel, self.ylabel)
+        if isinstance(self.plotted_waveform, CopyWaveform):
+            values = self.plotted_waveform.read_curve()
+        else:
+            values = self.plotted_waveform.get_value()
+        return hv.Curve(values, self.xlabel, self.ylabel)
 
     def piecewise_click_and_drag(self, data):
         """Updates a piecewise linear tendency in the code editor YAML time/value data.
@@ -177,4 +199,4 @@ class PlotterEdit(Viewer):
             self.pipe.event()
 
     def __panel__(self):
-        return self.pane
+        return self.panel

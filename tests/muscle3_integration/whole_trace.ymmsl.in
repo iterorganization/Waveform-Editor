@@ -1,7 +1,7 @@
 ymmsl_version: v0.2
 
 models:
-  example_overlay_with_waveform_actor:
+  example_whole_trace_with_waveform_actor:
     components:
       solver:
         description: Equilibrium solver
@@ -15,7 +15,7 @@ models:
         description: Waveform actor
         implementation: waveform_actor
         ports:
-          # An IDS-named input port selects overlay mode:
+          # The input port must be named '<ids>_in': only its /time is read.
           f_init: equilibrium_in
           # Name of the output port is "<ids_name>_out":
           o_f:
@@ -27,7 +27,7 @@ models:
 
 settings:
   # Mandatory setting for the waveform actor: the waveform configuration:
-  waveform_actor.waveforms: __PATH__/overlay_waveforms.yaml
+  waveform_actor.waveforms: __PATH__/whole_trace_waveforms.yaml
 
 resources:
   solver:
@@ -39,7 +39,7 @@ programs:
   solver:
     description: Equilibrium solver implementation
     executable: python
-    args: __PATH__/overlay_solver.py
+    args: __PATH__/whole_trace_solver.py
 
   waveform_actor:
     description: Waveform actor implementation
