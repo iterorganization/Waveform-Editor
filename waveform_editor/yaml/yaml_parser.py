@@ -6,10 +6,14 @@ from io import StringIO
 import yaml
 from ruamel.yaml import YAML
 
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.waveform import ConstantWaveform, Waveform
 
 logger = logging.getLogger(__name__)
+
+# Everything a configuration may declare outside its waveform groups.
+TOP_LEVEL_KEYS = {"dd_version", "input", "output"}
 
 
 def _is_literal_string(value):
@@ -71,16 +75,23 @@ class YamlParser:
         self.parse_errors = []
 
         yaml_data = self.yaml.load(yaml_str) if yaml_str else {}
-        globals = yaml_data.get("globals", {})
-        self.config.globals.set_globals(globals)
-
         if not isinstance(yaml_data, dict):
             raise ValueError("Input yaml_data must be a dictionary.")
 
-        for group_name, group_content in yaml_data.items():
-            if group_name == "globals":
-                continue
+        unknown = set(yaml_data) - TOP_LEVEL_KEYS
+        if unknown:
+            raise ValueError(
+                f"Unknown top-level key(s): {', '.join(sorted(unknown))}. "
+            )
 
+        header = {}
+        if yaml_data.get("dd_version") is not None:
+            header["dd_version"] = yaml_data["dd_version"]
+        if yaml_data.get("input") is not None:
+            header["imports"] = dict(yaml_data["input"])
+        self.config.globals.set_globals(header)
+
+        for group_name, group_content in (yaml_data.get("output") or {}).items():
             if not isinstance(group_content, dict):
                 raise ValueError("Waveforms must belong to a group.")
 
@@ -101,7 +112,9 @@ class YamlParser:
         current_group = self.config.add_group(group_name, path)
 
         for key, value in data_dict.items():
-            if isinstance(value, dict):
+            # A mapping is a nested group, unless it is a copy ({copy: <import>}),
+            # which is a waveform like any other value.
+            if isinstance(value, dict) and "copy" not in value:
                 self._recursive_load(value, key, path + [group_name])
             else:
                 yaml_str = self.generate_yaml_str(key, value)
@@ -163,10 +176,19 @@ class YamlParser:
             waveform = waveform_yaml[waveform_key]
             if waveform is None:
                 raise yaml.YAMLError("Cannot have an empty waveform.")
+            if isinstance(waveform, dict) and "user_copy" in waveform:
+                return CopyWaveform(
+                    waveform,
+                    yaml_str=yaml_str,
+                    name=name,
+                    config=self.config,
+                    dd_version=self.config.globals.dd_version,
+                )
             if not isinstance(waveform, (list, int, float, str)):
                 raise yaml.YAMLError(
-                    "Waveform must either be a list of tendencies, "
-                    "a single constant value (int/float), or a derived waveform (str)."
+                    "Waveform must either be a list of tendencies, a single constant "
+                    "value (int/float), a copy ({copy: <import>}), or a derived "
+                    "waveform (str)."
                 )
             line_number = waveform_yaml.get("line_number", 0)
             dd_version = self.config.globals.dd_version

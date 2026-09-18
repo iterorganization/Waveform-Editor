@@ -18,6 +18,15 @@ class WaveformSelector(Viewer):
         doc="Allow selecting multiple waveforms",
         allow_refs=True,
     )
+    only_visualizable = param.Boolean(
+        False,
+        doc=(
+            "Disable waveforms that cannot be plotted (a structural copy -- a "
+            "profile, per-slice array, or other non-0D node). Only meaningful in "
+            "the View tab: the Edit tab still needs to be able to open one."
+        ),
+        allow_refs=True,
+    )
 
     def __init__(self, main_gui):
         super().__init__()
