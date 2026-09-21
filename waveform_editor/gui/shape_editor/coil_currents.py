@@ -138,12 +138,32 @@ class CoilCurrents(Viewer):
             new_coils.append(entry)
 
         self.coils = new_coils
+        self._warn_exceeded()
+
+    def _warn_exceeded(self, coils=None):
+        """Warn about coils beyond their current limit"""
+
+        if coils is None:
+            coils = self.coils
+        exceeded = [coil for coil in coils if coil.exceeds_limit]
+        if not exceeded:
+            return
+        if len(exceeded) == 1:
+            coil = exceeded[0]
+            message = (
+                f"{coil.coil_name} is at {coil.current:.0f} A, beyond its limit of "
+                f"{coil.current_limit:.0f} A."
+            )
+        else:
+            names = ", ".join(coil.coil_name for coil in exceeded)
+            message = f"{len(exceeded)} coils are beyond their limit: {names}."
+        pn.state.notifications.warning(message)
 
     def _current_limit(self, coil):
         """The largest current ``coil`` tolerates, or None if it isn't in the machine
         description."""
         limits = np.abs(np.asarray(coil.current_limit_max))
-        if limits.size == 0 or limits.max() == 0:
+        if limits.size == 0:
             return None
         return float(limits.max())
 
@@ -158,13 +178,9 @@ class CoilCurrents(Viewer):
             {
                 self.COIL_NAME: coil.coil_name,
                 self.FIX_CURRENT: coil.fix_current,
-                self.CURRENT: "" if coil.current is None else coil.current,
-                self.PREV_CURRENT: ""
-                if coil.previous_current is None
-                else coil.previous_current,
-                self.CURRENT_LIMIT: ""
-                if coil.current_limit is None
-                else coil.current_limit,
+                self.CURRENT: coil.current,
+                self.PREV_CURRENT: coil.previous_current,
+                self.CURRENT_LIMIT: coil.current_limit,
             }
             for coil in self.coils
         ]
@@ -175,11 +191,10 @@ class CoilCurrents(Viewer):
         """Colour the row of every coil whose current is beyond its limit."""
 
         exceeded = [coil.exceeds_limit for coil in self.coils]
+        exceeded_style = "background-color: #f8d7da"
         self.table.style.clear()
         self.table.style.apply(
-            lambda row: (
-                ["background-color: #f8d7da" if exceeded[row.name] else ""] * len(row)
-            ),
+            lambda row: [exceeded_style if exceeded[row.name] else ""] * len(row),
             axis=1,
         )
 
@@ -190,11 +205,7 @@ class CoilCurrents(Viewer):
         elif event.column == self.CURRENT:
             coil.current = float(event.value)
             self._highlight_exceeded()
-            if coil.exceeds_limit:
-                pn.state.notifications.warning(
-                    f"{coil.coil_name} is set to {coil.current:.0f} A, beyond its "
-                    f"limit of {coil.current_limit:.0f} A."
-                )
+            self._warn_exceeded([coil])
         else:
             raise RuntimeError(f"Cannot edit column {event.column}")
 
