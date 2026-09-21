@@ -17,7 +17,20 @@ class CoilCurrentEntry(param.Parameterized):
     fix_current = param.Boolean(default=False)
     current = param.Number(default=None)
     previous_current = param.Number(default=None)
+    current_limit = param.Number(
+        default=None,
+        doc="Largest current this coil tolerates, None if the machine description "
+        "does not say.",
+    )
     # TODO: add additional columns for penalization to 0 checkbox and pen. weight
+
+    @property
+    def exceeds_limit(self):
+        """Whether the current is beyond what the coil tolerates, in either
+        direction. A coil current is signed, so the limit applies to its magnitude."""
+        if self.current is None or self.current_limit is None:
+            return False
+        return abs(self.current) > self.current_limit
 
 
 class CoilCurrents(Viewer):
@@ -31,6 +44,7 @@ class CoilCurrents(Viewer):
     FIX_CURRENT = "fix_current"
     CURRENT = "current"
     PREV_CURRENT = "previous_current"
+    CURRENT_LIMIT = "current_limit"
 
     def __init__(self, main_gui, **params):
         super().__init__(**params)
@@ -42,23 +56,30 @@ class CoilCurrents(Viewer):
             self.FIX_CURRENT: "Fix",
             self.CURRENT: "Coil current [A]",
             self.PREV_CURRENT: "Previous current [A]",
+            self.CURRENT_LIMIT: "Current limit [A]",
         }
         header_tooltips = {
             self.COIL_NAME: "The name of the coil",
             self.FIX_CURRENT: "Fix coil current to a specific value.",
             self.CURRENT: "Coil current",
             self.PREV_CURRENT: "Coil current input to previous run of the solver.",
+            self.CURRENT_LIMIT: (
+                "Largest current this coil tolerates, from the machine description. "
+                "A current beyond it is allowed, but the row is highlighted."
+            ),
         }
         editors = {
             self.COIL_NAME: None,
             self.FIX_CURRENT: None,
             self.CURRENT: {"type": "number"},
             self.PREV_CURRENT: None,
+            self.CURRENT_LIMIT: None,
         }
         formatters = {
             self.FIX_CURRENT: {"type": "tickCross"},
             self.CURRENT: NumberFormatter(),
             self.PREV_CURRENT: NumberFormatter(),
+            self.CURRENT_LIMIT: NumberFormatter(),
         }
         self.table = pn.widgets.Tabulator(
             layout="fit_data_stretch",
@@ -112,10 +133,39 @@ class CoilCurrents(Viewer):
             entry = CoilCurrentEntry(
                 coil_name=str(coil.name),
                 current=coil_current.data[0] if coil_current.data.has_value else None,
+                current_limit=self._current_limit(coil),
             )
             new_coils.append(entry)
 
         self.coils = new_coils
+        self._warn_exceeded()
+
+    def _warn_exceeded(self, coils=None):
+        """Warn about coils beyond their current limit"""
+
+        if coils is None:
+            coils = self.coils
+        exceeded = [coil for coil in coils if coil.exceeds_limit]
+        if not exceeded:
+            return
+        if len(exceeded) == 1:
+            coil = exceeded[0]
+            message = (
+                f"{coil.coil_name} is at {coil.current:.0f} A, beyond its limit of "
+                f"{coil.current_limit:.0f} A."
+            )
+        else:
+            names = ", ".join(coil.coil_name for coil in exceeded)
+            message = f"{len(exceeded)} coils are beyond their limit: {names}."
+        pn.state.notifications.warning(message)
+
+    def _current_limit(self, coil):
+        """The largest current ``coil`` tolerates, or None if it isn't in the machine
+        description."""
+        limits = np.abs(np.asarray(coil.current_limit_max))
+        if limits.size == 0:
+            return None
+        return float(limits.max())
 
     def _update_column_visibility(self, *events):
         """Show or hide the fix column based on whether NICE is in direct mode."""
@@ -128,14 +178,25 @@ class CoilCurrents(Viewer):
             {
                 self.COIL_NAME: coil.coil_name,
                 self.FIX_CURRENT: coil.fix_current,
-                self.CURRENT: "" if coil.current is None else coil.current,
-                self.PREV_CURRENT: ""
-                if coil.previous_current is None
-                else coil.previous_current,
+                self.CURRENT: coil.current,
+                self.PREV_CURRENT: coil.previous_current,
+                self.CURRENT_LIMIT: coil.current_limit,
             }
             for coil in self.coils
         ]
         self.table.value = pd.DataFrame(data)
+        self._highlight_exceeded()
+
+    def _highlight_exceeded(self):
+        """Colour the row of every coil whose current is beyond its limit."""
+
+        exceeded = [coil.exceeds_limit for coil in self.coils]
+        exceeded_style = "background-color: #f8d7da"
+        self.table.style.clear()
+        self.table.style.apply(
+            lambda row: [exceeded_style if exceeded[row.name] else ""] * len(row),
+            axis=1,
+        )
 
     def _on_cell_edit(self, event):
         coil = self.coils[event.row]
@@ -143,6 +204,8 @@ class CoilCurrents(Viewer):
             coil.fix_current = bool(event.value)
         elif event.column == self.CURRENT:
             coil.current = float(event.value)
+            self._highlight_exceeded()
+            self._warn_exceeded([coil])
         else:
             raise RuntimeError(f"Cannot edit column {event.column}")
 
