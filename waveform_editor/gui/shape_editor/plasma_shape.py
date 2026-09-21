@@ -13,6 +13,8 @@ from waveform_editor.gui.util import (
 )
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
+    apply_point_weights,
+    compute_gaussian_weights,
     compute_outline_from_params,
     update_outline_from_gaps,
 )
@@ -41,32 +43,53 @@ class PlasmaShapeParams(Viewer):
     n_desired_bnd_points = param.Integer(
         default=96, softbounds=[3, 200], label="Number of boundary points"
     )
+    weight_enabled = param.Boolean(default=False, label="Emphasize a region")
+    weight_position = param.Number(
+        default=0, step=1, bounds=[0, 360], label="Position [deg]"
+    )
+    weight_spread = param.Number(
+        default=5, step=0.5, softbounds=[1, 50], label="Spread [points]"
+    )
+    weight_height = param.Integer(default=10, softbounds=[1, 1000], label="Max weight")
 
     def __panel__(self):
         def _slider(n):
             p = getattr(self.param, n)
+            if isinstance(self.param[n], param.Boolean):
+                return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
                 return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
             return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
 
-        def _group(title, *param_names):
+        def _group(title, *children):
             return pn.Column(
                 pn.pane.HTML(
                     f"<b>{title}</b>"
                     "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
                     margin=(0, 0, 0, 0),
                 ),
-                *[_slider(n) for n in param_names],
+                *children,
                 css_classes=["property-card"],
                 stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
             )
 
         return pn.Column(
-            _group("Geometry", "a", "center_r", "center_z"),
-            _group("Shape coefficients", "kappa", "delta"),
-            _group("X point", "rx", "zx"),
-            _group("Boundary", "n_desired_bnd_points"),
+            _group(
+                "Emphasize region",
+                _slider("weight_enabled"),
+                pn.Column(
+                    _slider("weight_position"),
+                    _slider("weight_spread"),
+                    _slider("weight_height"),
+                    visible=self.param.weight_enabled.rx(),
+                    margin=(0, 0, 0, 0),
+                ),
+            ),
+            _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
+            _group("Shape coefficients", _slider("kappa"), _slider("delta")),
+            _group("X point", _slider("rx"), _slider("zx")),
+            _group("Boundary", _slider("n_desired_bnd_points")),
             margin=(10, 20, 0, 20),
         )
 
@@ -306,6 +329,12 @@ class PlasmaShape(Viewer):
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
+        # Unduplicated parameterized boundary points and their per-point weight,
+        # kept alongside the (possibly duplicated) outline_r/outline_z so the
+        # plot can colour the boundary by weight. None when weighting is off.
+        self.param_r = None
+        self.param_z = None
+        self.param_weights = None
 
     @pn.depends(
         "shape_params.param",
@@ -319,6 +348,7 @@ class PlasmaShape(Viewer):
         """Update plasma boundary shape based on input mode."""
         self.outline_r = self.outline_z = None
         self.gaps = []
+        self.param_r = self.param_z = self.param_weights = None
 
         loader, _ = self._mode_config[self.input_mode]
         loader()
@@ -424,16 +454,29 @@ class PlasmaShape(Viewer):
 
     def _load_shape_from_params(self):
         """Compute plasma boundary outline from parameterized shape inputs."""
-        self.outline_r, self.outline_z = compute_outline_from_params(
-            a=self.shape_params.a,
-            center_r=self.shape_params.center_r,
-            center_z=self.shape_params.center_z,
-            kappa=self.shape_params.kappa,
-            delta=self.shape_params.delta,
-            rx=self.shape_params.rx,
-            zx=self.shape_params.zx,
-            n_desired_bnd_points=self.shape_params.n_desired_bnd_points,
+        p = self.shape_params
+        r, z = compute_outline_from_params(
+            a=p.a,
+            center_r=p.center_r,
+            center_z=p.center_z,
+            kappa=p.kappa,
+            delta=p.delta,
+            rx=p.rx,
+            zx=p.zx,
+            n_desired_bnd_points=p.n_desired_bnd_points,
         )
+        self.param_r, self.param_z = r, z
+
+        if p.weight_enabled:
+            self.param_weights = compute_gaussian_weights(
+                len(r), p.weight_position, p.weight_spread, p.weight_height
+            )
+            self.outline_r, self.outline_z = apply_point_weights(
+                r, z, self.param_weights
+            )
+        else:
+            self.param_weights = None
+            self.outline_r, self.outline_z = r, z
 
     @param.depends("input_mode")
     def _panel_shape_options(self):

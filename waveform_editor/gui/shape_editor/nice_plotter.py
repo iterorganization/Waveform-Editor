@@ -128,6 +128,12 @@ class NicePlotter(Viewer):
         r = self.plasma_shape.outline_r
         z = self.plasma_shape.outline_z
 
+        if (
+            self.plasma_shape.input_mode == self.plasma_shape.PARAMETERIZED_INPUT
+            and self.plasma_shape.param_weights
+        ):
+            return self._plot_weighted_boundary()
+
         plotter = self._shape_plotters.get(
             self.plasma_shape.input_mode, self._plot_outline_shape
         )
@@ -185,6 +191,34 @@ class NicePlotter(Viewer):
         """
         scatter = hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")
         return hv.Overlay([_no_hover(scatter)])
+
+    def _plot_weighted_boundary(self):
+        """Plots the parameterized boundary as a curve coloured by each
+        point's weight, so the emphasized region is visible at a glance.
+
+        Returns:
+            Holoviews overlay with the coloured boundary curve.
+        """
+        r = self.plasma_shape.param_r
+        z = self.plasma_shape.param_z
+        weights = self.plasma_shape.param_weights
+        n = len(r)
+
+        segments = []
+        for i in range(n):
+            j = (i + 1) % n
+            avg_weight = (weights[i] + weights[j]) / 2
+            segments.append((r[i], z[i], r[j], z[j], avg_weight))
+
+        curve = hv.Segments(segments, vdims="weight").opts(
+            color="weight",
+            cmap="viridis",
+            colorbar=True,
+            line_width=3,
+            show_legend=False,
+            colorbar_opts={"title": "Weight"},
+        )
+        return hv.Overlay([curve])
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")
     def _plot_coil_rectangles(self):
