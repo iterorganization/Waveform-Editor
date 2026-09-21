@@ -88,7 +88,15 @@ class YamlParser:
         if yaml_data.get("dd_version") is not None:
             header["dd_version"] = yaml_data["dd_version"]
         if yaml_data.get("input") is not None:
-            header["imports"] = dict(yaml_data["input"])
+            imports = dict(yaml_data["input"])
+            invalid = {
+                name: value
+                for name, value in imports.items()
+                if not isinstance(value, str) or not value.strip()
+            }
+            if invalid:
+                raise ValueError("Every entry under 'input:' must be an IMAS URI.")
+            header["imports"] = imports
         self.config.globals.set_globals(header)
 
         for group_name, group_content in (yaml_data.get("output") or {}).items():
@@ -188,6 +196,13 @@ class YamlParser:
                     "Waveform must either be a list of tendencies, a single constant "
                     "value (int/float), a copy ({copy: <import>}), or a derived "
                     "waveform (str)."
+                )
+            if isinstance(waveform, list) and any(
+                isinstance(entry, dict) and "user_copy" in entry for entry in waveform
+            ):
+                raise yaml.YAMLError(
+                    "A copy takes the whole waveform, so it cannot be one of a list "
+                    "of tendencies."
                 )
             line_number = waveform_yaml.get("line_number", 0)
             dd_version = self.config.globals.dd_version

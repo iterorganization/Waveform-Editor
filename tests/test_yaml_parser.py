@@ -3,6 +3,7 @@ from pytest import approx
 
 from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
@@ -176,6 +177,34 @@ def test_multiple_tendencies_is_not_constant_waveform(yaml_parser):
     assert not waveform.annotations
 
 
+def test_copy_is_a_whole_waveform(yaml_parser):
+    """A copy is the value of a waveform, not a tendency."""
+    waveform = yaml_parser.parse_waveform("waveform: {copy: scenario}")
+    assert isinstance(waveform, CopyWaveform)
+    assert waveform.ref == "scenario"
+    assert not yaml_parser.parse_errors
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "- {copy: scenario}",
+        "- {copy: scenario}\n- {type: linear, to: 5, duration: 10}",
+        "- {type: linear, to: 5, duration: 10}\n- {copy: scenario}",
+    ],
+)
+def test_copy_in_a_tendency_list_is_rejected(yaml_parser, value):
+    """A copy listed among tendencies must not pass silently.
+
+    Its type would otherwise be inferred from the keys it doesn't have, turning it
+    into a linear ramp and dropping the copy without saying so.
+    """
+    waveform = yaml_parser.parse_waveform(f"waveform:\n{value}")
+    assert yaml_parser.parse_errors
+    assert "copy" in yaml_parser.parse_errors[0]
+    assert not waveform.tendencies
+
+
 def test_bare_expression_is_evaluated_not_treated_as_constant(yaml_parser):
     """A bare arithmetic expression (no quotes, no dependencies) must be evaluated as
     a derived waveform, not treated as a literal constant string."""
@@ -266,6 +295,27 @@ def test_load_yaml_globals_invalid_imports(yaml_parser):
     """
     with pytest.raises(ValueError):
         yaml_parser.load_yaml(yaml_str)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "{port: equilibrium_in}",
+        "{uri: imas:hdf5?path=test}",
+        "42",
+        "[a, b]",
+        "",
+        "''",
+    ],
+)
+def test_load_yaml_import_must_be_a_uri(yaml_parser, value):
+    """An import that is not a URI is rejected where it is written.
+
+    It would otherwise only be noticed once something tried to open it, far from the
+    line that is wrong.
+    """
+    with pytest.raises(ValueError, match="must be an IMAS URI"):
+        yaml_parser.load_yaml(f"input:\n  scenario: {value}\n")
 
 
 def test_load_yaml_globals_dd_version_only(yaml_parser, config):
