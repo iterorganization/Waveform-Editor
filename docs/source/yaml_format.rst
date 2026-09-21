@@ -155,40 +155,12 @@ A waveform can take its value from an external IMAS data entry declared under
      shape:
        equilibrium/time_slice/boundary/outline/r: {copy: scenario}
        equilibrium/time_slice/boundary/outline/z: {copy: scenario}
-
-This reads the waveform's own path (``equilibrium/time_slice/boundary/outline/r`` in
-the example above) out of the ``scenario`` entry.
-
-*   If the source's data is a single value per time step (e.g. a scalar global
-    quantity, or an array indexed by its own time base), the copy behaves like any
-    other waveform: it can be plotted and used in expressions, and is resampled onto
-    the export time base (taking the closest source time point to each entry):
-
-    .. code-block:: yaml
-
+     coil_current:
        pf_active/coil(1)/current/data: {copy: scenario}
+     wall:
+       wall/description_2d(:)/limiter/unit(:)/outline/r: {copy: machine}
+       wall/description_2d(:)/limiter/unit(:)/outline/z: {copy: machine}
 
-*   Anything larger -- a profile, a per-slice array, or other static/structural data
-    such as machine geometry -- is copied straight into the target IDS on export
-    instead, and cannot be previewed as a curve. A slice (``(:)``) expands against the
-    source, so each element is copied on its own:
-
-    .. code-block:: yaml
-
-       input:
-         machine: imas:hdf5?path=my_machine_description
-
-       output:
-         wall:
-           wall/description_2d(:)/limiter/unit(:)/outline/r: {copy: machine}
-           wall/description_2d(:)/limiter/unit(:)/outline/z: {copy: machine}
-
-*   ``path:`` reads a different path than the waveform's own name from the source,
-    for a waveform whose name isn't itself a DD path:
-
-    .. code-block:: yaml
-
-       my_local_ip: {copy: scenario, path: equilibrium/time_slice/global_quantities/ip}
 
 Slice Notation
 --------------

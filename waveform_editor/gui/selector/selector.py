@@ -18,13 +18,9 @@ class WaveformSelector(Viewer):
         doc="Allow selecting multiple waveforms",
         allow_refs=True,
     )
-    only_visualizable = param.Boolean(
+    disable_unplottable = param.Boolean(
         False,
-        doc=(
-            "Disable waveforms that cannot be plotted (a structural copy -- a "
-            "profile, per-slice array, or other non-0D node). Only meaningful in "
-            "the View tab: the Edit tab still needs to be able to open one."
-        ),
+        doc="Grey out waveforms that have no curve to show",
         allow_refs=True,
     )
 

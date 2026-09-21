@@ -182,7 +182,6 @@ class YamlParser:
                     yaml_str=yaml_str,
                     name=name,
                     config=self.config,
-                    dd_version=self.config.globals.dd_version,
                 )
             if not isinstance(waveform, (list, int, float, str)):
                 raise yaml.YAMLError(

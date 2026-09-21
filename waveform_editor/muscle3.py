@@ -17,11 +17,8 @@ logger = logging.getLogger(__name__)
 
 def _export_times(msg, input_port, dd_version):
     """The time base to evaluate the waveforms on, from the message on ``input_port``.
-
-    The actor takes one input and takes one thing from it: the root ``/time`` of a
-    homogeneous IDS. That may be a single time step or a whole trace; the rest of the
-    message is ignored. The port is named ``<ids>_in`` so the IDS can be deserialized --
-    its content plays no part beyond ``/time``.
+    The actor takes one input and takes the root ``/time`` of an IDS, which may be a
+    single time step or a whole trace. The rest of the message is ignored.
     """
     name = input_port.removesuffix("_in")
     factory = imas.IDSFactory(dd_version)
@@ -56,12 +53,6 @@ def _export_times(msg, input_port, dd_version):
 
 def waveform_actor():
     logger.info("Starting waveform actor")
-
-    # Ports are created by libmuscle from the yMMSL conduits, not named here.
-    # - Exactly one input port, named '<ids>_in'. Only the root /time of that message is
-    #   used: it is the time base the waveforms are evaluated on. Everything else the
-    #   design needs it reads itself, from the URIs in its `input:`.
-    # - Output port names must be '<ids>_out' or '<ids>'.
     instance = Instance(flags=InstanceFlags.KEEPS_NO_STATE_FOR_NEXT_USE)
 
     # Settings

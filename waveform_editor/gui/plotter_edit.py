@@ -9,10 +9,9 @@ from panel.viewable import Viewer
 from ruamel.yaml import YAML
 
 from waveform_editor.config_entry import ConfigEntry
-from waveform_editor.copy_waveform import CopyWaveform
-from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 from waveform_editor.util import State
+from waveform_editor.waveform import Waveform
 
 
 class PlotterEdit(Viewer):
@@ -60,7 +59,11 @@ class PlotterEdit(Viewer):
             return
         self.panel[:] = [self.pane]
 
-        if isinstance(self.plotted_waveform, (DerivedWaveform, CopyWaveform)):
+        if waveform is None:
+            self.pane.object = hv.Curve(([], []), self.xlabel, self.ylabel)
+            return
+
+        if not isinstance(waveform, Waveform):
             try:
                 self.pane.object = self.main_curve()
             except Exception as e:
@@ -68,7 +71,7 @@ class PlotterEdit(Viewer):
                 self.editor.alert_type = "danger"
             return
 
-        if self.plotted_waveform is None or not self.plotted_waveform.tendencies:
+        if not waveform.tendencies:
             self.pane.object = hv.Curve(([], []), self.xlabel, self.ylabel)
             return
 
@@ -116,11 +119,7 @@ class PlotterEdit(Viewer):
 
     def main_curve(self, **kwargs):
         """Return a curve representing the whole waveform"""
-        if isinstance(self.plotted_waveform, CopyWaveform):
-            values = self.plotted_waveform.read_curve()
-        else:
-            values = self.plotted_waveform.get_value()
-        return hv.Curve(values, self.xlabel, self.ylabel)
+        return hv.Curve(self.plotted_waveform.get_value(), self.xlabel, self.ylabel)
 
     def piecewise_click_and_drag(self, data):
         """Updates a piecewise linear tendency in the code editor YAML time/value data.

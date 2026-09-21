@@ -100,9 +100,7 @@ class WaveformEditorGui(param.Parameterized):
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
-        # Only the View tab needs a waveform to actually be plottable; the Edit tab
-        # must still be able to open a structural copy to change it.
-        self.selector.only_visualizable = allow_multiselect
+        self.selector.disable_unplottable = allow_multiselect
 
         main_content = WaveformContent(
             self.nav,

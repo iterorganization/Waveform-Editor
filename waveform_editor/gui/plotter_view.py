@@ -3,8 +3,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.copy_waveform import CopyWaveform
-
 
 class PlotterView(Viewer):
     """Class to plot multiple waveforms in view mode."""
@@ -51,13 +49,7 @@ class PlotterView(Viewer):
         if waveform is None:
             return hv.Curve(([], []), xlabel, ylabel)
 
-        if isinstance(waveform, CopyWaveform):
-            # A copy has no tendencies of its own to sample from -- show it on the
-            # source's native time base instead. Empty for a structural copy (a
-            # profile, per-slice array, ...): there is no single curve to show.
-            times, values = waveform.read_curve()
-        else:
-            times, values = waveform.get_value()
+        times, values = waveform.get_value()
 
         return hv.Curve((times, values), xlabel, ylabel, label=waveform.name)
 

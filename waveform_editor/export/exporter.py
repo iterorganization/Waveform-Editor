@@ -1,5 +1,5 @@
 import logging
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack
 from pathlib import Path
 
 import imas
@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
+from imas.util import get_full_path
 
 from waveform_editor.export.pcssp_exporter import PCSSPExporter
-from waveform_editor.ids_fill import fill_nodes, size_arrays
+from waveform_editor.util import expand
 from waveform_editor.waveform import ConstantWaveform
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ class ConfigurationExporter:
         self.progress = progress
         self.total_progress = None
         self.current_progress = None
+        # Data entries the copies read from, open for the duration of an export
+        self.dbentries = {}
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
         # times must be None, or in increasing order
@@ -71,7 +74,14 @@ class ConfigurationExporter:
         ids_map = self._get_ids_map()
         self.total_progress = sum(2 * len(waveforms) for waveforms in ids_map.values())
         self.current_progress = 0
-        with self._import_entries() as entry_for:
+        with ExitStack() as stack:
+            self.dbentries = {
+                ref: stack.enter_context(
+                    imas.DBEntry(uri, "r", dd_version=self.config.globals.dd_version)
+                )
+                for ref, uri in self.config.globals.imports.items()
+            }
+
             for ids_name, waveforms in ids_map.items():
                 logger.debug(f"Filling {ids_name}...")
                 ids = factory.new(ids_name)
@@ -80,26 +90,8 @@ class ConfigurationExporter:
                     imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
                 )
                 ids.time = self.times
-                self._fill_waveforms(ids, waveforms, entry_for)
+                self._fill_waveforms(ids, waveforms)
                 yield ids_name, ids
-
-    @contextmanager
-    def _import_entries(self):
-        """Open each import a copy reads from, once, for the duration of the export.
-
-        Yields a function mapping a copy to its open entry. Opening is by far the
-        expensive part of reading a source, so the entries stay open until the export
-        is done -- and are closed on the way out, whether it succeeded or not.
-        """
-        with ExitStack() as stack:
-            entries = {}
-
-            def entry_for(waveform):
-                if waveform.ref not in entries:
-                    entries[waveform.ref] = stack.enter_context(waveform.open())
-                return entries[waveform.ref]
-
-            yield entry_for
 
     def to_png(self, dir_path):
         """Export the waveforms to PNGs.
@@ -177,31 +169,18 @@ class ConfigurationExporter:
             ids_map.setdefault(ids, []).append(waveform)
         return ids_map
 
-    def _fill_waveforms(self, ids, waveforms, entry_for):
+    def _fill_waveforms(self, ids, waveforms):
         """Populates the given IDS object with waveform data.
-
-        Waveforms are written in the order they appear in the configuration, so where
-        two of them write the same node the later one wins -- ``coil(:)`` followed by
-        ``coil(4)`` means "every coil, except that one".
 
         Args:
             ids: The IDS to populate with waveform data.
             waveforms: A list of waveform objects to be filled into the IDS.
         """
-
-        # Evaluate every waveform once, before anything is written: sizing has to see
-        # all the paths up front so that a ':' slice expands against the final array
-        # sizes whatever order the waveforms appear in -- 'beam(:)/phase/angle'
-        # followed by 'beam(4)/power_launched/data' still fills the angle of all four.
+        # Ensure get_value is only called once per waveform
         values_per_waveform = []
 
         for waveform in waveforms:
-            if not waveform.is_time_trace:
-                # A structural copy sizes and fills itself, from its own source.
-                values_per_waveform.append(None)
-                self._increment_progress()
-                continue
-            logger.debug(f"Sizing for {waveform.name}...")
+            logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             if (
                 isinstance(waveform, ConstantWaveform)
@@ -211,23 +190,35 @@ class ConfigurationExporter:
             else:
                 _, values = waveform.get_value(self.times)
             values_per_waveform.append((path, values))
+            self._fill_nodes_recursively(ids, path, values, fill=False)
             self._increment_progress()
 
-        size_arrays(
-            ids,
-            [item[0] for item in values_per_waveform if item is not None],
-            len(self.times),
-        )
-
-        for waveform, precomputed in zip(waveforms, values_per_waveform, strict=True):
-            if not waveform.is_time_trace:
-                logger.debug(f"Copying {waveform.name} from '{waveform.ref}'...")
-                waveform.fill_into(ids, self.times, entry_for(waveform))
+        # NOTE: We perform two passes:
+        # - The first pass (above) resizes the necessary nodes without filling values.
+        # - The second pass (below) actually fills the nodes with their values.
+        #
+        # This two-pass process ensures correct handling of the following example, where
+        # 'beam(:)/phase/angle' is processed before 'beam(4)/power_launched/data'.
+        # Here, phase/angle should be filled for all 4 beams.
+        # However, certain niche cases involving multiple slices for different waveforms
+        # might still not be handled correctly.
+        for waveform, (path, values) in zip(
+            waveforms, values_per_waveform, strict=True
+        ):
+            logger.debug(f"Filling {waveform.name}...")
+            if waveform.is_time_trace:
+                self._fill_nodes_recursively(ids, path, values)
             else:
-                logger.debug(f"Filling {waveform.name}...")
-                path, values = precomputed
-                fill_nodes(ids, path, values)
+                self._fill_copy(ids, waveform)
             self._increment_progress()
+
+    def _fill_copy(self, ids, waveform):
+        """Copy a waveform's source node into ``ids``, reading from the import's
+        already-open data entry."""
+        source = waveform.resampled(self.dbentries[waveform.ref], self.times)
+        for node in expand(source, waveform.sub_path):
+            path = IDSPath(get_full_path(node))
+            self._fill_nodes_recursively(ids, path, node.value)
 
     def _increment_progress(self):
         """Increment the progress bar"""
@@ -235,3 +226,60 @@ class ConfigurationExporter:
             self.current_progress += 1
             # Maximum is is 90%, the last 10% must be set after exporting
             self.progress.value = int(90 * self.current_progress / self.total_progress)
+
+    def _fill_nodes_recursively(self, node, path, values, path_index=0, fill=True):
+        """Recursively fills nodes in the IDS based on the provided path and values.
+
+        Args:
+            node: The current IDS node.
+            path: The path to the node, as an IDSPath object.
+            values: The values to fill into the IDS node.
+            path_index: The current index of the path we are processing.
+            fill: Whether to fill the node with values.
+        """
+        if path_index == len(path.parts):
+            if fill:
+                node.value = values
+            return
+        part = path.parts[path_index]
+        index = path.indices[path_index]
+
+        node = node[part]
+        next_index = path_index + 1
+        if index is None:
+            if node.metadata.type.is_dynamic and part != path.parts[-1]:
+                if len(node) != len(values):
+                    node.resize(len(values), keep=True)
+                for item, value in zip(node, values, strict=True):
+                    self._fill_nodes_recursively(item, path, value, next_index, fill)
+            else:
+                self._fill_nodes_recursively(node, path, values, next_index, fill)
+        elif isinstance(index, slice):
+            start, stop = self._resize_slice(node, index)
+            for i in range(start, stop):
+                self._fill_nodes_recursively(node[i], path, values, next_index, fill)
+        else:
+            if len(node) <= index:
+                node.resize(index + 1, keep=True)
+            self._fill_nodes_recursively(node[index], path, values, next_index, fill)
+
+    def _resize_slice(self, ids_node, slice):
+        """Resizes slice and returns the start/stop values of the slice
+
+        Args:
+            ids_node: The current IDS node to slice.
+            slice: The slice for the IDS node.
+
+        Returns:
+            Tuple containing the start and stop values of the slice.
+        """
+        if slice.start is None and slice.stop is None:
+            start = 0
+            stop = len(ids_node) or 1
+        else:
+            start = slice.start if slice.start is not None else 0
+            stop = slice.stop if slice.stop is not None else len(ids_node) or start + 1
+        max_index = max(start, stop - 1)
+        if len(ids_node) <= max_index:
+            ids_node.resize(max_index + 1, keep=True)
+        return start, stop

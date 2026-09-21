@@ -11,7 +11,6 @@ from waveform_editor.gui.selector.options_button_row import OptionsButtonRow
 if TYPE_CHECKING:
     from waveform_editor.gui.selector.selector import WaveformSelector
 
-#: Always applied; per-button "can't be visualized" rules are appended after this.
 _BASE_STYLESHEET = "button {text-align: left!important;}"
 
 
@@ -50,7 +49,9 @@ class SelectionGroup(Viewer):
             )
             self.waveform_selector.param.watch(self.selector.on_select, "value")
             self.selector.param.watch(self.sync_waveforms, "selection")
-            self.selector.param.watch(self._update_disabled_style, "only_visualizable")
+            self.selector.param.watch(
+                self._update_disabled_style, "disable_unplottable"
+            )
             # Reactive expression which is True if there are waveforms in this group:
             self.has_waveforms = self.waveform_selector.param.options.rx.bool()
             self._update_disabled_style()
@@ -84,28 +85,14 @@ class SelectionGroup(Viewer):
         ]
         self._update_disabled_style()
 
-    def _disabled_names(self) -> set[str]:
-        """Waveform names in this group that cannot be plotted: a structural copy
-        (a profile, per-slice array, or other non-0D node), not a single time trace.
-        """
-        return {
-            name
-            for name, waveform in self.group.waveforms.items()
-            if not waveform.is_time_trace
-        }
-
     def _update_disabled_style(self, event=None):
-        """Grey out and block clicks on the buttons for waveforms that can't be
-        plotted, while the selector is restricted to visualizable ones (the View
-        tab) -- CheckButtonGroup has no per-option disable, so this is done with a
-        stylesheet targeting specific button positions instead."""
-        if not self.selector.only_visualizable:
+        """Grey out the buttons for waveforms that can't be plotted"""
+        if not self.selector.disable_unplottable:
             self.waveform_selector.stylesheets = [_BASE_STYLESHEET]
             return
-        disabled = self._disabled_names()
         rules = [_BASE_STYLESHEET]
         for i, name in enumerate(self.waveform_selector.options):
-            if name in disabled:
+            if not self.group.waveforms[name].is_time_trace:
                 rules.append(
                     f"button:nth-of-type({i + 1}) "
                     "{ opacity: 0.35; pointer-events: none; }"
@@ -166,13 +153,10 @@ class SelectionGroup(Viewer):
         self.waveform_selector.value = []
 
     def select_all(self, event=None) -> None:
-        """Select all waveforms (excluding ones that can't be visualized, while that
-        restriction is active -- otherwise "Select All" would silently select
-        something the button styling says is disabled)."""
+        """Select all waveforms, excluding ones that can't be visualized"""
         options = list(self.waveform_selector.options)
-        if self.selector.only_visualizable:
-            disabled = self._disabled_names()
-            options = [o for o in options if o not in disabled]
+        if self.selector.disable_unplottable:
+            options = [o for o in options if self.group.waveforms[o].is_time_trace]
         self.waveform_selector.value = options
 
     def __panel__(self):
