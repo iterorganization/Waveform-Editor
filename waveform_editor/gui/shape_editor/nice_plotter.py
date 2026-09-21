@@ -69,7 +69,8 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._shape_plotters = {
             self.plasma_shape.GAP_INPUT: self._plot_gaps,
-            self.plasma_shape.WEIGHTED_POINTS_INPUT: self._plot_weighted_points,
+            self.plasma_shape.WEIGHTED_POINTS_INPUT: self._plot_points_scatter,
+            self.plasma_shape.CROSS_INPUT: self._plot_points_scatter,
         }
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
@@ -119,13 +120,20 @@ class NicePlotter(Viewer):
         ):
             return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
-        r = self.plasma_shape.outline_r
-        z = self.plasma_shape.outline_z
+        r = self.plasma_shape.base_r
+        z = self.plasma_shape.base_z
 
         plotter = self._shape_plotters.get(
             self.plasma_shape.input_mode, self._plot_outline_shape
         )
-        return plotter(r, z)
+        overlay = plotter(r, z) if r and z else hv.Overlay([])
+
+        extra_r = self.plasma_shape.extra_r
+        extra_z = self.plasma_shape.extra_z
+        if extra_r and extra_z:
+            overlay = overlay * self._plot_extra_points(extra_r, extra_z)
+
+        return overlay
 
     def _plot_outline_shape(self, r, z):
         """Plots closed plasma outline curve.
@@ -167,8 +175,8 @@ class NicePlotter(Viewer):
             )
         return hv.Overlay(plot_elements)
 
-    def _plot_weighted_points(self, r, z):
-        """Plots weighted points as scatterplot.
+    def _plot_points_scatter(self, r, z):
+        """Plots boundary points as scatterplot.
 
         Args:
             r: Radial coordinates of the points.
@@ -178,6 +186,21 @@ class NicePlotter(Viewer):
             Holoviews overlay with scatter plot of the points.
         """
         scatter = hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")
+        return hv.Overlay([_no_hover(scatter)])
+
+    def _plot_extra_points(self, r, z):
+        """Plots additive overlay points (extra weighted/cross points layered on
+        top of another mode's boundary) in a distinct style, so they read as
+        extra constraints rather than the primary boundary.
+
+        Args:
+            r: Radial coordinates of the points.
+            z: Height coordinates of the points.
+
+        Returns:
+            Holoviews overlay with scatter plot of the points.
+        """
+        scatter = hv.Scatter((r, z)).opts(color="orange", size=9, marker="x")
         return hv.Overlay([_no_hover(scatter)])
 
     @pn.depends("pf_active", "show_coils", "communicator.pf_active")

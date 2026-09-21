@@ -13,6 +13,7 @@ from waveform_editor.gui.util import (
 )
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
+    compute_cross_points,
     compute_outline_from_params,
     update_outline_from_gaps,
 )
@@ -67,6 +68,54 @@ class PlasmaShapeParams(Viewer):
             _group("Shape coefficients", "kappa", "delta"),
             _group("X point", "rx", "zx"),
             _group("Boundary", "n_desired_bnd_points"),
+            margin=(10, 20, 0, 20),
+            max_width=800,
+        )
+
+
+class CrossPointsParams(Viewer):
+    """Helper class containing parameters to define a cross-shaped pattern of
+    points, e.g. to tightly constrain the plasma boundary near the X-point."""
+
+    center_r = param.Number(
+        default=5.089, step=0.01, softbounds=[4.5, 6], label="Cross centre radius"
+    )
+    center_z = param.Number(
+        default=-3.346, step=0.01, softbounds=[-4, -2], label="Cross centre height"
+    )
+    rotation = param.Number(
+        default=0, step=1, softbounds=[0, 360], label="Rotation [deg]"
+    )
+    length = param.Number(
+        default=0.1, step=0.01, softbounds=[0.01, 1], label="Arm length [m]"
+    )
+    n_points = param.Integer(
+        default=8, softbounds=[4, 40], label="Number of points"
+    )
+
+    def __panel__(self):
+        def _slider(n):
+            p = getattr(self.param, n)
+            if isinstance(self.param[n], param.Integer):
+                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
+            return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
+
+        def _group(title, *param_names):
+            return pn.Column(
+                pn.pane.HTML(
+                    f"<b>{title}</b>"
+                    "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
+                    margin=(0, 0, 0, 0),
+                ),
+                *[_slider(n) for n in param_names],
+                css_classes=["property-card"],
+                stylesheets=[CARD_CSS],
+                margin=(0, 0, 8, 0),
+            )
+
+        return pn.Column(
+            _group("Cross centre", "center_r", "center_z"),
+            _group("Cross geometry", "rotation", "length", "n_points"),
             margin=(10, 20, 0, 20),
             max_width=800,
         )
@@ -222,6 +271,7 @@ class PlasmaShape(Viewer):
     EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
     GAP_INPUT = "Equilibrium IDS Gaps"
     WEIGHTED_POINTS_INPUT = "Weighted Points"
+    CROSS_INPUT = "Cross Points"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
         objects=[
@@ -229,8 +279,15 @@ class PlasmaShape(Viewer):
             PARAMETERIZED_INPUT,
             GAP_INPUT,
             WEIGHTED_POINTS_INPUT,
+            CROSS_INPUT,
         ],
         label="Shape input mode",
+    )
+    add_weighted_points = param.Boolean(
+        default=False, label="Add extra weighted points"
+    )
+    add_cross_points = param.Boolean(
+        default=False, label="Add cross points near X-point"
     )
     input_outline = param.ClassSelector(
         class_=EquilibriumInput, default=EquilibriumInput()
@@ -240,6 +297,9 @@ class PlasmaShape(Viewer):
     )
     weighted_points_table = param.ClassSelector(
         class_=WeightedPointsTable, default=WeightedPointsTable()
+    )
+    cross_points_params = param.ClassSelector(
+        class_=CrossPointsParams, default=CrossPointsParams()
     )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
@@ -287,6 +347,10 @@ class PlasmaShape(Viewer):
                     self.weighted_points_table, self.weighted_points_indicator
                 ),
             ),
+            self.CROSS_INPUT: (
+                self._load_shape_from_cross_points,
+                lambda: self.cross_points_params,
+            ),
         }
         self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioButtonGroup(
@@ -295,6 +359,7 @@ class PlasmaShape(Viewer):
                 "Parameterized": self.PARAMETERIZED_INPUT,
                 "Equilibrium\nIDS Gaps": self.GAP_INPUT,
                 "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
+                "Cross\nPoints": self.CROSS_INPUT,
             },
             value=self.input_mode,
             button_type="primary",
@@ -304,17 +369,56 @@ class PlasmaShape(Viewer):
             stylesheets=[CARD_CSS],
         )
         self.radio_box.link(self, value="input_mode", bidirectional=True)
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
+        self.add_weighted_points_checkbox = pn.widgets.Checkbox.from_param(
+            self.param.add_weighted_points,
+            disabled=self.param.input_mode.rx() == self.WEIGHTED_POINTS_INPUT,
+        )
+        self.add_cross_points_checkbox = pn.widgets.Checkbox.from_param(
+            self.param.add_cross_points,
+            disabled=self.param.input_mode.rx() == self.CROSS_INPUT,
+        )
+        self.overlay_toggle_row = pn.Row(
+            self.add_weighted_points_checkbox,
+            self.add_cross_points_checkbox,
+            margin=(10, 20, 0, 20),
+        )
+        self.panel = pn.Column(
+            self.radio_box,
+            self._panel_shape_options,
+            self.gap_ui,
+            self.overlay_toggle_row,
+            self._panel_weighted_overlay,
+            self._panel_cross_overlay,
+        )
         self.outline_r = None
         self.outline_z = None
+        self.base_r = None
+        self.base_z = None
+        self.extra_r = None
+        self.extra_z = None
         self.gaps = []
+
+    @param.depends("input_mode", watch=True)
+    def _reset_redundant_overlays(self):
+        """Disabling isn't enough on its own: a flag flipped on while a
+        different mode was active could otherwise stay stuck 'on' (just
+        disabled) after switching to that same mode, which would make the
+        overlay panel and the primary mode panel try to mount the same
+        widget at once."""
+        if self.input_mode == self.WEIGHTED_POINTS_INPUT:
+            self.add_weighted_points = False
+        elif self.input_mode == self.CROSS_INPUT:
+            self.add_cross_points = False
 
     @pn.depends(
         "shape_params.param",
         "input_outline.param",
         "input_gaps.param",
         "weighted_points_table.param",
+        "cross_points_params.param",
         "input_mode",
+        "add_weighted_points",
+        "add_cross_points",
         watch=True,
     )
     def _set_plasma_shape(self):
@@ -324,12 +428,73 @@ class PlasmaShape(Viewer):
 
         loader, _ = self._mode_config[self.input_mode]
         loader()
+        self._finalize_outline()
 
         if self.outline_r and self.outline_z:
             self.has_shape = True
         else:
             self.has_shape = False
         self.param.trigger("shape_updated")
+
+    def _finalize_outline(self):
+        """Capture the primary mode's outline as the base shape, then append
+        any enabled additive overlay points (weighted/cross) on top of it.
+
+        This lets e.g. cross points near the X-point tighten a boundary
+        that's already fully described by another mode (Parameterized, Gaps,
+        ...), instead of replacing that boundary outright.
+        """
+        self.base_r, self.base_z = self.outline_r, self.outline_z
+        self.extra_r = self.extra_z = None
+
+        extra_r, extra_z = [], []
+        if self.add_weighted_points and self.input_mode != self.WEIGHTED_POINTS_INPUT:
+            wr, wz = self.weighted_points_table.get_outline_coordinates()
+            if wr:
+                extra_r += wr
+                extra_z += wz
+        if self.add_cross_points and self.input_mode != self.CROSS_INPUT:
+            p = self.cross_points_params
+            cr, cz = compute_cross_points(
+                center_r=p.center_r,
+                center_z=p.center_z,
+                rotation=p.rotation,
+                length=p.length,
+                n_points=p.n_points,
+            )
+            extra_r += cr
+            extra_z += cz
+
+        if not extra_r:
+            return
+
+        self.extra_r, self.extra_z = extra_r, extra_z
+        self.outline_r = list(self.base_r or []) + extra_r
+        self.outline_z = list(self.base_z or []) + extra_z
+
+    @param.depends("add_weighted_points", "input_mode")
+    def _panel_weighted_overlay(self):
+        if self.add_weighted_points and self.input_mode != self.WEIGHTED_POINTS_INPUT:
+            return pn.Column(
+                pn.pane.HTML(
+                    "<b>Extra weighted points</b> (added to the boundary above)"
+                ),
+                self.weighted_points_table,
+                margin=(0, 20, 0, 20),
+            )
+        return pn.Row()
+
+    @param.depends("add_cross_points", "input_mode")
+    def _panel_cross_overlay(self):
+        if self.add_cross_points and self.input_mode != self.CROSS_INPUT:
+            return pn.Column(
+                pn.pane.HTML(
+                    "<b>Extra cross points</b> (added to the boundary above)"
+                ),
+                self.cross_points_params,
+                margin=(0, 20, 0, 20),
+            )
+        return pn.Row()
 
     def _load_shape_from_ids(self):
         """Load plasma boundary outline from IDS equilibrium input."""
@@ -395,6 +560,7 @@ class PlasmaShape(Viewer):
         for i, value_widget in enumerate(self.gap_ui):
             self.gaps[i].value = value_widget.value
         self._update_outline_from_gaps()
+        self._finalize_outline()
         self.param.trigger("shape_updated")
 
     def _create_gap_ui(self):
@@ -422,6 +588,17 @@ class PlasmaShape(Viewer):
         """Load plasma boundary outline from weighted points."""
         self.outline_r, self.outline_z = (
             self.weighted_points_table.get_outline_coordinates()
+        )
+
+    def _load_shape_from_cross_points(self):
+        """Load plasma boundary points from a cross pattern near the X-point."""
+        p = self.cross_points_params
+        self.outline_r, self.outline_z = compute_cross_points(
+            center_r=p.center_r,
+            center_z=p.center_z,
+            rotation=p.rotation,
+            length=p.length,
+            n_points=p.n_points,
         )
 
     def _load_shape_from_params(self):

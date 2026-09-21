@@ -97,6 +97,40 @@ def compute_outline_from_params(
     return [p[0] for p in points], [p[1] for p in points]
 
 
+def compute_cross_points(center_r, center_z, rotation, length, n_points):
+    """Compute a cross-shaped pattern of points, e.g. for constraining the
+    plasma boundary tightly near the X-point.
+
+    Args:
+        center_r: Major radius of the cross centre.
+        center_z: Height of the cross centre.
+        rotation: Rotation of the cross, in degrees.
+        length: Half-length of each arm, i.e. the distance from the centre
+            to each arm's tip, in metres.
+        n_points: Total number of points, spread evenly over the 4 arms.
+
+    Returns:
+        Tuple of (r, z) coordinate lists.
+    """
+    if n_points < 4:
+        raise ValueError("n_points must be at least 4 to form a cross")
+
+    theta = math.radians(rotation)
+    arm1 = (math.cos(theta), math.sin(theta))
+    arm2 = (-math.sin(theta), math.cos(theta))
+    directions = [arm1, (-arm1[0], -arm1[1]), arm2, (-arm2[0], -arm2[1])]
+
+    base_per_arm, remainder = divmod(n_points, 4)
+    points = []
+    for i, (dr, dz) in enumerate(directions):
+        n_this_arm = base_per_arm + (1 if i < remainder else 0)
+        for j in range(n_this_arm):
+            dist = (j + 1) / n_this_arm * length
+            points.append((center_r + dist * dr, center_z + dist * dz))
+
+    return [p[0] for p in points], [p[1] for p in points]
+
+
 def update_outline_from_gaps(gaps):
     """Compute outline coordinates from a list of Gap objects.
 
