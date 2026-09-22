@@ -21,6 +21,11 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 logger = logging.getLogger(__name__)
 
 
+# NICE reads the desired boundary into an array of this fixed size
+# (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
+MAX_BOUNDARY_POINTS = 5000
+
+
 def _reactive_title(title, is_valid):
     return title if is_valid else f"{title} ⚠️"
 
@@ -319,9 +324,32 @@ class ShapeEditor(Viewer):
                 "NICE did not converge. Check the terminal for details."
             )
 
+    def _has_valid_boundary(self):
+        """Check that the desired boundary fits in the fixed size array NICE reads it
+        into. NICE does not check this itself, and writing past it crashes it.
+
+        Returns:
+            True if the boundary can be passed to NICE, False otherwise.
+        """
+        outline = self.plasma_shape.outline_r
+        if not self.nice_settings.is_inverse_mode or outline is None:
+            return True
+        if len(outline) <= MAX_BOUNDARY_POINTS:
+            return True
+
+        pn.state.notifications.error(
+            f"The plasma boundary has {len(outline)} points, more than the "
+            f"{MAX_BOUNDARY_POINTS} NICE accepts. Weighted points are repeated in the "
+            "boundary, so lower the max weight or the spread."
+        )
+        return False
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
+
+        if not self._has_valid_boundary():
+            return
 
         self.coil_currents.fill_pf_active(self.pf_active)
         if self.nice_settings.is_direct_mode:
