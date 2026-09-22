@@ -7,9 +7,11 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.settings import settings
 from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
+from waveform_editor.waveform import Waveform
 
 
 class CoilCurrentEntry(param.Parameterized):
@@ -281,10 +283,13 @@ class CoilCurrents(Viewer):
                 new_waveforms_created = True
             else:
                 waveform = config[name]
-                if isinstance(waveform, DerivedWaveform):
+                if isinstance(waveform, (DerivedWaveform, CopyWaveform)):
+                    kind = (
+                        "derived" if isinstance(waveform, DerivedWaveform) else "copied"
+                    )
                     pn.state.notifications.error(
                         f"Could not store coil current in waveform {name!r}, "
-                        "because it is a derived waveform"
+                        f"because it is a {kind} waveform"
                     )
                     continue
                 self._append_to_existing_waveform(config, name, current)
@@ -356,9 +361,9 @@ class CoilCurrents(Viewer):
         for i in range(len(self.coils)):
             name = f"pf_active/coil({i + 1})/current/data"
             if name in self.main_gui.config.waveform_map:
-                tendencies = self.main_gui.config[name].tendencies
-                if tendencies:
-                    end_time = tendencies[-1].end
+                waveform = self.main_gui.config[name]
+                if isinstance(waveform, Waveform) and waveform.tendencies:
+                    end_time = waveform.tendencies[-1].end
                     if latest_time is None or end_time > latest_time:
                         latest_time = end_time
 

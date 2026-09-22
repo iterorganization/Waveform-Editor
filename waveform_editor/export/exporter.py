@@ -1,4 +1,5 @@
 import logging
+from contextlib import ExitStack
 from pathlib import Path
 
 import imas
@@ -6,23 +7,24 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from imas.ids_path import IDSPath
+from imas.util import get_full_path
 
 from waveform_editor.export.pcssp_exporter import PCSSPExporter
+from waveform_editor.util import expand
 from waveform_editor.waveform import ConstantWaveform
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigurationExporter:
-    def __init__(self, config, times, progress=None, base_idss=None):
+    def __init__(self, config, times, progress=None):
         self.config = config
         self.times = times
         self.progress = progress
-        # {ids_name: IDS} bases to overlay the waveforms onto in place (preserving their
-        # other data), taking precedence over the machine description / an empty IDS.
-        self.base_idss = base_idss or {}
         self.total_progress = None
         self.current_progress = None
+        # Data entries the copies read from, open for the duration of an export
+        self.dbentries = {}
         # We assume that all DD times are in seconds
         self.times_label = "Time [s]"
         # times must be None, or in increasing order
@@ -70,36 +72,26 @@ class ConfigurationExporter:
             factory: IDSFactory to use for creating new IDSs
         """
         ids_map = self._get_ids_map()
-        # An overlay base with no waveforms in the config is never filled nor yielded.
-        for ids_name in self.base_idss.keys() - ids_map.keys():
-            logger.warning(
-                f"overlay base '{ids_name}' has no waveforms in the config, "
-                f"so it is not exported."
-            )
         self.total_progress = sum(2 * len(waveforms) for waveforms in ids_map.values())
         self.current_progress = 0
-        for ids_name, waveforms in ids_map.items():
-            logger.debug(f"Filling {ids_name}...")
-            ids = self._base_ids(ids_name, factory)
-            # TODO: currently only IDSs with homogeneous time mode are supported
-            ids.ids_properties.homogeneous_time = (
-                imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
-            )
-            ids.time = self.times
-            self._fill_waveforms(ids, waveforms)
-            yield ids_name, ids
+        with ExitStack() as stack:
+            self.dbentries = {
+                ref: stack.enter_context(
+                    imas.DBEntry(uri, "r", dd_version=self.config.globals.dd_version)
+                )
+                for ref, uri in self.config.globals.imports.items()
+            }
 
-    def _base_ids(self, ids_name, factory):
-        """The IDS to fill the waveforms onto: a caller-provided base, else the machine
-        description, else a new empty IDS."""
-        if ids_name in self.base_idss:
-            return self.base_idss[ids_name]
-        md = self.config.globals.machine_description.get(ids_name)
-        if md:
-            with imas.DBEntry(md, "r") as entry_md:
-                orig_ids = entry_md.get(ids_name, autoconvert=False)
-                return imas.convert_ids(orig_ids, self.config.globals.dd_version)
-        return factory.new(ids_name)
+            for ids_name, waveforms in ids_map.items():
+                logger.debug(f"Filling {ids_name}...")
+                ids = factory.new(ids_name)
+                # TODO: currently only IDSs with homogeneous time mode are supported
+                ids.ids_properties.homogeneous_time = (
+                    imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+                )
+                ids.time = self.times
+                self._fill_waveforms(ids, waveforms)
+                yield ids_name, ids
 
     def to_png(self, dir_path):
         """Export the waveforms to PNGs.
@@ -187,10 +179,7 @@ class ConfigurationExporter:
         # Ensure get_value is only called once per waveform
         values_per_waveform = []
 
-        # We iterate through the waveforms in reverse order because they are typically
-        # ordered with increasing indices. By processing them in reverse, we avoid
-        # unnecessary repeated resizing.
-        for waveform in reversed(waveforms):
+        for waveform in waveforms:
             logger.debug(f"Filling {waveform.name}...")
             path = IDSPath("/".join(waveform.name.split("/")[1:]))
             if (
@@ -217,8 +206,19 @@ class ConfigurationExporter:
             waveforms, values_per_waveform, strict=True
         ):
             logger.debug(f"Filling {waveform.name}...")
-            self._fill_nodes_recursively(ids, path, values)
+            if waveform.is_time_trace:
+                self._fill_nodes_recursively(ids, path, values)
+            else:
+                self._fill_copy(ids, waveform)
             self._increment_progress()
+
+    def _fill_copy(self, ids, waveform):
+        """Copy a waveform's source node into ``ids``, reading from the import's
+        already-open data entry."""
+        source = waveform.resampled(self.dbentries[waveform.ref], self.times)
+        for node in expand(source, waveform.sub_path):
+            path = IDSPath(get_full_path(node))
+            self._fill_nodes_recursively(ids, path, node.value)
 
     def _increment_progress(self):
         """Increment the progress bar"""
@@ -251,17 +251,17 @@ class ConfigurationExporter:
                 if len(node) != len(values):
                     node.resize(len(values), keep=True)
                 for item, value in zip(node, values, strict=True):
-                    self._fill_nodes_recursively(item, path, value, next_index)
+                    self._fill_nodes_recursively(item, path, value, next_index, fill)
             else:
-                self._fill_nodes_recursively(node, path, values, next_index)
+                self._fill_nodes_recursively(node, path, values, next_index, fill)
         elif isinstance(index, slice):
             start, stop = self._resize_slice(node, index)
             for i in range(start, stop):
-                self._fill_nodes_recursively(node[i], path, values, next_index)
+                self._fill_nodes_recursively(node[i], path, values, next_index, fill)
         else:
             if len(node) <= index:
                 node.resize(index + 1, keep=True)
-            self._fill_nodes_recursively(node[index], path, values, next_index)
+            self._fill_nodes_recursively(node[index], path, values, next_index, fill)
 
     def _resize_slice(self, ids_node, slice):
         """Resizes slice and returns the start/stop values of the slice
