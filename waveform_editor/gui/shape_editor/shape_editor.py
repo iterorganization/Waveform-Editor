@@ -328,7 +328,7 @@ class ShapeEditor(Viewer):
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
-            self.coil_currents.update_fixed_coils_in_xml(xml_params)
+            self.coil_currents.update_xml(xml_params)
 
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)

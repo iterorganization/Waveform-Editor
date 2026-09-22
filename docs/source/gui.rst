@@ -360,14 +360,25 @@ for the Grad–Shafranov equation." (2014) <https://inria.hal.science/hal-010887
 
 Coil Currents
 """""""""""""
-This allows you to view and control the currents in the coils defined in the `pf_active` IDS. 
-Its behavior changes depending on the operating mode:
+This shows the coils defined in the `pf_active` IDS in a table, one row per coil. The
+**Coil current [A]** cell is editable, and **Previous current [A]** shows the current
+that went into the previous run. **Current limit [A]** is taken from the machine
+description, the row will be highlighted if the coil current surpasses the allowed 
+current limit. 
 
-* In **Inverse Mode**, each coil has a checkbox and a slider. If you check the box next 
-  to a coil, its current is fixed to the value set by the slider. Unchecked coils are 
-  free to change and their currents will be calculated by NICE. After a successful run 
-  in Inverse Mode, the sliders will be updated to show the calculated currents.
-* In **Direct Mode**, the sliders for all coils are enabled. You must use these sliders to provide the input current for every coil.
+In **Inverse Mode**, each coil has a **Fix** checkbox. If you check it, the coil's
+current is fixed to the value in its cell. Unchecked coils are free to change and
+their currents will be calculated by NICE, starting from the value in the cell. After
+a successful run, the table is updated to show the calculated currents.
+
+Additionally, two more columns control how NICE penalizes the free coil currents:
+
+* **Penalize to 0**: by default a coil is penalized towards the current it was loaded
+  with, so NICE stays close to that current. Check this box to penalize it towards 0
+  instead.
+* **Penalty weight**: scales how far this coil's current may stray from what it is
+  penalized towards. The default is 1. A value below 1 holds the current closer, a
+  value above 1 lets it drift further.
 
 You can save the coil currents to waveforms at a chosen export time. The coil current
 values will be stored in a :ref:`piecewise-linear-tendency` at the end of the
