@@ -68,7 +68,6 @@ class PlasmaShapeParams(Viewer):
             _group("X point", "rx", "zx"),
             _group("Boundary", "n_desired_bnd_points"),
             margin=(10, 20, 0, 20),
-            max_width=800,
         )
 
 
@@ -299,7 +298,6 @@ class PlasmaShape(Viewer):
             value=self.input_mode,
             button_type="primary",
             sizing_mode="stretch_width",
-            max_width=800,
             margin=(15, 20, 0, 20),
             stylesheets=[CARD_CSS],
         )
@@ -411,7 +409,7 @@ class PlasmaShape(Viewer):
                 start=0,
                 end=1,
                 step=0.01,
-                width=450,
+                sizing_mode="stretch_width",
             )
             value_input.param.watch(self._on_gap_change, "value")
             new_gap_ui.append(value_input)

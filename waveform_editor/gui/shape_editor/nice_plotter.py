@@ -54,17 +54,26 @@ class NicePlotter(Viewer):
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
-    WIDTH = 800
-    HEIGHT = 1000
+    # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
+    R_RANGE = (0, 13)
+    Z_RANGE = (-10, 10)
+    FRAME_HEIGHT = 700
+    FRAME_WIDTH = round(
+        FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
+    )
 
     def __init__(self, **params):
         super().__init__(**params)
         self.DEFAULT_OPTS = hv.opts.Overlay(
-            xlim=(0, 13),
-            ylim=(-10, 10),
-            title="Equilibrium poloidal flux",
+            xlim=self.R_RANGE,
+            ylim=self.Z_RANGE,
+            frame_width=self.FRAME_WIDTH,
+            frame_height=self.FRAME_HEIGHT,
+            title="",
             xlabel="r [m]",
             ylabel="z [m]",
+            fontsize={"labels": 15, "ticks": 11, "legend": 12},
+            legend_position="top_left",
         )
         self.nice_settings = settings.nice
         self._shape_plotters = {
@@ -93,8 +102,6 @@ class NicePlotter(Viewer):
         )
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
-            width=self.WIDTH,
-            height=self.HEIGHT,
             loading=self.communicator.param.processing,
         )
 
@@ -141,7 +148,8 @@ class NicePlotter(Viewer):
             r = np.append(r, r[0])
             z = np.append(z, z[0])
 
-        return hv.Overlay([hv.Curve((r, z)).opts(self.DESIRED_SHAPE_OPTS)])
+        curve = hv.Curve((r, z), label="Desired boundary")
+        return hv.Overlay([curve.opts(self.DESIRED_SHAPE_OPTS)])
 
     def _plot_gaps(self, r, z):
         """Plots the reference point, value and the desired boundary point of the gaps.
@@ -307,18 +315,18 @@ class NicePlotter(Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_separatrix or equilibrium is None:
-            r = z = []
+            separatrix = hv.Curve(([], []))
             contour = hv.Contours(([0], [0], 0), vdims="psi")
         else:
             r = equilibrium.time_slice[0].boundary.outline.r
             z = equilibrium.time_slice[0].boundary.outline.z
+            separatrix = hv.Curve((r, z), label="Resulting boundary")
 
             boundary_psi = equilibrium.time_slice[0].boundary.psi
             contour = self._calc_contours(equilibrium, [boundary_psi])
-        return hv.Curve((r, z)).opts(
+        return separatrix.opts(
             color="red",
             line_width=4,
-            show_legend=False,
             hover_tooltips=[("", "Separatrix")],
         ) * contour.opts(self.CONTOUR_OPTS)
 
