@@ -41,12 +41,20 @@ pn.extension(
     notifications=True,
     exception_handler=exception_handler,
 )
+# Without this, a stretching child silently widens its parent, which stretches the
+# shape editor's plot
+pn.config.respect_explicit_sizing = True
 
 
 class WaveformEditorGui(param.Parameterized):
     VIEW_WAVEFORMS_TAB = 0
     EDIT_WAVEFORMS_TAB = 1
 
+    EXIT_MESSAGE = (
+        "# **⚠️ Warning**  \nClosing the waveform editor will shut down its server. "
+        "Any unsaved changes will be lost."
+        "   \n\n**Are you sure you want to continue?**"
+    )
     DISCARD_CHANGES_MESSAGE = (
         "# **⚠️ Warning**  \nYou did not create a valid waveform. "
         "Leaving now will discard any changes you made to this waveform."
@@ -99,6 +107,15 @@ class WaveformEditorGui(param.Parameterized):
             button_type="light",
             button_style="outline",
         )
+        self.exit_button = pn.widgets.ButtonIcon(
+            icon="power",
+            description="Close the application",
+            size="30px",
+            margin=(0, 20, 2, 10),
+            stylesheets=[":host, .ti { color: white; }"],
+            on_click=self.exit,
+        )
+
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
@@ -107,20 +124,39 @@ class WaveformEditorGui(param.Parameterized):
             self.nav,
             self.io_manager,
             self.selector,
-            self.confirm_modal,
-            self.rename_modal,
             self.tabs,
             shape_editor,
         )
 
+        self.main_column = pn.Column(
+            self.confirm_modal,
+            self.rename_modal,
+            main_content,
+            sizing_mode="stretch_both",
+        )
+
         # Combined UI:
         self.template = pn.template.FastListTemplate(
-            header=[self.nav],
-            main=[main_content],
+            header=[self.nav, pn.HSpacer(), self.exit_button],
+            main=[self.main_column],
             raw_css=STYLES,
         )
         # Disable throttling of busy indicator
         self.template.busy_indicator.throttle = 0
+
+    def exit(self, event=None):
+        """Close the editor, after asking the user to confirm."""
+        self.confirm_modal.show(self.EXIT_MESSAGE, on_confirm=self._shutdown)
+
+    def _shutdown(self):
+        """Stop the Panel server, so the process running the GUI exits."""
+        self.main_column[:] = [
+            pn.pane.Alert(
+                "The waveform editor has been closed. You can close this tab.",
+                alert_type="secondary",
+            )
+        ]
+        pn.state.curdoc.add_timeout_callback(pn.state.kill_all_servers, 500)
 
     def _confirm_or_update(self, leaving_editor):
         """Show discard-changes confirmation if needed, otherwise update selection.
