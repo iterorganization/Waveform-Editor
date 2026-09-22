@@ -8,12 +8,10 @@ PLASMA_EDITOR_PAGE = "Plasma Shape Editor"
 
 
 class WaveformContent(param.Parameterized):
-    def __init__(
-        self, nav, io_manager, selector, confirm_modal, rename_modal, tabs, shape_editor
-    ):
+    def __init__(self, nav, io_manager, selector, tabs, shape_editor):
         super().__init__()
 
-        sidebar = WaveformSidebar(io_manager, selector, confirm_modal, rename_modal)
+        sidebar = WaveformSidebar(io_manager, selector)
 
         is_waveform_page = pn.bind(lambda page: page == WAVEFORM_EDITOR_PAGE, nav)
         is_plasma_page = pn.bind(lambda page: page == PLASMA_EDITOR_PAGE, nav)

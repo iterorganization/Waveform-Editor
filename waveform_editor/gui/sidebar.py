@@ -5,7 +5,7 @@ import param
 class WaveformSidebar(param.Parameterized):
     open = param.Boolean(default=True)
 
-    def __init__(self, io_manager, selector, confirm_modal, rename_modal):
+    def __init__(self, io_manager, selector):
         super().__init__()
 
         toggle_btn = pn.widgets.Button(
@@ -19,8 +19,6 @@ class WaveformSidebar(param.Parameterized):
         content = pn.Column(
             io_manager,
             selector,
-            confirm_modal,
-            rename_modal,
             sizing_mode="stretch_width",
             scroll=True,
             visible=self.param.open,
