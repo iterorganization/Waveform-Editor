@@ -62,7 +62,8 @@ class SettingsModal(Viewer):
             ),
             active_icon="settings-filled",
             description="Setting Menu",
-            size="30px",
+            size="24px",
+            margin=(15, 10, 2, 10),
             on_click=lambda event: modal.show(),
         )
         self.panel = pn.Row(button_icon, modal)
@@ -177,6 +178,12 @@ class SettingsModal(Viewer):
                 _form_row(
                     "Verbosity",
                     pn.Param(self.nice_settings.param.verbose, show_name=False),
+                ),
+                _form_row(
+                    "Linearized model",
+                    pn.widgets.Checkbox.from_param(
+                        self.nice_settings.param.linearized_model, name=""
+                    ),
                 ),
             ),
             sizing_mode="stretch_width",

@@ -44,8 +44,7 @@ class ShapeEditor(Viewer):
         self.terminal = pn.widgets.Terminal(
             sizing_mode="stretch_width",
             options={"scrollback": 10000, "wrap": True},
-            height=200,
-            max_width=750,
+            min_height=200,
         )
         self.communicator = NiceIntegration(
             self.factory,
@@ -130,7 +129,16 @@ class ShapeEditor(Viewer):
             margin=(5, 0, 2, 0),
         )
         settings_modal = SettingsModal(self.nice_plotter)
+        self.collapse_plot = pn.widgets.ToggleIcon(
+            icon="layout-sidebar-left-collapse",
+            active_icon="layout-sidebar-left-expand",
+            description="Collapse the plot to make room for the settings",
+            size="24px",
+            margin=(15, 10, 2, 10),
+        )
         buttons = pn.Row(
+            self.collapse_plot,
+            settings_modal,
             nice_mode_radio,
             pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
             warm_start_switch,
@@ -138,7 +146,6 @@ class ShapeEditor(Viewer):
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
-            max_width=800,
             sizing_mode="stretch_width",
             align="center",
         )
@@ -164,17 +171,13 @@ class ShapeEditor(Viewer):
             ),
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
-        header = pn.Row(
-            pn.HSpacer(),
-            settings_modal,
-            sizing_mode="stretch_width",
-        )
 
         left_col = pn.Column(
-            header,
             self.nice_plotter.flux_map_pane,
             self.metrics,
-            width=self.nice_plotter.flux_map_pane.width,
+            sizing_mode="stretch_height",
+            scroll=True,
+            visible=self.collapse_plot.param.value.rx.not_(),
         )
 
         self.panel = pn.Row(
@@ -183,7 +186,9 @@ class ShapeEditor(Viewer):
                 menu,
                 inputs,
                 sizing_mode="stretch_both",
+                scroll=True,
             ),
+            sizing_mode="stretch_both",
         )
 
     def _create_card(
@@ -205,7 +210,6 @@ class ShapeEditor(Viewer):
             panel_object,
             title=title,
             sizing_mode="stretch_width",
-            max_width=800,
             collapsed=collapsed,
             visible=visible,
         )
@@ -324,10 +328,15 @@ class ShapeEditor(Viewer):
             xml_params = self.xml_params_dir
         else:
             xml_params = self.xml_params_inv
-            self.coil_currents.update_fixed_coils_in_xml(xml_params)
+            self.coil_currents.update_xml(xml_params)
 
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
+        # NICE writes the linearized model (A, B, C matrices) as text files when
+        # outputForControl is set.
+        xml_params.find("outputForControl").text = (
+            "1" if self.nice_settings.linearized_model else "0"
+        )
 
         use_previous_equilibrium = (
             self.use_previous_run and self.communicator.can_warm_start

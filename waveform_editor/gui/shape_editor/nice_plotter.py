@@ -54,17 +54,25 @@ class NicePlotter(Viewer):
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
-    WIDTH = 800
-    HEIGHT = 1000
+    # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
+    R_RANGE = (0, 13)
+    Z_RANGE = (-10, 10)
+    FRAME_HEIGHT = 700
+    FRAME_WIDTH = round(
+        FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
+    )
 
     def __init__(self, **params):
         super().__init__(**params)
         self.DEFAULT_OPTS = hv.opts.Overlay(
-            xlim=(0, 13),
-            ylim=(-10, 10),
-            title="Equilibrium poloidal flux",
+            xlim=self.R_RANGE,
+            ylim=self.Z_RANGE,
+            frame_width=self.FRAME_WIDTH,
+            frame_height=self.FRAME_HEIGHT,
+            title="",
             xlabel="r [m]",
             ylabel="z [m]",
+            fontsize={"labels": 15, "ticks": 11},
         )
         self.nice_settings = settings.nice
         self._shape_plotters = {
@@ -93,8 +101,6 @@ class NicePlotter(Viewer):
         )
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
-            width=self.WIDTH,
-            height=self.HEIGHT,
             loading=self.communicator.param.processing,
         )
 
