@@ -97,7 +97,7 @@ class CoilCurrents(Viewer):
             self.PREV_CURRENT: None,
             self.CURRENT_LIMIT: None,
             self.PENALIZE_ZERO: None,
-            self.PENALTY_WEIGHT: {"type": "number"},
+            self.PENALTY_WEIGHT: {"type": "number", "step": 0.01},
         }
         formatters = {
             self.FIX_CURRENT: {"type": "tickCross"},
