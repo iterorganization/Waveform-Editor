@@ -62,7 +62,8 @@ class SettingsModal(Viewer):
             ),
             active_icon="settings-filled",
             description="Setting Menu",
-            size="30px",
+            size="24px",
+            margin=(15, 10, 2, 10),
             on_click=lambda event: modal.show(),
         )
         self.panel = pn.Row(button_icon, modal)

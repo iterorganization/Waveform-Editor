@@ -41,6 +41,9 @@ pn.extension(
     notifications=True,
     exception_handler=exception_handler,
 )
+# Without this, a stretching child silently widens its parent, which stretches the
+# shape editor's plot
+pn.config.respect_explicit_sizing = True
 
 
 class WaveformEditorGui(param.Parameterized):
