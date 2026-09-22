@@ -256,6 +256,7 @@
   <ct_profile_method>0</ct_profile_method>
   <ct_approx_n_by_triangle>5</ct_approx_n_by_triangle>
   <!-- control outputs, interpolated magaxis, xpoint, gaps  -->
+  <!-- Overwritten by the shape editor: set to 1 to extract the linearized model -->
   <outputForControl>0</outputForControl>
   <rd_basis_choice>2</rd_basis_choice>
   <rd_n_dof>10</rd_n_dof>

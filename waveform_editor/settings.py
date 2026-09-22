@@ -89,6 +89,12 @@ class NiceSettings(param.Parameterized):
     )
 
     verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
+    linearized_model = param.Boolean(
+        default=False,
+        label="Extract linearized model",
+        doc="Have NICE compute the linearized model and write the A, B and C "
+        "matrices to text files in its 'output' directory.",
+    )
     mode = param.Selector(
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
     )

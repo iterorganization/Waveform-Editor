@@ -328,6 +328,11 @@ class ShapeEditor(Viewer):
 
         # Update XML parameters:
         xml_params.find("verbose").text = str(self.nice_settings.verbose)
+        # NICE writes the linearized model (A, B, C matrices) as text files when
+        # outputForControl is set.
+        xml_params.find("outputForControl").text = (
+            "1" if self.nice_settings.linearized_model else "0"
+        )
 
         use_previous_equilibrium = (
             self.use_previous_run and self.communicator.can_warm_start
