@@ -240,8 +240,12 @@
   <!-- Fixed coil currents are updated by the shape editor -->
   <n_group_fixed_index>2</n_group_fixed_index>
   <group_fixed_index>11 12</group_fixed_index>
+  <!-- Coil current penalization is updated by the shape editor -->
   <n_group_penalized_to_zero_index>0</n_group_penalized_to_zero_index>
   <group_penalized_to_zero_index>0 1 2 3 4 5 6 7 8 9 10</group_penalized_to_zero_index>
+  <n_group_special_weight>0</n_group_special_weight>
+  <group_special_weight_index>0</group_special_weight_index>
+  <group_special_weight>1</group_special_weight>
   <!-- evolution inverse -->
   <!-- same basis representation for all voltages  -->
   <Vfunc>2</Vfunc>
