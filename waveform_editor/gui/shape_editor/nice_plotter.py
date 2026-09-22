@@ -72,8 +72,7 @@ class NicePlotter(Viewer):
             title="",
             xlabel="r [m]",
             ylabel="z [m]",
-            fontsize={"labels": 15, "ticks": 11, "legend": 12},
-            legend_position="top_left",
+            fontsize={"labels": 15, "ticks": 11},
         )
         self.nice_settings = settings.nice
         self._shape_plotters = {
@@ -148,8 +147,7 @@ class NicePlotter(Viewer):
             r = np.append(r, r[0])
             z = np.append(z, z[0])
 
-        curve = hv.Curve((r, z), label="Desired boundary")
-        return hv.Overlay([curve.opts(self.DESIRED_SHAPE_OPTS)])
+        return hv.Overlay([hv.Curve((r, z)).opts(self.DESIRED_SHAPE_OPTS)])
 
     def _plot_gaps(self, r, z):
         """Plots the reference point, value and the desired boundary point of the gaps.
@@ -315,18 +313,18 @@ class NicePlotter(Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_separatrix or equilibrium is None:
-            separatrix = hv.Curve(([], []))
+            r = z = []
             contour = hv.Contours(([0], [0], 0), vdims="psi")
         else:
             r = equilibrium.time_slice[0].boundary.outline.r
             z = equilibrium.time_slice[0].boundary.outline.z
-            separatrix = hv.Curve((r, z), label="Resulting boundary")
 
             boundary_psi = equilibrium.time_slice[0].boundary.psi
             contour = self._calc_contours(equilibrium, [boundary_psi])
-        return separatrix.opts(
+        return hv.Curve((r, z)).opts(
             color="red",
             line_width=4,
+            show_legend=False,
             hover_tooltips=[("", "Separatrix")],
         ) * contour.opts(self.CONTOUR_OPTS)
 
