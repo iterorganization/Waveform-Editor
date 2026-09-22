@@ -178,6 +178,12 @@ class SettingsModal(Viewer):
                     "Verbosity",
                     pn.Param(self.nice_settings.param.verbose, show_name=False),
                 ),
+                _form_row(
+                    "Linearized model",
+                    pn.widgets.Checkbox.from_param(
+                        self.nice_settings.param.linearized_model, name=""
+                    ),
+                ),
             ),
             sizing_mode="stretch_width",
             scroll=True,
