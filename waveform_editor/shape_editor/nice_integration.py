@@ -313,6 +313,9 @@ class NiceIntegration(param.Parameterized):
     @param.depends("nice_running", watch=True)
     async def _nice_running_changed(self):
         if not self.nice_running:  # figure out why:
+            if self.closing or not self.running:
+                # NICE was stopped on purpose, for instance by switching mode
+                return
             retcode = self.nice_transport.get_returncode()
             self.last_run_successful = retcode == 0
             if not self.last_run_successful:
