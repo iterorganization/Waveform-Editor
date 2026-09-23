@@ -19,6 +19,14 @@ matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
+def _as_weight(value):
+    """A point's weight as a whole number of repeats, at least 1."""
+    try:
+        return max(int(value), 1)
+    except (TypeError, ValueError):
+        return 1
+
+
 def _no_hover(element):
     """Exclude an element's renderer from every HoverTool in the shared figure."""
 
@@ -55,6 +63,11 @@ class NicePlotter(Viewer):
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
     # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
+    # Renderer of the editable points, set once the plot is first rendered
+    _points_renderer = None
+    _pushing_points = False
+    _applying_draw = False
+
     R_RANGE = (0, 13)
     Z_RANGE = (-10, 10)
     FRAME_HEIGHT = 700
@@ -77,7 +90,10 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._shape_plotters = {
             self.plasma_shape.GAP_INPUT: self._plot_gaps,
-            self.plasma_shape.WEIGHTED_POINTS_INPUT: self._plot_weighted_points,
+            # Drawn by the editable points element instead, so they can be dragged
+            self.plasma_shape.WEIGHTED_POINTS_INPUT: lambda r, z: hv.Overlay(
+                [hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)]
+            ),
         }
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
@@ -87,6 +103,15 @@ class NicePlotter(Viewer):
             show_legend=False,
         )
         self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
+        # Static on purpose. The draw tool binds to this element's renderer, and
+        # redrawing it either breaks the binding or feeds edits back into redraws.
+        self.editable_points = hv.Points([], kdims=["r", "z"], vdims=["weight"]).opts(
+            color="blue",
+            size=8,
+            marker="o",
+            show_legend=False,
+            hooks=[self._capture_points_renderer],
+        )
         flux_map_elements = [
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
@@ -95,13 +120,29 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_vacuum_vessel),
             hv.DynamicMap(self._plot_plasma_shape),
+            self.editable_points,
         ]
+        # Lets the weighted points be added, dragged and deleted on the plot
+        self.point_draw = hv.streams.PointDraw(
+            source=self.editable_points, drag=True, add=True, empty_value=1
+        )
+        self.point_draw.add_subscriber(self._on_point_draw)
+
         flux_map_overlay = (
             hv.Overlay(flux_map_elements).collate().opts(self.DEFAULT_OPTS)
         )
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
             loading=self.communicator.param.processing,
+        )
+
+        self.plasma_shape.param.watch(self._update_points_visibility, "input_mode")
+        self.plasma_shape.shape_params.param.watch(
+            self._update_points_visibility, "extra_points_enabled"
+        )
+        self.nice_settings.param.watch(self._update_points_visibility, "mode")
+        self.plasma_shape.weighted_points_table.param.watch(
+            self._push_points_to_plot, "points"
         )
 
         self.panel_layout = pn.Param(
@@ -113,6 +154,69 @@ class NicePlotter(Viewer):
                 }
             },
         )
+
+    def _uses_weighted_points(self):
+        """Whether the weighted points table is in use for the current input mode."""
+        shape = self.plasma_shape
+        if self.nice_settings.is_direct_mode:
+            return False
+        return shape.input_mode == shape.WEIGHTED_POINTS_INPUT or (
+            shape.input_mode == shape.PARAMETERIZED_INPUT
+            and shape.shape_params.extra_points_enabled
+        )
+
+    def _capture_points_renderer(self, plot, element):
+        """Keep hold of the renderer, so the points can be hidden without redrawing
+        them, which would break the draw tool."""
+        self._points_renderer = plot.handles.get("glyph_renderer")
+        self._update_points_visibility()
+
+    def _update_points_visibility(self, *events):
+        """Only show the points while they are in use."""
+        if self._points_renderer is not None:
+            self._points_renderer.visible = self._uses_weighted_points()
+
+    def _push_points_to_plot(self, *events):
+        """Mirror the table onto the plot, for rows edited or deleted in the table.
+
+        The points are written straight into the renderer rather than redrawn,
+        because redrawing them would break the draw tool.
+        """
+        # The plot already shows the points it just handed us
+        if self._points_renderer is None or self._applying_draw:
+            return
+        table = self.plasma_shape.weighted_points_table
+        r, z = table.get_points()
+        data = {
+            "r": list(r or []),
+            "z": list(z or []),
+            "weight": table.get_weights(),
+        }
+
+        def apply():
+            self._pushing_points = True
+            try:
+                self._points_renderer.data_source.data = data
+            finally:
+                self._pushing_points = False
+
+        # Scheduled, so that the document lock is held while the model is changed
+        pn.state.execute(apply)
+
+    def _on_point_draw(self, data):
+        """Write points added, dragged or deleted on the plot back to the table."""
+        if not data or self._pushing_points or not self._uses_weighted_points():
+            return
+        r, z = data.get("r", []), data.get("z", [])
+        # A point added on the plot arrives without a weight, and a weight below 1
+        # would drop it from the boundary
+        weights = [_as_weight(w) for w in data.get("weight", [])]
+        weights += [1] * (len(r) - len(weights))
+        self._applying_draw = True
+        try:
+            self.plasma_shape.weighted_points_table.set_points(r, z, weights)
+        finally:
+            self._applying_draw = False
 
     @pn.depends(
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
@@ -128,11 +232,16 @@ class NicePlotter(Viewer):
         r = self.plasma_shape.outline_r
         z = self.plasma_shape.outline_z
 
-        if (
-            self.plasma_shape.input_mode == self.plasma_shape.PARAMETERIZED_INPUT
-            and self.plasma_shape.param_weights
-        ):
-            return self._plot_weighted_boundary()
+        if self.plasma_shape.input_mode == self.plasma_shape.PARAMETERIZED_INPUT:
+            if self.plasma_shape.param_weights:
+                shape = self._plot_weighted_boundary()
+            else:
+                # The parameterized points, so that any extra points appended to the
+                # outline are not drawn as part of the boundary curve
+                shape = self._plot_outline_shape(
+                    self.plasma_shape.param_r, self.plasma_shape.param_z
+                )
+            return shape
 
         plotter = self._shape_plotters.get(
             self.plasma_shape.input_mode, self._plot_outline_shape

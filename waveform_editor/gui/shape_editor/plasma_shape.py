@@ -51,6 +51,11 @@ class PlasmaShapeParams(Viewer):
         default=5, step=0.5, softbounds=[1, 50], label="Spread [points]"
     )
     weight_height = param.Integer(default=10, softbounds=[1, 1000], label="Max weight")
+    extra_points_enabled = param.Boolean(
+        default=False, label="Add weighted points, e.g. strike points"
+    )
+
+    MAX_WEIGHT = 10000
 
     def __panel__(self):
         def _slider(n):
@@ -90,6 +95,7 @@ class PlasmaShapeParams(Viewer):
             _group("Shape coefficients", _slider("kappa"), _slider("delta")),
             _group("X point", _slider("rx"), _slider("zx")),
             _group("Boundary", _slider("n_desired_bnd_points")),
+            _group("Extra points", _slider("extra_points_enabled")),
             margin=(10, 20, 0, 20),
         )
 
@@ -123,6 +129,74 @@ class WeightedPointsTable(param.Parameterized):
             on_click=self._on_delete_click,
             on_edit=self._on_edit,
         )
+        self._update_tabulator()
+
+    def set_points(self, r, z, weights):
+        """Replace the table contents, keeping the points in the order given.
+
+        Args:
+            r: Radial coordinates of the points.
+            z: Height coordinates of the points.
+            weights: How many times each point is repeated in the boundary.
+        """
+        rows = [
+            {
+                self.COL_R: round(float(rv), 3),
+                self.COL_Z: round(float(zv), 3),
+                self.COL_WEIGHT: int(w),
+            }
+            for rv, zv, w in zip(r, z, weights, strict=True)
+        ]
+        # Compared as plain numbers: the same points can be held with different
+        # dtypes, which a DataFrame comparison would call unequal
+        if rows == self._rows():
+            return
+        self.points = pd.DataFrame(
+            rows, columns=[self.COL_R, self.COL_Z, self.COL_WEIGHT]
+        )
+        self._update_tabulator()
+
+    def get_weights(self):
+        """The weight of each point returned by get_points."""
+        r, _ = self.get_points()
+        if not r:
+            return []
+        return [int(w) for w in self._rows_weights()]
+
+    def _rows_weights(self):
+        valid_df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
+        valid_df = valid_df[(valid_df[self.COL_R] != "") & (valid_df[self.COL_Z] != "")]
+        return list(valid_df[self.COL_WEIGHT])
+
+    def _rows(self):
+        """The points as plain dicts of numbers."""
+        r, z = self.get_points()
+        if not r:
+            return []
+        weights = [int(w) for w in self.points[self.COL_WEIGHT]]
+        return [
+            {
+                self.COL_R: round(float(rv), 3),
+                self.COL_Z: round(float(zv), 3),
+                self.COL_WEIGHT: w,
+            }
+            for rv, zv, w in zip(r, z, weights, strict=True)
+        ]
+
+    def add_point(self, r, z, weight=1):
+        """Append a point to the table.
+
+        Args:
+            r: Radial coordinate of the point.
+            z: Height coordinate of the point.
+            weight: How many times the point is repeated in the boundary.
+        """
+        row = {
+            self.COL_R: round(float(r), 3),
+            self.COL_Z: round(float(z), 3),
+            self.COL_WEIGHT: weight,
+        }
+        self.points = pd.concat([self.points, pd.DataFrame([row])], ignore_index=True)
         self._update_tabulator()
 
     def _update_tabulator(self, event=None):
@@ -176,9 +250,9 @@ class WeightedPointsTable(param.Parameterized):
         value = event.value
         if event.column == self.COL_WEIGHT:
             rounded = round(value) if value is not None else None
-            if rounded is None or rounded < 1 or rounded > 1000:
+            if rounded is None or rounded < 1 or rounded > self.MAX_WEIGHT:
                 pn.state.notifications.error(
-                    "Weight must be a whole number between 1 and 1000"
+                    f"Weight must be a whole number between 1 and {self.MAX_WEIGHT}"
                 )
                 prev = (
                     self.points.iloc[event.row][self.COL_WEIGHT]
@@ -208,6 +282,24 @@ class WeightedPointsTable(param.Parameterized):
         if is_last_row and row_now_complete:
             self._update_tabulator()
 
+    def get_points(self):
+        """The points entered, without weight duplication.
+
+        Returns:
+            tuple: (r, z) lists of coordinates, or (None, None) if no valid points
+                have been entered yet
+        """
+        if self.points.empty:
+            return None, None
+
+        # Filter out rows with empty R or Z
+        valid_df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
+        valid_df = valid_df[(valid_df[self.COL_R] != "") & (valid_df[self.COL_Z] != "")]
+
+        if len(valid_df) < 1:
+            return None, None
+        return list(valid_df[self.COL_R]), list(valid_df[self.COL_Z])
+
     def get_outline_coordinates(self):
         """Generate outline coordinates from weighted points.
 
@@ -218,7 +310,6 @@ class WeightedPointsTable(param.Parameterized):
         if self.points.empty:
             return None, None
 
-        # Filter out rows with empty R or Z
         valid_df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
         valid_df = valid_df[(valid_df[self.COL_R] != "") & (valid_df[self.COL_Z] != "")]
 
@@ -295,7 +386,13 @@ class PlasmaShape(Viewer):
             ),
             self.PARAMETERIZED_INPUT: (
                 self._load_shape_from_params,
-                lambda: self.shape_params,
+                lambda: pn.Column(
+                    self.shape_params,
+                    pn.Row(
+                        self.weighted_points_table,
+                        visible=self.shape_params.param.extra_points_enabled.rx(),
+                    ),
+                ),
             ),
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
@@ -335,6 +432,10 @@ class PlasmaShape(Viewer):
         self.param_r = None
         self.param_z = None
         self.param_weights = None
+        # Extra weighted points added on top of a parameterized boundary, without
+        # weight duplication. None when none are added.
+        self.extra_r = None
+        self.extra_z = None
 
     @pn.depends(
         "shape_params.param",
@@ -349,6 +450,7 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_z = None
         self.gaps = []
         self.param_r = self.param_z = self.param_weights = None
+        self.extra_r = self.extra_z = None
 
         loader, _ = self._mode_config[self.input_mode]
         loader()
@@ -477,6 +579,20 @@ class PlasmaShape(Viewer):
         else:
             self.param_weights = None
             self.outline_r, self.outline_z = r, z
+
+        if p.extra_points_enabled:
+            self._append_extra_points()
+
+    def _append_extra_points(self):
+        """Append the weighted points to the parameterized boundary. They go last
+        because NICE measures every point against the first one, so repeats of the
+        first point would cancel out."""
+        extra_r, extra_z = self.weighted_points_table.get_outline_coordinates()
+        if not extra_r:
+            return
+        self.extra_r, self.extra_z = self.weighted_points_table.get_points()
+        self.outline_r = list(self.outline_r) + list(extra_r)
+        self.outline_z = list(self.outline_z) + list(extra_z)
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
