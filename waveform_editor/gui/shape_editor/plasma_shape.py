@@ -54,6 +54,7 @@ class PlasmaShapeParams(Viewer):
     extra_points_enabled = param.Boolean(
         default=False, label="Add additional weighted points"
     )
+    extra_points_table = param.Parameter()
 
     def __panel__(self):
         def _slider(n):
@@ -93,7 +94,14 @@ class PlasmaShapeParams(Viewer):
             _group("Shape coefficients", _slider("kappa"), _slider("delta")),
             _group("X point", _slider("rx"), _slider("zx")),
             _group("Boundary", _slider("n_desired_bnd_points")),
-            _group("Extra points", _slider("extra_points_enabled")),
+            _group(
+                "Extra points",
+                _slider("extra_points_enabled"),
+                pn.Row(
+                    self.extra_points_table,
+                    visible=self.param.extra_points_enabled.rx(),
+                ),
+            ),
             margin=(10, 20, 0, 20),
         )
 
@@ -327,13 +335,7 @@ class PlasmaShape(Viewer):
             ),
             self.PARAMETERIZED_INPUT: (
                 self._load_shape_from_params,
-                lambda: pn.Column(
-                    self.shape_params,
-                    pn.Row(
-                        self.weighted_points_table,
-                        visible=self.shape_params.param.extra_points_enabled.rx(),
-                    ),
-                ),
+                lambda: self.shape_params,
             ),
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
@@ -373,6 +375,7 @@ class PlasmaShape(Viewer):
         self.param_r = None
         self.param_z = None
         self.param_weights = None
+        self.shape_params.extra_points_table = self.weighted_points_table
 
     @pn.depends(
         "shape_params.param",
