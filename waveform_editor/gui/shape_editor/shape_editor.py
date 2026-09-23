@@ -21,10 +21,6 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration
 logger = logging.getLogger(__name__)
 
 
-def _reactive_title(title, is_valid):
-    return title if is_valid else f"{title} ⚠️"
-
-
 class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
@@ -81,7 +77,6 @@ class ShapeEditor(Viewer):
             | self.plasma_properties.param.has_properties.rx.not_()
             | self.nice_settings.param.are_required_filled.rx.not_()
         )
-
         button_start = pn.widgets.Button(
             name="Run",
             button_type="primary",
@@ -151,24 +146,8 @@ class ShapeEditor(Viewer):
         )
 
         self.metrics = Metrics()
-        # Accordion does not allow dynamic titles, so use separate card for each option
-        inputs = pn.Column(
-            self._create_card(
-                self.plasma_shape,
-                "Plasma Shape",
-                is_valid=self.plasma_shape.param.has_shape,
-                visible=self.nice_settings.param.is_inverse_mode.rx(),
-            ),
-            self._create_card(
-                self.plasma_properties,
-                "Plasma Properties",
-                is_valid=self.plasma_properties.param.has_properties,
-            ),
-            self._create_card(
-                self.coil_currents,
-                "Coil Currents",
-                visible=self.nice_settings.md_pf_active.param.loaded.rx(),
-            ),
+        options = pn.bind(
+            self._create_options_tabs, self.nice_settings.param.is_inverse_mode
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
 
@@ -184,34 +163,30 @@ class ShapeEditor(Viewer):
             left_col,
             pn.Column(
                 menu,
-                inputs,
+                options,
                 sizing_mode="stretch_both",
                 scroll=True,
             ),
             sizing_mode="stretch_both",
         )
 
-    def _create_card(
-        self, panel_object, title, is_valid=None, visible=True, collapsed=True
-    ):
-        """Create a collapsed card containing a panel object and a title.
+    def _create_options_tabs(self, is_inverse_mode):
+        """Create the tabs holding the inputs for a run.
 
         Args:
-            panel_object: The panel object to place into the card.
-            title: The title to give the card.
-            is_valid: If supplied, binds the card title to update reactively using
-                `_reactive_title`.
-            visible: Whether the card is visible.
-            collapsed: Whether the card is collapsed.
+            is_inverse_mode: Whether NICE runs in inverse mode, which is the only
+                mode that takes a plasma shape.
         """
-        if is_valid:
-            title = param.bind(_reactive_title, title=title, is_valid=is_valid)
-        return pn.Card(
-            panel_object,
-            title=title,
+        items = []
+        if is_inverse_mode:
+            items.append(("Plasma Shape", self.plasma_shape))
+        # The profiles plot is part of the plasma properties panel itself
+        items.append(("Plasma Properties", self.plasma_properties))
+        items.append(("Coil Currents", self.coil_currents))
+        return pn.Tabs(
+            *items,
             sizing_mode="stretch_width",
-            collapsed=collapsed,
-            visible=visible,
+            stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
 
     def _load_slice(self, uri, ids_name, time=0):
