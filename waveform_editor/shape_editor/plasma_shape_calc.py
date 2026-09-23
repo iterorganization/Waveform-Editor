@@ -3,6 +3,8 @@
 import math
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class Gap:
@@ -101,60 +103,39 @@ def compute_gaussian_weights(n_points, position, spread, height):
     """Compute an integer weight for each ordered boundary point, following a
     circular Gaussian centred at `position` degrees around the boundary.
 
-    Used to locally emphasize a region of a parameterized plasma boundary in
-    the NICE least-squares boundary fit: a point's weight is how many times
-    it should be duplicated in the outline sent to NICE, so points near the
-    emphasized region get proportionally more influence on the fit than
-    points elsewhere.
-
     Args:
-        n_points: Number of boundary points. Weights are indexed 0..n_points-1
-            in the same order as the boundary points themselves, which are
-            treated as evenly spread over the 0-360 degree parametrization.
-        position: Centre of the emphasized region, in degrees (0-360).
-        spread: Standard deviation of the Gaussian, in points (not degrees) —
-            roughly how many neighbouring points still get a noticeably
-            increased weight.
-        height: Weight at the centre of the emphasized region (an integer).
+        n_points: Number of boundary points.
+        position: Centre of the emphasized region, in degrees.
+        spread: Standard deviation of the Gaussian.
+        height: Weight at the centre of the emphasized region.
 
     Returns:
-        List of integer weights, one per boundary point, all >= 1.
+        List of integer weights, one per boundary point.
     """
     if n_points <= 0:
         return []
 
     spread = max(spread, 1e-6)
     center = (position % 360) / 360.0 * n_points
-    weights = []
-    for i in range(n_points):
-        dist = abs(i - center)
-        dist = min(dist, n_points - dist)
-        w = 1 + (height - 1) * math.exp(-0.5 * (dist / spread) ** 2)
-        weights.append(max(1, round(w)))
-    return weights
+    distance = np.abs(np.arange(n_points) - center)
+    # The boundary is a closed curve, so the far side wraps around
+    distance = np.minimum(distance, n_points - distance)
+    weights = 1 + (height - 1) * np.exp(-0.5 * (distance / spread) ** 2)
+    return np.maximum(np.round(weights), 1).astype(int).tolist()
 
 
 def apply_point_weights(r, z, weights):
     """Duplicate each boundary point according to its weight.
 
-    A point that appears N times in the outline submitted to NICE gets N
-    times the influence on the least-squares boundary fit versus a point
-    that appears once — the same mechanism used for weighted points.
-
     Args:
         r: Radial coordinates of the boundary points.
         z: Height coordinates of the boundary points.
-        weights: Integer weight for each point (same length as r/z).
+        weights: Integer weight for each point.
 
     Returns:
         Tuple of (weighted_r, weighted_z) with points duplicated per weight.
     """
-    weighted_r = []
-    weighted_z = []
-    for rv, zv, w in zip(r, z, weights, strict=True):
-        weighted_r.extend([rv] * w)
-        weighted_z.extend([zv] * w)
-    return weighted_r, weighted_z
+    return np.repeat(r, weights).tolist(), np.repeat(z, weights).tolist()
 
 
 def update_outline_from_gaps(gaps):

@@ -326,7 +326,7 @@ class ShapeEditor(Viewer):
 
     def _has_valid_boundary(self):
         """Check that the desired boundary fits in the fixed size array NICE reads it
-        into. NICE does not check this itself, and writing past it crashes it.
+        into.
 
         Returns:
             True if the boundary can be passed to NICE, False otherwise.

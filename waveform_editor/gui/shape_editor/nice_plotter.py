@@ -62,12 +62,12 @@ class NicePlotter(Viewer):
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
 
-    # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
     _pushing_points = False
     _applying_draw = False
 
+    # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
     R_RANGE = (0, 13)
     Z_RANGE = (-10, 10)
     FRAME_HEIGHT = 700
@@ -90,10 +90,6 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._shape_plotters = {
             self.plasma_shape.GAP_INPUT: self._plot_gaps,
-            # Drawn by the editable points element instead, so they can be dragged
-            self.plasma_shape.WEIGHTED_POINTS_INPUT: lambda r, z: hv.Overlay(
-                [hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)]
-            ),
         }
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
@@ -229,20 +225,21 @@ class NicePlotter(Viewer):
         ):
             return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
-        r = self.plasma_shape.outline_r
-        z = self.plasma_shape.outline_z
+        # The weighted points are drawn by the editable points element instead
+        if self.plasma_shape.input_mode == self.plasma_shape.WEIGHTED_POINTS_INPUT:
+            return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
         if self.plasma_shape.input_mode == self.plasma_shape.PARAMETERIZED_INPUT:
             if self.plasma_shape.param_weights:
-                shape = self._plot_weighted_boundary()
-            else:
-                # The parameterized points, so that any extra points appended to the
-                # outline are not drawn as part of the boundary curve
-                shape = self._plot_outline_shape(
-                    self.plasma_shape.param_r, self.plasma_shape.param_z
-                )
-            return shape
+                return self._plot_weighted_boundary()
+            # The parameterized points, so that extra points appended to the outline
+            # are not drawn as part of the boundary curve
+            return self._plot_outline_shape(
+                self.plasma_shape.param_r, self.plasma_shape.param_z
+            )
 
+        r = self.plasma_shape.outline_r
+        z = self.plasma_shape.outline_z
         plotter = self._shape_plotters.get(
             self.plasma_shape.input_mode, self._plot_outline_shape
         )
@@ -287,19 +284,6 @@ class NicePlotter(Viewer):
                 )
             )
         return hv.Overlay(plot_elements)
-
-    def _plot_weighted_points(self, r, z):
-        """Plots weighted points as scatterplot.
-
-        Args:
-            r: Radial coordinates of the points.
-            z: Height coordinates of the points.
-
-        Returns:
-            Holoviews overlay with scatter plot of the points.
-        """
-        scatter = hv.Scatter((r, z)).opts(color="blue", size=8, marker="o")
-        return hv.Overlay([_no_hover(scatter)])
 
     def _plot_weighted_boundary(self):
         """Plots the parameterized boundary as a curve coloured by each
