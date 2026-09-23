@@ -79,9 +79,6 @@ class NicePlotter(Viewer):
             fontsize={"labels": 15, "ticks": 11},
         )
         self.nice_settings = settings.nice
-        self._shape_plotters = {
-            self.plasma_shape.GAP_INPUT: self._plot_gaps,
-        }
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -186,10 +183,7 @@ class NicePlotter(Viewer):
         """Write points added, dragged or deleted on the plot back to the table."""
         if not data or self._syncing_points or not self._uses_weighted_points():
             return
-        r, z = data.get("r", []), data.get("z", [])
-        # A point added on the plot arrives without a weight
-        weights = list(data.get("weight", []))
-        weights += [1] * (len(r) - len(weights))
+        r, z, weights = data["r"], data["z"], data["weight"]
         self._syncing_points = True
         try:
             self.plasma_shape.weighted_points_table.set_points(r, z, weights)
@@ -200,32 +194,26 @@ class NicePlotter(Viewer):
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
     )
     def _plot_plasma_shape(self):
+        shape = self.plasma_shape
         if (
             self.nice_settings.is_direct_mode
             or not self.show_desired_shape
-            or not self.plasma_shape.has_shape
+            or not shape.has_shape
+            or shape.input_mode == shape.WEIGHTED_POINTS_INPUT
         ):
             return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
 
-        # The weighted points are drawn by the editable points element instead
-        if self.plasma_shape.input_mode == self.plasma_shape.WEIGHTED_POINTS_INPUT:
-            return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
+        if shape.input_mode == shape.GAP_INPUT:
+            return self._plot_gaps(shape.outline_r, shape.outline_z)
 
-        if self.plasma_shape.input_mode == self.plasma_shape.PARAMETERIZED_INPUT:
-            if self.plasma_shape.param_weights:
+        if shape.input_mode == shape.PARAMETERIZED_INPUT:
+            if shape.param_weights is not None:
                 return self._plot_weighted_boundary()
             # The parameterized points, so that extra points appended to the outline
             # are not drawn as part of the boundary curve
-            return self._plot_outline_shape(
-                self.plasma_shape.param_r, self.plasma_shape.param_z
-            )
+            return self._plot_outline_shape(shape.param_r, shape.param_z)
 
-        r = self.plasma_shape.outline_r
-        z = self.plasma_shape.outline_z
-        plotter = self._shape_plotters.get(
-            self.plasma_shape.input_mode, self._plot_outline_shape
-        )
-        return plotter(r, z)
+        return self._plot_outline_shape(shape.outline_r, shape.outline_z)
 
     def _plot_outline_shape(self, r, z):
         """Plots closed plasma outline curve.

@@ -112,7 +112,7 @@ class WeightedPointsTable(param.Parameterized):
     COL_R = "R [m]"
     COL_Z = "Z [m]"
     COL_WEIGHT = "weight"
-    MAX_WEIGHT = 10000
+    MAX_WEIGHT = 5000
     COL_DELETE = "🗑️"
 
     points = param.DataFrame(default=pd.DataFrame(columns=[COL_R, COL_Z, COL_WEIGHT]))
@@ -542,8 +542,8 @@ class PlasmaShape(Viewer):
         extra_r, extra_z = self.weighted_points_table.get_outline_coordinates()
         if not extra_r:
             return
-        self.outline_r = list(self.outline_r) + list(extra_r)
-        self.outline_z = list(self.outline_z) + list(extra_z)
+        self.outline_r = self.outline_r + extra_r
+        self.outline_z = self.outline_z + extra_z
 
     @param.depends("input_mode")
     def _panel_shape_options(self):
