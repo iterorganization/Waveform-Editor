@@ -11,47 +11,55 @@ from waveform_editor.gui.util import STYLES, WarningIndicator
 from waveform_editor.settings import NiceSettings, settings
 
 
-def _section_label(text):
-    return pn.pane.HTML(
-        f'<p class="settings-section-label">{text}</p>',
-        stylesheets=STYLES,
-        margin=0,
-        sizing_mode="stretch_width",
-    )
-
-
-def _settings_section(*items):
-    return pn.Column(
-        *items,
-        stylesheets=STYLES,
-        css_classes=["settings-card"],
-        sizing_mode="stretch_width",
-    )
-
-
-def _form_row(label, widget, warning=None):
-    items = [
-        pn.pane.HTML(
-            f'<span class="form-row-label">{label}</span>',
-            stylesheets=STYLES,
-            width=180,
-            align="center",
-        ),
-        widget,
-    ]
-    if warning is not None:
-        items.append(warning)
-    return pn.Row(
-        *items,
-        css_classes=["form-row"],
-        stylesheets=STYLES,
-        sizing_mode="stretch_width",
-        align="center",
-    )
-
-
 class SettingsModal(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
+    MODAL_WIDTH = 700
+    MODAL_HEIGHT = 800
+    LABEL_WIDTH = 180
+    PRESET_WIDTH = 200
+    NICE_PARAM_COL_NAME = "Parameter"
+    NICE_PARAM_COL_VALUE = "Value"
+    NICE_PARAM_COL_DEFAULT = "Default"
+    NICE_PARAM_NAME_WIDTH = 240
+    NICE_PARAM_DEFAULT_WIDTH = 180
+    NICE_PARAM_PAGE_SIZE = 8
+    RESET_BUTTON_WIDTH = 180
+
+    def _section_label(self, text):
+        return pn.pane.HTML(
+            f'<p class="settings-section-label">{text}</p>',
+            stylesheets=STYLES,
+            margin=0,
+            sizing_mode="stretch_width",
+        )
+
+    def _settings_section(self, *items):
+        return pn.Column(
+            *items,
+            stylesheets=STYLES,
+            css_classes=["settings-card"],
+            sizing_mode="stretch_width",
+        )
+
+    def _form_row(self, label, widget, warning=None):
+        items = [
+            pn.pane.HTML(
+                f'<span class="form-row-label">{label}</span>',
+                stylesheets=STYLES,
+                width=self.LABEL_WIDTH,
+                align="center",
+            ),
+            widget,
+        ]
+        if warning is not None:
+            items.append(warning)
+        return pn.Row(
+            *items,
+            css_classes=["form-row"],
+            stylesheets=STYLES,
+            sizing_mode="stretch_width",
+            align="center",
+        )
 
     def __init__(self, nice_plotter: NicePlotter, **params):
         super().__init__(**params)
@@ -76,10 +84,6 @@ class SettingsModal(Viewer):
             self._update_md_inputs_visibility, ["machine_preset"]
         )
 
-    COL_NAME = "Parameter"
-    COL_VALUE = "Value"
-    COL_DEFAULT = "Default"
-
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
         parameters = ET.fromstring(
@@ -93,23 +97,29 @@ class SettingsModal(Viewer):
             show_index=False,
             header_filters=True,
             editors={
-                self.COL_NAME: None,
-                self.COL_VALUE: {"type": "input"},
-                self.COL_DEFAULT: None,
+                self.NICE_PARAM_COL_NAME: None,
+                self.NICE_PARAM_COL_VALUE: {"type": "input"},
+                self.NICE_PARAM_COL_DEFAULT: None,
             },
-            widths={self.COL_NAME: 240, self.COL_DEFAULT: 180},
+            widths={
+                self.NICE_PARAM_COL_NAME: self.NICE_PARAM_NAME_WIDTH,
+                self.NICE_PARAM_COL_DEFAULT: self.NICE_PARAM_DEFAULT_WIDTH,
+            },
             sizing_mode="stretch_width",
-            height=380,
+            # Paged rather than scrolled, so the table does not put a second
+            # scrollbar inside the one of the settings tab
+            pagination="local",
+            page_size=self.NICE_PARAM_PAGE_SIZE,
             on_edit=self._on_parameter_edit,
         )
         reset = pn.widgets.Button(
             name="Reset all to defaults",
-            button_type="light",
+            width=self.RESET_BUTTON_WIDTH,
             on_click=self._reset_parameters,
         )
         return pn.Column(
-            _section_label("NICE parameters"),
-            _settings_section(self.parameter_table, reset),
+            self._section_label("NICE parameters"),
+            self._settings_section(self.parameter_table, reset),
             sizing_mode="stretch_width",
         )
 
@@ -119,9 +129,9 @@ class SettingsModal(Viewer):
         return pd.DataFrame(
             [
                 {
-                    self.COL_NAME: name,
-                    self.COL_VALUE: str(overrides.get(name, default)),
-                    self.COL_DEFAULT: default,
+                    self.NICE_PARAM_COL_NAME: name,
+                    self.NICE_PARAM_COL_VALUE: str(overrides.get(name, default)),
+                    self.NICE_PARAM_COL_DEFAULT: default,
                 }
                 for name, default in self._defaults.items()
             ]
@@ -135,10 +145,10 @@ class SettingsModal(Viewer):
     def _on_parameter_edit(self, event):
         """Keep an edited parameter in the settings, unless it is back to default."""
         row = self.parameter_table.value.iloc[event.row]
-        name = row[self.COL_NAME]
+        name = row[self.NICE_PARAM_COL_NAME]
         overrides = dict(self.nice_settings.xml_parameters)
         value = str(event.value).strip()
-        if value == row[self.COL_DEFAULT]:
+        if value == row[self.NICE_PARAM_COL_DEFAULT]:
             overrides.pop(name, None)
         else:
             overrides[name] = value
@@ -150,31 +160,31 @@ class SettingsModal(Viewer):
 
         # --- Machine Presets tab ---
         preset_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.machine_preset, name="", width=200
+            self.nice_settings.param.machine_preset, name="", width=self.PRESET_WIDTH
         )
         md_rows = []
         for md in self.nice_settings.machine_descriptions:
             self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
             md_rows.append(
-                _form_row(
+                self._form_row(
                     md.ids_name,
                     self._md_inputs[md],
                     WarningIndicator(margin=10, visible=md.param.loaded.rx.not_()),
                 )
             )
         machine_preset_content = pn.Column(
-            _section_label("Preset"),
+            self._section_label("Preset"),
             preset_selector,
-            _section_label("Machine Description URIs"),
-            _settings_section(*md_rows),
+            self._section_label("Machine Description URIs"),
+            self._settings_section(*md_rows),
             sizing_mode="stretch_width",
             scroll=True,
         )
 
         # --- Display tab ---
         self._contour_detail = pn.Column(
-            _section_label("Contour Detail"),
-            _settings_section(
+            self._section_label("Contour Detail"),
+            self._settings_section(
                 pn.Param(
                     self.nice_plotter.param,
                     parameters=["levels"],
@@ -190,8 +200,8 @@ class SettingsModal(Viewer):
         )
 
         display_content = pn.Column(
-            _section_label("Visibility"),
-            _settings_section(
+            self._section_label("Visibility"),
+            self._settings_section(
                 pn.Param(
                     self.nice_plotter.param,
                     parameters=[
@@ -218,9 +228,9 @@ class SettingsModal(Viewer):
 
         # --- NICE Configuration tab ---
         nice_content = pn.Column(
-            _section_label("Executables"),
-            _settings_section(
-                _form_row(
+            self._section_label("Executables"),
+            self._settings_section(
+                self._form_row(
                     "Inverse executable",
                     pn.widgets.TextInput.from_param(
                         self.nice_settings.param.inv_executable, name=""
@@ -230,7 +240,7 @@ class SettingsModal(Viewer):
                         visible=self.nice_settings.param.inv_executable.rx() == "",
                     ),
                 ),
-                _form_row(
+                self._form_row(
                     "Direct executable",
                     pn.widgets.TextInput.from_param(
                         self.nice_settings.param.dir_executable, name=""
@@ -241,9 +251,9 @@ class SettingsModal(Viewer):
                     ),
                 ),
             ),
-            _section_label("Environment"),
-            _settings_section(
-                _form_row(
+            self._section_label("Environment"),
+            self._settings_section(
+                self._form_row(
                     "Environment variables",
                     pn.Param(self.nice_settings.param.environment, show_name=False),
                 ),
@@ -264,8 +274,8 @@ class SettingsModal(Viewer):
 
         return pn.Modal(
             self.tabs,
-            width=700,
-            height=560,
+            width=self.MODAL_WIDTH,
+            height=self.MODAL_HEIGHT,
             stylesheets=STYLES,
         )
 
