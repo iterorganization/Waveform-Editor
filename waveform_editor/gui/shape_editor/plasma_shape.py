@@ -48,7 +48,7 @@ class PlasmaShapeParams(Viewer):
         default=0, step=1, bounds=[0, 360], label="Position [deg]"
     )
     weight_spread = param.Number(
-        default=5, step=0.5, softbounds=[1, 50], label="Spread [points]"
+        default=15, step=0.5, softbounds=[1, 90], label="Spread [deg]"
     )
     weight_height = param.Integer(default=10, softbounds=[1, 1000], label="Max weight")
     extra_points_enabled = param.Boolean(
@@ -150,7 +150,7 @@ class WeightedPointsTable(param.Parameterized):
             {
                 self.COL_R: round(float(rv), 3),
                 self.COL_Z: round(float(zv), 3),
-                self.COL_WEIGHT: int(w),
+                self.COL_WEIGHT: self.as_weight(w),
             }
             for rv, zv, w in zip(r, z, weights, strict=True)
         ]
@@ -164,9 +164,26 @@ class WeightedPointsTable(param.Parameterized):
         df = self.points.dropna(subset=[self.COL_R, self.COL_Z])
         return df[(df[self.COL_R] != "") & (df[self.COL_Z] != "")]
 
-    def get_weights(self):
-        """The weight of each point returned by get_points."""
-        return [int(w) for w in self._valid_rows()[self.COL_WEIGHT]]
+    def as_weight(self, value):
+        """A weight as a whole number of repeats, within bounds. Points drawn on
+        the plot arrive without a weight, and a weight below 1 would drop them."""
+        try:
+            return min(max(int(value), 1), self.MAX_WEIGHT)
+        except (TypeError, ValueError):
+            return 1
+
+    def get_points(self):
+        """The points entered, without weight duplication.
+
+        Returns:
+            tuple: (r, z, weights) lists, empty when no valid points are entered.
+        """
+        rows = self._valid_rows()
+        return (
+            list(rows[self.COL_R]),
+            list(rows[self.COL_Z]),
+            [int(w) for w in rows[self.COL_WEIGHT]],
+        )
 
     def _update_tabulator(self, event=None):
         """Update the Tabulator to reflect the current DataFrame."""
@@ -251,18 +268,6 @@ class WeightedPointsTable(param.Parameterized):
         if is_last_row and row_now_complete:
             self._update_tabulator()
 
-    def get_points(self):
-        """The points entered, without weight duplication.
-
-        Returns:
-            tuple: (r, z) lists of coordinates, or (None, None) if no valid points
-                have been entered yet
-        """
-        valid_df = self._valid_rows()
-        if valid_df.empty:
-            return None, None
-        return list(valid_df[self.COL_R]), list(valid_df[self.COL_Z])
-
     def get_outline_coordinates(self):
         """Generate outline coordinates from weighted points.
 
@@ -270,10 +275,10 @@ class WeightedPointsTable(param.Parameterized):
             tuple: (outline_r, outline_z) lists of coordinates, or (None, None) if
                 no valid points have been entered yet
         """
-        r, z = self.get_points()
+        r, z, weights = self.get_points()
         if not r:
             return None, None
-        return apply_point_weights(r, z, self.get_weights())
+        return apply_point_weights(r, z, weights)
 
     def __panel__(self):
         return self._tabulator
@@ -487,6 +492,14 @@ class PlasmaShape(Viewer):
 
         self.gap_ui.extend(new_gap_ui)
 
+    @property
+    def uses_weighted_points(self):
+        """Whether the weighted points table feeds the current input mode."""
+        return self.input_mode == self.WEIGHTED_POINTS_INPUT or (
+            self.input_mode == self.PARAMETERIZED_INPUT
+            and self.shape_params.extra_points_enabled
+        )
+
     def _load_shape_from_weighted_points(self):
         """Load plasma boundary outline from weighted points."""
         self.outline_r, self.outline_z = (
@@ -510,7 +523,7 @@ class PlasmaShape(Viewer):
 
         if p.weight_enabled:
             self.param_weights = compute_gaussian_weights(
-                len(r), p.weight_position, p.weight_spread, p.weight_height
+                r, z, p.weight_position, p.weight_spread, p.weight_height
             )
             self.outline_r, self.outline_z = apply_point_weights(
                 r, z, self.param_weights

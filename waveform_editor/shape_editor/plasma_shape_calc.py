@@ -99,27 +99,30 @@ def compute_outline_from_params(
     return [p[0] for p in points], [p[1] for p in points]
 
 
-def compute_gaussian_weights(n_points, position, spread, height):
-    """Compute an integer weight for each ordered boundary point, following a
-    circular Gaussian centred at `position` degrees around the boundary.
+def compute_gaussian_weights(r, z, position, spread, height):
+    """Compute an integer weight for each boundary point, following a circular
+    Gaussian centred at `position` degrees around the boundary. Angles are measured
+    at the boundary centroid, the same way the points are ordered.
 
     Args:
-        n_points: Number of boundary points.
+        r: Radial coordinates of the boundary points.
+        z: Height coordinates of the boundary points.
         position: Centre of the emphasized region, in degrees.
-        spread: Standard deviation of the Gaussian.
+        spread: Standard deviation of the Gaussian, in degrees.
         height: Weight at the centre of the emphasized region.
 
     Returns:
         List of integer weights, one per boundary point.
     """
-    if n_points <= 0:
+    r = np.asarray(r)
+    z = np.asarray(z)
+    if r.size == 0:
         return []
 
     spread = max(spread, 1e-6)
-    center = (position % 360) / 360.0 * n_points
-    distance = np.abs(np.arange(n_points) - center)
+    angle = np.degrees(np.arctan2(z - z.mean(), r - r.mean()))
     # The boundary is a closed curve, so the far side wraps around
-    distance = np.minimum(distance, n_points - distance)
+    distance = np.abs((angle - position + 180) % 360 - 180)
     weights = 1 + (height - 1) * np.exp(-0.5 * (distance / spread) ** 2)
     return np.maximum(np.round(weights), 1).astype(int).tolist()
 

@@ -19,14 +19,6 @@ matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
-def _as_weight(value):
-    """A point's weight as a whole number of repeats, at least 1."""
-    try:
-        return max(int(value), 1)
-    except (TypeError, ValueError):
-        return 1
-
-
 def _no_hover(element):
     """Exclude an element's renderer from every HoverTool in the shared figure."""
 
@@ -64,8 +56,7 @@ class NicePlotter(Viewer):
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
-    _pushing_points = False
-    _applying_draw = False
+    _syncing_points = False
 
     # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
     R_RANGE = (0, 13)
@@ -153,12 +144,9 @@ class NicePlotter(Viewer):
 
     def _uses_weighted_points(self):
         """Whether the weighted points table is in use for the current input mode."""
-        shape = self.plasma_shape
-        if self.nice_settings.is_direct_mode:
-            return False
-        return shape.input_mode == shape.WEIGHTED_POINTS_INPUT or (
-            shape.input_mode == shape.PARAMETERIZED_INPUT
-            and shape.shape_params.extra_points_enabled
+        return (
+            not self.nice_settings.is_direct_mode
+            and self.plasma_shape.uses_weighted_points
         )
 
     def _capture_points_renderer(self, plot, element):
@@ -179,40 +167,34 @@ class NicePlotter(Viewer):
         because redrawing them would break the draw tool.
         """
         # The plot already shows the points it just handed us
-        if self._points_renderer is None or self._applying_draw:
+        if self._points_renderer is None or self._syncing_points:
             return
-        table = self.plasma_shape.weighted_points_table
-        r, z = table.get_points()
-        data = {
-            "r": list(r or []),
-            "z": list(z or []),
-            "weight": table.get_weights(),
-        }
+        r, z, weights = self.plasma_shape.weighted_points_table.get_points()
+        data = {"r": r, "z": z, "weight": weights}
 
         def apply():
-            self._pushing_points = True
+            self._syncing_points = True
             try:
                 self._points_renderer.data_source.data = data
             finally:
-                self._pushing_points = False
+                self._syncing_points = False
 
         # Scheduled, so that the document lock is held while the model is changed
         pn.state.execute(apply)
 
     def _on_point_draw(self, data):
         """Write points added, dragged or deleted on the plot back to the table."""
-        if not data or self._pushing_points or not self._uses_weighted_points():
+        if not data or self._syncing_points or not self._uses_weighted_points():
             return
         r, z = data.get("r", []), data.get("z", [])
-        # A point added on the plot arrives without a weight, and a weight below 1
-        # would drop it from the boundary
-        weights = [_as_weight(w) for w in data.get("weight", [])]
+        # A point added on the plot arrives without a weight
+        weights = list(data.get("weight", []))
         weights += [1] * (len(r) - len(weights))
-        self._applying_draw = True
+        self._syncing_points = True
         try:
             self.plasma_shape.weighted_points_table.set_points(r, z, weights)
         finally:
-            self._applying_draw = False
+            self._syncing_points = False
 
     @pn.depends(
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
