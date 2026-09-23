@@ -1,3 +1,7 @@
+import importlib.resources
+import xml.etree.ElementTree as ET
+
+import pandas as pd
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -71,6 +75,74 @@ class SettingsModal(Viewer):
         self.nice_settings.param.watch(
             self._update_md_inputs_visibility, ["machine_preset"]
         )
+
+    COL_NAME = "Parameter"
+    COL_VALUE = "Value"
+    COL_DEFAULT = "Default"
+
+    def _parameters_section(self):
+        """A table of every NICE parameter, which writes edits to the settings."""
+        parameters = ET.fromstring(
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath("param.xml")
+            .read_text()
+        )
+        self._defaults = {p.tag: (p.text or "").strip() for p in parameters}
+        self.parameter_table = pn.widgets.Tabulator(
+            self._parameter_frame(),
+            show_index=False,
+            header_filters=True,
+            editors={
+                self.COL_NAME: None,
+                self.COL_VALUE: {"type": "input"},
+                self.COL_DEFAULT: None,
+            },
+            widths={self.COL_NAME: 240, self.COL_DEFAULT: 180},
+            sizing_mode="stretch_width",
+            height=380,
+            on_edit=self._on_parameter_edit,
+        )
+        reset = pn.widgets.Button(
+            name="Reset all to defaults",
+            button_type="light",
+            on_click=self._reset_parameters,
+        )
+        return pn.Column(
+            _section_label("NICE parameters"),
+            _settings_section(self.parameter_table, reset),
+            sizing_mode="stretch_width",
+        )
+
+    def _parameter_frame(self):
+        """The table contents: each parameter, its value and its default."""
+        overrides = self.nice_settings.xml_parameters
+        return pd.DataFrame(
+            [
+                {
+                    self.COL_NAME: name,
+                    self.COL_VALUE: str(overrides.get(name, default)),
+                    self.COL_DEFAULT: default,
+                }
+                for name, default in self._defaults.items()
+            ]
+        )
+
+    def _reset_parameters(self, event=None):
+        """Put every parameter back to the value NICE is shipped with."""
+        self.nice_settings.xml_parameters = {}
+        self.parameter_table.value = self._parameter_frame()
+
+    def _on_parameter_edit(self, event):
+        """Keep an edited parameter in the settings, unless it is back to default."""
+        row = self.parameter_table.value.iloc[event.row]
+        name = row[self.COL_NAME]
+        overrides = dict(self.nice_settings.xml_parameters)
+        value = str(event.value).strip()
+        if value == row[self.COL_DEFAULT]:
+            overrides.pop(name, None)
+        else:
+            overrides[name] = value
+        self.nice_settings.xml_parameters = overrides
 
     def _build_modal(self):
         # Inputs for machine description URIs
@@ -175,17 +247,8 @@ class SettingsModal(Viewer):
                     "Environment variables",
                     pn.Param(self.nice_settings.param.environment, show_name=False),
                 ),
-                _form_row(
-                    "Verbosity",
-                    pn.Param(self.nice_settings.param.verbose, show_name=False),
-                ),
-                _form_row(
-                    "Linearized model",
-                    pn.widgets.Checkbox.from_param(
-                        self.nice_settings.param.linearized_model, name=""
-                    ),
-                ),
             ),
+            self._parameters_section(),
             sizing_mode="stretch_width",
             scroll=True,
         )
