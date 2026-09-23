@@ -283,6 +283,20 @@ sections below:
 * **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
 * **Coil Currents**: The currents through the active field coils.
 
+.. _store_to_waveforms:
+
+Store as waveforms
+""""""""""""""""""
+
+The table export button in the row above the logs stores the results of the last run in
+waveforms, at a time of your choosing. It shows every quantity that is sent and stores 
+each one in the waveform named after its IDS path, for
+example ``pf_active/coil(1)/current/data`` or
+``equilibrium/time_slice/boundary/elongation``. 
+
+Each value is stored as a point in a :ref:`piecewise-linear-tendency` at the end of its
+waveform, so the time must come after the last point of the waveforms it stores in.
+
 NICE Configuration
 """"""""""""""""""
 This is where you set up the core parameters for NICE and provide the necessary machine description files.
@@ -380,12 +394,4 @@ Additionally, two more columns control how NICE penalizes the free coil currents
   penalized towards. The default is 1. A value below 1 holds the current closer, a
   value above 1 lets it drift further.
 
-You can save the coil currents to waveforms at a chosen export time. The coil current
-values will be stored in a :ref:`piecewise-linear-tendency` at the end of the
-corresponding waveforms (for example: ``pf_active/coil(1)/current/data``). This allows for a 
-convenient construction of a waveform by iteratively executing the following:
-
-#. Configure the plasma parameters and shape.
-#. Execute NICE to calculate the set of coil currents.
-#. Set an export time value, and append the calculated values to their respective waveforms.
 
