@@ -10,6 +10,8 @@ class Metrics(Viewer):
 
     metrics = param.Dict(default={})
 
+    CHIPS_PER_ROW = 4
+
     ELONGATION = "elongation"
     TRIANGULARITY = "triangularity"
     TRI_UPPER = "tri_upper"
@@ -52,7 +54,12 @@ class Metrics(Viewer):
                 f'<span class="mc-val">{display}</span>'
                 f"</span>"
             )
-        return '<div class="mc-wrap">' + "".join(chips) + "</div>"
+        return "".join(
+            '<div class="mc-wrap">'
+            + "".join(chips[i : i + self.CHIPS_PER_ROW])
+            + "</div>"
+            for i in range(0, len(chips), self.CHIPS_PER_ROW)
+        )
 
     def __panel__(self):
         return self._pane
