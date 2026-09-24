@@ -1,3 +1,4 @@
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import panel as pn
@@ -5,6 +6,20 @@ import param
 
 STYLES = [(Path(__file__).parent / "styles" / "styles.css").read_text()]
 CARD_CSS = (Path(__file__).parent / "styles" / "property_card.css").read_text()
+
+
+def set_xml_parameter(xml_params, name, value):
+    """Set a NICE parameter, adding it if it is not in the parameter file."
+
+    Args:
+        xml_params: XML representing configuration parameters, updated in-place.
+        name: Name of the parameter.
+        value: Value to set it to.
+    """
+    parameter = xml_params.find(name)
+    if parameter is None:
+        parameter = ET.SubElement(xml_params, name)
+    parameter.text = str(value)
 
 
 def _resolve_width(width, stretch_width, params):

@@ -4,11 +4,13 @@
      Author: Blaise Faugeras
      License: LGPL -->
 <parameters>
-  <verbose>1</verbose>
-  <!-- overwritten by shape editor -->
+  <!-- The parameters NICE runs with, and which the settings let you change.
+       The ones the shape editor computes itself, e.g. the selected mode, the coil
+       current table, are deliberately absent as the waveform editor writes these itself
+       -->
+  <verbose>0</verbose>
   <outputTxtFiles>0</outputTxtFiles>
   <outputRestartFiles>0</outputRestartFiles>
-  <algoMode>31</algoMode>
   <algoMeshDomain>2</algoMeshDomain>
   <algoVacTHLRSolver>0</algoVacTHLRSolver>
   <algoVacTHonly>0</algoVacTHonly>
@@ -20,9 +22,6 @@
   <algoReconPolar>0</algoReconPolar>
   <algoReconPressure>0</algoReconPressure>
   <algoReconMSE>0</algoReconMSE>
-  <algoStartFromScratch>1</algoStartFromScratch>
-  <algoStartFromScratchReconAB>1</algoStartFromScratchReconAB>
-  <algoStartPsiFromInData>0</algoStartPsiFromInData>
   <algoWithIp>1</algoWithIp>
   <iterMaxDir>40</iterMaxDir>
   <epsStopDir>1.0e-10</epsStopDir>
@@ -237,15 +236,6 @@
   <coil_group_index>0 1 2 2 3 4 5 6 7 8 9 10 11 12</coil_group_index>
   <n_group_current_index>13</n_group_current_index>
   <group_current_index>0 1 2 4 5 6 7 8 9 10 11 12 13</group_current_index>
-  <!-- Fixed coil currents are updated by the shape editor -->
-  <n_group_fixed_index>2</n_group_fixed_index>
-  <group_fixed_index>11 12</group_fixed_index>
-  <!-- Coil current penalization is updated by the shape editor -->
-  <n_group_penalized_to_zero_index>0</n_group_penalized_to_zero_index>
-  <group_penalized_to_zero_index>0 1 2 3 4 5 6 7 8 9 10</group_penalized_to_zero_index>
-  <n_group_special_weight>0</n_group_special_weight>
-  <group_special_weight_index>0</group_special_weight_index>
-  <group_special_weight>1</group_special_weight>
   <!-- evolution inverse -->
   <!-- same basis representation for all voltages  -->
   <Vfunc>2</Vfunc>
