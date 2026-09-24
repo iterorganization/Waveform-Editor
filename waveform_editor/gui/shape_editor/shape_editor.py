@@ -67,7 +67,7 @@ class ShapeEditor(Viewer):
             options={},
             disabled=True,
             description="Restore a previous converged run",
-            width=280,
+            width=260,
             margin=(10, 0, 2, 10),
         )
         self.run_select.param.watch(self._restore_run, "value")
@@ -116,6 +116,7 @@ class ShapeEditor(Viewer):
             icon="player-stop",
             on_click=self.stop_nice,
             margin=(10, 10, 2, 0),
+            styles={"margin-left": "auto"},
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         warm_start_switch = pn.widgets.Switch.from_param(
@@ -148,7 +149,7 @@ class ShapeEditor(Viewer):
             size="24px",
             margin=(15, 10, 2, 10),
         )
-        buttons = pn.Row(
+        buttons = pn.FlexBox(
             self.collapse_plot,
             settings_modal,
             nice_mode_radio,
@@ -156,11 +157,11 @@ class ShapeEditor(Viewer):
             warm_start_switch,
             warm_start_tooltip,
             self.run_select,
-            pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
+            flex_wrap="wrap",
+            align_items="center",
             sizing_mode="stretch_width",
-            align="center",
         )
 
         self.metrics = Metrics()
