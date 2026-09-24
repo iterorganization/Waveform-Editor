@@ -94,9 +94,13 @@ class WaveformStore:
                     if name is None:
                         # The data dictionary version in use has no such quantity
                         continue
-                    rows.append(
-                        (group, f"{ids_name}/{name}", float(ids[element]), units)
-                    )
+                    try:
+                        value = float(ids[element])
+                    except IndexError:
+                        # NICE did not fill this quantity, for instance because it
+                        # does not apply to the mode that was run
+                        continue
+                    rows.append((group, f"{ids_name}/{name}", value, units))
         return rows
 
     def _describe(self, dd_ids, path):
