@@ -8,6 +8,7 @@ from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
 from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import settings
 from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 
@@ -415,10 +416,12 @@ class CoilCurrents(Viewer):
         target_groups = {coil_groups[coil_idx] for coil_idx in fixed_coils}
         fixed_groups = sorted(list(target_groups), key=int)
 
-        xml_params.find("n_group_fixed_index").text = str(len(fixed_groups))
+        set_xml_parameter(xml_params, "n_group_fixed_index", len(fixed_groups))
         # NICE requires group_fixed_index to be filled even when there are no fixed
         # coils
-        xml_params.find("group_fixed_index").text = " ".join(fixed_groups) or "-1"
+        set_xml_parameter(
+            xml_params, "group_fixed_index", " ".join(fixed_groups) or "-1"
+        )
 
     def _update_penalization_in_xml(self, xml_params: ET.Element):
         """Update the XML parameters describing how NICE penalizes the coil currents
@@ -446,18 +449,22 @@ class CoilCurrents(Viewer):
                 zero_groups.add(group)
 
         zero_groups = sorted(zero_groups, key=int)
-        xml_params.find("n_group_penalized_to_zero_index").text = str(len(zero_groups))
+        set_xml_parameter(
+            xml_params, "n_group_penalized_to_zero_index", len(zero_groups)
+        )
         # NICE requires group_penalized_to_zero_index to be filled even when no coil
         # is penalized to zero
-        xml_params.find("group_penalized_to_zero_index").text = (
-            " ".join(zero_groups) or "-1"
+        set_xml_parameter(
+            xml_params, "group_penalized_to_zero_index", " ".join(zero_groups) or "-1"
         )
 
         groups = sorted(weights, key=int)
-        xml_params.find("n_group_special_weight").text = str(len(groups))
-        xml_params.find("group_special_weight_index").text = " ".join(groups)
-        xml_params.find("group_special_weight").text = " ".join(
-            str(weights[group][1]) for group in groups
+        set_xml_parameter(xml_params, "n_group_special_weight", len(groups))
+        set_xml_parameter(xml_params, "group_special_weight_index", " ".join(groups))
+        set_xml_parameter(
+            xml_params,
+            "group_special_weight",
+            " ".join(str(weights[group][1]) for group in groups),
         )
 
     def __panel__(self):

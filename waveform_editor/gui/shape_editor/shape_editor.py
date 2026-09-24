@@ -15,6 +15,7 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
+from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -66,14 +67,9 @@ class ShapeEditor(Viewer):
         )
         self.nice_settings = settings.nice
 
-        self.xml_params_inv = ET.fromstring(
+        self.xml_text = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("inverse_param.xml")
-            .read_text()
-        )
-        self.xml_params_dir = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("direct_param.xml")
+            .joinpath("param.xml")
             .read_text()
         )
 
@@ -344,6 +340,26 @@ class ShapeEditor(Viewer):
         )
         return False
 
+    def _apply_xml_parameters(self, xml_params):
+        """Set the parameters configured in the settings on the XML, in place.
+
+        Args:
+            xml_params: XML representing configuration parameters.
+
+        Returns:
+            True if every configured parameter exists in the XML, False otherwise.
+        """
+        for name, value in self.nice_settings.xml_parameters.items():
+            parameter = xml_params.find(name)
+            if parameter is None:
+                pn.state.notifications.error(
+                    f"NICE has no parameter {name!r}. Check the NICE parameters in "
+                    "the settings."
+                )
+                return False
+            parameter.text = str(value)
+        return True
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
@@ -352,37 +368,35 @@ class ShapeEditor(Viewer):
             return
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        if self.nice_settings.is_direct_mode:
-            xml_params = self.xml_params_dir
-        else:
-            xml_params = self.xml_params_inv
-            self.coil_currents.update_xml(xml_params)
+        xml_params = ET.fromstring(self.xml_text)
+        if not self._apply_xml_parameters(xml_params):
+            return
 
-        # Update XML parameters:
-        xml_params.find("verbose").text = str(self.nice_settings.verbose)
-        # NICE writes the linearized model (A, B, C matrices) as text files when
-        # outputForControl is set.
-        xml_params.find("outputForControl").text = (
-            "1" if self.nice_settings.linearized_model else "0"
+        set_xml_parameter(
+            xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
         )
-
         use_previous_equilibrium = (
             self.use_previous_run and self.communicator.can_warm_start
         )
+        if self.nice_settings.is_direct_mode:
+            start_from_scratch = 0 if use_previous_equilibrium else 1
+            set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
+            set_xml_parameter(
+                xml_params, "algoStartFromScratchReconAB", start_from_scratch
+            )
+            set_xml_parameter(
+                xml_params,
+                "algoStartPsiFromInData",
+                1 if use_previous_equilibrium else 0,
+            )
+        else:
+            self.coil_currents.update_xml(xml_params)
         if use_previous_equilibrium:
             pn.state.notifications.info("Starting from previous equilibrium.")
             equilibrium = self.communicator.equilibrium
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
-
-        if self.nice_settings.is_direct_mode:
-            start_from_scratch = "0" if use_previous_equilibrium else "1"
-            xml_params.find("algoStartFromScratch").text = start_from_scratch
-            xml_params.find("algoStartFromScratchReconAB").text = start_from_scratch
-            xml_params.find("algoStartPsiFromInData").text = (
-                "1" if use_previous_equilibrium else "0"
-            )
 
         if not self.communicator.running:
             await self.communicator.run(
