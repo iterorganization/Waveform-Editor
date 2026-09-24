@@ -1,6 +1,8 @@
+import copy
 import importlib.resources
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import imas
 import panel as pn
@@ -59,6 +61,16 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
+        # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
+        self.run_history = []
+        self.run_select = pn.widgets.Select(
+            options={},
+            disabled=True,
+            description="Restore a previous converged run",
+            width=280,
+            margin=(10, 0, 2, 10),
+        )
+        self.run_select.param.watch(self._restore_run, "value")
         self.nice_settings = settings.nice
 
         self.xml_params_inv = ET.fromstring(
@@ -143,6 +155,7 @@ class ShapeEditor(Viewer):
             pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
             warm_start_switch,
             warm_start_tooltip,
+            self.run_select,
             pn.Spacer(sizing_mode="stretch_width"),
             button_stop,
             button_start,
@@ -239,6 +252,34 @@ class ShapeEditor(Viewer):
     def _disable_warm_start(self):
         self.use_previous_run = False
         self.communicator.can_warm_start = False
+        self.run_history = []
+        self.run_select.options = {}
+        self.run_select.disabled = True
+
+    def _add_to_history(self):
+        """Store the result of the last run in the run history."""
+        label = (
+            f"Run {len(self.run_history) + 1}: {self.nice_settings.mode} "
+            f"({datetime.now():%H:%M:%S})"
+        )
+        self.run_history.append(
+            (label, self.communicator.equilibrium, self.communicator.pf_active)
+        )
+        self.run_select.options = {
+            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
+        }
+        self.run_select.value = len(self.run_history) - 1
+        self.run_select.disabled = False
+
+    def _restore_run(self, event):
+        """Restore the equilibrium and coil currents of the selected run."""
+        if event.new is None:
+            return
+        _, equilibrium, pf_active = self.run_history[event.new]
+        self.communicator.equilibrium = equilibrium
+        self.communicator.pf_active = pf_active
+        self.coil_currents.sync_ui_with_pf_active(pf_active)
+        self._update_metrics()
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -343,7 +384,8 @@ class ShapeEditor(Viewer):
         )
         if use_previous_equilibrium:
             pn.state.notifications.info("Starting from previous equilibrium.")
-            equilibrium = self.communicator.equilibrium
+            # Copy, so the stored result in the run history is not modified
+            equilibrium = copy.deepcopy(self.communicator.equilibrium)
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
@@ -356,6 +398,7 @@ class ShapeEditor(Viewer):
                 "1" if use_previous_equilibrium else "0"
             )
 
+        previous_equilibrium = self.communicator.equilibrium
         if not self.communicator.running:
             await self.communicator.run(
                 is_direct_mode=self.nice_settings.is_direct_mode
@@ -370,6 +413,11 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
         self._update_metrics()
+        if (
+            self.communicator.equilibrium is not previous_equilibrium
+            and self.communicator.can_warm_start
+        ):
+            self._add_to_history()
 
     def _update_metrics(self):
         eq = self.communicator.equilibrium
