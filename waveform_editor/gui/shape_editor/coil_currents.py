@@ -105,7 +105,6 @@ class CoilCurrents(Viewer):
             self.PREV_CURRENT: NumberFormatter(),
             self.CURRENT_LIMIT: NumberFormatter(),
             self.PENALIZE_ZERO: {"type": "tickCross"},
-            self.PENALTY_WEIGHT: NumberFormatter(),
         }
         self.table = pn.widgets.Tabulator(
             layout="fit_data_stretch",
