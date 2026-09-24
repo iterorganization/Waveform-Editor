@@ -704,8 +704,8 @@ Exercise 6b: Running NICE inverse
       .. image:: ../images/training/nice_result.png
          :align: center
 
-Exercise 6c: Configurating the Plasma Shape
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Exercise 6c: Configuring the Plasma Shape
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. md-tab-set::
    .. md-tab-item:: Exercise
@@ -791,3 +791,46 @@ Exercise 6d: Fixing Coil Currents
 
          .. image:: ../images/training/fixed_coils_invalid.png
             :align: center
+
+Exercise 6e: Running NICE direct
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. md-tab-set::
+   .. md-tab-item:: Exercise
+
+      In inverse mode, NICE calculates the coil currents required to obtain a desired
+      plasma shape. In direct mode it works the other way around: NICE takes the coil
+      currents as input, and calculates the resulting equilibrium and plasma shape.
+      A common workflow is to first obtain a good equilibrium using NICE inverse, and then
+      make small adjustments to the coil currents using NICE direct.
+
+      1. Load the plasma outline of the time step at 200s from the equilibrium IDS in 
+         Exercise 6c, and run NICE inverse. Make sure no coil currents are fixed.
+         Note down the metrics shown below the plot, such as the elongation and triangularity.
+      2. Switch the mode from ``NICE Inverse`` to ``NICE Direct`` using the toggle next 
+         to the ``Run`` button. What changes in the options panels?
+      3. Enable the ``Warm start`` switch, and run NICE direct without changing anything. 
+         How does the resulting equilibrium compare to the one from NICE inverse?
+      4. Increase the current of PF6 by 3000A in the ``Coil Currents`` panel,
+         and run NICE direct again. How does the plasma shape change? What do the
+         metrics tell you?
+      5. Disable the ``Warm start`` switch and run NICE direct again. What happens?
+
+   .. md-tab-item:: Solution
+
+      1. NICE inverse converges and the ``Coil Currents`` panel is filled with the 
+         coil currents calculated by NICE.
+      2. In direct mode, the ``Plasma Shape`` panel is hidden, since NICE direct does 
+         not require a desired plasma shape. The desired shape is also no longer plotted.
+         The ``Fix``, ``Penalize to 0`` and ``Penalty weight`` columns are hidden from
+         the ``Coil Currents`` panel, as these only apply to inverse mode.
+      3. Since the coil currents are the ones calculated by NICE inverse, NICE direct 
+         should give the same equilibrium and metrics as NICE inverse.
+      4. The plasma shape changes as a result of the changed coil current. Since PF6 is
+         located below the plasma, mainly the lower part of the plasma boundary changes,
+         which you can see in the lower triangularity metric. The ``Previous current [A]`` column shows the 
+         coil currents used in the previous run.
+      5. Without warm start, NICE direct starts from scratch instead of from the
+         previous equilibrium. This may take longer to converge, or it may not converge
+         at all. Warm starting is therefore useful when making small adjustments to an 
+         existing equilibrium.

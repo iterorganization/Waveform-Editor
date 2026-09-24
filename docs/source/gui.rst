@@ -335,7 +335,7 @@ plasma boundary. There are three methods for specifying the shape:
 
 Plasma Properties
 """""""""""""""""
-This contains settings for configurating the plasma's physical properties.
+This contains settings for configuring the plasma's physical properties.
 You can either load them from an existing equilibrium or define them manually.
 
 * **Equilibrium IDS**: Loads the plasma current (`Ip`), reference major radius (`R0`), 
