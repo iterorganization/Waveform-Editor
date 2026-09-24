@@ -2,6 +2,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.util import STYLES
 
 
@@ -9,8 +10,6 @@ class Metrics(Viewer):
     """Chips row showing equilibrium metrics below the flux map."""
 
     metrics = param.Dict(default={})
-
-    CHIPS_PER_ROW = 4
 
     ELONGATION = "elongation"
     TRIANGULARITY = "triangularity"
@@ -38,6 +37,7 @@ class Metrics(Viewer):
         self._pane = pn.pane.HTML(
             pn.bind(self._render, self.param.metrics),
             sizing_mode="stretch_width",
+            max_width=NicePlotter.FRAME_WIDTH,
             stylesheets=STYLES,
         )
 
@@ -54,12 +54,7 @@ class Metrics(Viewer):
                 f'<span class="mc-val">{display}</span>'
                 f"</span>"
             )
-        return "".join(
-            '<div class="mc-wrap">'
-            + "".join(chips[i : i + self.CHIPS_PER_ROW])
-            + "</div>"
-            for i in range(0, len(chips), self.CHIPS_PER_ROW)
-        )
+        return '<div class="mc-wrap">' + "".join(chips) + "</div>"
 
     def __panel__(self):
         return self._pane
