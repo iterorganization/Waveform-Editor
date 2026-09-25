@@ -5,7 +5,11 @@ import param
 import scipy.constants
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import CARD_CSS, FormattedEditableFloatSlider
+from waveform_editor.gui.util import (
+    CARD_CSS,
+    EquilibriumInput,
+    FormattedEditableFloatSlider,
+)
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
 )
@@ -327,8 +331,6 @@ class PlasmaProperties(Viewer):
         doc="Triggered whenever the dpressure_dpsi and f_df_dpsi are updated."
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
-    ids_uri = param.String(default="")
-    ids_time = param.Number(default=0.0)
 
     def __init__(self):
         super().__init__()
@@ -347,19 +349,8 @@ class PlasmaProperties(Viewer):
         )
         self._profiles = PlasmaProfiles()
 
-        self._uri_input = pn.widgets.TextInput.from_param(
-            self.param.ids_uri,
-            name="IDS URI",
-            placeholder="imas:?path=...",
-            sizing_mode="stretch_width",
-        )
-        self._time_input = pn.widgets.FloatInput.from_param(
-            self.param.ids_time, name="Time [s]", width=100
-        )
-        self._load_btn = pn.widgets.Button(
-            name="Load", button_type="primary", width=80, margin=(28, 0, 0, 0)
-        )
-        self._load_btn.on_click(self._do_load)
+        self._ids_source = EquilibriumInput()
+        self._ids_source.param.watch(self._do_load, "load")
 
         self.dpressure_dpsi = None
         self.f_df_dpsi = None
@@ -381,8 +372,8 @@ class PlasmaProperties(Viewer):
 
     def _do_load(self, _event=None):
         """Load all scalar properties from the global IDS URI, then load profiles."""
-        uri = self.ids_uri
-        time = self.ids_time
+        uri = self._ids_source.uri
+        time = self._ids_source.time
         if not uri:
             pn.state.notifications.warning("Please enter an IDS URI first.")
             return
@@ -421,25 +412,8 @@ class PlasmaProperties(Viewer):
         self.param.trigger("profile_updated")
 
     def __panel__(self):
-        ids_source = pn.Column(
-            pn.pane.HTML(
-                "<b>Equilibrium IDS source</b>",
-                margin=(0, 0, 6, 0),
-            ),
-            pn.Row(
-                self._uri_input,
-                self._time_input,
-                self._load_btn,
-                margin=0,
-                align="end",
-            ),
-            css_classes=["property-card", "ids-source-card"],
-            stylesheets=[CARD_CSS],
-            sizing_mode="stretch_width",
-            margin=(0, 0, 8, 0),
-        )
         return pn.Column(
-            ids_source,
+            self._ids_source,
             self._ip,
             self._r0,
             self._b0,
