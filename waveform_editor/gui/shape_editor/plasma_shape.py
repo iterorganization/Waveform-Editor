@@ -334,8 +334,9 @@ class PlasmaShape(Viewer):
             self.EQUILIBRIUM_INPUT: (
                 self._load_shape_from_ids,
                 lambda: pn.Row(
-                    pn.Param(self.input_outline, show_name=False),
+                    self.input_outline,
                     self.outline_indicator,
+                    margin=(10, 20, 0, 20),
                 ),
             ),
             self.PARAMETERIZED_INPUT: (
@@ -345,7 +346,7 @@ class PlasmaShape(Viewer):
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
                 lambda: pn.Row(
-                    pn.Param(self.input_gaps, show_name=False), self.gap_indicator
+                    self.input_gaps, self.gap_indicator, margin=(10, 20, 0, 20)
                 ),
             ),
             self.WEIGHTED_POINTS_INPUT: (
@@ -384,8 +385,8 @@ class PlasmaShape(Viewer):
 
     @pn.depends(
         "shape_params.param",
-        "input_outline.param",
-        "input_gaps.param",
+        "input_outline.load",
+        "input_gaps.load",
         "weighted_points_table.param",
         "input_mode",
         watch=True,
