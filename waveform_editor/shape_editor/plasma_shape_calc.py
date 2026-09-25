@@ -62,7 +62,16 @@ def _divertor_leg(midplane, x_point, n_points):
 
 
 def compute_outline_from_params(
-    a, center_r, center_z, kappa, delta, rx, zx, n_desired_bnd_points
+    a,
+    center_r,
+    center_z,
+    kappa,
+    delta,
+    rx,
+    zx,
+    n_desired_bnd_points,
+    rx_upper=None,
+    zx_upper=None,
 ):
     """Compute plasma boundary outline from parameterized shape inputs.
 
@@ -78,6 +87,8 @@ def compute_outline_from_params(
         rx: X-point major radius.
         zx: X-point height.
         n_desired_bnd_points: Number of desired boundary points.
+        rx_upper: Major radius of a second x-point, for a double null plasma.
+        zx_upper: Height of that second x-point.
 
     Returns:
         Tuple of (outline_r, outline_z) coordinate lists.
@@ -94,20 +105,29 @@ def compute_outline_from_params(
     if (rem1 + nb_point1) % 2 == 1:
         nb_point1 += 1
 
-    # First segment: main plasma shape
-    theta1 = math.pi / (nb_point1 - 1)
-    asin_delta = math.asin(delta)
-    for i in range(nb_point1):
-        theta = i * theta1
-        r = r0 + a * math.cos(theta + asin_delta * math.sin(theta))
-        z = z0 + a * kappa * math.sin(theta)
-        points.append((r, z))
+    if rx_upper is not None:
+        # A double null is four legs between the midplane and the two x-points
+        x_points = [(rx, zx), (rx_upper, zx_upper)]
+        n_leg = (nb_desired_point - len(x_points) - 2) // 4
+        points += [(r0 - a, z0), (r0 + a, z0), *x_points]
+        for x_point in x_points:
+            points += _divertor_leg((r0 - a, z0), x_point, n_leg)
+            points += _divertor_leg((r0 + a, z0), x_point, n_leg)
+    else:
+        # First segment: main plasma shape
+        theta1 = math.pi / (nb_point1 - 1)
+        asin_delta = math.asin(delta)
+        for i in range(nb_point1):
+            theta = i * theta1
+            r = r0 + a * math.cos(theta + asin_delta * math.sin(theta))
+            z = z0 + a * kappa * math.sin(theta)
+            points.append((r, z))
 
-    # Second and third arc: the divertor legs
-    points += _divertor_leg((r0 - a, z0), (rx, zx), nb_point2)
-    points += _divertor_leg((r0 + a, z0), (rx, zx), nb_point3)
+        # Second and third arc: the divertor legs
+        points += _divertor_leg((r0 - a, z0), (rx, zx), nb_point2)
+        points += _divertor_leg((r0 + a, z0), (rx, zx), nb_point3)
 
-    points.append((rx, zx))
+        points.append((rx, zx))
 
     # Sort points by angle from centroid
     mean_r = sum(p[0] for p in points) / len(points)
