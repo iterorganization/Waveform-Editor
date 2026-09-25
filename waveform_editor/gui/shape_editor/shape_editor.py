@@ -73,7 +73,6 @@ class ShapeEditor(Viewer):
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
-            description="Restore a previous converged run",
             width=260,
             margin=(10, 0, 2, 10),
         )
@@ -131,17 +130,21 @@ class ShapeEditor(Viewer):
             "Enable warm start to use the previous run's equilibrium as the "
             "initial guess for the next run. This can improve convergence."
         )
-        warm_start_tooltip = pn.widgets.TooltipIcon(
-            value=pn.bind(
+        warm_start_label = pn.pane.HTML(
+            pn.bind(
                 lambda can: (
-                    tooltip_msg
+                    f'<span title="{tooltip_msg}">Warm start</span>'
                     if can
-                    else f"{tooltip_msg}\n\nNo previous run is available yet. "
-                    "Run NICE once to allow warm starting. "
+                    else f'<span title="{tooltip_msg} No previous run is available '
+                    'yet, run NICE once to allow warm starting.">Warm start</span>'
                 ),
                 self.communicator.param.can_warm_start,
             ),
-            margin=(5, 0, 2, 0),
+            margin=(15, 0, 2, 10),
+        )
+        run_msg = "Restore a previous converged NICE run"
+        run_label = pn.pane.HTML(
+            f'<span title="{run_msg}">Previous run</span>', margin=(15, 0, 2, 10)
         )
         settings_modal = SettingsModal(self.nice_plotter)
         waveform_sync = WaveformSync(main_gui, self.communicator)
@@ -157,9 +160,9 @@ class ShapeEditor(Viewer):
             settings_modal,
             waveform_sync,
             nice_mode_radio,
-            pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
+            warm_start_label,
             warm_start_switch,
-            warm_start_tooltip,
+            run_label,
             self.run_select,
             button_stop,
             button_start,
