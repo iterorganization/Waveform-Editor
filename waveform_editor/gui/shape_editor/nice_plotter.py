@@ -36,6 +36,8 @@ class NicePlotter(Viewer):
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    pf_passive = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    iron_core = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
@@ -49,6 +51,13 @@ class NicePlotter(Viewer):
     show_wall = param.Boolean(default=True, label="Show limiter and divertor")
     show_vacuum_vessel = param.Boolean(
         default=True, label="Show inner and outer vacuum vessel"
+    )
+    show_passive_structures = param.Boolean(
+        default=True, label="Show passive structures"
+    )
+    show_iron_core = param.Boolean(default=True, label="Show iron core")
+    show_components = param.Boolean(
+        default=False, label="Show plasma facing components"
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
@@ -110,7 +119,10 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_xo_points),
             hv.DynamicMap(self._plot_coil_rectangles),
             hv.DynamicMap(self._plot_wall),
+            hv.DynamicMap(self._plot_components),
             hv.DynamicMap(self._plot_vacuum_vessel),
+            hv.DynamicMap(self._plot_passive_structures),
+            hv.DynamicMap(self._plot_iron_core),
             hv.DynamicMap(self._plot_plasma_shape),
             self.editable_points,
         ]
@@ -470,9 +482,16 @@ class NicePlotter(Viewer):
         if self.show_vacuum_vessel and self.wall is not None:
             for unit in self.wall.description_2d[0].vessel.unit:
                 name = str(unit.name)
-                r_vals = unit.annular.centreline.r
-                z_vals = unit.annular.centreline.z
-                paths.append((r_vals, z_vals, name))
+                annular = unit.annular
+                if len(annular.centreline.r):
+                    paths.append((annular.centreline.r, annular.centreline.z, name))
+                else:
+                    paths.append(
+                        (annular.outline_inner.r, annular.outline_inner.z, name)
+                    )
+                    paths.append(
+                        (annular.outline_outer.r, annular.outline_outer.z, name)
+                    )
         return hv.Path(paths, vdims=["name"]).opts(
             color="black",
             line_width=2,
@@ -495,6 +514,105 @@ class NicePlotter(Viewer):
                 paths.append((r_vals, z_vals, name))
         return hv.Path(paths, vdims=["name"]).opts(
             color="black",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
+
+    @pn.depends("wall", "show_components")
+    def _plot_components(self):
+        """Generates paths for the plasma facing components, which a machine
+        describes alongside the limiter it is computed with.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_components and self.wall is not None:
+            # The first description is the limiter the equilibrium is computed with
+            for description in list(self.wall.description_2d)[1:]:
+                for unit in description.limiter.unit:
+                    outline = unit.outline
+                    paths.append(
+                        (outline.r, outline.z, str(unit.description or unit.name))
+                    )
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="gray",
+            line_width=1,
+            hover_tooltips=[("", "@name")],
+        )
+
+    @pn.depends("pf_passive", "show_passive_structures")
+    def _plot_passive_structures(self):
+        """Generates paths for the passive conducting structures.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_passive_structures and self.pf_passive is not None:
+            for loop in self.pf_passive.loop:
+                for element in loop.element:
+                    outline = self._element_outline(element.geometry)
+                    if outline is None:
+                        logger.warning(
+                            f"Passive structure {str(loop.name)!r} was skipped, as its "
+                            "geometry is not an outline, a rectangle or an oblique"
+                        )
+                        continue
+                    paths.append((*outline, str(loop.name)))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="darkgray",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
+
+    def _element_outline(self, geometry):
+        """The corners of an element of a machine, whichever way it is described.
+
+        Args:
+            geometry: The geometry of an element.
+
+        Returns:
+            Tuple of (r, z) of a closed outline
+        """
+        if geometry.outline.has_value:
+            return geometry.outline.r, geometry.outline.z
+        rectangle = geometry.rectangle
+        if rectangle.has_value:
+            r, z = rectangle.r, rectangle.z
+            dr, dz = rectangle.width / 2, rectangle.height / 2
+            return (
+                np.array([r - dr, r + dr, r + dr, r - dr, r - dr]),
+                np.array([z - dz, z - dz, z + dz, z + dz, z - dz]),
+            )
+        oblique = geometry.oblique
+        if oblique.has_value:
+            # Two sides from a corner, each at its own angle
+            dr_a = oblique.length_alpha * np.cos(oblique.alpha)
+            dz_a = oblique.length_alpha * np.sin(oblique.alpha)
+            dr_b = -oblique.length_beta * np.sin(oblique.beta)
+            dz_b = oblique.length_beta * np.cos(oblique.beta)
+            r, z = oblique.r, oblique.z
+            return (
+                np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
+                np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
+            )
+        return None
+
+    @pn.depends("iron_core", "show_iron_core")
+    def _plot_iron_core(self):
+        """Generates paths for the iron core segments.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_iron_core and self.iron_core is not None:
+            for segment in self.iron_core.segment:
+                outline = segment.geometry.outline
+                paths.append((outline.r, outline.z, str(segment.name)))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="saddlebrown",
             line_width=2,
             hover_tooltips=[("", "@name")],
         )
