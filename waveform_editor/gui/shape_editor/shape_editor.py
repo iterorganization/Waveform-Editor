@@ -21,8 +21,19 @@ from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.west_gaps import compute_gaps
 
 logger = logging.getLogger(__name__)
+
+# The gaps of a WEST plasma, as (symbol, unit, full name) by name
+WEST_GAP_METRICS = {
+    "UROG": ("UROG", "cm", "Upper radial outer gap"),
+    "EROG": ("EROG", "cm", "Equatorial radial outer gap"),
+    "LROG": ("LROG", "cm", "Lower radial outer gap"),
+    "dXlow": ("dXlow", "cm", "Distance of the lower x-point to the divertor"),
+    "dXup": ("dXup", "cm", "Distance of the upper x-point to the divertor"),
+    "dbaffle": ("dbaffle", "cm", "Distance of the plasma to the baffle"),
+}
 
 
 # NICE reads the desired boundary into an array of this fixed size
@@ -172,6 +183,8 @@ class ShapeEditor(Viewer):
         )
 
         self.metrics = Metrics()
+        self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
+        self._update_machine_metrics()
         # Accordion does not allow dynamic titles, so use separate card for each option
         inputs = pn.Column(
             self._create_card(
@@ -495,7 +508,38 @@ class ShapeEditor(Viewer):
             self.metrics.VERTICAL: float(boundary.geometric_axis.z),
             self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
             self.metrics.Q95: float(global_quantities.q_95),
+            **self._west_gaps(eq.time_slice[0]),
         }
+
+    def _update_machine_metrics(self, event=None):
+        """Show the chips of the machine of the selected preset, also before a run
+        has filled them in."""
+        self.metrics.machine_metrics = (
+            WEST_GAP_METRICS
+            if self.nice_settings.machine_preset == NiceSettings.PRESET_WEST
+            else {}
+        )
+
+    def _west_gaps(self, time_slice):
+        """The gaps of the plasma to the parts of WEST it is kept away from. They are
+        not in the equilibrium, so they are computed from its boundary.
+
+        Args:
+            time_slice: The time slice NICE returned.
+
+        Returns:
+            Dict of gap name to distance in centimetres, empty for another machine.
+        """
+        if self.nice_settings.machine_preset != NiceSettings.PRESET_WEST:
+            return {}
+        x_points = [
+            (float(node.r), float(node.z))
+            for node in time_slice.contour_tree.node
+            if int(node.critical_type) == 1
+        ]
+        outline = time_slice.boundary.outline
+        gaps = compute_gaps(outline.r, outline.z, x_points)
+        return {name: gap * 100 for name, gap in gaps.items()}
 
     @param.depends(
         "nice_settings.mode",
