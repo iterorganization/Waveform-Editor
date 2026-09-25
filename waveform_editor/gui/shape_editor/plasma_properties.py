@@ -10,6 +10,7 @@ from waveform_editor.gui.util import (
     EquilibriumInput,
     FormattedEditableFloatSlider,
 )
+from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
 )
@@ -126,9 +127,9 @@ class PlasmaProfiles(Viewer):
     to an "edited" badge. Clicking Reset restores the IDS profiles.
     """
 
-    alpha = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
-    beta = param.Number(default=0.5, softbounds=[0.5, 2], step=0.01)
-    gamma = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01)
+    alpha = param.Number(default=1.0, softbounds=[0.5, 2], step=0.01)
+    beta = param.Number(default=0.65, softbounds=[0, 2], step=0.01)
+    gamma = param.Number(default=1.05, softbounds=[0.5, 2], step=0.01)
     changed = param.Event()
     input_state = param.String(default="manual", precedence=-1)
 
@@ -319,6 +320,26 @@ class PlasmaProfiles(Viewer):
         )
 
 
+MACHINE_PROPERTIES = {
+    NiceSettings.PRESET_ITER: {
+        "ip": -1.5e7,
+        "r0": 6.2,
+        "b0": -5.3,
+        "alpha": 1.0,
+        "beta": 0.65,
+        "gamma": 1.05,
+    },
+    NiceSettings.PRESET_WEST: {
+        "ip": -4.0e5,
+        "r0": 2.42,
+        "b0": -3.76,
+        "alpha": 1.0,
+        "beta": 0.85,
+        "gamma": 1.2,
+    },
+}
+
+
 class PlasmaProperties(Viewer):
     """Assembles a shared IDS source, per-property inputs, and plasma profiles.
 
@@ -362,7 +383,23 @@ class PlasmaProperties(Viewer):
         for widget in [self._ip, self._r0, self._b0, self._profiles]:
             widget.param.watch(self._load_plasma_properties, "changed")
 
+        settings.nice.param.watch(self.apply_machine_properties, "machine_preset")
+        self.apply_machine_properties()
         self._load_plasma_properties()
+
+    def apply_machine_properties(self, event=None):
+        """Start from the properties the machine of the selected preset is run at."""
+        properties = MACHINE_PROPERTIES.get(settings.nice.machine_preset)
+        if properties is None:
+            return
+        self._ip.value = properties["ip"]
+        self._r0.value = properties["r0"]
+        self._b0.value = properties["b0"]
+        self._profiles.param.update(
+            alpha=properties["alpha"],
+            beta=properties["beta"],
+            gamma=properties["gamma"],
+        )
 
     _IDS_SCALAR_PATHS = [
         ("_ip", "time_slice(0)/global_quantities/ip"),

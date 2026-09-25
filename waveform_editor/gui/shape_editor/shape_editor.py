@@ -497,7 +497,14 @@ class ShapeEditor(Viewer):
             self.metrics.Q95: float(global_quantities.q_95),
         }
 
-    @param.depends("nice_settings.mode", watch=True)
+    @param.depends(
+        "nice_settings.mode",
+        "nice_settings.md_pf_active.uri",
+        "nice_settings.md_pf_passive.uri",
+        "nice_settings.md_wall.uri",
+        "nice_settings.md_iron_core.uri",
+        watch=True,
+    )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
         await self.communicator.close()
