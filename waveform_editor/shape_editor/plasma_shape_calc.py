@@ -27,6 +27,40 @@ class Gap:
         return self.z + self.value * math.sin(-self.angle)
 
 
+def _divertor_leg(midplane, x_point, n_points):
+    """The points of a divertor leg, which runs from a point on the midplane to the
+    x-point along the arc that leaves the midplane vertically.
+
+    Args:
+        midplane: The (r, z) the leg starts at, on the inner or outer midplane.
+        x_point: The (r, z) of the x-point the leg ends at.
+        n_points: Number of points of the leg, excluding its two ends.
+
+    Returns:
+        List of (r, z) along the leg, from the midplane towards the x-point.
+    """
+    (r_start, z_start), (rx, zx) = midplane, x_point
+    dr, dz = rx - r_start, zx - z_start
+    fractions = [(i + 1) / (n_points + 1) for i in range(n_points)]
+    if abs(dr) < abs(dz) * 1e-6:  # the x-point is straight above or below
+        return [(r_start + f * dr, z_start + f * dz) for f in fractions]
+
+    # The centre is where the bisector of the two points meets the midplane
+    r_centre = r_start + (dr**2 + dz**2) / (2 * dr)
+    radius = abs(r_centre - r_start)
+    angle_start = math.atan2(0.0, r_start - r_centre)
+    angle_x = math.atan2(zx - z_start, rx - r_centre)
+    # The short way around, so that the leg does not run around the plasma
+    sweep = (angle_x - angle_start + math.pi) % (2 * math.pi) - math.pi
+    return [
+        (
+            r_centre + radius * math.cos(angle_start + f * sweep),
+            z_start + radius * math.sin(angle_start + f * sweep),
+        )
+        for f in fractions
+    ]
+
+
 def compute_outline_from_params(
     a, center_r, center_z, kappa, delta, rx, zx, n_desired_bnd_points
 ):
@@ -69,25 +103,9 @@ def compute_outline_from_params(
         z = z0 + a * kappa * math.sin(theta)
         points.append((r, z))
 
-    # Second arc: inner divertor leg
-    ri = ((rx + r0 - a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 + a))
-    ai = ri - r0 + a
-    theta2 = math.atan2(z0 - zx, ri - rx) / (nb_point2 + 1)
-    for i in range(nb_point2):
-        theta = (i + 1) * theta2
-        r = ri - ai * math.cos(theta)
-        z = z0 - ai * math.sin(theta)
-        points.append((r, z))
-
-    # Third arc: outer divertor leg
-    re = ((rx + r0 + a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 - a))
-    ae = r0 + a - re
-    theta3 = math.atan2(z0 - zx, rx - re) / (nb_point3 + 1)
-    for i in range(nb_point3):
-        theta = (i + 1) * theta3
-        r = re + ae * math.cos(theta)
-        z = z0 - ae * math.sin(theta)
-        points.append((r, z))
+    # Second and third arc: the divertor legs
+    points += _divertor_leg((r0 - a, z0), (rx, zx), nb_point2)
+    points += _divertor_leg((r0 + a, z0), (rx, zx), nb_point3)
 
     points.append((rx, zx))
 

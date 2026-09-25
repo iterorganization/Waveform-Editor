@@ -47,34 +47,74 @@ MACHINE_SHAPES = {
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
-    a = param.Number(default=1.9, step=0.01, softbounds=[1, 2], label="Minor Radius")
+    a = param.Number(
+        default=1.9,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[1, 2],
+        label="Minor Radius",
+    )
     center_r = param.Number(
-        default=6.2, step=0.01, softbounds=[5, 7], label="Plasma center radius"
+        default=6.2,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[5, 7],
+        label="Plasma center radius",
     )
     center_z = param.Number(
         default=0.545, step=0.01, softbounds=[0, 1.5], label="Plasma center height"
     )
-    kappa = param.Number(default=1.8, step=0.01, softbounds=[0, 3], label="Elongation")
+    kappa = param.Number(
+        default=1.8,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[0, 3],
+        label="Elongation",
+    )
+    # A triangularity outside of this has no angle, as the shape uses its arc sine
     delta = param.Number(
-        default=0.43, step=0.01, softbounds=[-1, 1], label="Triangularity"
+        default=0.43,
+        step=0.01,
+        bounds=(-1, 1),
+        softbounds=[-1, 1],
+        label="Triangularity",
     )
     rx = param.Number(
-        default=5.089, step=0.01, softbounds=[4.5, 6], label="X-point radius"
+        default=5.089,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[4.5, 6],
+        label="X-point radius",
     )
     zx = param.Number(
         default=-3.346, step=0.01, softbounds=[-4, -2], label="X-point height"
     )
+    # NICE reads the boundary into an array of 5000 points
     n_desired_bnd_points = param.Integer(
-        default=96, softbounds=[3, 200], label="Number of boundary points"
+        default=96,
+        bounds=(3, 5000),
+        softbounds=[3, 200],
+        label="Number of boundary points",
     )
     weight_enabled = param.Boolean(default=False, label="Emphasize a region")
     weight_position = param.Number(
         default=0, step=1, bounds=[0, 360], label="Position [deg]"
     )
     weight_spread = param.Number(
-        default=15, step=0.5, softbounds=[1, 90], label="Spread [deg]"
+        default=15,
+        step=0.5,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[1, 90],
+        label="Spread [deg]",
     )
-    weight_height = param.Integer(default=10, softbounds=[1, 1000], label="Max weight")
+    weight_height = param.Integer(
+        default=10, bounds=(1, None), softbounds=[1, 1000], label="Max weight"
+    )
     extra_points_enabled = param.Boolean(
         default=False, label="Add additional weighted points"
     )
