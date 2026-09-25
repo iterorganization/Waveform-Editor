@@ -59,26 +59,34 @@ class NicePlotter(Viewer):
     _syncing_points = False
 
     # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
-    R_RANGE = (0, 13)
-    Z_RANGE = (-10, 10)
     FRAME_HEIGHT = 700
+    # The r and z range to plot per machine, wide enough to hold its coils
+    MACHINE_RANGES = {
+        NiceSettings.PRESET_ITER: ((0, 13), (-10, 10)),
+        NiceSettings.PRESET_WEST: ((0, 4.8), (-2.6, 2.6)),
+    }
+    R_RANGE, Z_RANGE = MACHINE_RANGES[NiceSettings.PRESET_ITER]
     FRAME_WIDTH = round(
         FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
     )
 
     def __init__(self, **params):
         super().__init__(**params)
+        self.nice_settings = settings.nice
+        self._figure = None
+        self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
+        r_range, z_range = self._machine_ranges()
         self.DEFAULT_OPTS = hv.opts.Overlay(
-            xlim=self.R_RANGE,
-            ylim=self.Z_RANGE,
-            frame_width=self.FRAME_WIDTH,
+            xlim=r_range,
+            ylim=z_range,
+            frame_width=self._frame_width(r_range, z_range),
             frame_height=self.FRAME_HEIGHT,
             title="",
             xlabel="r [m]",
             ylabel="z [m]",
             fontsize={"labels": 15, "ticks": 11},
+            hooks=[self._capture_figure],
         )
-        self.nice_settings = settings.nice
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -189,6 +197,32 @@ class NicePlotter(Viewer):
             self.plasma_shape.weighted_points_table.set_points(r, z, weights)
         finally:
             self._syncing_points = False
+
+    def _machine_ranges(self):
+        """The r and z range of the machine of the selected preset. A custom machine
+        is shown at the largest range, so that nothing falls outside the plot."""
+        return self.MACHINE_RANGES.get(
+            self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
+        )
+
+    def _frame_width(self, r_range, z_range):
+        """The width at which the plot holds its data aspect."""
+        span_r = r_range[1] - r_range[0]
+        span_z = z_range[1] - z_range[0]
+        return round(self.FRAME_HEIGHT * span_r / span_z)
+
+    def _capture_figure(self, plot, element):
+        """Keep hold of the figure, so its ranges can follow the machine preset."""
+        self._figure = plot.state
+
+    def _apply_machine_ranges(self, event=None):
+        """Show the machine of the selected preset, coils and all."""
+        if self._figure is None:
+            return
+        r_range, z_range = self._machine_ranges()
+        self._figure.x_range.start, self._figure.x_range.end = r_range
+        self._figure.y_range.start, self._figure.y_range.end = z_range
+        self._figure.frame_width = self._frame_width(r_range, z_range)
 
     @pn.depends(
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"

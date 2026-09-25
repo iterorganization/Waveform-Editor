@@ -11,6 +11,7 @@ from waveform_editor.gui.util import (
     FormattedEditableFloatSlider,
     WarningIndicator,
 )
+from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
     apply_point_weights,
@@ -18,6 +19,29 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_outline_from_params,
     update_outline_from_gaps,
 )
+
+# A shape to start from for each machine, taken from one of its discharges, as
+# (value, slider range) per parameter
+MACHINE_SHAPES = {
+    NiceSettings.PRESET_ITER: {
+        "a": (1.9, (1, 2)),
+        "center_r": (6.2, (5, 7)),
+        "center_z": (0.545, (0, 1.5)),
+        "kappa": (1.8, (0, 3)),
+        "delta": (0.43, (-1, 1)),
+        "rx": (5.089, (4.5, 6)),
+        "zx": (-3.346, (-4, -2)),
+    },
+    NiceSettings.PRESET_WEST: {
+        "a": (0.46, (0.2, 0.8)),
+        "center_r": (2.54, (2, 3)),
+        "center_z": (-0.02, (-0.5, 0.5)),
+        "kappa": (1.31, (0, 3)),
+        "delta": (0.38, (-1, 1)),
+        "rx": (2.23, (1.8, 3.2)),
+        "zx": (-0.62, (-1.2, 0)),
+    },
+}
 
 
 class PlasmaShapeParams(Viewer):
@@ -56,14 +80,31 @@ class PlasmaShapeParams(Viewer):
     )
     extra_points_table = param.Parameter()
 
+    def apply_machine_shape(self, event=None):
+        """Start from the shape of the machine of the selected preset."""
+        shape = MACHINE_SHAPES.get(settings.nice.machine_preset)
+        if shape is None:  # a custom machine, whose shape we cannot know
+            return
+        for name, (_, slider_range) in shape.items():
+            self.param[name].softbounds = slider_range
+            if name in getattr(self, "_sliders", {}):
+                self._sliders[name].start, self._sliders[name].end = slider_range
+        self.param.update(**{name: value for name, (value, _) in shape.items()})
+
     def __panel__(self):
+        # The sliders of this panel, so that their range can follow the machine
+        self._sliders = {}
+
         def _slider(n):
             p = getattr(self.param, n)
             if isinstance(self.param[n], param.Boolean):
                 return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
                 return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
-            return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
+            self._sliders[n] = FormattedEditableFloatSlider.from_param(
+                p, stretch_width=True
+            )
+            return self._sliders[n]
 
         def _group(title, *children):
             return pn.Column(
@@ -381,7 +422,12 @@ class PlasmaShape(Viewer):
         self.param_r = None
         self.param_z = None
         self.param_weights = None
+        # Last, because these fire the watchers above
         self.shape_params.extra_points_table = self.weighted_points_table
+        settings.nice.param.watch(
+            self.shape_params.apply_machine_shape, "machine_preset"
+        )
+        self.shape_params.apply_machine_shape()
 
     @pn.depends(
         "shape_params.param",

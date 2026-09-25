@@ -360,6 +360,19 @@ class ShapeEditor(Viewer):
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
+    def _copy_flux_map(self, equilibrium, previous):
+        """Copy the flux map of a previous run into the equilibrium of the next one,
+        which is what NICE warm starts from. It is the psi of the generic grid, and
+        the grid that psi is defined on.
+
+        Args:
+            equilibrium: The equilibrium IDS of the run to start.
+            previous: The equilibrium IDS the previous run returned.
+        """
+        # Copies, so that the run of the history they came from is not modified
+        equilibrium.grids_ggd = copy.deepcopy(previous.grids_ggd)
+        equilibrium.time_slice[0].ggd = copy.deepcopy(previous.time_slice[0].ggd)
+
     def _on_nice_run_finished(self, success):
         if success:
             pn.state.notifications.success("NICE run complete.")
@@ -439,13 +452,11 @@ class ShapeEditor(Viewer):
             )
         else:
             self.coil_currents.update_xml(xml_params)
+        equilibrium = self._create_equilibrium()
+        self._fill_equilibrium(equilibrium)
         if use_previous_equilibrium:
             pn.state.notifications.info("Starting from previous equilibrium.")
-            # Copy, so the stored result in the run history is not modified
-            equilibrium = copy.deepcopy(self.communicator.equilibrium)
-        else:
-            equilibrium = self._create_equilibrium()
-        self._fill_equilibrium(equilibrium)
+            self._copy_flux_map(equilibrium, self.communicator.equilibrium)
 
         previous_equilibrium = self.communicator.equilibrium
         if not self.communicator.running:
