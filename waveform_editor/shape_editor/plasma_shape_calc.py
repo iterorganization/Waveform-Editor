@@ -72,7 +72,7 @@ def compute_outline_from_params(
     # Second arc: inner divertor leg
     ri = ((rx + r0 - a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 + a))
     ai = ri - r0 + a
-    theta2 = math.asin((z0 - zx) / ai) / (nb_point2 + 1)
+    theta2 = math.atan2(z0 - zx, ri - rx) / (nb_point2 + 1)
     for i in range(nb_point2):
         theta = (i + 1) * theta2
         r = ri - ai * math.cos(theta)
@@ -82,7 +82,7 @@ def compute_outline_from_params(
     # Third arc: outer divertor leg
     re = ((rx + r0 + a) / 2.0) + ((z0 - zx) ** 2) / (2.0 * (rx - r0 - a))
     ae = r0 + a - re
-    theta3 = math.asin((z0 - zx) / ae) / (nb_point3 + 1)
+    theta3 = math.atan2(z0 - zx, rx - re) / (nb_point3 + 1)
     for i in range(nb_point3):
         theta = (i + 1) * theta3
         r = re + ae * math.cos(theta)
