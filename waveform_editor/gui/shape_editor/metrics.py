@@ -10,6 +10,8 @@ class Metrics(Viewer):
     """Chips row showing equilibrium metrics below the flux map."""
 
     metrics = param.Dict(default={})
+    # Chips of the machine in use, as (symbol, unit, full name) by name
+    machine_metrics = param.Dict(default={})
 
     ELONGATION = "elongation"
     TRIANGULARITY = "triangularity"
@@ -35,15 +37,18 @@ class Metrics(Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         self._pane = pn.pane.HTML(
-            pn.bind(self._render, self.param.metrics),
+            pn.bind(self._render, self.param.metrics, self.param.machine_metrics),
             sizing_mode="stretch_width",
             max_width=NicePlotter.FRAME_WIDTH,
             stylesheets=STYLES,
         )
 
-    def _render(self, metrics=None):
+    def _render(self, metrics=None, machine_metrics=None):
         chips = []
-        for key, (symbol, unit, tooltip) in self.METRICS.items():
+        for key, (symbol, unit, tooltip) in {
+            **self.METRICS,
+            **self.machine_metrics,
+        }.items():
             val = metrics.get(key, "—") if metrics else "—"
             if isinstance(val, float):
                 val = f"{val:.4g}"

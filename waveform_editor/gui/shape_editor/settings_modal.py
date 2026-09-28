@@ -85,6 +85,7 @@ class SettingsModal(Viewer):
         self.nice_settings.param.watch(
             self._update_md_inputs_visibility, ["machine_preset"]
         )
+        self._update_md_inputs_visibility(None)
 
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
@@ -212,6 +213,9 @@ class SettingsModal(Viewer):
                         "show_coils",
                         "show_wall",
                         "show_vacuum_vessel",
+                        "show_passive_structures",
+                        "show_iron_core",
+                        "show_components",
                         "show_xo",
                         "show_separatrix",
                         "show_desired_shape",

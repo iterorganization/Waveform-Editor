@@ -36,6 +36,8 @@ class NicePlotter(Viewer):
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    pf_passive = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    iron_core = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
@@ -50,6 +52,13 @@ class NicePlotter(Viewer):
     show_vacuum_vessel = param.Boolean(
         default=True, label="Show inner and outer vacuum vessel"
     )
+    show_passive_structures = param.Boolean(
+        default=True, label="Show passive structures"
+    )
+    show_iron_core = param.Boolean(default=True, label="Show iron core")
+    show_components = param.Boolean(
+        default=False, label="Show plasma facing components"
+    )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
@@ -60,26 +69,34 @@ class NicePlotter(Viewer):
     _syncing_points = False
 
     # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
-    R_RANGE = (0, 13)
-    Z_RANGE = (-10, 10)
     FRAME_HEIGHT = 700
+    # The r and z range to plot per machine, wide enough to hold its coils
+    MACHINE_RANGES = {
+        NiceSettings.PRESET_ITER: ((0, 13), (-10, 10)),
+        NiceSettings.PRESET_WEST: ((0, 4.8), (-2.6, 2.6)),
+    }
+    R_RANGE, Z_RANGE = MACHINE_RANGES[NiceSettings.PRESET_ITER]
     FRAME_WIDTH = round(
         FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
     )
 
     def __init__(self, **params):
         super().__init__(**params)
+        self.nice_settings = settings.nice
+        self._figure = None
+        self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
+        r_range, z_range = self._machine_ranges()
         self.DEFAULT_OPTS = hv.opts.Overlay(
-            xlim=self.R_RANGE,
-            ylim=self.Z_RANGE,
-            frame_width=self.FRAME_WIDTH,
+            xlim=r_range,
+            ylim=z_range,
+            frame_width=self._frame_width(r_range, z_range),
             frame_height=self.FRAME_HEIGHT,
             title="",
             xlabel="r [m]",
             ylabel="z [m]",
             fontsize={"labels": 15, "ticks": 11},
+            hooks=[self._capture_figure],
         )
-        self.nice_settings = settings.nice
         self.CONTOUR_OPTS = hv.opts.Contours(
             cmap="viridis",
             colorbar=True,
@@ -103,7 +120,10 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_xo_points),
             hv.DynamicMap(self._plot_coil_rectangles),
             hv.DynamicMap(self._plot_wall),
+            hv.DynamicMap(self._plot_components),
             hv.DynamicMap(self._plot_vacuum_vessel),
+            hv.DynamicMap(self._plot_passive_structures),
+            hv.DynamicMap(self._plot_iron_core),
             hv.DynamicMap(self._plot_plasma_shape),
             self.editable_points,
         ]
@@ -200,6 +220,32 @@ class NicePlotter(Viewer):
             self.plasma_shape.weighted_points_table.set_points(r, z, weights)
         finally:
             self._syncing_points = False
+
+    def _machine_ranges(self):
+        """The r and z range of the machine of the selected preset. A custom machine
+        is shown at the largest range, so that nothing falls outside the plot."""
+        return self.MACHINE_RANGES.get(
+            self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
+        )
+
+    def _frame_width(self, r_range, z_range):
+        """The width at which the plot holds its data aspect."""
+        span_r = r_range[1] - r_range[0]
+        span_z = z_range[1] - z_range[0]
+        return round(self.FRAME_HEIGHT * span_r / span_z)
+
+    def _capture_figure(self, plot, element):
+        """Keep hold of the figure, so its ranges can follow the machine preset."""
+        self._figure = plot.state
+
+    def _apply_machine_ranges(self, event=None):
+        """Show the machine of the selected preset, coils and all."""
+        if self._figure is None:
+            return
+        r_range, z_range = self._machine_ranges()
+        self._figure.x_range.start, self._figure.x_range.end = r_range
+        self._figure.y_range.start, self._figure.y_range.end = z_range
+        self._figure.frame_width = self._frame_width(r_range, z_range)
 
     @pn.depends(
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
@@ -447,9 +493,16 @@ class NicePlotter(Viewer):
         if self.show_vacuum_vessel and self.wall is not None:
             for unit in self.wall.description_2d[0].vessel.unit:
                 name = str(unit.name)
-                r_vals = unit.annular.centreline.r
-                z_vals = unit.annular.centreline.z
-                paths.append((r_vals, z_vals, name))
+                annular = unit.annular
+                if len(annular.centreline.r):
+                    paths.append((annular.centreline.r, annular.centreline.z, name))
+                else:
+                    paths.append(
+                        (annular.outline_inner.r, annular.outline_inner.z, name)
+                    )
+                    paths.append(
+                        (annular.outline_outer.r, annular.outline_outer.z, name)
+                    )
         return hv.Path(paths, vdims=["name"]).opts(
             color="black",
             line_width=2,
@@ -472,6 +525,105 @@ class NicePlotter(Viewer):
                 paths.append((r_vals, z_vals, name))
         return hv.Path(paths, vdims=["name"]).opts(
             color="black",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
+
+    @pn.depends("wall", "show_components")
+    def _plot_components(self):
+        """Generates paths for the plasma facing components, which a machine
+        describes alongside the limiter it is computed with.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_components and self.wall is not None:
+            # The first description is the limiter the equilibrium is computed with
+            for description in list(self.wall.description_2d)[1:]:
+                for unit in description.limiter.unit:
+                    outline = unit.outline
+                    paths.append(
+                        (outline.r, outline.z, str(unit.description or unit.name))
+                    )
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="gray",
+            line_width=1,
+            hover_tooltips=[("", "@name")],
+        )
+
+    @pn.depends("pf_passive", "show_passive_structures")
+    def _plot_passive_structures(self):
+        """Generates paths for the passive conducting structures.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_passive_structures and self.pf_passive is not None:
+            for loop in self.pf_passive.loop:
+                for element in loop.element:
+                    outline = self._element_outline(element.geometry)
+                    if outline is None:
+                        logger.warning(
+                            f"Passive structure {str(loop.name)!r} was skipped, as its "
+                            "geometry is not an outline, a rectangle or an oblique"
+                        )
+                        continue
+                    paths.append((*outline, str(loop.name)))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="darkgray",
+            line_width=2,
+            hover_tooltips=[("", "@name")],
+        )
+
+    def _element_outline(self, geometry):
+        """The corners of an element of a machine, whichever way it is described.
+
+        Args:
+            geometry: The geometry of an element.
+
+        Returns:
+            Tuple of (r, z) of a closed outline
+        """
+        if geometry.outline.has_value:
+            return geometry.outline.r, geometry.outline.z
+        rectangle = geometry.rectangle
+        if rectangle.has_value:
+            r, z = rectangle.r, rectangle.z
+            dr, dz = rectangle.width / 2, rectangle.height / 2
+            return (
+                np.array([r - dr, r + dr, r + dr, r - dr, r - dr]),
+                np.array([z - dz, z - dz, z + dz, z + dz, z - dz]),
+            )
+        oblique = geometry.oblique
+        if oblique.has_value:
+            # Two sides from a corner, each at its own angle
+            dr_a = oblique.length_alpha * np.cos(oblique.alpha)
+            dz_a = oblique.length_alpha * np.sin(oblique.alpha)
+            dr_b = -oblique.length_beta * np.sin(oblique.beta)
+            dz_b = oblique.length_beta * np.cos(oblique.beta)
+            r, z = oblique.r, oblique.z
+            return (
+                np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
+                np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
+            )
+        return None
+
+    @pn.depends("iron_core", "show_iron_core")
+    def _plot_iron_core(self):
+        """Generates paths for the iron core segments.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_iron_core and self.iron_core is not None:
+            for segment in self.iron_core.segment:
+                outline = segment.geometry.outline
+                paths.append((outline.r, outline.z, str(segment.name)))
+        return hv.Path(paths, vdims=["name"]).opts(
+            color="saddlebrown",
             line_width=2,
             hover_tooltips=[("", "@name")],
         )
