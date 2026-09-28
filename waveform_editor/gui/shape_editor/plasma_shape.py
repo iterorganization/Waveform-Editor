@@ -410,7 +410,7 @@ class PlasmaShape(Viewer):
                 start=0,
                 end=1,
                 step=0.01,
-                sizing_mode="stretch_width",
+                stretch_width=True,
             )
             value_input.param.watch(self._on_gap_change, "value")
             new_gap_ui.append(value_input)
