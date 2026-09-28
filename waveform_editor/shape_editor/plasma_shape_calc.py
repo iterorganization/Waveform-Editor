@@ -3,6 +3,8 @@
 import math
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class Gap:
@@ -95,6 +97,48 @@ def compute_outline_from_params(
     points.sort(key=lambda p: math.atan2(p[1] - mean_z, p[0] - mean_r))
 
     return [p[0] for p in points], [p[1] for p in points]
+
+
+def compute_gaussian_weights(r, z, position, spread, height):
+    """Compute an integer weight for each boundary point, following a circular
+    Gaussian centred at `position` degrees around the boundary. Angles are measured
+    at the boundary centroid, the same way the points are ordered.
+
+    Args:
+        r: Radial coordinates of the boundary points.
+        z: Height coordinates of the boundary points.
+        position: Centre of the emphasized region, in degrees.
+        spread: Standard deviation of the Gaussian, in degrees.
+        height: Weight at the centre of the emphasized region.
+
+    Returns:
+        List of integer weights, one per boundary point.
+    """
+    r = np.asarray(r)
+    z = np.asarray(z)
+    if r.size == 0:
+        return []
+
+    spread = max(spread, 1e-6)
+    angle = np.degrees(np.arctan2(z - z.mean(), r - r.mean()))
+    # The boundary is a closed curve, so the far side wraps around
+    distance = np.abs((angle - position + 180) % 360 - 180)
+    weights = 1 + (height - 1) * np.exp(-0.5 * (distance / spread) ** 2)
+    return np.maximum(np.round(weights), 1).astype(int).tolist()
+
+
+def apply_point_weights(r, z, weights):
+    """Duplicate each boundary point according to its weight.
+
+    Args:
+        r: Radial coordinates of the boundary points.
+        z: Height coordinates of the boundary points.
+        weights: Integer weight for each point.
+
+    Returns:
+        Tuple of (weighted_r, weighted_z) with points duplicated per weight.
+    """
+    return np.repeat(r, weights).tolist(), np.repeat(z, weights).tolist()
 
 
 def update_outline_from_gaps(gaps):
