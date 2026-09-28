@@ -15,6 +15,7 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
+from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -53,7 +54,7 @@ class ShapeEditor(Viewer):
         )
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents(main_gui)
+        self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
@@ -129,6 +130,7 @@ class ShapeEditor(Viewer):
             margin=(5, 0, 2, 0),
         )
         settings_modal = SettingsModal(self.nice_plotter)
+        waveform_sync = WaveformSync(main_gui, self.communicator)
         self.collapse_plot = pn.widgets.ToggleIcon(
             icon="layout-sidebar-left-collapse",
             active_icon="layout-sidebar-left-expand",
@@ -139,6 +141,7 @@ class ShapeEditor(Viewer):
         buttons = pn.Row(
             self.collapse_plot,
             settings_modal,
+            waveform_sync,
             nice_mode_radio,
             pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
             warm_start_switch,
