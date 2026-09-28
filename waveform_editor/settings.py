@@ -88,12 +88,11 @@ class NiceSettings(param.Parameterized):
         precedence=-1,
     )
 
-    verbose = param.Integer(label="NICE verbosity (set to 1 for more verbose output)")
-    linearized_model = param.Boolean(
-        default=False,
-        label="Extract linearized model",
-        doc="Have NICE compute the linearized model and write the A, B and C "
-        "matrices to text files in its 'output' directory.",
+    xml_parameters = param.Dict(
+        default={},
+        label="NICE parameters",
+        doc="Values to set in NICE's param.xml, by parameter name. The parameters "
+        "the shape editor computes itself are not among them: it writes those last.",
     )
     mode = param.Selector(
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
