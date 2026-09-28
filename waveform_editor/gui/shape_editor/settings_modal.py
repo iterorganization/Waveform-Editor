@@ -20,8 +20,10 @@ class SettingsModal(Viewer):
     NICE_PARAM_COL_NAME = "Parameter"
     NICE_PARAM_COL_VALUE = "Value"
     NICE_PARAM_COL_DEFAULT = "Default"
-    NICE_PARAM_NAME_WIDTH = 240
-    NICE_PARAM_DEFAULT_WIDTH = 180
+    # Shares of the table width, so that the columns fill it
+    NICE_PARAM_NAME_WIDTH = "40%"
+    NICE_PARAM_VALUE_WIDTH = "30%"
+    NICE_PARAM_DEFAULT_WIDTH = "30%"
     NICE_PARAM_PAGE_SIZE = 8
     RESET_BUTTON_WIDTH = 180
 
@@ -103,6 +105,7 @@ class SettingsModal(Viewer):
             },
             widths={
                 self.NICE_PARAM_COL_NAME: self.NICE_PARAM_NAME_WIDTH,
+                self.NICE_PARAM_COL_VALUE: self.NICE_PARAM_VALUE_WIDTH,
                 self.NICE_PARAM_COL_DEFAULT: self.NICE_PARAM_DEFAULT_WIDTH,
             },
             sizing_mode="stretch_width",
