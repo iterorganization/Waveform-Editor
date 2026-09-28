@@ -7,9 +7,8 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.derived_waveform import DerivedWaveform
+from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import settings
-from waveform_editor.tendencies.points.piecewise import PiecewiseLinearTendency
 
 
 class CoilCurrentEntry(param.Parameterized):
@@ -44,9 +43,6 @@ class CoilCurrentEntry(param.Parameterized):
 
 class CoilCurrents(Viewer):
     coils = param.List(doc="List of CoilCurrentEntry for each coil")
-    export_time = param.Number(
-        doc="Select a time at which coil currents will be saved to waveforms"
-    )
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -57,10 +53,9 @@ class CoilCurrents(Viewer):
     PENALIZE_ZERO = "penalize_to_zero"
     PENALTY_WEIGHT = "penalty_weight"
 
-    def __init__(self, main_gui, **params):
+    def __init__(self, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
-        self.main_gui = main_gui
 
         titles = {
             self.COIL_NAME: "Name",
@@ -105,7 +100,6 @@ class CoilCurrents(Viewer):
             self.PREV_CURRENT: NumberFormatter(),
             self.CURRENT_LIMIT: NumberFormatter(),
             self.PENALIZE_ZERO: {"type": "tickCross"},
-            self.PENALTY_WEIGHT: NumberFormatter(),
         }
         self.table = pn.widgets.Tabulator(
             layout="fit_data_stretch",
@@ -126,22 +120,7 @@ class CoilCurrents(Viewer):
         self._update_column_visibility()
         self.nice_settings.param.watch(self._update_column_visibility, "is_direct_mode")
 
-        export_time_input = pn.widgets.FloatInput.from_param(
-            self.param.export_time, width=100
-        )
-        confirm_button = pn.widgets.Button(
-            on_click=lambda event: self._store_coil_currents(),
-            name="Save Currents as Waveforms",
-            margin=(30, 0, 0, 0),
-        )
-        self.panel = pn.Column(
-            pn.Row(
-                export_time_input,
-                confirm_button,
-                visible=self.param.coils.rx.bool(),
-            ),
-            self.table,
-        )
+        self.panel = self.table
 
     def create_ui(self, pf_active):
         """Create the UI for each coil in the provided pf_active IDS.
@@ -258,119 +237,6 @@ class CoilCurrents(Viewer):
             coil.penalize_to_zero = not coil.penalize_to_zero
             self._update_table()
 
-    def _store_coil_currents(self, group_name="Coil Currents"):
-        """Store the coil current values into the waveform configuration.
-
-        Args:
-            group_name: Name of the group to create new coil current waveforms in if
-                they do not already exist.
-        """
-        coil_currents = [c.current for c in self.coils]
-        config = self.main_gui.config
-        new_waveforms_created = False
-
-        if not self._has_valid_export_time():
-            return
-
-        for i, current in enumerate(coil_currents):
-            name = f"pf_active/coil({i + 1})/current/data"
-            if name not in config.waveform_map:
-                if group_name not in config.groups:
-                    config.add_group(group_name, [])
-                self._create_new_waveform(config, name, current, group_name)
-                new_waveforms_created = True
-            else:
-                waveform = config[name]
-                if isinstance(waveform, DerivedWaveform):
-                    pn.state.notifications.error(
-                        f"Could not store coil current in waveform {name!r}, "
-                        "because it is a derived waveform"
-                    )
-                    continue
-                self._append_to_existing_waveform(config, name, current)
-
-        if new_waveforms_created:
-            self.main_gui.selector.refresh()
-            pn.state.notifications.success(
-                f"New waveform(s) were added in the {group_name!r} group"
-            )
-        else:
-            pn.state.notifications.success(
-                "The values of the coil currents were appended to their respective "
-                "waveforms."
-            )
-
-    def _append_to_existing_waveform(self, config, name, current):
-        """Append coil current value to an existing waveform. If the last tendency is a
-        piecewise tendency, it is extended, otherwise a new piecewise tendency
-        is added.
-
-        Args:
-            config: The waveform configuration.
-            name: Name of the waveform.
-            current: Coil current value to append.
-        """
-        waveform = config[name]
-        last_tendency = waveform.tendencies[-1]
-
-        # Either append to existing piecewise linear tendency, or create new
-        # piecewise linear tendency
-        if isinstance(last_tendency, PiecewiseLinearTendency):
-            waveform.yaml[-1]["time"].append(float(self.export_time))
-            waveform.yaml[-1]["value"].append(float(current))
-            yaml_str = f"{name}:\n{waveform.get_yaml_string()}"
-        else:
-            end = waveform.tendencies[-1].end
-            new_piecewise = (
-                f"- {{type: piecewise, time: [{end}, {self.export_time}], "
-                f"value: [{current}, {current}]}}"
-            )
-            yaml_str = f"{name}:\n{waveform.get_yaml_string()}{new_piecewise}"
-
-        new_waveform = config.parse_waveform(yaml_str)
-        config.replace_waveform(new_waveform)
-
-    def _create_new_waveform(self, config, name, current, group_name):
-        """Create a new waveform for a coil current when none exists.
-
-        Args:
-            config: The waveform configuration.
-            name: Name of the waveform.
-            current: Coil current value to append.
-            group_name: Name of the group to place the new waveform in.
-        """
-        new_piecewise = (
-            f"- {{type: piecewise, time: [{self.export_time}], value: [{current}]}}"
-        )
-        waveform = config.parser.parse_waveform(f"{name}:\n{new_piecewise}")
-        config.add_waveform(waveform, [group_name])
-
-    def _has_valid_export_time(self):
-        """Check whether the export time is later than the last tendency endpoint
-        in all existing coil current waveforms.
-
-        Returns:
-            True if export time is valid, False otherwise.
-        """
-        latest_time = None
-        for i in range(len(self.coils)):
-            name = f"pf_active/coil({i + 1})/current/data"
-            if name in self.main_gui.config.waveform_map:
-                tendencies = self.main_gui.config[name].tendencies
-                if tendencies:
-                    end_time = tendencies[-1].end
-                    if latest_time is None or end_time > latest_time:
-                        latest_time = end_time
-
-        if latest_time is not None and latest_time >= self.export_time:
-            pn.state.notifications.error(
-                f"Invalid export time: {self.export_time}. It must be greater than the "
-                f"last endpoint of existing coil current waveforms ({latest_time})."
-            )
-            return False
-
-        return True
-
     def fill_pf_active(self, pf_active):
         """Update the coil currents of the provided pf_active IDS. Also stores current
         values as previous_current before the NICE run.
@@ -416,10 +282,12 @@ class CoilCurrents(Viewer):
         target_groups = {coil_groups[coil_idx] for coil_idx in fixed_coils}
         fixed_groups = sorted(list(target_groups), key=int)
 
-        xml_params.find("n_group_fixed_index").text = str(len(fixed_groups))
+        set_xml_parameter(xml_params, "n_group_fixed_index", len(fixed_groups))
         # NICE requires group_fixed_index to be filled even when there are no fixed
         # coils
-        xml_params.find("group_fixed_index").text = " ".join(fixed_groups) or "-1"
+        set_xml_parameter(
+            xml_params, "group_fixed_index", " ".join(fixed_groups) or "-1"
+        )
 
     def _update_penalization_in_xml(self, xml_params: ET.Element):
         """Update the XML parameters describing how NICE penalizes the coil currents
@@ -447,18 +315,22 @@ class CoilCurrents(Viewer):
                 zero_groups.add(group)
 
         zero_groups = sorted(zero_groups, key=int)
-        xml_params.find("n_group_penalized_to_zero_index").text = str(len(zero_groups))
+        set_xml_parameter(
+            xml_params, "n_group_penalized_to_zero_index", len(zero_groups)
+        )
         # NICE requires group_penalized_to_zero_index to be filled even when no coil
         # is penalized to zero
-        xml_params.find("group_penalized_to_zero_index").text = (
-            " ".join(zero_groups) or "-1"
+        set_xml_parameter(
+            xml_params, "group_penalized_to_zero_index", " ".join(zero_groups) or "-1"
         )
 
         groups = sorted(weights, key=int)
-        xml_params.find("n_group_special_weight").text = str(len(groups))
-        xml_params.find("group_special_weight_index").text = " ".join(groups)
-        xml_params.find("group_special_weight").text = " ".join(
-            str(weights[group][1]) for group in groups
+        set_xml_parameter(xml_params, "n_group_special_weight", len(groups))
+        set_xml_parameter(xml_params, "group_special_weight_index", " ".join(groups))
+        set_xml_parameter(
+            xml_params,
+            "group_special_weight",
+            " ".join(str(weights[group][1]) for group in groups),
         )
 
     def __panel__(self):

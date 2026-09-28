@@ -2,6 +2,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.util import STYLES
 
 
@@ -36,6 +37,7 @@ class Metrics(Viewer):
         self._pane = pn.pane.HTML(
             pn.bind(self._render, self.param.metrics),
             sizing_mode="stretch_width",
+            max_width=NicePlotter.FRAME_WIDTH,
             stylesheets=STYLES,
         )
 
