@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, PointDrawTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -56,6 +56,7 @@ class NicePlotter(Viewer):
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
+    _points_toolbar = None
     _syncing_points = False
 
     # Bokeh cannot hold a data aspect while it resizes, so fix the size instead
@@ -147,15 +148,25 @@ class NicePlotter(Viewer):
         )
 
     def _capture_points_renderer(self, plot, element):
-        """Keep hold of the renderer, so the points can be hidden without redrawing
-        them, which would break the draw tool."""
+        """Keep hold of the renderer and the toolbar, so the points can be hidden
+        without redrawing them, which would break the draw tool."""
         self._points_renderer = plot.handles.get("glyph_renderer")
+        self._points_toolbar = plot.state.toolbar
         self._update_points_visibility()
 
     def _update_points_visibility(self, *events):
-        """Only show the points while they are in use."""
-        if self._points_renderer is not None:
-            self._points_renderer.visible = self._uses_weighted_points()
+        """Only show the points, and offer the tool to draw them, while they are in
+        use. The tool is selected right away, since drawing points is the only reason
+        to turn them on."""
+        if self._points_renderer is None:
+            return
+        in_use = self._uses_weighted_points()
+        self._points_renderer.visible = in_use
+        toolbar = self._points_toolbar
+        for tool in toolbar.tools:
+            if isinstance(tool, PointDrawTool):
+                tool.visible = in_use
+                toolbar.active_tap = tool if in_use else "auto"
 
     def _push_points_to_plot(self, *events):
         """Mirror the table onto the plot, for rows edited or deleted in the table.
