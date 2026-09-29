@@ -1,6 +1,8 @@
+import copy
 import importlib.resources
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import imas
 import panel as pn
@@ -15,10 +17,17 @@ from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
+from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
+from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 logger = logging.getLogger(__name__)
+
+
+# NICE reads the desired boundary into an array of this fixed size
+# (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
+MAX_BOUNDARY_POINTS = 5000
 
 
 def _reactive_title(title, is_valid):
@@ -53,22 +62,26 @@ class ShapeEditor(Viewer):
         )
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
-        self.coil_currents = CoilCurrents(main_gui)
+        self.coil_currents = CoilCurrents()
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
+        # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
+        self.run_history = []
+        self.run_select = pn.widgets.Select(
+            options={},
+            disabled=True,
+            width=260,
+            margin=(10, 0, 2, 10),
+        )
+        self.run_select.param.watch(self._restore_run, "value")
         self.nice_settings = settings.nice
 
-        self.xml_params_inv = ET.fromstring(
+        self.xml_text = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("inverse_param.xml")
-            .read_text()
-        )
-        self.xml_params_dir = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("direct_param.xml")
+            .joinpath("param.xml")
             .read_text()
         )
 
@@ -104,31 +117,37 @@ class ShapeEditor(Viewer):
             icon="player-stop",
             on_click=self.stop_nice,
             margin=(10, 10, 2, 0),
+            styles={"margin-left": "auto"},
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         warm_start_switch = pn.widgets.Switch.from_param(
             self.param.use_previous_run,
             name="",
-            disabled=self.communicator.param.can_warm_start.rx.not_(),
+            disabled=self.communicator.param.converged.rx.not_(),
             margin=(20, 15, 2, 10),
         )
         tooltip_msg = (
             "Enable warm start to use the previous run's equilibrium as the "
             "initial guess for the next run. This can improve convergence."
         )
-        warm_start_tooltip = pn.widgets.TooltipIcon(
-            value=pn.bind(
+        warm_start_label = pn.pane.HTML(
+            pn.bind(
                 lambda can: (
-                    tooltip_msg
+                    f'<span title="{tooltip_msg}">Warm start</span>'
                     if can
-                    else f"{tooltip_msg}\n\nNo previous run is available yet. "
-                    "Run NICE once to allow warm starting. "
+                    else f'<span title="{tooltip_msg} No previous run is available '
+                    'yet, run NICE once to allow warm starting.">Warm start</span>'
                 ),
-                self.communicator.param.can_warm_start,
+                self.communicator.param.converged,
             ),
-            margin=(5, 0, 2, 0),
+            margin=(15, 0, 2, 10),
+        )
+        run_msg = "Restore a previous converged NICE run"
+        run_label = pn.pane.HTML(
+            f'<span title="{run_msg}">Previous run</span>', margin=(15, 0, 2, 10)
         )
         settings_modal = SettingsModal(self.nice_plotter)
+        waveform_sync = WaveformSync(main_gui, self.communicator)
         self.collapse_plot = pn.widgets.ToggleIcon(
             icon="layout-sidebar-left-collapse",
             active_icon="layout-sidebar-left-expand",
@@ -136,18 +155,20 @@ class ShapeEditor(Viewer):
             size="24px",
             margin=(15, 10, 2, 10),
         )
-        buttons = pn.Row(
+        buttons = pn.FlexBox(
             self.collapse_plot,
             settings_modal,
+            waveform_sync,
             nice_mode_radio,
-            pn.widgets.StaticText(value="Warm start", margin=(15, 0, 2, 10)),
+            warm_start_label,
             warm_start_switch,
-            warm_start_tooltip,
-            pn.Spacer(sizing_mode="stretch_width"),
+            run_label,
+            self.run_select,
             button_stop,
             button_start,
+            flex_wrap="wrap",
+            align_items="center",
             sizing_mode="stretch_width",
-            align="center",
         )
 
         self.metrics = Metrics()
@@ -236,9 +257,38 @@ class ShapeEditor(Viewer):
         "nice_settings.md_iron_core.uri",
         watch=True,
     )
-    def _disable_warm_start(self):
+    def _reset_run_history(self):
+        """Drop the runs, since they are of another machine description now."""
         self.use_previous_run = False
-        self.communicator.can_warm_start = False
+        self.communicator.converged = False
+        self.run_history = []
+        self.run_select.options = {}
+        self.run_select.disabled = True
+
+    def _add_to_history(self):
+        """Store the result of the last run in the run history."""
+        label = (
+            f"Run {len(self.run_history) + 1}: {self.nice_settings.mode} "
+            f"({datetime.now():%H:%M:%S})"
+        )
+        self.run_history.append(
+            (label, self.communicator.equilibrium, self.communicator.pf_active)
+        )
+        self.run_select.options = {
+            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
+        }
+        self.run_select.value = len(self.run_history) - 1
+        self.run_select.disabled = False
+
+    def _restore_run(self, event):
+        """Restore the equilibrium and coil currents of the selected run."""
+        if event.new is None:
+            return
+        _, equilibrium, pf_active = self.run_history[event.new]
+        self.communicator.equilibrium = equilibrium
+        self.communicator.pf_active = pf_active
+        self.coil_currents.sync_ui_with_pf_active(pf_active)
+        self._update_metrics()
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -319,43 +369,84 @@ class ShapeEditor(Viewer):
                 "NICE did not converge. Check the terminal for details."
             )
 
+    def _has_valid_boundary(self):
+        """Check that the desired boundary fits in the fixed size array NICE reads it
+        into.
+
+        Returns:
+            True if the boundary can be passed to NICE, False otherwise.
+        """
+        outline = self.plasma_shape.outline_r
+        if not self.nice_settings.is_inverse_mode or outline is None:
+            return True
+        if len(outline) <= MAX_BOUNDARY_POINTS:
+            return True
+
+        pn.state.notifications.error(
+            f"The plasma boundary has {len(outline)} points, more than the "
+            f"{MAX_BOUNDARY_POINTS} NICE accepts. Weighted points are repeated in the "
+            "boundary, so lower the max weight or the spread."
+        )
+        return False
+
+    def _apply_xml_parameters(self, xml_params):
+        """Set the parameters configured in the settings on the XML, in place.
+
+        Args:
+            xml_params: XML representing configuration parameters.
+
+        Returns:
+            True if every configured parameter exists in the XML, False otherwise.
+        """
+        for name, value in self.nice_settings.xml_parameters.items():
+            parameter = xml_params.find(name)
+            if parameter is None:
+                pn.state.notifications.error(
+                    f"NICE has no parameter {name!r}. Check the NICE parameters in "
+                    "the settings."
+                )
+                return False
+            parameter.text = str(value)
+        return True
+
     async def submit(self, event=None):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS."""
 
+        if not self._has_valid_boundary():
+            return
+
         self.coil_currents.fill_pf_active(self.pf_active)
+        xml_params = ET.fromstring(self.xml_text)
+        if not self._apply_xml_parameters(xml_params):
+            return
+
+        set_xml_parameter(
+            xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
+        )
+        use_previous_equilibrium = self.use_previous_run and self.communicator.converged
         if self.nice_settings.is_direct_mode:
-            xml_params = self.xml_params_dir
+            start_from_scratch = 0 if use_previous_equilibrium else 1
+            set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
+            set_xml_parameter(
+                xml_params, "algoStartFromScratchReconAB", start_from_scratch
+            )
+            set_xml_parameter(
+                xml_params,
+                "algoStartPsiFromInData",
+                1 if use_previous_equilibrium else 0,
+            )
         else:
-            xml_params = self.xml_params_inv
             self.coil_currents.update_xml(xml_params)
-
-        # Update XML parameters:
-        xml_params.find("verbose").text = str(self.nice_settings.verbose)
-        # NICE writes the linearized model (A, B, C matrices) as text files when
-        # outputForControl is set.
-        xml_params.find("outputForControl").text = (
-            "1" if self.nice_settings.linearized_model else "0"
-        )
-
-        use_previous_equilibrium = (
-            self.use_previous_run and self.communicator.can_warm_start
-        )
         if use_previous_equilibrium:
             pn.state.notifications.info("Starting from previous equilibrium.")
-            equilibrium = self.communicator.equilibrium
+            # Copy, so the stored result in the run history is not modified
+            equilibrium = copy.deepcopy(self.communicator.equilibrium)
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
 
-        if self.nice_settings.is_direct_mode:
-            start_from_scratch = "0" if use_previous_equilibrium else "1"
-            xml_params.find("algoStartFromScratch").text = start_from_scratch
-            xml_params.find("algoStartFromScratchReconAB").text = start_from_scratch
-            xml_params.find("algoStartPsiFromInData").text = (
-                "1" if use_previous_equilibrium else "0"
-            )
-
+        previous_equilibrium = self.communicator.equilibrium
         if not self.communicator.running:
             await self.communicator.run(
                 is_direct_mode=self.nice_settings.is_direct_mode
@@ -370,6 +461,12 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
         self._update_metrics()
+        # Only a converged run is worth restoring
+        if (
+            self.communicator.equilibrium is not previous_equilibrium
+            and self.communicator.converged
+        ):
+            self._add_to_history()
 
     def _update_metrics(self):
         eq = self.communicator.equilibrium

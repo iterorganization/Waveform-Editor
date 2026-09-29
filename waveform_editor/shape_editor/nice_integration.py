@@ -156,7 +156,9 @@ class NiceIntegration(param.Parameterized):
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
     processing = param.Boolean(doc="NICE is processing an equilibrium")
-    can_warm_start = param.Boolean(default=False)
+    converged = param.Boolean(
+        default=False, doc="Whether the last run converged, so it can be warm started"
+    )
 
     def __init__(
         self,
@@ -304,20 +306,23 @@ class NiceIntegration(param.Parameterized):
         )
 
     @param.depends("equilibrium", watch=True)
-    def _update_can_warm_start(self):
+    def _update_converged(self):
         if self.equilibrium is None:
-            self.can_warm_start = False
+            self.converged = False
         else:
-            self.can_warm_start = bool(self.equilibrium.code.output_flag[0] == 0)
+            self.converged = bool(self.equilibrium.code.output_flag[0] == 0)
 
     @param.depends("nice_running", watch=True)
     async def _nice_running_changed(self):
         if not self.nice_running:  # figure out why:
             retcode = self.nice_transport.get_returncode()
-            self.last_run_successful = retcode == 0
-            if not self.last_run_successful:
-                self.can_warm_start = False
-                self.on_run_finished(False)
+            # When not running, NICE was stopped on purpose, for instance by
+            # pressing stop or by switching mode
+            if self.running:
+                self.last_run_successful = retcode == 0
+                if not self.last_run_successful:
+                    self.converged = False
+                    self.on_run_finished(False)
             # Bold green on success, bold red on failure:
             color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
@@ -380,7 +385,7 @@ class NiceIntegration(param.Parameterized):
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
         self.pf_active = pf_active
-        self.on_run_finished(self.can_warm_start)
+        self.on_run_finished(self.converged)
         self.processing = False
 
 
