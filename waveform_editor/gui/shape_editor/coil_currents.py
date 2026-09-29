@@ -102,6 +102,7 @@ class CoilCurrents(Viewer):
             self.PENALIZE_ZERO: {"type": "tickCross"},
         }
         self.table = pn.widgets.Tabulator(
+            value=pd.DataFrame(columns=list(titles)),
             layout="fit_data_stretch",
             sizing_mode="stretch_width",
             show_index=False,
@@ -116,6 +117,14 @@ class CoilCurrents(Viewer):
             visible=self.param.coils.rx.bool(),
             on_edit=self._on_cell_edit,
             on_click=self._on_cell_click,
+        )
+        exceeded_style = "background-color: #f8d7da"
+        self.table.style.apply(
+            lambda row: (
+                [exceeded_style if self.coils[row.name].exceeds_limit else ""]
+                * len(row)
+            ),
+            axis=1,
         )
         self._update_column_visibility()
         self.nice_settings.param.watch(self._update_column_visibility, "is_direct_mode")
@@ -195,18 +204,6 @@ class CoilCurrents(Viewer):
             for coil in self.coils
         ]
         self.table.value = pd.DataFrame(data)
-        self._highlight_exceeded()
-
-    def _highlight_exceeded(self):
-        """Colour the row of every coil whose current is beyond its limit."""
-
-        exceeded = [coil.exceeds_limit for coil in self.coils]
-        exceeded_style = "background-color: #f8d7da"
-        self.table.style.clear()
-        self.table.style.apply(
-            lambda row: [exceeded_style if exceeded[row.name] else ""] * len(row),
-            axis=1,
-        )
 
     def _on_cell_edit(self, event):
         coil = self.coils[event.row]
@@ -214,7 +211,6 @@ class CoilCurrents(Viewer):
             coil.fix_current = bool(event.value)
         elif event.column == self.CURRENT:
             coil.current = float(event.value)
-            self._highlight_exceeded()
             self._warn_exceeded([coil])
         elif event.column == self.PENALTY_WEIGHT:
             if float(event.value) <= 0:
