@@ -123,7 +123,7 @@ class ShapeEditor(Viewer):
         warm_start_switch = pn.widgets.Switch.from_param(
             self.param.use_previous_run,
             name="",
-            disabled=self.communicator.param.can_warm_start.rx.not_(),
+            disabled=self.communicator.param.converged.rx.not_(),
             margin=(20, 15, 2, 10),
         )
         tooltip_msg = (
@@ -138,7 +138,7 @@ class ShapeEditor(Viewer):
                     else f'<span title="{tooltip_msg} No previous run is available '
                     'yet, run NICE once to allow warm starting.">Warm start</span>'
                 ),
-                self.communicator.param.can_warm_start,
+                self.communicator.param.converged,
             ),
             margin=(15, 0, 2, 10),
         )
@@ -257,9 +257,10 @@ class ShapeEditor(Viewer):
         "nice_settings.md_iron_core.uri",
         watch=True,
     )
-    def _disable_warm_start(self):
+    def _reset_run_history(self):
+        """Drop the runs, since they are of another machine description now."""
         self.use_previous_run = False
-        self.communicator.can_warm_start = False
+        self.communicator.converged = False
         self.run_history = []
         self.run_select.options = {}
         self.run_select.disabled = True
@@ -423,9 +424,7 @@ class ShapeEditor(Viewer):
         set_xml_parameter(
             xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
         )
-        use_previous_equilibrium = (
-            self.use_previous_run and self.communicator.can_warm_start
-        )
+        use_previous_equilibrium = self.use_previous_run and self.communicator.converged
         if self.nice_settings.is_direct_mode:
             start_from_scratch = 0 if use_previous_equilibrium else 1
             set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
@@ -462,9 +461,10 @@ class ShapeEditor(Viewer):
         )
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
         self._update_metrics()
+        # Only a converged run is worth restoring
         if (
             self.communicator.equilibrium is not previous_equilibrium
-            and self.communicator.can_warm_start
+            and self.communicator.converged
         ):
             self._add_to_history()
 
