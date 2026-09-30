@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 MAX_BOUNDARY_POINTS = 5000
 
 
+def _reactive_title(title, is_valid):
+    return title if is_valid else f"{title} ⚠️"
+
+
 class ShapeEditor(Viewer):
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
@@ -167,8 +171,12 @@ class ShapeEditor(Viewer):
         )
 
         self.metrics = Metrics()
+        self._active_tab = 0
         options = pn.bind(
-            self._create_options_tabs, self.nice_settings.param.is_inverse_mode
+            self._create_options_tabs,
+            self.nice_settings.param.is_inverse_mode,
+            self.plasma_shape.param.has_shape,
+            self.plasma_properties.param.has_properties,
         )
         menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
 
@@ -191,25 +199,41 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_both",
         )
 
-    def _create_options_tabs(self, is_inverse_mode):
+    def _create_options_tabs(self, is_inverse_mode, has_shape, has_properties):
         """Create the tabs holding the inputs for a run.
 
         Args:
             is_inverse_mode: Whether NICE runs in inverse mode, which is the only
                 mode that takes a plasma shape.
+            has_shape: Whether a plasma shape is given, which warns in its title.
+            has_properties: Whether the plasma properties are given.
         """
         items = []
         if is_inverse_mode:
-            items.append(("Plasma Shape", self.plasma_shape))
+            items.append(
+                (_reactive_title("Plasma Shape", has_shape), self.plasma_shape)
+            )
         # The profiles plot is part of the plasma properties panel itself
-        items.append(("Plasma Properties", self.plasma_properties))
+        items.append(
+            (
+                _reactive_title("Plasma Properties", has_properties),
+                self.plasma_properties,
+            )
+        )
         items.append(("Coil Currents", self.coil_currents))
-        return pn.Tabs(
+        tabs = pn.Tabs(
             *items,
             dynamic=True,
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
+        tabs.active = min(self._active_tab, len(items) - 1)
+        tabs.param.watch(self._remember_active_tab, "active")
+        return tabs
+
+    def _remember_active_tab(self, event):
+        """Keep the open tab open when the tabs are rebuilt."""
+        self._active_tab = event.new
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
