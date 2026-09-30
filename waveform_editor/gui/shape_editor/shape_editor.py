@@ -206,6 +206,7 @@ class ShapeEditor(Viewer):
         items.append(("Coil Currents", self.coil_currents))
         return pn.Tabs(
             *items,
+            dynamic=True,
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
