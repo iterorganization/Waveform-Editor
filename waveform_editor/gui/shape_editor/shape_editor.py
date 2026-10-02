@@ -304,6 +304,7 @@ class ShapeEditor(Viewer):
         self.pf_passive = self._load_slice(
             self.nice_settings.md_pf_passive.uri, "pf_passive"
         )
+        self.nice_plotter.pf_passive = self.pf_passive
         self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
 
     @param.depends("nice_settings.md_wall.uri", watch=True)
@@ -317,6 +318,7 @@ class ShapeEditor(Viewer):
         self.iron_core = self._load_slice(
             self.nice_settings.md_iron_core.uri, "iron_core"
         )
+        self.nice_plotter.iron_core = self.iron_core
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
     def _create_equilibrium(self):
@@ -484,7 +486,14 @@ class ShapeEditor(Viewer):
             self.metrics.Q95: float(global_quantities.q_95),
         }
 
-    @param.depends("nice_settings.mode", watch=True)
+    @param.depends(
+        "nice_settings.mode",
+        "nice_settings.md_pf_active.uri",
+        "nice_settings.md_pf_passive.uri",
+        "nice_settings.md_wall.uri",
+        "nice_settings.md_iron_core.uri",
+        watch=True,
+    )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
         await self.communicator.close()
