@@ -161,6 +161,7 @@ class PlasmaProfiles(Viewer):
             hv.DynamicMap(self._plot_profiles),
             sizing_mode="stretch_width",
             aspect_ratio=1,
+            max_width=450,
         )
 
         self._from_ids_badge, self._edited_badge, self._reset_btn = _make_badges(
