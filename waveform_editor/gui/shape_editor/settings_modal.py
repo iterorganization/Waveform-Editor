@@ -202,6 +202,23 @@ class SettingsModal(Viewer):
             ["show_contour"],
         )
 
+        self._heatmap_detail = pn.Column(
+            self._section_label("Heatmap Detail"),
+            self._settings_section(
+                pn.Param(
+                    self.nice_plotter.param,
+                    parameters=["heatmap_alpha"],
+                    show_name=False,
+                ),
+            ),
+            visible=self.nice_plotter.show_heatmap,
+            sizing_mode="stretch_width",
+        )
+        self.nice_plotter.param.watch(
+            lambda e: setattr(self._heatmap_detail, "visible", e.new),
+            ["show_heatmap"],
+        )
+
         display_content = pn.Column(
             self._section_label("Visibility"),
             self._settings_section(
@@ -209,6 +226,7 @@ class SettingsModal(Viewer):
                     self.nice_plotter.param,
                     parameters=[
                         "show_contour",
+                        "show_heatmap",
                         "show_coils",
                         "show_wall",
                         "show_vacuum_vessel",
@@ -225,6 +243,7 @@ class SettingsModal(Viewer):
                 ),
             ),
             self._contour_detail,
+            self._heatmap_detail,
             sizing_mode="stretch_width",
             scroll=True,
         )

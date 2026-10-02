@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
+import scipy.interpolate as interp
 from bokeh.models import HoverTool, PointDrawTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
@@ -44,6 +45,10 @@ class NicePlotter(Viewer):
     show_contour = param.Boolean(default=True, label="Show contour lines")
     levels = param.Integer(
         default=20, bounds=(1, 200), label="Number of contour levels"
+    )
+    show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    heatmap_alpha = param.Number(
+        default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
     )
     show_coils = param.Boolean(default=True, label="Show coils")
     show_wall = param.Boolean(default=True, label="Show limiter and divertor")
@@ -87,6 +92,20 @@ class NicePlotter(Viewer):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
+        self.HEATMAP_OPTS = hv.opts.Image(
+            cmap="viridis",
+            colorbar=True,
+            tools=["hover"],
+            hover_tooltips=[
+                ("r", "$x{0.00} m"),
+                ("z", "$y{0.00} m"),
+                ("psi", "@image{0.000} Wb"),
+            ],
+            colorbar_opts={"title": "Poloidal flux [Wb]"},
+            show_legend=False,
+        )
+        self._cached_equilibrium = None
+        self._cached_heatmap_grid = None
         self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
         # Static on purpose. The draw tool binds to this element's renderer, and
         # redrawing it either breaks the binding or feeds edits back into redraws.
@@ -98,6 +117,7 @@ class NicePlotter(Viewer):
             hooks=[self._capture_points_renderer],
         )
         flux_map_elements = [
+            hv.DynamicMap(self._plot_heatmap),
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
             hv.DynamicMap(self._plot_xo_points),
@@ -355,7 +375,122 @@ class NicePlotter(Viewer):
         )
         return rects * paths
 
-    @pn.depends("communicator.equilibrium", "show_contour", "levels")
+    @pn.depends("communicator.equilibrium", "show_heatmap", "heatmap_alpha")
+    def _plot_heatmap(self):
+        """Generates heatmap plot for poloidal flux.
+
+        Returns:
+            Holoviews Image containing the poloidal flux field.
+        """
+        equilibrium = self.communicator.equilibrium
+        if not self.show_heatmap or equilibrium is None:
+            return (
+                hv.Image([], kdims=["r", "z"], vdims=["psi"])
+                .opts(self.HEATMAP_OPTS)
+                .opts(alpha=0.0, colorbar=False)
+            )
+
+        eqggd = equilibrium.time_slice[0].ggd[0]
+        r = eqggd.r[0].values
+        z = eqggd.z[0].values
+        psi = eqggd.psi[0].values
+
+        if not r or not z or not psi:
+            pn.state.notifications.error(
+                "NICE did not produce a valid poloidal flux field"
+            )
+            return (
+                hv.Image([], kdims=["r", "z"], vdims=["psi"])
+                .opts(self.HEATMAP_OPTS)
+                .opts(alpha=0.0, colorbar=False)
+            )
+
+        if (
+            self._cached_heatmap_grid is not None
+            and self._cached_equilibrium is equilibrium
+        ):
+            grid_r, grid_z, psi_grid = self._cached_heatmap_grid
+        else:
+            grid_r, grid_z, psi_grid = self._calc_heatmap(r, z, psi)
+            self._cached_equilibrium = equilibrium
+            self._cached_heatmap_grid = (grid_r, grid_z, psi_grid)
+
+        if grid_r is None:
+            return (
+                hv.Image([], kdims=["r", "z"], vdims=["psi"])
+                .opts(self.HEATMAP_OPTS)
+                .opts(alpha=0.0, colorbar=False)
+            )
+
+        return (
+            hv.Image(
+                (grid_r, grid_z, psi_grid),
+                kdims=["r", "z"],
+                vdims=["psi"],
+            )
+            .opts(self.HEATMAP_OPTS)
+            .opts(alpha=self.heatmap_alpha)
+        )
+
+    def _calc_heatmap(self, r, z, psi, resolution=250):
+        """Interpolates psi onto a regular grid for heatmap display.
+
+        Args:
+            r: Radial coordinates of the mesh nodes.
+            z: Height coordinates of the mesh nodes.
+            psi: Poloidal flux values at the mesh nodes.
+            resolution: Number of grid points along each axis.
+
+        Returns:
+            Tuple of (grid_r, grid_z, psi_grid) or (None, None, None).
+        """
+        try:
+            r_arr = np.asarray(r, dtype=float)
+            z_arr = np.asarray(z, dtype=float)
+            psi_arr = np.asarray(psi, dtype=float)
+
+            # Filter non-finite values
+            valid = np.isfinite(r_arr) & np.isfinite(z_arr) & np.isfinite(psi_arr)
+            r_arr, z_arr, psi_arr = r_arr[valid], z_arr[valid], psi_arr[valid]
+
+            if len(r_arr) < 3 or len(z_arr) < 3 or len(psi_arr) < 3:
+                return None, None, None
+
+            # Deduplicate coordinates so identical points don't cause degeneracies
+            coords = np.column_stack([r_arr, z_arr])
+            _, unique_indices = np.unique(coords, axis=0, return_index=True)
+            r_clean = r_arr[unique_indices]
+            z_clean = z_arr[unique_indices]
+            psi_clean = psi_arr[unique_indices]
+
+            if len(np.unique(r_clean)) < 2 or len(np.unique(z_clean)) < 2:
+                return None, None, None
+
+            grid_r = np.linspace(r_clean.min(), r_clean.max(), resolution)
+            grid_z = np.linspace(z_clean.min(), z_clean.max(), resolution)
+            grid_r_mesh, grid_z_mesh = np.meshgrid(grid_r, grid_z)
+
+            try:
+                psi_grid = interp.griddata(
+                    (r_clean, z_clean),
+                    psi_clean,
+                    (grid_r_mesh, grid_z_mesh),
+                    method="linear",
+                )
+            except Exception:
+                psi_grid = interp.griddata(
+                    (r_clean, z_clean),
+                    psi_clean,
+                    (grid_r_mesh, grid_z_mesh),
+                    method="nearest",
+                )
+
+            return grid_r, grid_z, psi_grid
+        except Exception as e:
+            logger.warning(f"Failed to calculate heatmap interpolation: {e}")
+            return None, None, None
+
+    @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
         """Generates contour plot for poloidal flux.
 
@@ -368,6 +503,15 @@ class NicePlotter(Viewer):
         else:
             contours = self._calc_contours(equilibrium, self.levels)
 
+        if self.show_heatmap:
+            return contours.opts(
+                color="white",
+                alpha=0.6,
+                line_width=1,
+                colorbar=False,
+                tools=["hover"],
+                show_legend=False,
+            )
         return contours.opts(self.CONTOUR_OPTS)
 
     def _calc_contours(self, equilibrium, levels):
