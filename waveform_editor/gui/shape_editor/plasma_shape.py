@@ -137,7 +137,9 @@ class PlasmaShapeParams(Viewer):
                 self.param[name].softbounds = slider_range
             if name in getattr(self, "_sliders", {}):
                 self._sliders[name].start, self._sliders[name].end = slider_range
-        self.param.update(**{name: value for name, (value, _) in shape.items() if name in self.param})
+        self.param.update(
+            **{name: value for name, (value, _) in shape.items() if name in self.param}
+        )
 
     def __panel__(self):
         # The sliders of this panel, so that their range can follow the machine
