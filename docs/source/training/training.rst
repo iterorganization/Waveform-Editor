@@ -470,16 +470,15 @@ Exercise 5a: Exporting from the UI
 
       .. code-block:: yaml
 
-         globals:
-           dd_version: 4.0.0
-           machine_description: {}
-         ec_launchers:
-           total_power:
-           - {type: linear, to: 5e5, duration: 100}
-           - {type: constant, duration: 500}
-           - {type: linear, to: 0, duration: 100}
-           ec_launchers/beam(1:10)/power_launched/data: |
-             "total_power" / 10
+         dd_version: 4.0.0
+         output:
+           ec_launchers:
+             total_power:
+             - {type: linear, to: 5e5, duration: 100}
+             - {type: constant, duration: 500}
+             - {type: linear, to: 0, duration: 100}
+             ec_launchers/beam(1:10)/power_launched/data: |
+               "total_power" / 10
 
    .. md-tab-item:: Solution
 

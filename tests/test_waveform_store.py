@@ -1,3 +1,5 @@
+from textwrap import indent
+
 import imas
 import numpy as np
 import pytest
@@ -38,7 +40,8 @@ def pf_active():
 
 def make_store(waveforms=""):
     config = WaveformConfiguration()
-    config.load_yaml(f"globals:\n  dd_version: {TEST_DD_VERSION}\n{waveforms}")
+    yaml = f"dd_version: {TEST_DD_VERSION}\noutput:\n"
+    config.load_yaml(yaml + indent(waveforms, "  "))
     return WaveformStore(config)
 
 

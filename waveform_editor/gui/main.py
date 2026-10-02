@@ -1,6 +1,5 @@
 import logging
 
-import imas
 import panel as pn
 import param
 
@@ -20,7 +19,7 @@ from waveform_editor.gui.waveform_content import (
     WAVEFORM_EDITOR_PAGE,
     WaveformContent,
 )
-from waveform_editor.util import LATEST_DD_VERSION, State
+from waveform_editor.util import State
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +82,9 @@ class WaveformEditorGui(param.Parameterized):
             self.config.globals.param,
             show_name=False,
             widgets={
-                "machine_description": {
+                "imports": {
                     "widget_type": DictEditor,
-                    "key_options": imas.IDSFactory(LATEST_DD_VERSION).ids_names(),
-                    "names": ("IDS", "URI"),
+                    "names": ("Name", "URI"),
                 }
             },
         )
@@ -119,6 +117,7 @@ class WaveformEditorGui(param.Parameterized):
         # Set multiselect property of the selector based on the active tab:
         allow_multiselect = self.tabs.param.active.rx() == self.VIEW_WAVEFORMS_TAB
         self.selector.multiselect = allow_multiselect
+        self.selector.disable_unplottable = allow_multiselect
 
         main_content = WaveformContent(
             self.nav,

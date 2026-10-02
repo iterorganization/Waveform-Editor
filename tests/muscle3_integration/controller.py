@@ -17,9 +17,14 @@ def controller():
 
     while instance.reuse_instance():
         for time in np.linspace(0, 50, 20):
-            # The data of this message is ignored by the waveform-actor, only the
-            # timestamp is relevant:
-            instance.send("time_out", Message(time))
+            # The actor reads only the root /time of this IDS to know which time to
+            # export the waveforms at; everything else about it is ignored:
+            time_carrier = factory.new("ec_launchers")
+            time_carrier.ids_properties.homogeneous_time = (
+                imas.ids_defs.IDS_TIME_MODE_HOMOGENEOUS
+            )
+            time_carrier.time = [time]
+            instance.send("time_out", Message(time, data=time_carrier.serialize()))
 
             # Receive waveform input
             msg = instance.receive("ec_launchers_in")
