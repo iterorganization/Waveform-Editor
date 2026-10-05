@@ -151,10 +151,10 @@ class PlasmaShapeParams(Viewer):
                     pn.widgets.TooltipIcon(
                         value=(
                             "NICE inverse mode fits the target LCFS boundary points by "
-                            "penalizing flux differences, but does not impose X-point null "
-                            "constraints (∇ψ = 0). The resulting equilibrium is not "
-                            "guaranteed to form two X-points and may produce only 1 or no "
-                            "X-points."
+                            "penalizing flux differences, but does not impose X-point "
+                            "null constraints (∇ψ = 0). The resulting equilibrium is "
+                            " not guaranteed to form two X-points and may produce only "
+                            "1 or no X-points."
                         ),
                         align="center",
                         margin=(0, 0, 0, -10),
