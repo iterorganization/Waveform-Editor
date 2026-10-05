@@ -146,7 +146,22 @@ class PlasmaShapeParams(Viewer):
                 "X point",
                 _slider("rx"),
                 _slider("zx"),
-                _slider("second_x_point"),
+                pn.Row(
+                    _slider("second_x_point"),
+                    pn.widgets.TooltipIcon(
+                        value=(
+                            "NICE inverse mode fits the target LCFS boundary points by "
+                            "penalizing flux differences, but does not impose X-point null "
+                            "constraints (∇ψ = 0). The resulting equilibrium is not "
+                            "guaranteed to form two X-points and may produce only 1 or no "
+                            "X-points."
+                        ),
+                        align="center",
+                        margin=(0, 0, 0, -10),
+                    ),
+                    align="center",
+                    margin=(0, 0, 5, 0),
+                ),
                 pn.Column(
                     _slider("rx_upper"),
                     _slider("zx_upper"),
