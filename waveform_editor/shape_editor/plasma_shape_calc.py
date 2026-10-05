@@ -191,3 +191,39 @@ def update_outline_from_gaps(gaps):
     if not gaps:
         return None, None
     return [gap.r_sep for gap in gaps], [gap.z_sep for gap in gaps]
+
+
+def closest_outline_point(point, r, z, is_closed=True):
+    """Find closest point on outline to a given (r, z) coordinate."""
+    starts = np.column_stack([r, z])
+    if len(starts) == 0:
+        return (0.0, 0.0), float("inf")
+    if len(starts) == 1:
+        return (float(starts[0, 0]), float(starts[0, 1])), float(
+            np.linalg.norm(starts[0] - point)
+        )
+    ends = np.roll(starts, -1, axis=0) if is_closed else starts[1:]
+    if not is_closed:
+        starts = starts[:-1]
+    segs = ends - starts
+    lens = np.sum(segs**2, axis=1)
+    along = np.clip(
+        np.sum((np.asarray(point, float) - starts) * segs, axis=1)
+        / np.where(lens > 0, lens, 1),
+        0,
+        1,
+    )
+    closest = starts + along[:, None] * segs
+    dists = np.linalg.norm(closest - point, axis=1)
+    idx = int(np.argmin(dists))
+    return (float(closest[idx, 0]), float(closest[idx, 1])), float(dists[idx])
+
+
+def project_point_to_line(point, start, end):
+    """Project a point onto the line passing through start and end."""
+    start, end = np.asarray(start, float), np.asarray(end, float)
+    along = (end - start) / np.linalg.norm(end - start)
+    to_pt = np.asarray(point, float) - start
+    proj = start + np.dot(to_pt, along) * along
+    dist = float(np.linalg.norm(to_pt - np.dot(to_pt, along) * along))
+    return (float(proj[0]), float(proj[1])), dist

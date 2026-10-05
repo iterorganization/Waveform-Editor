@@ -229,6 +229,7 @@ class SettingsModal(Viewer):
                         "show_xo",
                         "show_separatrix",
                         "show_desired_shape",
+                        "show_gaps",
                     ],
                     show_name=False,
                     widgets={

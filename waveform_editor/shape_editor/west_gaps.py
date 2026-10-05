@@ -4,7 +4,15 @@ They are not stored in the machine description, so they are computed the way FEE
 does, in Projects/WEST/Lib/plot_plasma_gaps_etc.m, from the geometry of WEST.
 """
 
+import math
+
 import numpy as np
+
+from waveform_editor.shape_editor.plasma_shape_calc import (
+    Gap,
+    closest_outline_point,
+    project_point_to_line,
+)
 
 # The arc the outer radial gaps are measured to, which passes through r=3 m on the
 # midplane, as (centre r, radius)
@@ -17,6 +25,15 @@ UPPER_DIVERTOR = ((1.9009, 0.5824), (2.446, 0.7995))
 # The corner of the baffle the plasma is kept away from
 BAFFLE = (2.381, -0.6757)
 
+WEST_METADATA = {
+    "UROG": ("UROG", "cm", "Upper radial outer gap"),
+    "EROG": ("EROG", "cm", "Equatorial radial outer gap"),
+    "LROG": ("LROG", "cm", "Lower radial outer gap"),
+    "dXlow": ("dXlow", "cm", "Distance of the lower x-point to the divertor"),
+    "dXup": ("dXup", "cm", "Distance of the upper x-point to the divertor"),
+    "dbaffle": ("dbaffle", "cm", "Distance of the plasma to the baffle"),
+}
+
 
 def compute_gaps(outline_r, outline_z, x_points):
     """The gaps of a WEST plasma, in metres.
@@ -27,8 +44,7 @@ def compute_gaps(outline_r, outline_z, x_points):
         x_points: The (r, z) of each x-point of the equilibrium.
 
     Returns:
-        Dict of gap name to distance, holding only the gaps that the boundary and the
-        x-points given allow to be computed.
+        Dict of gap name to distance in metres.
     """
     r, z = np.asarray(outline_r, dtype=float), np.asarray(outline_z, dtype=float)
     gaps = {}
@@ -38,10 +54,9 @@ def compute_gaps(outline_r, outline_z, x_points):
         ("EROG", 0.0),
         ("LROG", -OUTER_GAP_HEIGHT),
     ):
-        arc_r = centre_r + np.sqrt(radius**2 - height**2)
         boundary_r = _outboard_radius(r, z, height)
         if boundary_r is not None:
-            gaps[name] = arc_r - boundary_r
+            gaps[name] = centre_r + np.sqrt(radius**2 - height**2) - boundary_r
 
     for name, divertor, below in (
         ("dXlow", LOWER_DIVERTOR, True),
@@ -49,23 +64,84 @@ def compute_gaps(outline_r, outline_z, x_points):
     ):
         x_point = _x_point(x_points, below)
         if x_point is not None:
-            gaps[name] = _distance_to_line(x_point, *divertor)
+            gaps[name] = project_point_to_line(x_point, *divertor)[1]
 
-    gaps["dbaffle"] = _distance_to_outline(BAFFLE, r, z)
+    gaps["dbaffle"] = closest_outline_point(BAFFLE, r, z)[1]
     return gaps
 
 
+def compute_gap_geometry(outline_r, outline_z, x_points):
+    """Compute measuring points and distance segments for WEST gaps."""
+    if outline_r is None or outline_z is None or len(outline_r) == 0:
+        return []
+
+    r, z = np.asarray(outline_r, dtype=float), np.asarray(outline_z, dtype=float)
+    items = []
+    centre_r, radius = OUTER_ARC
+    for name, height in (
+        ("UROG", OUTER_GAP_HEIGHT),
+        ("EROG", 0.0),
+        ("LROG", -OUTER_GAP_HEIGHT),
+    ):
+        arc_r = float(centre_r + np.sqrt(radius**2 - height**2))
+        boundary_r = _outboard_radius(r, z, height)
+        if boundary_r is not None:
+            dist = arc_r - boundary_r
+            symbol, _, full_name = WEST_METADATA[name]
+            items.append(
+                {
+                    "name": full_name,
+                    "symbol": symbol,
+                    "r_orig": arc_r,
+                    "z_orig": height,
+                    "r_target": boundary_r,
+                    "z_target": height,
+                    "distance": dist,
+                    "distance_str": f"{dist * 100:.3g} cm",
+                }
+            )
+
+    for name, divertor, below in (
+        ("dXlow", LOWER_DIVERTOR, True),
+        ("dXup", UPPER_DIVERTOR, False),
+    ):
+        x_point = _x_point(x_points, below)
+        if x_point is not None:
+            proj, dist = project_point_to_line(x_point, *divertor)
+            symbol, _, full_name = WEST_METADATA[name]
+            items.append(
+                {
+                    "name": full_name,
+                    "symbol": symbol,
+                    "r_orig": proj[0],
+                    "z_orig": proj[1],
+                    "r_target": float(x_point[0]),
+                    "z_target": float(x_point[1]),
+                    "distance": dist,
+                    "distance_str": f"{dist * 100:.3g} cm",
+                }
+            )
+
+    (target_r, target_z), dist = closest_outline_point(BAFFLE, r, z)
+    symbol, _, full_name = WEST_METADATA["dbaffle"]
+    items.append(
+        {
+            "name": full_name,
+            "symbol": symbol,
+            "r_orig": BAFFLE[0],
+            "z_orig": BAFFLE[1],
+            "r_target": target_r,
+            "z_target": target_z,
+            "distance": dist,
+            "distance_str": f"{dist * 100:.3g} cm",
+        }
+    )
+
+    return items
+
+
 def _outboard_radius(r, z, height):
-    """The radius of the outboard side of the boundary at a height.
-
-    Args:
-        r: Radial coordinates of the boundary.
-        z: Height coordinates of the boundary.
-        height: The height to take the boundary at.
-
-    Returns:
-        The radius, or None when the boundary does not reach that height.
-    """
+    """The radius of the outboard side of the boundary at a height."""
     outboard = r > r.mean()
     r, z = r[outboard], z[outboard]
     if not len(z) or not z.min() <= height <= z.max():
@@ -75,57 +151,28 @@ def _outboard_radius(r, z, height):
 
 
 def _x_point(x_points, below):
-    """The x-point below or above the midplane.
-
-    Args:
-        x_points: The (r, z) of each x-point.
-        below: Whether to take the x-point below the midplane.
-
-    Returns:
-        The (r, z) of the x-point, or None when there is none on that side.
-    """
+    """The x-point below or above the midplane."""
     on_side = [point for point in x_points if (point[1] < 0) == below]
     return on_side[0] if on_side else None
 
 
-def _distance_to_line(point, start, end):
-    """The distance of a point to the line through two points.
-
-    Args:
-        point: The (r, z) to measure from.
-        start: The (r, z) of a point of the line.
-        end: The (r, z) of another point of the line.
-
-    Returns:
-        The distance.
-    """
-    point, start, end = (np.asarray(p, dtype=float) for p in (point, start, end))
-    along = (end - start) / np.linalg.norm(end - start)
-    to_point = point - start
-    return float(np.linalg.norm(to_point - np.dot(to_point, along) * along))
-
-
-def _distance_to_outline(point, r, z):
-    """The distance of a point to the closest of the segments of an outline.
-
-    Args:
-        point: The (r, z) to measure from.
-        r: Radial coordinates of the outline.
-        z: Height coordinates of the outline.
-
-    Returns:
-        The distance.
-    """
-    starts = np.column_stack([r, z])
-    ends = np.roll(starts, -1, axis=0)
-    segments = ends - starts
-    lengths = np.sum(segments**2, axis=1)
-    # How far along each segment the point is, kept within the segment
-    along = np.clip(
-        np.sum((np.asarray(point, dtype=float) - starts) * segments, axis=1)
-        / np.where(lengths > 0, lengths, 1),
-        0,
-        1,
-    )
-    closest = starts + along[:, None] * segments
-    return float(np.min(np.linalg.norm(closest - point, axis=1)))
+def get_default_west_gaps():
+    """Return default Gap definitions for WEST based on machine geometry."""
+    return [
+        Gap("Upper radial outer gap (UROG)", 2.9599, 0.25, math.pi, 0.06),
+        Gap("Equatorial radial outer gap (EROG)", 3.0000, 0.0, math.pi, 0.08),
+        Gap("Lower radial outer gap (LROG)", 2.9599, -0.25, math.pi, 0.06),
+        Gap(
+            "Lower x-point to divertor (dXlow)",
+            2.1350,
+            -0.6710,
+            -math.radians(68.0),
+            0.05,
+        ),
+        Gap(
+            "Upper x-point to divertor (dXup)", 2.1730, 0.6910, math.radians(68.0), 0.10
+        ),
+        Gap(
+            "Distance to baffle (dbaffle)", 2.3810, -0.6757, -math.radians(135.0), 0.04
+        ),
+    ]

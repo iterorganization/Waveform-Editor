@@ -20,21 +20,24 @@ from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.iter_gaps import (
+    GAP_METADATA as ITER_GAP_METRICS,
+)
+from waveform_editor.shape_editor.iter_gaps import (
+    compute_gaps as compute_iter_gaps,
+)
+from waveform_editor.shape_editor.iter_gaps import (
+    extract_separatrix_from_time_slice,
+)
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.west_gaps import compute_gaps
+from waveform_editor.shape_editor.west_gaps import (
+    WEST_METADATA as WEST_GAP_METRICS,
+)
+from waveform_editor.shape_editor.west_gaps import (
+    compute_gaps as compute_west_gaps,
+)
 
 logger = logging.getLogger(__name__)
-
-# TODO: add the gaps for ITER used in DINA: gap1, gap2, gap4, gap5, Rmin, Rmax
-# The gaps of a WEST plasma, as (symbol, unit, full name) by name
-WEST_GAP_METRICS = {
-    "UROG": ("UROG", "cm", "Upper radial outer gap"),
-    "EROG": ("EROG", "cm", "Equatorial radial outer gap"),
-    "LROG": ("LROG", "cm", "Lower radial outer gap"),
-    "dXlow": ("dXlow", "cm", "Distance of the lower x-point to the divertor"),
-    "dXup": ("dXup", "cm", "Distance of the upper x-point to the divertor"),
-    "dbaffle": ("dbaffle", "cm", "Distance of the plasma to the baffle"),
-}
 
 
 # NICE reads the desired boundary into an array of this fixed size
@@ -90,6 +93,16 @@ class ShapeEditor(Viewer):
         )
         self.run_select.param.watch(self._restore_run, "value")
         self.nice_settings = settings.nice
+        self.plasma_shape.machine_preset = self.nice_settings.machine_preset
+        self.plasma_shape.show_gaps = self.nice_plotter.show_gaps
+        self.nice_settings.param.watch(
+            lambda e: setattr(self.plasma_shape, "machine_preset", e.new),
+            "machine_preset",
+        )
+        self.nice_plotter.param.watch(
+            lambda e: setattr(self.plasma_shape, "show_gaps", e.new),
+            "show_gaps",
+        )
 
         self.xml_text = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
@@ -301,8 +314,11 @@ class ShapeEditor(Viewer):
         _, equilibrium, pf_active = self.run_history[event.new]
         self.communicator.equilibrium = equilibrium
         self.communicator.pf_active = pf_active
+        self.communicator.converged = True
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
+        if self.nice_settings.mode == NiceSettings.DIRECT_MODE:
+            self.use_previous_run = True
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -488,31 +504,49 @@ class ShapeEditor(Viewer):
     def _update_machine_metrics(self, event=None):
         """Show the chips of the machine of the selected preset, also before a run
         has filled them in."""
+        preset = self.nice_settings.machine_preset
         self.metrics.machine_metrics = (
             WEST_GAP_METRICS
-            if self.nice_settings.machine_preset == NiceSettings.PRESET_WEST
+            if preset == NiceSettings.PRESET_WEST
+            else ITER_GAP_METRICS
+            if preset == NiceSettings.PRESET_ITER
             else {}
         )
 
+    def _iter_gaps(self, time_slice):
+        """The gaps of an ITER plasma in centimetres (Rmin/Rmax in metres)."""
+        if self.nice_settings.machine_preset != NiceSettings.PRESET_ITER:
+            return {}
+        outline = time_slice.boundary.outline
+        if outline.r is None or len(outline.r) == 0:
+            return {}
+        ma = getattr(
+            getattr(time_slice, "global_quantities", None), "magnetic_axis", None
+        )
+        axis = (float(ma.r), float(ma.z)) if ma else None
+        gaps = compute_iter_gaps(
+            outline.r,
+            outline.z,
+            separatrix_contour=extract_separatrix_from_time_slice(time_slice),
+            magnetic_axis=axis,
+        )
+        return {
+            name: val * 100 if name in ("gap1", "gap2", "gap4", "gap5") else val
+            for name, val in gaps.items()
+            if val is not None
+        }
+
     def _west_gaps(self, time_slice):
-        """The gaps of the plasma to the parts of WEST it is kept away from. They are
-        not in the equilibrium, so they are computed from its boundary.
-
-        Args:
-            time_slice: The time slice NICE returned.
-
-        Returns:
-            Dict of gap name to distance in centimetres, empty for another machine.
-        """
+        """The gaps of a WEST plasma in centimetres."""
         if self.nice_settings.machine_preset != NiceSettings.PRESET_WEST:
             return {}
         x_points = [
             (float(node.r), float(node.z))
-            for node in time_slice.contour_tree.node
+            for node in getattr(getattr(time_slice, "contour_tree", None), "node", [])
             if int(node.critical_type) == 1
         ]
         outline = time_slice.boundary.outline
-        gaps = compute_gaps(outline.r, outline.z, x_points)
+        gaps = compute_west_gaps(outline.r, outline.z, x_points)
         return {name: gap * 100 for name, gap in gaps.items()}
 
     def _update_metrics(self):
@@ -530,7 +564,19 @@ class ShapeEditor(Viewer):
             self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
             self.metrics.Q95: float(global_quantities.q_95),
             **self._west_gaps(eq.time_slice[0]),
+            **self._iter_gaps(eq.time_slice[0]),
         }
+
+    @param.depends("nice_settings.mode", watch=True)
+    def _enable_warm_start_on_direct_mode(self):
+        """Automatically enable warm start when switching to NICE direct mode if
+        a previous run is available to warm start from."""
+        if self.nice_settings.mode == NiceSettings.DIRECT_MODE and (
+            self.communicator.converged or bool(self.run_history)
+        ):
+            if not self.communicator.converged and self.run_history:
+                self.communicator.converged = True
+            self.use_previous_run = True
 
     @param.depends(
         "nice_settings.mode",

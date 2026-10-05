@@ -14,7 +14,16 @@ from panel.viewable import Viewer
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.iter_gaps import (
+    compute_gap_geometry as compute_iter_gap_geometry,
+)
+from waveform_editor.shape_editor.iter_gaps import (
+    extract_separatrix_from_time_slice,
+)
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.west_gaps import (
+    compute_gap_geometry as compute_west_gap_geometry,
+)
 
 matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
@@ -123,6 +132,7 @@ class NicePlotter(Viewer):
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
+    show_gaps = param.Boolean(default=True, label="Show gaps")
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -211,6 +221,7 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_passive_structures),
             hv.DynamicMap(self._plot_iron_core),
             hv.DynamicMap(self._plot_plasma_shape),
+            hv.DynamicMap(self._plot_clearance_gaps),
             self.editable_points,
         ]
         # Lets the weighted points be added, dragged and deleted on the plot
@@ -735,6 +746,138 @@ class NicePlotter(Viewer):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
+
+    @pn.depends(
+        "communicator.equilibrium",
+        "show_gaps",
+        "nice_settings.machine_preset",
+        "plasma_shape.shape_updated",
+        "plasma_shape.input_mode",
+    )
+    def _plot_clearance_gaps(self):
+        """Plots the clearance gaps for the active machine preset, showing both the
+        measurement reference points on the wall and the distance lines to the
+        plasma boundary.
+
+        Returns:
+            Holoviews overlay with points, target intercepts, dashed distance
+            segments, and text labels.
+        """
+        if not self.show_gaps:
+            return self._empty_gaps_overlay()
+
+        eq = self.communicator.equilibrium
+        x_points = []
+        if eq is not None and len(eq.time_slice) > 0:
+            outline = eq.time_slice[0].boundary.outline
+            r, z = outline.r, outline.z
+            x_points = [
+                (float(node.r), float(node.z))
+                for node in eq.time_slice[0].contour_tree.node
+                if int(node.critical_type) == 1
+            ]
+        elif not self.nice_settings.is_direct_mode and self.plasma_shape.has_shape:
+            r, z = self.plasma_shape.outline_r, self.plasma_shape.outline_z
+        else:
+            return self._empty_gaps_overlay()
+
+        if r is None or len(r) == 0:
+            return self._empty_gaps_overlay()
+
+        gap_items = []
+        preset = self.nice_settings.machine_preset
+        if preset == NiceSettings.PRESET_ITER:
+            ts = eq.time_slice[0] if eq is not None and len(eq.time_slice) > 0 else None
+            ma = (
+                getattr(getattr(ts, "global_quantities", None), "magnetic_axis", None)
+                if ts
+                else None
+            )
+            gap_items = compute_iter_gap_geometry(
+                r,
+                z,
+                separatrix_contour=extract_separatrix_from_time_slice(ts)
+                if ts
+                else None,
+                magnetic_axis=(float(ma.r), float(ma.z)) if ma else None,
+            )
+        elif preset == NiceSettings.PRESET_WEST:
+            gap_items = compute_west_gap_geometry(r, z, x_points)
+
+        if not gap_items:
+            return self._empty_gaps_overlay()
+
+        return self._build_gaps_overlay(gap_items)
+
+    def _build_gaps_overlay(self, items):
+        vdims = ["name", "symbol", "distance_str"]
+        pts = hv.Points(
+            [{"r": it["r_orig"], "z": it["z_orig"], **it} for it in items],
+            kdims=["r", "z"],
+            vdims=vdims,
+        ).opts(
+            color="#e66101",
+            size=8,
+            marker="diamond",
+            hover_tooltips=[
+                ("Gap", "@name (@symbol)"),
+                ("Location (R, Z)", "@r{0.000} m, @z{0.000} m"),
+                ("Distance", "@distance_str"),
+            ],
+            show_legend=False,
+        )
+        tgts = hv.Points(
+            [{"r": it["r_target"], "z": it["z_target"], **it} for it in items],
+            kdims=["r", "z"],
+            vdims=vdims,
+        ).opts(
+            color="#e66101",
+            size=5,
+            marker="circle",
+            hover_tooltips=[("Gap", "@name (@symbol)"), ("Distance", "@distance_str")],
+            show_legend=False,
+        )
+        segs = hv.Segments(
+            [
+                {
+                    "r0": it["r_orig"],
+                    "z0": it["z_orig"],
+                    "r1": it["r_target"],
+                    "z1": it["z_target"],
+                    **it,
+                }
+                for it in items
+            ],
+            kdims=["r0", "z0", "r1", "z1"],
+            vdims=vdims,
+        ).opts(
+            color="#e66101",
+            line_dash="dashed",
+            line_width=2,
+            hover_tooltips=[("Gap", "@name (@symbol)"), ("Distance", "@distance_str")],
+            show_legend=False,
+        )
+        lbls = _no_hover(
+            hv.Labels(
+                [
+                    {"r": it["r_orig"], "z": it["z_orig"], "text": it["symbol"]}
+                    for it in items
+                ],
+                kdims=["r", "z"],
+                vdims=["text"],
+            ).opts(
+                text_font_size="10pt",
+                text_color="#e66101",
+                text_baseline="bottom",
+                text_align="center",
+                text_font_style="bold",
+            )
+        )
+        return pts * tgts * segs * lbls
+
+    def _empty_gaps_overlay(self):
+        """Empty overlay for when gaps are disabled or cannot be computed."""
+        return self._build_gaps_overlay([])
 
     def __panel__(self):
         return self.panel_layout

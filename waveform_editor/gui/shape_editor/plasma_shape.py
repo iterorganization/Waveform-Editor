@@ -6,18 +6,35 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
     CARD_CSS,
+    STYLES,
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
     WarningIndicator,
 )
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.iter_gaps import (
+    GAP_METADATA as ITER_GAP_METADATA,
+)
+from waveform_editor.shape_editor.iter_gaps import (
+    compute_gaps as compute_iter_gaps,
+)
+from waveform_editor.shape_editor.iter_gaps import (
+    get_default_iter_gaps,
+)
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
     apply_point_weights,
     compute_gaussian_weights,
     compute_outline_from_params,
     update_outline_from_gaps,
+)
+from waveform_editor.shape_editor.west_gaps import (
+    WEST_METADATA,
+    get_default_west_gaps,
+)
+from waveform_editor.shape_editor.west_gaps import (
+    compute_gaps as compute_west_gaps,
 )
 
 # A shape to start from for each machine, taken from one of its discharges, as
@@ -411,7 +428,7 @@ class WeightedPointsTable(param.Parameterized):
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
-    GAP_INPUT = "Equilibrium IDS Gaps"
+    GAP_INPUT = "Gaps"
     WEIGHTED_POINTS_INPUT = "Weighted Points"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
@@ -422,6 +439,13 @@ class PlasmaShape(Viewer):
             WEIGHTED_POINTS_INPUT,
         ],
         label="Shape input mode",
+    )
+    GAP_SOURCE_DEFAULT = "Default Gaps"
+    GAP_SOURCE_IDS = "Equilibrium IDS"
+    gap_source = param.ObjectSelector(
+        default=GAP_SOURCE_DEFAULT,
+        objects=[GAP_SOURCE_DEFAULT, GAP_SOURCE_IDS],
+        label="Gap Source",
     )
     input_outline = param.ClassSelector(
         class_=EquilibriumInput, default=EquilibriumInput()
@@ -438,6 +462,10 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
+    show_gaps = param.Boolean(default=True, doc="Whether clearance gaps are displayed.")
+    machine_preset = param.String(
+        default="", doc="Active machine preset (e.g. ITER, WEST)."
+    )
 
     def __init__(self):
         super().__init__()
@@ -454,6 +482,24 @@ class PlasmaShape(Viewer):
         self.weighted_points_indicator = _indicator(
             "At least 1 point is required to define a plasma shape"
         )
+        self.gap_source_radio = pn.widgets.RadioButtonGroup(
+            options={
+                "Default Gaps": self.GAP_SOURCE_DEFAULT,
+                "Equilibrium IDS": self.GAP_SOURCE_IDS,
+            },
+            value=self.gap_source,
+            button_type="primary",
+            sizing_mode="stretch_width",
+            margin=(5, 20, 5, 20),
+        )
+        self.gap_source_radio.link(self, value="gap_source", bidirectional=True)
+        self.reset_default_gaps_button = pn.widgets.Button(
+            name="Reset Defaults",
+            button_type="default",
+            sizing_mode="stretch_width",
+            margin=(5, 20, 5, 20),
+        )
+        self.reset_default_gaps_button.on_click(self._on_reset_default_gaps)
         self._mode_config = {
             self.EQUILIBRIUM_INPUT: (
                 self._load_shape_from_ids,
@@ -469,9 +515,7 @@ class PlasmaShape(Viewer):
             ),
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
-                lambda: pn.Row(
-                    self.input_gaps, self.gap_indicator, margin=(10, 20, 0, 20)
-                ),
+                self._panel_gap_options,
             ),
             self.WEIGHTED_POINTS_INPUT: (
                 self._load_shape_from_weighted_points,
@@ -485,7 +529,7 @@ class PlasmaShape(Viewer):
             options={
                 "Equilibrium\nIDS Outline": self.EQUILIBRIUM_INPUT,
                 "Parameterized": self.PARAMETERIZED_INPUT,
-                "Equilibrium\nIDS Gaps": self.GAP_INPUT,
+                "Gaps": self.GAP_INPUT,
                 "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
             },
             value=self.input_mode,
@@ -495,7 +539,18 @@ class PlasmaShape(Viewer):
             stylesheets=[CARD_CSS],
         )
         self.radio_box.link(self, value="input_mode", bidirectional=True)
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
+        self.gap_pills_pane = pn.pane.HTML(
+            self._render_target_gap_pills,
+            sizing_mode="stretch_width",
+            margin=(5, 20, 0, 20),
+            stylesheets=STYLES,
+        )
+        self.panel = pn.Column(
+            self.radio_box,
+            self.gap_pills_pane,
+            self._panel_shape_options,
+            self.gap_ui,
+        )
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
@@ -518,6 +573,8 @@ class PlasmaShape(Viewer):
         "input_gaps.load",
         "weighted_points_table.param",
         "input_mode",
+        "gap_source",
+        "machine_preset",
         watch=True,
     )
     def _set_plasma_shape(self):
@@ -533,6 +590,32 @@ class PlasmaShape(Viewer):
             self.has_shape = True
         else:
             self.has_shape = False
+        self.param.trigger("shape_updated")
+
+    @pn.depends("gap_source", "machine_preset")
+    def _panel_gap_options(self):
+        """Render controls for Gaps mode: gap source toggle and appropriate loaders."""
+        preset = self.machine_preset or "ITER"
+        if self.gap_source == self.GAP_SOURCE_DEFAULT:
+            return pn.Column(
+                self.gap_source_radio,
+                pn.Row(
+                    pn.pane.Markdown(
+                        f"**{preset} Default Gap Definitions**",
+                        margin=(8, 10, 0, 20),
+                    ),
+                    self.reset_default_gaps_button,
+                    sizing_mode="stretch_width",
+                ),
+            )
+        return pn.Column(
+            self.gap_source_radio,
+            pn.Row(self.input_gaps, self.gap_indicator, margin=(5, 20, 0, 20)),
+        )
+
+    def _on_reset_default_gaps(self, event=None):
+        """Reset default gaps back to their machine defaults."""
+        self._load_shape_from_gaps()
         self.param.trigger("shape_updated")
 
     def _load_shape_from_ids(self):
@@ -555,10 +638,16 @@ class PlasmaShape(Viewer):
             self.outline_r = self.outline_z = None
 
     def _load_shape_from_gaps(self):
-        """Load plasma boundary outline from IDS equilibrium gap definitions."""
+        """Load plasma boundary outline from default machine gaps or IDS equilibrium."""
         self.gaps = []
 
-        if self.input_gaps.uri:
+        if self.gap_source == self.GAP_SOURCE_DEFAULT:
+            self.gaps = (
+                get_default_west_gaps()
+                if self.machine_preset == "WEST"
+                else get_default_iter_gaps()
+            )
+        elif self.gap_source == self.GAP_SOURCE_IDS and self.input_gaps.uri:
             try:
                 with imas.DBEntry(self.input_gaps.uri, "r") as entry:
                     equilibrium = entry.get_slice(
@@ -572,16 +661,16 @@ class PlasmaShape(Viewer):
                         "The equilibrium IDS does not have any gaps"
                     )
                 else:
-                    for gap in input_gaps:
-                        self.gaps.append(
-                            Gap(
-                                r=gap.r,
-                                z=gap.z,
-                                name=gap.name,
-                                angle=gap.angle,
-                                value=gap.value,
-                            )
+                    self.gaps = [
+                        Gap(
+                            r=float(g.r),
+                            z=float(g.z),
+                            name=str(g.name),
+                            angle=float(g.angle),
+                            value=float(g.value),
                         )
+                        for g in input_gaps
+                    ]
             except Exception as e:
                 pn.state.notifications.error(
                     f"Could not load gaps from {self.input_gaps.uri}: {str(e)}"
@@ -609,11 +698,23 @@ class PlasmaShape(Viewer):
 
         new_gap_ui = []
         for i, gap in enumerate(self.gaps):
+            name_lower = gap.name.lower()
+            is_divertor = any(
+                k in name_lower for k in ("divertor", "g1", "g2", "dxlow", "dxup")
+            )
+            start_val = -0.5 if is_divertor else 0.0
+            end_val = 0.5 if is_divertor else 1.0
+            val = float(gap.value)
+            if val < start_val:
+                start_val = round(val - 0.1, 2)
+            if val > end_val:
+                end_val = round(val + 0.1, 2)
+
             value_input = FormattedEditableFloatSlider(
                 name=f"Gap {i}: {gap.name} Value [m]",
-                value=float(gap.value),
-                start=0,
-                end=1,
+                value=val,
+                start=start_val,
+                end=end_val,
                 step=0.01,
                 stretch_width=True,
             )
@@ -681,6 +782,74 @@ class PlasmaShape(Viewer):
     def _panel_shape_options(self):
         _, panel_factory = self._mode_config[self.input_mode]
         return panel_factory()
+
+    @param.depends(
+        "show_gaps", "machine_preset", "shape_updated", "has_shape", "input_mode"
+    )
+    def _render_target_gap_pills(self):
+        """Render target shape metric pills when show_gaps is enabled."""
+        if (
+            not self.show_gaps
+            or not self.has_shape
+            or self.outline_r is None
+            or self.outline_z is None
+            or len(self.outline_r) == 0
+        ):
+            return ""
+
+        chips = []
+
+        def _chip(symbol, display, tooltip):
+            return (
+                f'<span class="mc" title="{tooltip}">'
+                f'<span class="mc-lbl">{symbol}</span>'
+                f'<span class="mc-val">{display}</span></span>'
+            )
+
+        if self.machine_preset == "ITER":
+            gaps = compute_iter_gaps(self.outline_r, self.outline_z)
+            if self.input_mode == self.GAP_INPUT and self.gaps:
+                for g in self.gaps:
+                    nl = str(g.name).lower()
+                    if "gap1" in nl or "g1" in nl or "inner" in nl:
+                        gaps["gap1"] = float(g.value)
+                    elif "gap2" in nl or "g2" in nl or "outer" in nl:
+                        gaps["gap2"] = float(g.value)
+
+            for key in ("gap1", "gap2", "gap4", "gap5", "Rmin", "Rmax"):
+                symbol, unit, tooltip = ITER_GAP_METADATA[key]
+                val = gaps.get(key)
+                display = (
+                    "—"
+                    if val is None
+                    else f"{val:.4g} m"
+                    if unit == "m"
+                    else f"{val * 100:.3g} cm"
+                )
+                chips.append(_chip(symbol, display, tooltip))
+
+        elif self.machine_preset == "WEST":
+            x_points = []
+            if self.input_mode == self.PARAMETERIZED_INPUT:
+                x_points = [(self.shape_params.rx, self.shape_params.zx)]
+            elif self.input_mode == self.GAP_INPUT and self.gaps:
+                x_points = [
+                    (g.r_sep, g.z_sep)
+                    for g in self.gaps
+                    if any(k in g.name.lower() for k in ("dxlow", "dxup"))
+                ]
+            west_gaps = compute_west_gaps(self.outline_r, self.outline_z, x_points)
+            if self.input_mode == self.GAP_INPUT and self.gaps:
+                for g in self.gaps:
+                    for key in WEST_METADATA:
+                        if key.lower() in g.name.lower():
+                            west_gaps[key] = float(g.value)
+            for key, (symbol, _, tooltip) in WEST_METADATA.items():
+                val = west_gaps.get(key)
+                if val is not None:
+                    chips.append(_chip(symbol, f"{val * 100:.3g} cm", tooltip))
+
+        return f'<div class="mc-wrap">{"".join(chips)}</div>' if chips else ""
 
     def __panel__(self):
         return self.panel
