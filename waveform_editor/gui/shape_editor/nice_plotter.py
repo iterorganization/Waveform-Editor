@@ -394,18 +394,12 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        eqggd = equilibrium.time_slice[0].ggd[0]
-        r = eqggd.r[0].values
-        z = eqggd.z[0].values
-        psi = eqggd.psi[0].values
-        if not r or not z or not psi:
-            pn.state.notifications.error(
-                "NICE did not produce a valid poloidal flux field"
-            )
+        flux_map = self._flux_map(equilibrium)
+        if flux_map is None:
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
-            self._heatmap_cache = (equilibrium, self._calc_heatmap(r, z, psi))
+            self._heatmap_cache = (equilibrium, self._calc_heatmap(*flux_map))
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
             .opts(self.HEATMAP_OPTS)
@@ -455,6 +449,24 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
+    def _flux_map(self, equilibrium):
+        """The poloidal flux on the GGD that NICE fills.
+
+        Args:
+            equilibrium: The equilibrium IDS to read the flux from.
+
+        Returns:
+            Tuple of (r, z, psi) at the mesh nodes, or None if NICE did not fill them.
+        """
+        eqggd = equilibrium.time_slice[0].ggd[0]
+        r, z, psi = eqggd.r[0].values, eqggd.z[0].values, eqggd.psi[0].values
+        if not r or not z or not psi:
+            pn.state.notifications.error(
+                "NICE did not produce a valid poloidal flux field"
+            )
+            return None
+        return r, z, psi
+
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
 
@@ -466,19 +478,11 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-
-        eqggd = equilibrium.time_slice[0].ggd[0]
-        r = eqggd.r[0].values
-        z = eqggd.z[0].values
-        psi = eqggd.psi[0].values
-
-        if not r or not z or not psi:
-            pn.state.notifications.error(
-                "NICE did not produce a valid poloidal flux field"
-            )
+        flux_map = self._flux_map(equilibrium)
+        if flux_map is None:
             return hv.Contours(([0], [0], 0), vdims="psi")
 
-        trics = plt.tricontour(r, z, psi, levels=levels)
+        trics = plt.tricontour(*flux_map, levels=levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
