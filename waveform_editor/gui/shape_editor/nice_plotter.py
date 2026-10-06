@@ -31,14 +31,15 @@ def _no_hover(element):
     return element.opts(hooks=[hook])
 
 
-def _element_outline(geometry):
+def _element_outline(geometry, name):
     """The corners of an element of a machine, whichever way it is described.
 
     Args:
         geometry: The geometry of an element.
+        name: The name of the element, for the warning when it cannot be outlined.
 
     Returns:
-        Tuple of (r, z) of a closed outline
+        Tuple of (r, z) of a closed outline, which is empty if it cannot be outlined.
     """
     if geometry.outline.has_value:
         return geometry.outline.r, geometry.outline.z
@@ -62,7 +63,10 @@ def _element_outline(geometry):
             np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
             np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
         )
-    return None
+    logger.warning(
+        f"{str(name)!r} is skipped, as it has no outline, rectangle or oblique"
+    )
+    return [], []
 
 
 def _geometry_paths(paths, color="black", line_width=2):
@@ -559,16 +563,11 @@ class NicePlotter(Viewer):
         """
         paths = []
         if self.show_passive_structures and self.pf_passive is not None:
-            for loop in self.pf_passive.loop:
-                for element in loop.element:
-                    outline = _element_outline(element.geometry)
-                    if outline is None:
-                        logger.warning(
-                            f"Passive structure {str(loop.name)!r} was skipped, as its "
-                            "geometry is not an outline, a rectangle or an oblique"
-                        )
-                        continue
-                    paths.append((*outline, str(loop.name)))
+            paths = [
+                (*_element_outline(element.geometry, loop.name), str(loop.name))
+                for loop in self.pf_passive.loop
+                for element in loop.element
+            ]
         return _geometry_paths(paths, color="darkgray")
 
     @pn.depends("iron_core", "show_iron_core")
@@ -580,15 +579,10 @@ class NicePlotter(Viewer):
         """
         paths = []
         if self.show_iron_core and self.iron_core is not None:
-            for segment in self.iron_core.segment:
-                outline = _element_outline(segment.geometry)
-                if outline is None:
-                    logger.warning(
-                        f"Iron core segment {str(segment.name)!r} was skipped, as its "
-                        "geometry is not an outline, a rectangle or an oblique"
-                    )
-                    continue
-                paths.append((*outline, str(segment.name)))
+            paths = [
+                (*_element_outline(segment.geometry, segment.name), str(segment.name))
+                for segment in self.iron_core.segment
+            ]
         return _geometry_paths(paths, color="saddlebrown")
 
     @pn.depends("communicator.equilibrium", "show_xo")
