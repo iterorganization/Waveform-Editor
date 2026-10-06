@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
+import scipy.interpolate as interp
 from bokeh.models import HoverTool, PointDrawTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
@@ -45,6 +46,10 @@ class NicePlotter(Viewer):
     levels = param.Integer(
         default=20, bounds=(1, 200), label="Number of contour levels"
     )
+    show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    heatmap_alpha = param.Number(
+        default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
+    )
     show_coils = param.Boolean(default=True, label="Show coils")
     show_wall = param.Boolean(default=True, label="Show limiter and divertor")
     show_vacuum_vessel = param.Boolean(
@@ -66,6 +71,7 @@ class NicePlotter(Viewer):
     FRAME_WIDTH = round(
         FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
     )
+    HEATMAP_RESOLUTION = 250
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -87,6 +93,27 @@ class NicePlotter(Viewer):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
+        self.CONTOUR_ON_HEATMAP_OPTS = hv.opts.Contours(
+            color="white",
+            alpha=0.6,
+            line_width=1,
+            colorbar=False,
+            tools=["hover"],
+            show_legend=False,
+        )
+        self._heatmap_cache = (None, None)
+        self.HEATMAP_OPTS = hv.opts.Image(
+            cmap="viridis",
+            colorbar=True,
+            tools=["hover"],
+            hover_tooltips=[
+                ("r", "$x{0.00} m"),
+                ("z", "$y{0.00} m"),
+                ("psi", "@image{0.000} Wb"),
+            ],
+            colorbar_opts={"title": "Poloidal flux [Wb]"},
+            show_legend=False,
+        )
         self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
         # Static on purpose. The draw tool binds to this element's renderer, and
         # redrawing it either breaks the binding or feeds edits back into redraws.
@@ -98,6 +125,7 @@ class NicePlotter(Viewer):
             hooks=[self._capture_points_renderer],
         )
         flux_map_elements = [
+            hv.DynamicMap(self._plot_heatmap),
             hv.DynamicMap(self._plot_contours),
             hv.DynamicMap(self._plot_separatrix),
             hv.DynamicMap(self._plot_xo_points),
@@ -355,7 +383,56 @@ class NicePlotter(Viewer):
         )
         return rects * paths
 
-    @pn.depends("communicator.equilibrium", "show_contour", "levels")
+    @pn.depends("communicator.equilibrium", "show_heatmap", "heatmap_alpha")
+    def _plot_heatmap(self):
+        """Generates heatmap plot for poloidal flux.
+
+        Returns:
+            Holoviews Image containing the poloidal flux field.
+        """
+        equilibrium = self.communicator.equilibrium
+        if not self.show_heatmap or equilibrium is None:
+            return self._empty_heatmap()
+
+        flux_map = self._flux_map(equilibrium)
+        if flux_map is None:
+            return self._empty_heatmap()
+
+        if self._heatmap_cache[0] is not equilibrium:
+            self._heatmap_cache = (equilibrium, self._calc_heatmap(*flux_map))
+        return (
+            hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
+            .opts(self.HEATMAP_OPTS)
+            .opts(alpha=self.heatmap_alpha)
+        )
+
+    def _empty_heatmap(self):
+        return (
+            hv.Image([], kdims=["r", "z"], vdims=["psi"])
+            .opts(self.HEATMAP_OPTS)
+            .opts(alpha=0.0, colorbar=False)
+        )
+
+    def _calc_heatmap(self, r, z, psi):
+        """Interpolates psi onto a regular grid for heatmap display.
+
+        Args:
+            r: Radial coordinates of the mesh nodes.
+            z: Height coordinates of the mesh nodes.
+            psi: Poloidal flux values at the mesh nodes.
+
+        Returns:
+            Tuple of (grid_r, grid_z, psi_grid).
+        """
+        r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
+        grid_r = np.linspace(r.min(), r.max(), self.HEATMAP_RESOLUTION)
+        grid_z = np.linspace(z.min(), z.max(), self.HEATMAP_RESOLUTION)
+        psi_grid = interp.griddata(
+            (r, z), np.asarray(psi, dtype=float), tuple(np.meshgrid(grid_r, grid_z))
+        )
+        return grid_r, grid_z, psi_grid
+
+    @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
         """Generates contour plot for poloidal flux.
 
@@ -368,7 +445,27 @@ class NicePlotter(Viewer):
         else:
             contours = self._calc_contours(equilibrium, self.levels)
 
-        return contours.opts(self.CONTOUR_OPTS)
+        return contours.opts(
+            self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
+        )
+
+    def _flux_map(self, equilibrium):
+        """The poloidal flux on the GGD that NICE fills.
+
+        Args:
+            equilibrium: The equilibrium IDS to read the flux from.
+
+        Returns:
+            Tuple of (r, z, psi) at the mesh nodes, or None if NICE did not fill them.
+        """
+        eqggd = equilibrium.time_slice[0].ggd[0]
+        r, z, psi = eqggd.r[0].values, eqggd.z[0].values, eqggd.psi[0].values
+        if not r or not z or not psi:
+            pn.state.notifications.error(
+                "NICE did not produce a valid poloidal flux field"
+            )
+            return None
+        return r, z, psi
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -381,19 +478,11 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-
-        eqggd = equilibrium.time_slice[0].ggd[0]
-        r = eqggd.r[0].values
-        z = eqggd.z[0].values
-        psi = eqggd.psi[0].values
-
-        if not r or not z or not psi:
-            pn.state.notifications.error(
-                "NICE did not produce a valid poloidal flux field"
-            )
+        flux_map = self._flux_map(equilibrium)
+        if flux_map is None:
             return hv.Contours(([0], [0], 0), vdims="psi")
 
-        trics = plt.tricontour(r, z, psi, levels=levels)
+        trics = plt.tricontour(*flux_map, levels=levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
