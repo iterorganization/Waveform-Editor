@@ -270,13 +270,12 @@ class CoilCurrents(Viewer):
             xml_params: XML representing configuration parameters, which are updated
                 in-place.
         """
-        self._update_coil_groups_in_xml(xml_params)
         self._update_fixed_coils_in_xml(xml_params)
         self._update_penalization_in_xml(xml_params)
 
-    def _update_coil_groups_in_xml(self, xml_params: ET.Element):
-        """Write how the coils of the machine in use are grouped, because the
-        parameter file holds the groups of a single machine.
+    def write_coil_groups(self, xml_params: ET.Element):
+        """Write how the coils of the machine of the selected preset are grouped, as
+        the parameter file holds the groups of ITER.
 
         Args:
             xml_params: XML representing configuration parameters, which are updated
@@ -284,16 +283,15 @@ class CoilCurrents(Viewer):
         """
         groups = MACHINE_COIL_GROUPS.get(self.nice_settings.machine_preset)
         if groups is None:
-            # A machine we have no groups for drives each of its coils separately
-            groups = range(len(self.coils))
-        elif len(groups) != len(self.coils):
+            return
+        if len(groups) != len(self.coils):
             raise ValueError(
                 f"The {self.nice_settings.machine_preset} machine description has "
                 f"{len(self.coils)} coils, but {len(groups)} coils are grouped for it."
             )
-        xml_params.find("n_coil_group_index").text = str(len(self.coils))
-        xml_params.find("coil_group_index").text = " ".join(
-            str(group) for group in groups
+        set_xml_parameter(xml_params, "n_coil_group_index", len(groups))
+        set_xml_parameter(
+            xml_params, "coil_group_index", " ".join(str(group) for group in groups)
         )
 
     def _update_fixed_coils_in_xml(self, xml_params: ET.Element):
