@@ -14,16 +14,8 @@ from panel.viewable import Viewer
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.iter_gaps import (
-    compute_gap_geometry as compute_iter_gap_geometry,
-)
-from waveform_editor.shape_editor.iter_gaps import (
-    extract_separatrix_from_time_slice,
-)
+from waveform_editor.shape_editor import iter_gaps, west_gaps
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.west_gaps import (
-    compute_gap_geometry as compute_west_gap_geometry,
-)
 
 matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
@@ -133,6 +125,8 @@ class NicePlotter(Viewer):
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
     show_gaps = param.Boolean(default=True, label="Show gaps")
+    show_desired_gaps = param.Boolean(default=True, label="Show desired shape gaps")
+    show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -750,6 +744,8 @@ class NicePlotter(Viewer):
     @pn.depends(
         "communicator.equilibrium",
         "show_gaps",
+        "show_desired_gaps",
+        "show_result_gaps",
         "nice_settings.machine_preset",
         "plasma_shape.shape_updated",
         "plasma_shape.input_mode",
@@ -766,57 +762,61 @@ class NicePlotter(Viewer):
         if not self.show_gaps:
             return self._empty_gaps_overlay()
 
-        eq = self.communicator.equilibrium
-        x_points = []
-        if eq is not None and len(eq.time_slice) > 0:
-            outline = eq.time_slice[0].boundary.outline
-            r, z = outline.r, outline.z
-            x_points = [
-                (float(node.r), float(node.z))
-                for node in eq.time_slice[0].contour_tree.node
-                if int(node.critical_type) == 1
-            ]
-        elif not self.nice_settings.is_direct_mode and self.plasma_shape.has_shape:
-            r, z = self.plasma_shape.outline_r, self.plasma_shape.outline_z
-        else:
-            return self._empty_gaps_overlay()
-
-        if r is None or len(r) == 0:
-            return self._empty_gaps_overlay()
-
-        gap_items = []
         preset = self.nice_settings.machine_preset
-        if preset == NiceSettings.PRESET_ITER:
-            ts = eq.time_slice[0] if eq is not None and len(eq.time_slice) > 0 else None
-            ma = (
-                getattr(getattr(ts, "global_quantities", None), "magnetic_axis", None)
-                if ts
-                else None
-            )
-            gap_items = compute_iter_gap_geometry(
-                r,
-                z,
-                separatrix_contour=extract_separatrix_from_time_slice(ts)
-                if ts
-                else None,
-                magnetic_axis=(float(ma.r), float(ma.z)) if ma else None,
-            )
-        elif preset == NiceSettings.PRESET_WEST:
-            gap_items = compute_west_gap_geometry(r, z, x_points)
+        overlays = []
 
-        if not gap_items:
+        if (
+            self.show_desired_gaps
+            and not self.nice_settings.is_direct_mode
+            and self.plasma_shape.has_shape
+        ):
+            r_des = self.plasma_shape.outline_r
+            z_des = self.plasma_shape.outline_z
+            if r_des is not None and len(r_des) > 0:
+                if preset == NiceSettings.PRESET_ITER:
+                    des_items = iter_gaps.compute_gap_geometry(r_des, z_des)
+                elif preset == NiceSettings.PRESET_WEST:
+                    des_items = west_gaps.compute_gap_geometry(
+                        r_des, z_des, self.plasma_shape.desired_x_points
+                    )
+                else:
+                    des_items = []
+                if des_items:
+                    overlays.append(self._build_gaps_overlay(des_items, color="blue"))
+
+        eq = self.communicator.equilibrium
+        if self.show_result_gaps and eq is not None and len(eq.time_slice) > 0:
+            ts = eq.time_slice[0]
+            if len(ts.boundary.outline.r) > 0:
+                if preset == NiceSettings.PRESET_ITER:
+                    res_items = iter_gaps.compute_gap_geometry(
+                        **iter_gaps.gap_inputs(ts)
+                    )
+                elif preset == NiceSettings.PRESET_WEST:
+                    res_items = west_gaps.compute_gap_geometry(
+                        **west_gaps.gap_inputs(ts)
+                    )
+                else:
+                    res_items = []
+                if res_items:
+                    overlays.append(self._build_gaps_overlay(res_items, color="red"))
+
+        if not overlays:
             return self._empty_gaps_overlay()
 
-        return self._build_gaps_overlay(gap_items)
+        combined = overlays[0]
+        for ov in overlays[1:]:
+            combined = combined * ov
+        return combined
 
-    def _build_gaps_overlay(self, items):
+    def _build_gaps_overlay(self, items, color="blue"):
         vdims = ["name", "symbol", "distance_str"]
         pts = hv.Points(
             [{"r": it["r_orig"], "z": it["z_orig"], **it} for it in items],
             kdims=["r", "z"],
             vdims=vdims,
         ).opts(
-            color="#e66101",
+            color=color,
             size=8,
             marker="diamond",
             hover_tooltips=[
@@ -831,7 +831,7 @@ class NicePlotter(Viewer):
             kdims=["r", "z"],
             vdims=vdims,
         ).opts(
-            color="#e66101",
+            color=color,
             size=5,
             marker="circle",
             hover_tooltips=[("Gap", "@name (@symbol)"), ("Distance", "@distance_str")],
@@ -851,7 +851,7 @@ class NicePlotter(Viewer):
             kdims=["r0", "z0", "r1", "z1"],
             vdims=vdims,
         ).opts(
-            color="#e66101",
+            color=color,
             line_dash="dashed",
             line_width=2,
             hover_tooltips=[("Gap", "@name (@symbol)"), ("Distance", "@distance_str")],
@@ -867,7 +867,7 @@ class NicePlotter(Viewer):
                 vdims=["text"],
             ).opts(
                 text_font_size="10pt",
-                text_color="#e66101",
+                text_color=color,
                 text_baseline="bottom",
                 text_align="center",
                 text_font_style="bold",

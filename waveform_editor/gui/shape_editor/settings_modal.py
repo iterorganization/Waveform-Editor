@@ -212,6 +212,21 @@ class SettingsModal(Viewer):
             "Heatmap Detail", ["heatmap_alpha"], self.nice_plotter.param.show_heatmap
         )
 
+        # Which gaps "Show gaps" shows, nested under it and only there while it is on
+        gap_options = pn.Column(
+            pn.widgets.Checkbox.from_param(
+                self.nice_plotter.param.show_desired_gaps,
+                name="Desired shape",
+                visible=self.nice_settings.param.is_inverse_mode.rx(),
+            ),
+            pn.widgets.Checkbox.from_param(
+                self.nice_plotter.param.show_result_gaps, name="Resulting shape"
+            ),
+            visible=self.nice_plotter.param.show_gaps,
+            styles={"border-left": "2px solid #dee2e6", "padding-left": "8px"},
+            margin=(0, 0, 4, 22),
+        )
+
         display_content = pn.Column(
             self._section_label("Visibility"),
             self._settings_section(
@@ -238,6 +253,7 @@ class SettingsModal(Viewer):
                         },
                     },
                 ),
+                gap_options,
             ),
             self._contour_detail,
             self._heatmap_detail,

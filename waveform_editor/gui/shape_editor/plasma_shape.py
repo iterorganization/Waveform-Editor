@@ -65,6 +65,13 @@ MACHINE_SHAPES = {
 }
 
 
+# The gaps a machine is designed with; a custom machine only takes gaps from an IDS
+MACHINE_DEFAULT_GAPS = {
+    NiceSettings.PRESET_ITER: get_default_iter_gaps,
+    NiceSettings.PRESET_WEST: get_default_west_gaps,
+}
+
+
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
@@ -462,13 +469,10 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
-    show_gaps = param.Boolean(default=True, doc="Whether clearance gaps are displayed.")
-    machine_preset = param.String(
-        default="", doc="Active machine preset (e.g. ITER, WEST)."
-    )
+    nice_settings = param.ClassSelector(class_=NiceSettings)
 
     def __init__(self):
-        super().__init__()
+        super().__init__(nice_settings=settings.nice)
 
         def _indicator(tooltip):
             return WarningIndicator(
@@ -507,6 +511,7 @@ class PlasmaShape(Viewer):
                     self.input_outline,
                     self.outline_indicator,
                     margin=(10, 20, 0, 20),
+                    sizing_mode="stretch_width",
                 ),
             ),
             self.PARAMETERIZED_INPUT: (
@@ -520,11 +525,16 @@ class PlasmaShape(Viewer):
             self.WEIGHTED_POINTS_INPUT: (
                 self._load_shape_from_weighted_points,
                 lambda: pn.Row(
-                    self.weighted_points_table, self.weighted_points_indicator
+                    self.weighted_points_table,
+                    self.weighted_points_indicator,
+                    sizing_mode="stretch_width",
                 ),
             ),
         }
-        self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
+        self.gap_ui = pn.Column(
+            visible=self.param.input_mode.rx() == self.GAP_INPUT,
+            sizing_mode="stretch_width",
+        )
         self.radio_box = pn.widgets.RadioButtonGroup(
             options={
                 "Equilibrium\nIDS Outline": self.EQUILIBRIUM_INPUT,
@@ -548,8 +558,9 @@ class PlasmaShape(Viewer):
         self.panel = pn.Column(
             self.radio_box,
             self.gap_pills_pane,
-            self._panel_shape_options,
+            pn.panel(self._panel_shape_options, sizing_mode="stretch_width"),
             self.gap_ui,
+            sizing_mode="stretch_width",
         )
         self.outline_r = None
         self.outline_z = None
@@ -562,7 +573,7 @@ class PlasmaShape(Viewer):
         self.param_weights = None
         self.shape_params.extra_points_table = self.weighted_points_table
         # Last, because applying a shape fires the watchers above
-        settings.nice.param.watch(
+        self.nice_settings.param.watch(
             self.shape_params.apply_machine_shape, "machine_preset"
         )
         self.shape_params.apply_machine_shape()
@@ -574,7 +585,7 @@ class PlasmaShape(Viewer):
         "weighted_points_table.param",
         "input_mode",
         "gap_source",
-        "machine_preset",
+        "nice_settings.machine_preset",
         watch=True,
     )
     def _set_plasma_shape(self):
@@ -592,25 +603,40 @@ class PlasmaShape(Viewer):
             self.has_shape = False
         self.param.trigger("shape_updated")
 
-    @pn.depends("gap_source", "machine_preset")
+    @property
+    def _active_gap_source(self):
+        """Where the gaps come from: the chosen source, except for a machine without
+        default gaps, which can only take them from an IDS. The choice is kept, for
+        when a machine with defaults is selected again."""
+        if self.nice_settings.machine_preset in MACHINE_DEFAULT_GAPS:
+            return self.gap_source
+        return self.GAP_SOURCE_IDS
+
     def _panel_gap_options(self):
         """Render controls for Gaps mode: gap source toggle and appropriate loaders."""
-        preset = self.machine_preset or "ITER"
-        if self.gap_source == self.GAP_SOURCE_DEFAULT:
-            return pn.Column(
-                self.gap_source_radio,
-                pn.Row(
-                    pn.pane.Markdown(
-                        f"**{preset} Default Gap Definitions**",
-                        margin=(8, 10, 0, 20),
-                    ),
-                    self.reset_default_gaps_button,
-                    sizing_mode="stretch_width",
+        preset = self.nice_settings.machine_preset
+        if self._active_gap_source == self.GAP_SOURCE_DEFAULT:
+            content = pn.Row(
+                pn.pane.Markdown(
+                    f"**{preset} Default Gap Definitions**",
+                    margin=(8, 10, 0, 20),
                 ),
+                self.reset_default_gaps_button,
+                sizing_mode="stretch_width",
             )
+        else:
+            content = pn.Row(
+                self.input_gaps,
+                self.gap_indicator,
+                margin=(10, 20, 0, 20),
+                sizing_mode="stretch_width",
+            )
+        has_defaults = preset in MACHINE_DEFAULT_GAPS
         return pn.Column(
-            self.gap_source_radio,
-            pn.Row(self.input_gaps, self.gap_indicator, margin=(5, 20, 0, 20)),
+            # Without defaults there is nothing to choose between
+            *([self.gap_source_radio] if has_defaults else []),
+            content,
+            sizing_mode="stretch_width",
         )
 
     def _on_reset_default_gaps(self, event=None):
@@ -641,13 +667,9 @@ class PlasmaShape(Viewer):
         """Load plasma boundary outline from default machine gaps or IDS equilibrium."""
         self.gaps = []
 
-        if self.gap_source == self.GAP_SOURCE_DEFAULT:
-            self.gaps = (
-                get_default_west_gaps()
-                if self.machine_preset == "WEST"
-                else get_default_iter_gaps()
-            )
-        elif self.gap_source == self.GAP_SOURCE_IDS and self.input_gaps.uri:
+        if self._active_gap_source == self.GAP_SOURCE_DEFAULT:
+            self.gaps = MACHINE_DEFAULT_GAPS[self.nice_settings.machine_preset]()
+        elif self.input_gaps.uri:
             try:
                 with imas.DBEntry(self.input_gaps.uri, "r") as entry:
                     equilibrium = entry.get_slice(
@@ -724,6 +746,13 @@ class PlasmaShape(Viewer):
         self.gap_ui.extend(new_gap_ui)
 
     @property
+    def desired_x_points(self):
+        """The x-points of the desired shape, which only a parameterized shape has."""
+        if self.input_mode != self.PARAMETERIZED_INPUT:
+            return []
+        return [(self.shape_params.rx, self.shape_params.zx)]
+
+    @property
     def uses_weighted_points(self):
         """Whether the weighted points table feeds the current input mode."""
         return self.input_mode == self.WEIGHTED_POINTS_INPUT or (
@@ -778,19 +807,18 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_r + extra_r
         self.outline_z = self.outline_z + extra_z
 
-    @param.depends("input_mode")
+    @param.depends("input_mode", "gap_source", "nice_settings.machine_preset")
     def _panel_shape_options(self):
         _, panel_factory = self._mode_config[self.input_mode]
         return panel_factory()
 
     @param.depends(
-        "show_gaps", "machine_preset", "shape_updated", "has_shape", "input_mode"
+        "nice_settings.machine_preset", "shape_updated", "has_shape", "input_mode"
     )
     def _render_target_gap_pills(self):
-        """Render target shape metric pills when show_gaps is enabled."""
+        """Render target shape gap metric pills below the input mode selector."""
         if (
-            not self.show_gaps
-            or not self.has_shape
+            not self.has_shape
             or self.outline_r is None
             or self.outline_z is None
             or len(self.outline_r) == 0
@@ -806,7 +834,7 @@ class PlasmaShape(Viewer):
                 f'<span class="mc-val">{display}</span></span>'
             )
 
-        if self.machine_preset == "ITER":
+        if self.nice_settings.machine_preset == NiceSettings.PRESET_ITER:
             gaps = compute_iter_gaps(self.outline_r, self.outline_z)
             if self.input_mode == self.GAP_INPUT and self.gaps:
                 for g in self.gaps:
@@ -828,11 +856,9 @@ class PlasmaShape(Viewer):
                 )
                 chips.append(_chip(symbol, display, tooltip))
 
-        elif self.machine_preset == "WEST":
-            x_points = []
-            if self.input_mode == self.PARAMETERIZED_INPUT:
-                x_points = [(self.shape_params.rx, self.shape_params.zx)]
-            elif self.input_mode == self.GAP_INPUT and self.gaps:
+        elif self.nice_settings.machine_preset == NiceSettings.PRESET_WEST:
+            x_points = self.desired_x_points
+            if self.input_mode == self.GAP_INPUT and self.gaps:
                 x_points = [
                     (g.r_sep, g.z_sep)
                     for g in self.gaps

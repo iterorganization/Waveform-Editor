@@ -227,3 +227,110 @@ def project_point_to_line(point, start, end):
     proj = start + np.dot(to_pt, along) * along
     dist = float(np.linalg.norm(to_pt - np.dot(to_pt, along) * along))
     return (float(proj[0]), float(proj[1])), dist
+
+
+def closest_point_facing(point, r, z, axis, is_closed=True):
+    """The closest point on an outline that lies on the side of the axis, as DINA
+    measures its gaps 4 and 5: the foot must satisfy (foot - point).(axis - point) >= 0,
+    so a branch behind the reference point is never taken.
+
+    Args:
+        point: The (r, z) reference point.
+        r: Radial coordinates of the outline.
+        z: Height coordinates of the outline.
+        axis: The (r, z) of the magnetic axis.
+        is_closed: Whether the outline closes on itself.
+
+    Returns:
+        Tuple of ((r, z) of the closest point, distance), or (None, inf) if no point
+        faces the axis.
+    """
+    starts = np.column_stack([r, z]).astype(float)
+    ends = np.roll(starts, -1, axis=0) if is_closed else starts[1:]
+    if not is_closed:
+        starts = starts[:-1]
+    point = np.asarray(point, float)
+    segs = ends - starts
+    lens = np.sum(segs**2, axis=1)
+    along = np.clip(
+        np.sum((point - starts) * segs, axis=1) / np.where(lens > 0, lens, 1), 0, 1
+    )
+    feet = starts + along[:, None] * segs
+    facing = (feet - point) @ (np.asarray(axis, float) - point) >= 0
+    if not facing.any():
+        return None, float("inf")
+    dists = np.where(facing, np.linalg.norm(feet - point, axis=1), np.inf)
+    idx = int(np.argmin(dists))
+    return (float(feet[idx, 0]), float(feet[idx, 1])), float(dists[idx])
+
+
+def interpolate_branch(r, z, axis, at, theta_range, along="z"):
+    """Interpolate one branch of an outline, selected by its angle about the axis, as
+    FEEQS measures the WEST gaps (pchip, in coordinates relative to the axis).
+
+    Args:
+        r: Radial coordinates of the outline.
+        z: Height coordinates of the outline.
+        axis: The (r, z) the angles are taken about, the magnetic axis in FEEQS.
+        at: The absolute height (along="z") or radius (along="r") to evaluate at.
+        theta_range: (low, high) angles in radians of the points that form the branch.
+            A low above high wraps around pi, for the inboard side.
+        along: "z" to find the radius at a height, "r" to find the height at a radius.
+
+    Returns:
+        The radius (or height) of the branch, or None if it does not reach `at`.
+    """
+    from scipy.interpolate import PchipInterpolator
+
+    r0, z0 = axis
+    d_r, d_z = np.asarray(r, float) - r0, np.asarray(z, float) - z0
+    theta = np.arctan2(d_z, d_r)
+    low, high = theta_range
+    on_branch = (
+        (theta > low) & (theta < high) if low < high else (theta > low) | (theta < high)
+    )
+    x, y = (d_z, d_r) if along == "z" else (d_r, d_z)
+    x, y = x[on_branch], y[on_branch]
+    x, unique = np.unique(x, return_index=True)
+    y = y[unique]
+    target = at - (z0 if along == "z" else r0)
+    if len(x) < 2 or not x[0] <= target <= x[-1]:
+        return None
+    return float(PchipInterpolator(x, y)(target)) + (r0 if along == "z" else z0)
+
+
+def geometric_centre(r, z):
+    """The centre of the bounding box of an outline."""
+    return (float(np.min(r) + np.max(r)) / 2, float(np.min(z) + np.max(z)) / 2)
+
+
+def psi_contour(time_slice, level):
+    """The contour of the poloidal flux of an equilibrium at a level, from the GGD
+    that NICE fills, or else from profiles_2d.
+
+    Args:
+        time_slice: The equilibrium time slice.
+        level: The flux to contour.
+
+    Returns:
+        List of (N, 2) arrays of (r, z), one per piece of the contour.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    try:
+        if len(time_slice.ggd) > 0 and len(time_slice.ggd[0].psi) > 0:
+            ggd = time_slice.ggd[0]
+            r, z = ggd.r[0].values, ggd.z[0].values
+            contour = ax.tricontour(r, z, ggd.psi[0].values, levels=[level])
+        elif len(time_slice.profiles_2d) > 0:
+            p2d = time_slice.profiles_2d[0]
+            r, z = np.asarray(p2d.grid.dim1), np.asarray(p2d.grid.dim2)
+            psi = np.asarray(p2d.psi)
+            psi = psi.T if psi.shape == (len(r), len(z)) else psi
+            contour = ax.contour(r, z, psi, levels=[level])
+        else:
+            return []
+        return [np.asarray(seg) for seg in contour.allsegs[0] if len(seg) > 1]
+    finally:
+        plt.close(fig)

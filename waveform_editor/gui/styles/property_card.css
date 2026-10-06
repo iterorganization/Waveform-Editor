@@ -3,11 +3,14 @@
     border-radius: 8px;
     padding: 8px 12px 12px 12px;
     display: block;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 :host(.ids-source-card) {
     border-color: #2a5a8c;
     background: rgba(13, 110, 253, 0.08);
+    flex: 1;
 }
 
 .bk-btn.bk-btn-primary.bk-active {

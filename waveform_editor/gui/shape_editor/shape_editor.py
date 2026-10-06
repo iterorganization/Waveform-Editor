@@ -20,22 +20,10 @@ from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.iter_gaps import (
-    GAP_METADATA as ITER_GAP_METRICS,
-)
-from waveform_editor.shape_editor.iter_gaps import (
-    compute_gaps as compute_iter_gaps,
-)
-from waveform_editor.shape_editor.iter_gaps import (
-    extract_separatrix_from_time_slice,
-)
+from waveform_editor.shape_editor import iter_gaps, west_gaps
+from waveform_editor.shape_editor.iter_gaps import GAP_METADATA as ITER_GAP_METRICS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
-from waveform_editor.shape_editor.west_gaps import (
-    WEST_METADATA as WEST_GAP_METRICS,
-)
-from waveform_editor.shape_editor.west_gaps import (
-    compute_gaps as compute_west_gaps,
-)
+from waveform_editor.shape_editor.west_gaps import WEST_METADATA as WEST_GAP_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -93,16 +81,6 @@ class ShapeEditor(Viewer):
         )
         self.run_select.param.watch(self._restore_run, "value")
         self.nice_settings = settings.nice
-        self.plasma_shape.machine_preset = self.nice_settings.machine_preset
-        self.plasma_shape.show_gaps = self.nice_plotter.show_gaps
-        self.nice_settings.param.watch(
-            lambda e: setattr(self.plasma_shape, "machine_preset", e.new),
-            "machine_preset",
-        )
-        self.nice_plotter.param.watch(
-            lambda e: setattr(self.plasma_shape, "show_gaps", e.new),
-            "show_gaps",
-        )
 
         self.xml_text = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
@@ -395,11 +373,16 @@ class ShapeEditor(Viewer):
 
     def _on_nice_run_finished(self, success):
         if success:
-            pn.state.notifications.success("NICE run complete.")
+            if pn.state.notifications:
+                pn.state.notifications.success("NICE run complete.")
+            if self.nice_plotter.show_gaps:
+                self.nice_plotter.show_result_gaps = True
+                self.nice_plotter.show_desired_gaps = False
         else:
-            pn.state.notifications.error(
-                "NICE did not converge. Check the terminal for details."
-            )
+            if pn.state.notifications:
+                pn.state.notifications.error(
+                    "NICE did not converge. Check the terminal for details."
+                )
 
     def _has_valid_boundary(self):
         """Check that the desired boundary fits in the fixed size array NICE reads it
@@ -517,21 +500,9 @@ class ShapeEditor(Viewer):
         """The gaps of an ITER plasma in centimetres (Rmin/Rmax in metres)."""
         if self.nice_settings.machine_preset != NiceSettings.PRESET_ITER:
             return {}
-        outline = time_slice.boundary.outline
-        if outline.r is None or len(outline.r) == 0:
-            return {}
-        ma = getattr(
-            getattr(time_slice, "global_quantities", None), "magnetic_axis", None
-        )
-        axis = (float(ma.r), float(ma.z)) if ma else None
-        gaps = compute_iter_gaps(
-            outline.r,
-            outline.z,
-            separatrix_contour=extract_separatrix_from_time_slice(time_slice),
-            magnetic_axis=axis,
-        )
+        gaps = iter_gaps.compute_gaps(**iter_gaps.gap_inputs(time_slice))
         return {
-            name: val * 100 if name in ("gap1", "gap2", "gap4", "gap5") else val
+            name: val * 100 if ITER_GAP_METRICS[name][1] == "cm" else val
             for name, val in gaps.items()
             if val is not None
         }
@@ -540,13 +511,7 @@ class ShapeEditor(Viewer):
         """The gaps of a WEST plasma in centimetres."""
         if self.nice_settings.machine_preset != NiceSettings.PRESET_WEST:
             return {}
-        x_points = [
-            (float(node.r), float(node.z))
-            for node in getattr(getattr(time_slice, "contour_tree", None), "node", [])
-            if int(node.critical_type) == 1
-        ]
-        outline = time_slice.boundary.outline
-        gaps = compute_west_gaps(outline.r, outline.z, x_points)
+        gaps = west_gaps.compute_gaps(**west_gaps.gap_inputs(time_slice))
         return {name: gap * 100 for name, gap in gaps.items()}
 
     def _update_metrics(self):
