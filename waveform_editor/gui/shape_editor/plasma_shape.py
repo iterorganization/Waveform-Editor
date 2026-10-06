@@ -23,25 +23,68 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
-    a = param.Number(default=1.9, step=0.01, softbounds=[1, 2], label="Minor Radius")
+    a = param.Number(
+        default=1.9,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[1, 2],
+        label="Minor Radius",
+    )
     center_r = param.Number(
-        default=6.2, step=0.01, softbounds=[5, 7], label="Plasma center radius"
+        default=6.2,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[5, 7],
+        label="Plasma center radius",
     )
     center_z = param.Number(
         default=0.545, step=0.01, softbounds=[0, 1.5], label="Plasma center height"
     )
-    kappa = param.Number(default=1.8, step=0.01, softbounds=[0, 3], label="Elongation")
+    kappa = param.Number(
+        default=1.8,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[0, 3],
+        label="Elongation",
+    )
     delta = param.Number(
-        default=0.43, step=0.01, softbounds=[-1, 1], label="Triangularity"
+        default=0.43,
+        step=0.01,
+        bounds=(-1, 1),
+        softbounds=[-1, 1],
+        label="Triangularity",
     )
     rx = param.Number(
-        default=5.089, step=0.01, softbounds=[4.5, 6], label="X-point radius"
+        default=5.089,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[4.5, 6],
+        label="X-point radius",
     )
     zx = param.Number(
         default=-3.346, step=0.01, softbounds=[-4, -2], label="X-point height"
     )
+    second_x_point = param.Boolean(default=False, label="Second x-point")
+    rx_upper = param.Number(
+        default=5.089,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[4.5, 6],
+        label="Second x-point radius",
+    )
+    zx_upper = param.Number(
+        default=3.346, step=0.01, softbounds=[2, 4], label="Second x-point height"
+    )
     n_desired_bnd_points = param.Integer(
-        default=96, softbounds=[3, 200], label="Number of boundary points"
+        default=96,
+        bounds=(3, 5000),
+        softbounds=[3, 200],
+        label="Number of boundary points",
     )
     weight_enabled = param.Boolean(default=False, label="Emphasize a region")
     weight_position = param.Number(
@@ -65,7 +108,7 @@ class PlasmaShapeParams(Viewer):
                 return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
             return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
 
-        def _group(title, *children):
+        def _group(title, *children, visible=True):
             return pn.Column(
                 pn.pane.HTML(
                     f"<b>{title}</b>"
@@ -76,6 +119,7 @@ class PlasmaShapeParams(Viewer):
                 css_classes=["property-card"],
                 stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
+                visible=visible,
             )
 
         return pn.Column(
@@ -91,8 +135,40 @@ class PlasmaShapeParams(Viewer):
                 ),
             ),
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
-            _group("Shape coefficients", _slider("kappa"), _slider("delta")),
-            _group("X point", _slider("rx"), _slider("zx")),
+            _group(
+                "Shape coefficients",
+                _slider("kappa"),
+                _slider("delta"),
+                # A double null takes its shape from its x-points instead
+                visible=self.param.second_x_point.rx.not_(),
+            ),
+            _group(
+                "X point",
+                _slider("rx"),
+                _slider("zx"),
+                pn.Row(
+                    _slider("second_x_point"),
+                    pn.widgets.TooltipIcon(
+                        value=(
+                            "NICE inverse mode fits the target LCFS boundary points by "
+                            "penalizing flux differences, but does not impose X-point "
+                            "null constraints (∇ψ = 0). The resulting equilibrium is "
+                            " not guaranteed to form two X-points and may produce only "
+                            "1 or no X-points."
+                        ),
+                        align="center",
+                        margin=(0, 0, 0, -10),
+                    ),
+                    align="center",
+                    margin=(0, 0, 5, 0),
+                ),
+                pn.Column(
+                    _slider("rx_upper"),
+                    _slider("zx_upper"),
+                    visible=self.param.second_x_point.rx(),
+                    margin=0,
+                ),
+            ),
             _group("Boundary", _slider("n_desired_bnd_points")),
             _group(
                 "Extra points",
@@ -519,6 +595,8 @@ class PlasmaShape(Viewer):
             rx=p.rx,
             zx=p.zx,
             n_desired_bnd_points=p.n_desired_bnd_points,
+            rx_upper=p.rx_upper if p.second_x_point else None,
+            zx_upper=p.zx_upper if p.second_x_point else None,
         )
         self.param_r, self.param_z = r, z
 
