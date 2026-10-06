@@ -31,6 +31,56 @@ def _no_hover(element):
     return element.opts(hooks=[hook])
 
 
+def _element_outline(geometry):
+    """The corners of an element of a machine, whichever way it is described.
+
+    Args:
+        geometry: The geometry of an element.
+
+    Returns:
+        Tuple of (r, z) of a closed outline
+    """
+    if geometry.outline.has_value:
+        return geometry.outline.r, geometry.outline.z
+    rectangle = geometry.rectangle
+    if rectangle.has_value:
+        r, z = rectangle.r, rectangle.z
+        dr, dz = rectangle.width / 2, rectangle.height / 2
+        return (
+            np.array([r - dr, r + dr, r + dr, r - dr, r - dr]),
+            np.array([z - dz, z - dz, z + dz, z + dz, z - dz]),
+        )
+    oblique = geometry.oblique
+    if oblique.has_value:
+        # Two sides from a corner, each at its own angle
+        dr_a = oblique.length_alpha * np.cos(oblique.alpha)
+        dz_a = oblique.length_alpha * np.sin(oblique.alpha)
+        dr_b = -oblique.length_beta * np.sin(oblique.beta)
+        dz_b = oblique.length_beta * np.cos(oblique.beta)
+        r, z = oblique.r, oblique.z
+        return (
+            np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
+            np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
+        )
+    return None
+
+
+def _geometry_paths(paths, color="black", line_width=2):
+    """Paths of the outlines of parts of a machine, named on hover.
+
+    Args:
+        paths: List of (r, z, name) of each outline.
+        color: Colour of the lines.
+        line_width: Width of the lines.
+    """
+    return hv.Path(paths, vdims=["name"]).opts(
+        color=color,
+        line_width=line_width,
+        show_legend=False,
+        hover_tooltips=[("", "@name")],
+    )
+
+
 class NicePlotter(Viewer):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
@@ -56,8 +106,8 @@ class NicePlotter(Viewer):
         default=True, label="Show passive structures"
     )
     show_iron_core = param.Boolean(default=True, label="Show iron core")
-    show_components = param.Boolean(
-        default=False, label="Show plasma facing components"
+    show_plasma_facing_components = param.Boolean(
+        default=True, label="Show plasma facing components"
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
@@ -359,13 +409,7 @@ class NicePlotter(Viewer):
             show_legend=False,
             hover_tooltips=[("", "@name")],
         )
-        paths = hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=1,
-            show_legend=False,
-            hover_tooltips=[("", "@name")],
-        )
-        return rects * paths
+        return rects * _geometry_paths(paths, line_width=1)
 
     @pn.depends("communicator.equilibrium", "show_contour", "levels")
     def _plot_contours(self):
@@ -469,11 +513,7 @@ class NicePlotter(Viewer):
                     paths.append(
                         (annular.outline_outer.r, annular.outline_outer.z, name)
                     )
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
+        return _geometry_paths(paths)
 
     @pn.depends("wall", "show_wall")
     def _plot_wall(self):
@@ -489,13 +529,9 @@ class NicePlotter(Viewer):
                 r_vals = unit.outline.r
                 z_vals = unit.outline.z
                 paths.append((r_vals, z_vals, name))
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
+        return _geometry_paths(paths)
 
-    @pn.depends("wall", "show_components")
+    @pn.depends("wall", "show_plasma_facing_components")
     def _plot_components(self):
         """Generates paths for the plasma facing components, which a machine
         describes alongside the limiter it is computed with.
@@ -504,7 +540,7 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_components and self.wall is not None:
+        if self.show_plasma_facing_components and self.wall is not None:
             # The first description is the limiter the equilibrium is computed with
             for description in list(self.wall.description_2d)[1:]:
                 for unit in description.limiter.unit:
@@ -512,11 +548,7 @@ class NicePlotter(Viewer):
                     paths.append(
                         (outline.r, outline.z, str(unit.description or unit.name))
                     )
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="gray",
-            line_width=1,
-            hover_tooltips=[("", "@name")],
-        )
+        return _geometry_paths(paths, color="gray", line_width=1)
 
     @pn.depends("pf_passive", "show_passive_structures")
     def _plot_passive_structures(self):
@@ -529,7 +561,7 @@ class NicePlotter(Viewer):
         if self.show_passive_structures and self.pf_passive is not None:
             for loop in self.pf_passive.loop:
                 for element in loop.element:
-                    outline = self._element_outline(element.geometry)
+                    outline = _element_outline(element.geometry)
                     if outline is None:
                         logger.warning(
                             f"Passive structure {str(loop.name)!r} was skipped, as its "
@@ -537,44 +569,7 @@ class NicePlotter(Viewer):
                         )
                         continue
                     paths.append((*outline, str(loop.name)))
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="darkgray",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
-
-    def _element_outline(self, geometry):
-        """The corners of an element of a machine, whichever way it is described.
-
-        Args:
-            geometry: The geometry of an element.
-
-        Returns:
-            Tuple of (r, z) of a closed outline
-        """
-        if geometry.outline.has_value:
-            return geometry.outline.r, geometry.outline.z
-        rectangle = geometry.rectangle
-        if rectangle.has_value:
-            r, z = rectangle.r, rectangle.z
-            dr, dz = rectangle.width / 2, rectangle.height / 2
-            return (
-                np.array([r - dr, r + dr, r + dr, r - dr, r - dr]),
-                np.array([z - dz, z - dz, z + dz, z + dz, z - dz]),
-            )
-        oblique = geometry.oblique
-        if oblique.has_value:
-            # Two sides from a corner, each at its own angle
-            dr_a = oblique.length_alpha * np.cos(oblique.alpha)
-            dz_a = oblique.length_alpha * np.sin(oblique.alpha)
-            dr_b = -oblique.length_beta * np.sin(oblique.beta)
-            dz_b = oblique.length_beta * np.cos(oblique.beta)
-            r, z = oblique.r, oblique.z
-            return (
-                np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
-                np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
-            )
-        return None
+        return _geometry_paths(paths, color="darkgray")
 
     @pn.depends("iron_core", "show_iron_core")
     def _plot_iron_core(self):
@@ -586,13 +581,15 @@ class NicePlotter(Viewer):
         paths = []
         if self.show_iron_core and self.iron_core is not None:
             for segment in self.iron_core.segment:
-                outline = segment.geometry.outline
-                paths.append((outline.r, outline.z, str(segment.name)))
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="saddlebrown",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
+                outline = _element_outline(segment.geometry)
+                if outline is None:
+                    logger.warning(
+                        f"Iron core segment {str(segment.name)!r} was skipped, as its "
+                        "geometry is not an outline, a rectangle or an oblique"
+                    )
+                    continue
+                paths.append((*outline, str(segment.name)))
+        return _geometry_paths(paths, color="saddlebrown")
 
     @pn.depends("communicator.equilibrium", "show_xo")
     def _plot_xo_points(self):

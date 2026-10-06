@@ -214,7 +214,7 @@ class SettingsModal(Viewer):
                         "show_vacuum_vessel",
                         "show_passive_structures",
                         "show_iron_core",
-                        "show_components",
+                        "show_plasma_facing_components",
                         "show_xo",
                         "show_separatrix",
                         "show_desired_shape",
