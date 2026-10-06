@@ -71,6 +71,7 @@ class NicePlotter(Viewer):
     FRAME_WIDTH = round(
         FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
     )
+    HEATMAP_RESOLUTION = 250
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -92,6 +93,15 @@ class NicePlotter(Viewer):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
+        self.CONTOUR_ON_HEATMAP_OPTS = hv.opts.Contours(
+            color="white",
+            alpha=0.6,
+            line_width=1,
+            colorbar=False,
+            tools=["hover"],
+            show_legend=False,
+        )
+        self._heatmap_cache = (None, None)
         self.HEATMAP_OPTS = hv.opts.Image(
             cmap="viridis",
             colorbar=True,
@@ -104,8 +114,6 @@ class NicePlotter(Viewer):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
-        self._cached_equilibrium = None
-        self._cached_heatmap_grid = None
         self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
         # Static on purpose. The draw tool binds to this element's renderer, and
         # redrawing it either breaks the binding or feeds edits back into redraws.
@@ -384,111 +392,51 @@ class NicePlotter(Viewer):
         """
         equilibrium = self.communicator.equilibrium
         if not self.show_heatmap or equilibrium is None:
-            return (
-                hv.Image([], kdims=["r", "z"], vdims=["psi"])
-                .opts(self.HEATMAP_OPTS)
-                .opts(alpha=0.0, colorbar=False)
-            )
+            return self._empty_heatmap()
 
         eqggd = equilibrium.time_slice[0].ggd[0]
         r = eqggd.r[0].values
         z = eqggd.z[0].values
         psi = eqggd.psi[0].values
-
         if not r or not z or not psi:
             pn.state.notifications.error(
                 "NICE did not produce a valid poloidal flux field"
             )
-            return (
-                hv.Image([], kdims=["r", "z"], vdims=["psi"])
-                .opts(self.HEATMAP_OPTS)
-                .opts(alpha=0.0, colorbar=False)
-            )
+            return self._empty_heatmap()
 
-        if (
-            self._cached_heatmap_grid is not None
-            and self._cached_equilibrium is equilibrium
-        ):
-            grid_r, grid_z, psi_grid = self._cached_heatmap_grid
-        else:
-            grid_r, grid_z, psi_grid = self._calc_heatmap(r, z, psi)
-            self._cached_equilibrium = equilibrium
-            self._cached_heatmap_grid = (grid_r, grid_z, psi_grid)
-
-        if grid_r is None:
-            return (
-                hv.Image([], kdims=["r", "z"], vdims=["psi"])
-                .opts(self.HEATMAP_OPTS)
-                .opts(alpha=0.0, colorbar=False)
-            )
-
+        if self._heatmap_cache[0] is not equilibrium:
+            self._heatmap_cache = (equilibrium, self._calc_heatmap(r, z, psi))
         return (
-            hv.Image(
-                (grid_r, grid_z, psi_grid),
-                kdims=["r", "z"],
-                vdims=["psi"],
-            )
+            hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
             .opts(self.HEATMAP_OPTS)
             .opts(alpha=self.heatmap_alpha)
         )
 
-    def _calc_heatmap(self, r, z, psi, resolution=250):
+    def _empty_heatmap(self):
+        return (
+            hv.Image([], kdims=["r", "z"], vdims=["psi"])
+            .opts(self.HEATMAP_OPTS)
+            .opts(alpha=0.0, colorbar=False)
+        )
+
+    def _calc_heatmap(self, r, z, psi):
         """Interpolates psi onto a regular grid for heatmap display.
 
         Args:
             r: Radial coordinates of the mesh nodes.
             z: Height coordinates of the mesh nodes.
             psi: Poloidal flux values at the mesh nodes.
-            resolution: Number of grid points along each axis.
 
         Returns:
-            Tuple of (grid_r, grid_z, psi_grid) or (None, None, None).
+            Tuple of (grid_r, grid_z, psi_grid).
         """
-        try:
-            r_arr = np.asarray(r, dtype=float)
-            z_arr = np.asarray(z, dtype=float)
-            psi_arr = np.asarray(psi, dtype=float)
-
-            # Filter non-finite values
-            valid = np.isfinite(r_arr) & np.isfinite(z_arr) & np.isfinite(psi_arr)
-            r_arr, z_arr, psi_arr = r_arr[valid], z_arr[valid], psi_arr[valid]
-
-            if len(r_arr) < 3 or len(z_arr) < 3 or len(psi_arr) < 3:
-                return None, None, None
-
-            # Deduplicate coordinates so identical points don't cause degeneracies
-            coords = np.column_stack([r_arr, z_arr])
-            _, unique_indices = np.unique(coords, axis=0, return_index=True)
-            r_clean = r_arr[unique_indices]
-            z_clean = z_arr[unique_indices]
-            psi_clean = psi_arr[unique_indices]
-
-            if len(np.unique(r_clean)) < 2 or len(np.unique(z_clean)) < 2:
-                return None, None, None
-
-            grid_r = np.linspace(r_clean.min(), r_clean.max(), resolution)
-            grid_z = np.linspace(z_clean.min(), z_clean.max(), resolution)
-            grid_r_mesh, grid_z_mesh = np.meshgrid(grid_r, grid_z)
-
-            try:
-                psi_grid = interp.griddata(
-                    (r_clean, z_clean),
-                    psi_clean,
-                    (grid_r_mesh, grid_z_mesh),
-                    method="linear",
-                )
-            except Exception:
-                psi_grid = interp.griddata(
-                    (r_clean, z_clean),
-                    psi_clean,
-                    (grid_r_mesh, grid_z_mesh),
-                    method="nearest",
-                )
-
-            return grid_r, grid_z, psi_grid
-        except Exception as e:
-            logger.warning(f"Failed to calculate heatmap interpolation: {e}")
-            return None, None, None
+        r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
+        grid_r = np.linspace(r.min(), r.max(), self.HEATMAP_RESOLUTION)
+        grid_z = np.linspace(z.min(), z.max(), self.HEATMAP_RESOLUTION)
+        psi_grid = interp.griddata(
+            (r, z), np.asarray(psi, dtype=float), tuple(np.meshgrid(grid_r, grid_z))
+        )
+        return grid_r, grid_z, psi_grid
 
     @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
@@ -503,16 +451,9 @@ class NicePlotter(Viewer):
         else:
             contours = self._calc_contours(equilibrium, self.levels)
 
-        if self.show_heatmap:
-            return contours.opts(
-                color="white",
-                alpha=0.6,
-                line_width=1,
-                colorbar=False,
-                tools=["hover"],
-                show_legend=False,
-            )
-        return contours.opts(self.CONTOUR_OPTS)
+        return contours.opts(
+            self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
+        )
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
