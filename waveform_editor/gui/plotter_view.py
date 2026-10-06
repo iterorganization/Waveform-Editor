@@ -48,6 +48,7 @@ class PlotterView(Viewer):
 
         if waveform is None:
             return hv.Curve(([], []), xlabel, ylabel)
+
         times, values = waveform.get_value()
 
         return hv.Curve((times, values), xlabel, ylabel, label=waveform.name)

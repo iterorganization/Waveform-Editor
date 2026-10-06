@@ -3,7 +3,7 @@ import ast
 import numpy as np
 from asteval import Interpreter
 
-from waveform_editor.base_waveform import BaseWaveform
+from waveform_editor.config_entry import ConfigEntry
 from waveform_editor.tendencies.util import merge_value_types
 
 NUMPY_UFUNCS = {}
@@ -66,7 +66,7 @@ class ExpressionExtractor(ast.NodeTransformer):
             return node
 
 
-class DerivedWaveform(BaseWaveform):
+class DerivedWaveform(ConfigEntry):
     def __init__(self, yaml_str, name, config, dd_version=None):
         super().__init__(yaml_str, name, dd_version)
         self.config = config
