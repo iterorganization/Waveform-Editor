@@ -8,7 +8,15 @@ from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
 from waveform_editor.gui.util import set_xml_parameter
-from waveform_editor.settings import settings
+from waveform_editor.settings import NiceSettings, settings
+
+# The NICE current group of each coil of a machine, in the order the coils appear in
+# its pf_active. Coils that share a group carry the same current, such as the four
+# divertor coils in each of WEST's divertor circuits.
+MACHINE_COIL_GROUPS = {
+    NiceSettings.PRESET_ITER: [0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    NiceSettings.PRESET_WEST: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9, 10, 10, 10, 10],
+}
 
 
 class CoilCurrentEntry(param.Parameterized):
@@ -264,6 +272,27 @@ class CoilCurrents(Viewer):
         """
         self._update_fixed_coils_in_xml(xml_params)
         self._update_penalization_in_xml(xml_params)
+
+    def write_coil_groups(self, xml_params: ET.Element):
+        """Write how the coils of the machine of the selected preset are grouped, as
+        the parameter file holds the groups of ITER.
+
+        Args:
+            xml_params: XML representing configuration parameters, which are updated
+                in-place.
+        """
+        groups = MACHINE_COIL_GROUPS.get(self.nice_settings.machine_preset)
+        if groups is None:
+            return
+        if len(groups) != len(self.coils):
+            raise ValueError(
+                f"The {self.nice_settings.machine_preset} machine description has "
+                f"{len(self.coils)} coils, but {len(groups)} coils are grouped for it."
+            )
+        set_xml_parameter(xml_params, "n_coil_group_index", len(groups))
+        set_xml_parameter(
+            xml_params, "coil_group_index", " ".join(str(group) for group in groups)
+        )
 
     def _update_fixed_coils_in_xml(self, xml_params: ET.Element):
         """Update XML parameters indicating which coils are fixed based on
