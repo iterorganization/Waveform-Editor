@@ -36,7 +36,9 @@ def _element_outline(geometry, name):
     """The corners of an element of a machine, whichever way it is described.
 
     Args:
-        geometry: The geometry of an element.
+        geometry: An ``outline_2d_geometry_static`` structure, such as
+            ``pf_passive/loop/element/geometry`` or ``iron_core/segment/geometry``.
+            Its outline, rectangle or oblique is drawn.
         name: The name of the element, for the warning when it cannot be outlined.
 
     Returns:
