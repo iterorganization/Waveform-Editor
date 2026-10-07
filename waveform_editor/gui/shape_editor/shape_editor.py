@@ -420,6 +420,7 @@ class ShapeEditor(Viewer):
 
         self.coil_currents.fill_pf_active(self.pf_active)
         xml_params = ET.fromstring(self.xml_text)
+        self.coil_currents.write_coil_groups(xml_params)
         if not self._apply_xml_parameters(xml_params):
             return
 

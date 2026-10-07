@@ -43,6 +43,25 @@ class SettingsModal(Viewer):
             sizing_mode="stretch_width",
         )
 
+    def _detail_section(self, label, parameters, toggle):
+        """A section of plot parameters, shown while the toggle that enables them is.
+
+        Args:
+            label: The title of the section.
+            parameters: Names of the parameters of the plotter in the section.
+            toggle: The boolean parameter that shows the section.
+        """
+        return pn.Column(
+            self._section_label(label),
+            self._settings_section(
+                pn.Param(
+                    self.nice_plotter.param, parameters=parameters, show_name=False
+                )
+            ),
+            visible=toggle,
+            sizing_mode="stretch_width",
+        )
+
     def _form_row(self, label, widget, warning=None):
         items = [
             pn.pane.HTML(
@@ -85,6 +104,7 @@ class SettingsModal(Viewer):
         self.nice_settings.param.watch(
             self._update_md_inputs_visibility, ["machine_preset"]
         )
+        self._update_md_inputs_visibility(None)
 
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
@@ -185,21 +205,11 @@ class SettingsModal(Viewer):
         )
 
         # --- Display tab ---
-        self._contour_detail = pn.Column(
-            self._section_label("Contour Detail"),
-            self._settings_section(
-                pn.Param(
-                    self.nice_plotter.param,
-                    parameters=["levels"],
-                    show_name=False,
-                ),
-            ),
-            visible=self.nice_plotter.show_contour,
-            sizing_mode="stretch_width",
+        self._contour_detail = self._detail_section(
+            "Contour Detail", ["levels"], self.nice_plotter.param.show_contour
         )
-        self.nice_plotter.param.watch(
-            lambda e: setattr(self._contour_detail, "visible", e.new),
-            ["show_contour"],
+        self._heatmap_detail = self._detail_section(
+            "Heatmap Detail", ["heatmap_alpha"], self.nice_plotter.param.show_heatmap
         )
 
         display_content = pn.Column(
@@ -209,6 +219,7 @@ class SettingsModal(Viewer):
                     self.nice_plotter.param,
                     parameters=[
                         "show_contour",
+                        "show_heatmap",
                         "show_coils",
                         "show_wall",
                         "show_vacuum_vessel",
@@ -228,6 +239,7 @@ class SettingsModal(Viewer):
                 ),
             ),
             self._contour_detail,
+            self._heatmap_detail,
             sizing_mode="stretch_width",
             scroll=True,
         )

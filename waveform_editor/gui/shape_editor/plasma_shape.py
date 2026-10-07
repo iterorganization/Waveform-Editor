@@ -11,6 +11,7 @@ from waveform_editor.gui.util import (
     FormattedEditableFloatSlider,
     WarningIndicator,
 )
+from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
     apply_point_weights,
@@ -19,29 +20,99 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     update_outline_from_gaps,
 )
 
+# A shape to start from for each machine, taken from one of its discharges, as
+# (value, slider range) per parameter
+MACHINE_SHAPES = {
+    NiceSettings.PRESET_ITER: {
+        "a": (1.9, (1, 2)),
+        "center_r": (6.2, (5, 7)),
+        "center_z": (0.545, (0, 1.5)),
+        "kappa": (1.8, (0, 3)),
+        "delta": (0.43, (-1, 1)),
+        "rx": (5.089, (4.5, 6)),
+        "zx": (-3.346, (-4, -2)),
+        "rx_upper": (5.089, (4.5, 6)),
+        "zx_upper": (3.346, (2, 4)),
+    },
+    NiceSettings.PRESET_WEST: {
+        "a": (0.46, (0.2, 0.8)),
+        "center_r": (2.54, (2, 3)),
+        "center_z": (-0.02, (-0.5, 0.5)),
+        "kappa": (1.31, (0, 3)),
+        "delta": (0.38, (-1, 1)),
+        "rx": (2.23, (1.8, 3.2)),
+        "zx": (-0.62, (-1.2, 0)),
+        "rx_upper": (2.23, (1.8, 3.2)),
+        "zx_upper": (0.62, (0, 1.2)),
+    },
+}
+
 
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
-    a = param.Number(default=1.9, step=0.01, softbounds=[1, 2], label="Minor Radius")
+    a = param.Number(
+        default=1.9,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[1, 2],
+        label="Minor Radius",
+    )
     center_r = param.Number(
-        default=6.2, step=0.01, softbounds=[5, 7], label="Plasma center radius"
+        default=6.2,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[5, 7],
+        label="Plasma center radius",
     )
     center_z = param.Number(
         default=0.545, step=0.01, softbounds=[0, 1.5], label="Plasma center height"
     )
-    kappa = param.Number(default=1.8, step=0.01, softbounds=[0, 3], label="Elongation")
+    kappa = param.Number(
+        default=1.8,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[0, 3],
+        label="Elongation",
+    )
     delta = param.Number(
-        default=0.43, step=0.01, softbounds=[-1, 1], label="Triangularity"
+        default=0.43,
+        step=0.01,
+        bounds=(-1, 1),
+        softbounds=[-1, 1],
+        label="Triangularity",
     )
     rx = param.Number(
-        default=5.089, step=0.01, softbounds=[4.5, 6], label="X-point radius"
+        default=5.089,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[4.5, 6],
+        label="X-point radius",
     )
     zx = param.Number(
         default=-3.346, step=0.01, softbounds=[-4, -2], label="X-point height"
     )
+    second_x_point = param.Boolean(default=False, label="Second x-point")
+    rx_upper = param.Number(
+        default=5.089,
+        step=0.01,
+        bounds=(0, None),
+        inclusive_bounds=(False, True),
+        softbounds=[4.5, 6],
+        label="Second x-point radius",
+    )
+    zx_upper = param.Number(
+        default=3.346, step=0.01, softbounds=[2, 4], label="Second x-point height"
+    )
     n_desired_bnd_points = param.Integer(
-        default=96, softbounds=[3, 200], label="Number of boundary points"
+        default=96,
+        bounds=(3, 5000),
+        softbounds=[3, 200],
+        label="Number of boundary points",
     )
     weight_enabled = param.Boolean(default=False, label="Emphasize a region")
     weight_position = param.Number(
@@ -56,16 +127,36 @@ class PlasmaShapeParams(Viewer):
     )
     extra_points_table = param.Parameter()
 
+    def apply_machine_shape(self, event=None):
+        """Start from the shape of the machine of the selected preset."""
+        shape = MACHINE_SHAPES.get(settings.nice.machine_preset)
+        if shape is None:  # a custom machine, whose shape we cannot know
+            return
+        for name, (_, slider_range) in shape.items():
+            if name in self.param:
+                self.param[name].softbounds = slider_range
+            if name in getattr(self, "_sliders", {}):
+                self._sliders[name].start, self._sliders[name].end = slider_range
+        self.param.update(
+            **{name: value for name, (value, _) in shape.items() if name in self.param}
+        )
+
     def __panel__(self):
+        # The sliders of this panel, so that their range can follow the machine
+        self._sliders = {}
+
         def _slider(n):
             p = getattr(self.param, n)
             if isinstance(self.param[n], param.Boolean):
                 return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
                 return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
-            return FormattedEditableFloatSlider.from_param(p, stretch_width=True)
+            self._sliders[n] = FormattedEditableFloatSlider.from_param(
+                p, stretch_width=True
+            )
+            return self._sliders[n]
 
-        def _group(title, *children):
+        def _group(title, *children, visible=True):
             return pn.Column(
                 pn.pane.HTML(
                     f"<b>{title}</b>"
@@ -76,6 +167,7 @@ class PlasmaShapeParams(Viewer):
                 css_classes=["property-card"],
                 stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
+                visible=visible,
             )
 
         return pn.Column(
@@ -91,8 +183,40 @@ class PlasmaShapeParams(Viewer):
                 ),
             ),
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
-            _group("Shape coefficients", _slider("kappa"), _slider("delta")),
-            _group("X point", _slider("rx"), _slider("zx")),
+            _group(
+                "Shape coefficients",
+                _slider("kappa"),
+                _slider("delta"),
+                # A double null takes its shape from its x-points instead
+                visible=self.param.second_x_point.rx.not_(),
+            ),
+            _group(
+                "X point",
+                _slider("rx"),
+                _slider("zx"),
+                pn.Row(
+                    _slider("second_x_point"),
+                    pn.widgets.TooltipIcon(
+                        value=(
+                            "NICE inverse mode fits the target LCFS boundary points by "
+                            "penalizing flux differences, but does not impose X-point "
+                            "null constraints (∇ψ = 0). The resulting equilibrium is "
+                            " not guaranteed to form two X-points and may produce only "
+                            "1 or no X-points."
+                        ),
+                        align="center",
+                        margin=(0, 0, 0, -10),
+                    ),
+                    align="center",
+                    margin=(0, 0, 5, 0),
+                ),
+                pn.Column(
+                    _slider("rx_upper"),
+                    _slider("zx_upper"),
+                    visible=self.param.second_x_point.rx(),
+                    margin=0,
+                ),
+            ),
             _group("Boundary", _slider("n_desired_bnd_points")),
             _group(
                 "Extra points",
@@ -382,6 +506,11 @@ class PlasmaShape(Viewer):
         self.param_z = None
         self.param_weights = None
         self.shape_params.extra_points_table = self.weighted_points_table
+        # Last, because applying a shape fires the watchers above
+        settings.nice.param.watch(
+            self.shape_params.apply_machine_shape, "machine_preset"
+        )
+        self.shape_params.apply_machine_shape()
 
     @pn.depends(
         "shape_params.param",
@@ -519,6 +648,8 @@ class PlasmaShape(Viewer):
             rx=p.rx,
             zx=p.zx,
             n_desired_bnd_points=p.n_desired_bnd_points,
+            rx_upper=p.rx_upper if p.second_x_point else None,
+            zx_upper=p.zx_upper if p.second_x_point else None,
         )
         self.param_r, self.param_z = r, z
 
