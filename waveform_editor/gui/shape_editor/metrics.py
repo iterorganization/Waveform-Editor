@@ -2,7 +2,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.util import STYLES
 
 
@@ -32,16 +31,18 @@ class Metrics(Viewer):
         MINOR_RADIUS: ("a", "m", "Minor radius"),
     }
 
-    def __init__(self, **params):
+    def __init__(self, max_width, **params):
+        """
+        Args:
+            max_width: The width the chips wrap at
+        """
         super().__init__(**params)
         self._pane = pn.pane.HTML(
-            pn.bind(self._render, self.param.metrics),
-            sizing_mode="stretch_width",
-            max_width=NicePlotter.FRAME_WIDTH,
+            pn.bind(self._render, self.param.metrics, max_width),
             stylesheets=STYLES,
         )
 
-    def _render(self, metrics=None):
+    def _render(self, metrics, max_width):
         chips = []
         for key, (symbol, unit, tooltip) in self.METRICS.items():
             val = metrics.get(key, "—") if metrics else "—"
@@ -54,7 +55,11 @@ class Metrics(Viewer):
                 f'<span class="mc-val">{display}</span>'
                 f"</span>"
             )
-        return '<div class="mc-wrap">' + "".join(chips) + "</div>"
+        return (
+            f'<div class="mc-wrap" style="max-width: {max_width}px">'
+            + "".join(chips)
+            + "</div>"
+        )
 
     def __panel__(self):
         return self._pane

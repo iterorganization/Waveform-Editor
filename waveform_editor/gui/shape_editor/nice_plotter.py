@@ -129,16 +129,20 @@ class NicePlotter(Viewer):
     _points_toolbar = None
     _syncing_points = False
 
-    FRAME_HEIGHT = 700
+    # Bokeh cannot hold the aspect of the machine while it resizes, so the plot has a
+    # fixed size, which is changed by dragging the handle beside it
+    frame_height = param.Integer(
+        default=700, bounds=(100, 1600), precedence=-1, doc="Height of the plot"
+    )
+    frame_width = param.Integer(
+        precedence=-1, doc="Width of the plot, following its height and machine"
+    )
     # The r and z range to plot per machine, wide enough to hold its coils
     MACHINE_RANGES = {
         NiceSettings.PRESET_ITER: ((0, 13), (-10, 10)),
         NiceSettings.PRESET_WEST: ((0, 4.8), (-2.6, 2.6)),
     }
     R_RANGE, Z_RANGE = MACHINE_RANGES[NiceSettings.PRESET_ITER]
-    FRAME_WIDTH = round(
-        FRAME_HEIGHT * (R_RANGE[1] - R_RANGE[0]) / (Z_RANGE[1] - Z_RANGE[0])
-    )
     HEATMAP_RESOLUTION = 250
 
     def __init__(self, **params):
@@ -146,15 +150,13 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._figure = None
         self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
-        r_range, z_range = self.MACHINE_RANGES.get(
-            self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
-        )
-        span_r, span_z = r_range[1] - r_range[0], z_range[1] - z_range[0]
+        r_range, z_range = self._machine_ranges()
+        self.frame_width = self._width_for(self.frame_height)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=r_range,
             ylim=z_range,
-            frame_width=round(self.FRAME_HEIGHT * span_r / span_z),
-            frame_height=self.FRAME_HEIGHT,
+            frame_width=self.frame_width,
+            frame_height=self.frame_height,
             title="",
             xlabel="r [m]",
             ylabel="z [m]",
@@ -311,17 +313,56 @@ class NicePlotter(Viewer):
         """Keep hold of the figure, so its ranges can follow the machine preset."""
         self._figure = plot.state
 
-    def _apply_machine_ranges(self, event=None):
-        """Show the machine of the selected preset, coils and all."""
-        if self._figure is None:
-            return
-        r_range, z_range = self.MACHINE_RANGES.get(
+    def _machine_ranges(self):
+        """The r and z range of the machine of the selected preset."""
+        return self.MACHINE_RANGES.get(
             self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
         )
-        self._figure.x_range.start, self._figure.x_range.end = r_range
-        self._figure.y_range.start, self._figure.y_range.end = z_range
-        span_r, span_z = r_range[1] - r_range[0], z_range[1] - z_range[0]
-        self._figure.frame_width = round(self.FRAME_HEIGHT * span_r / span_z)
+
+    def _width_for(self, height):
+        """The width of the plot at a height, for the aspect of the machine."""
+        (r_min, r_max), (z_min, z_max) = self._machine_ranges()
+        return round(height * (r_max - r_min) / (z_max - z_min))
+
+    def resize(self, dx):
+        """Widen the plot by a number of pixels, or narrow it if negative, within its
+        bounds and keeping the aspect of the machine.
+
+        Args:
+            dx: Pixels to change the width of the plot by.
+        """
+        low, high = self.param.frame_height.bounds
+        height = round((self.frame_width + dx) * self.frame_height / self.frame_width)
+        self.frame_height = max(low, min(high, height))
+
+    def drag_range(self):
+        """How far the plot can be narrowed and widened, in pixels of its width.
+
+        Returns:
+            Tuple of the most it can be narrowed, as a negative number, and the most
+            it can be widened.
+        """
+        low, high = self.param.frame_height.bounds
+        return self._width_for(low) - self.frame_width, self._width_for(
+            high
+        ) - self.frame_width
+
+    def _apply_machine_ranges(self, event=None):
+        """Show the machine of the selected preset, coils and all."""
+        if self._figure is not None:
+            r_range, z_range = self._machine_ranges()
+            self._figure.x_range.start, self._figure.x_range.end = r_range
+            self._figure.y_range.start, self._figure.y_range.end = z_range
+        self._resize_figure()
+
+    @param.depends("frame_height", watch=True)
+    def _resize_figure(self):
+        """Give the figure the size of the plot, without drawing it again, so that a
+        zoom is kept."""
+        self.frame_width = self._width_for(self.frame_height)
+        if self._figure is not None:
+            self._figure.frame_width = self.frame_width
+            self._figure.frame_height = self.frame_height
 
     @pn.depends(
         "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"

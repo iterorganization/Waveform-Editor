@@ -18,7 +18,7 @@ from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
-from waveform_editor.gui.util import set_xml_parameter
+from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -54,6 +54,7 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
             options={"scrollback": 10000, "wrap": True},
             min_height=200,
+            stylesheets=[":host { min-width: 0; overflow: hidden; }"],
         )
         self.communicator = NiceIntegration(
             self.factory,
@@ -159,10 +160,8 @@ class ShapeEditor(Viewer):
             settings_modal,
             waveform_sync,
             nice_mode_radio,
-            warm_start_label,
-            warm_start_switch,
-            run_label,
-            self.run_select,
+            pn.Row(warm_start_label, warm_start_switch, align="center", margin=0),
+            pn.Row(run_label, self.run_select, align="center", margin=0),
             button_stop,
             button_start,
             flex_wrap="wrap",
@@ -170,7 +169,7 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
         )
 
-        self.metrics = Metrics()
+        self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         self._active_tab = 0
         options = pn.bind(
             self._create_options_tabs,
@@ -188,8 +187,21 @@ class ShapeEditor(Viewer):
             visible=self.collapse_plot.param.value.rx.not_(),
         )
 
+        # Drag to make the plot wider or narrower
+        plot_handle = DragHandle(
+            width=8,
+            sizing_mode="stretch_height",
+            visible=self.collapse_plot.param.value.rx.not_(),
+        )
+        plot_handle.param.watch(self._resize_plot, "dx")
+        self.nice_plotter.param.watch(
+            lambda event: self._limit_drag(plot_handle), "frame_width"
+        )
+        self._limit_drag(plot_handle)
+
         self.panel = pn.Row(
             left_col,
+            plot_handle,
             pn.Column(
                 menu,
                 options,
@@ -198,6 +210,16 @@ class ShapeEditor(Viewer):
             ),
             sizing_mode="stretch_both",
         )
+
+    def _resize_plot(self, event):
+        """Resize the plot by how far its handle was dragged"""
+        if event.new:
+            self.nice_plotter.resize(event.new)
+            event.obj.dx = 0
+
+    def _limit_drag(self, handle):
+        """Let the handle go only as far as the plot can be resized."""
+        handle.min_dx, handle.max_dx = self.nice_plotter.drag_range()
 
     def _create_options_tabs(self, is_inverse_mode, has_shape, has_properties):
         """Create the tabs holding the inputs for a run.
