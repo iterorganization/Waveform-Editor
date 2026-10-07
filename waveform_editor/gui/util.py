@@ -5,6 +5,7 @@ from pathlib import Path
 import imas
 import panel as pn
 import param
+from panel.custom import JSComponent
 from panel.viewable import Viewer
 
 STYLES = [(Path(__file__).parent / "styles" / "styles.css").read_text()]
@@ -161,3 +162,49 @@ class WarningIndicator(pn.widgets.StaticText):
             f'<span title="{tooltip}" style="cursor:help">⚠️</span>' if tooltip else "⚠️"
         )
         super().__init__(value=icon, **params)
+
+
+class DragHandle(JSComponent):
+    """A vertical bar to drag sideways, which reports how far it was dragged"""
+
+    dx = param.Integer(default=0, doc="Pixels dragged to the right, 0 between drags")
+
+    _esm = """
+    export function render({ model, el }) {
+      const bar = document.createElement("div")
+      bar.className = "drag-handle"
+      let start = null
+      bar.addEventListener("pointerdown", (e) => {
+        start = e.clientX
+        bar.setPointerCapture(e.pointerId)
+        bar.classList.add("dragging")
+      })
+      bar.addEventListener("pointermove", (e) => {
+        if (start !== null) bar.style.transform = `translateX(${e.clientX - start}px)`
+      })
+      bar.addEventListener("pointerup", (e) => {
+        if (start === null) return
+        model.dx = Math.round(e.clientX - start)
+        start = null
+        bar.style.transform = ""
+        bar.classList.remove("dragging")
+      })
+      el.appendChild(bar)
+    }
+    """
+
+    _stylesheets = [
+        """
+        .drag-handle {
+          width: 100%;
+          height: 100%;
+          cursor: col-resize;
+          border-left: 1px solid #dee2e6;
+          border-right: 1px solid #dee2e6;
+          background: #f8f9fa;
+        }
+        .drag-handle:hover, .drag-handle.dragging {
+          background: #ced4da;
+        }
+        """
+    ]
