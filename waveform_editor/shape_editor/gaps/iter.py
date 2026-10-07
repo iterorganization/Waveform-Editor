@@ -10,6 +10,8 @@ The definitions follow DINA-IMAS (src/scenario/g_gaps_rus.f, tools/GUI/captions.
   from r=0 at the height of those points.
 """
 
+import math
+
 import numpy as np
 
 from waveform_editor.shape_editor.gaps.base import MachineGaps, MeasuredGap
@@ -19,6 +21,7 @@ from waveform_editor.shape_editor.gaps.geometry import (
     geometric_centre,
     psi_contour,
 )
+from waveform_editor.shape_editor.plasma_shape_calc import Gap
 
 # The points the gaps are measured from, in metres (r, z)
 GAP_POINTS = {
@@ -40,6 +43,20 @@ class IterGaps(MachineGaps):
         "Rmin": ("Rₘᵢₙ", "m", "Inboard boundary radius"),
         "Rmax": ("Rₘₐₓ", "m", "Outboard boundary radius"),
     }
+
+    def default_gaps(self):
+        """Rmin and Rmax are measured from r=0, at the height of the innermost and
+        outermost point."""
+        return [
+            Gap("Inner divertor leg (g₁)", 4.2230, -3.7920, math.radians(-65.0), 0.0),
+            Gap("Outer divertor leg (g₂)", 5.5650, -4.4040, math.radians(-150.0), 0.0),
+            Gap("Point at 2 o'clock (g₄)", 7.5095, 2.9971, math.radians(135.0), 0.228),
+            Gap(
+                "Uppest boundary point (g₅)", 5.3315, 4.5804, math.radians(90.0), 0.596
+            ),
+            Gap("Inboard mid-plane (Rmin)", 0.0, 0.7777, 0.0, 4.2099),
+            Gap("Outboard mid-plane (Rmax)", 0.0, 0.4665, 0.0, 8.2006),
+        ]
 
     def gap_inputs(self, time_slice):
         """Takes the separatrix up to the top of the plasma, as DINA does, only for a
