@@ -132,7 +132,7 @@ class NicePlotter(Viewer):
     # Bokeh cannot hold the aspect of the machine while it resizes, so the plot has a
     # fixed size, which is changed by dragging the handle beside it
     frame_height = param.Integer(
-        default=700, bounds=(300, 1600), precedence=-1, doc="Height of the plot"
+        default=700, bounds=(100, 1600), precedence=-1, doc="Height of the plot"
     )
     frame_width = param.Integer(
         precedence=-1, doc="Width of the plot, following its height and machine"
@@ -334,6 +334,18 @@ class NicePlotter(Viewer):
         low, high = self.param.frame_height.bounds
         height = round((self.frame_width + dx) * self.frame_height / self.frame_width)
         self.frame_height = max(low, min(high, height))
+
+    def drag_range(self):
+        """How far the plot can be narrowed and widened, in pixels of its width.
+
+        Returns:
+            Tuple of the most it can be narrowed, as a negative number, and the most
+            it can be widened.
+        """
+        low, high = self.param.frame_height.bounds
+        return self._width_for(low) - self.frame_width, self._width_for(
+            high
+        ) - self.frame_width
 
     def _apply_machine_ranges(self, event=None):
         """Show the machine of the selected preset, coils and all."""

@@ -168,23 +168,33 @@ class DragHandle(JSComponent):
     """A vertical bar to drag sideways, which reports how far it was dragged"""
 
     dx = param.Integer(default=0, doc="Pixels dragged to the right, 0 between drags")
+    min_dx = param.Integer(default=0, doc="Furthest it can be dragged to the left")
+    max_dx = param.Integer(default=0, doc="Furthest it can be dragged to the right")
+    min_right = param.Integer(
+        default=500, doc="Pixels to keep free right of the handle, for what is there"
+    )
 
     _esm = """
     export function render({ model, el }) {
       const bar = document.createElement("div")
       bar.className = "drag-handle"
       let start = null
+      const moved = (e) => {
+        const room = Math.max(0, window.innerWidth - model.min_right - start)
+        const right = Math.min(model.max_dx, room)
+        return Math.max(model.min_dx, Math.min(right, e.clientX - start))
+      }
       bar.addEventListener("pointerdown", (e) => {
         start = e.clientX
         bar.setPointerCapture(e.pointerId)
         bar.classList.add("dragging")
       })
       bar.addEventListener("pointermove", (e) => {
-        if (start !== null) bar.style.transform = `translateX(${e.clientX - start}px)`
+        if (start !== null) bar.style.transform = `translateX(${moved(e)}px)`
       })
       bar.addEventListener("pointerup", (e) => {
         if (start === null) return
-        model.dx = Math.round(e.clientX - start)
+        model.dx = Math.round(moved(e))
         start = null
         bar.style.transform = ""
         bar.classList.remove("dragging")
