@@ -32,11 +32,69 @@ def _no_hover(element):
     return element.opts(hooks=[hook])
 
 
+def _element_outline(geometry, name):
+    """The corners of an element of a machine, whichever way it is described.
+
+    Args:
+        geometry: An ``outline_2d_geometry_static`` structure, such as
+            ``pf_passive/loop/element/geometry`` or ``iron_core/segment/geometry``.
+            Its outline, rectangle or oblique is drawn.
+        name: The name of the element, for the warning when it cannot be outlined.
+
+    Returns:
+        Tuple of (r, z) of a closed outline, which is empty if it cannot be outlined.
+    """
+    if geometry.outline.has_value:
+        return geometry.outline.r, geometry.outline.z
+    rectangle = geometry.rectangle
+    if rectangle.has_value:
+        r, z = rectangle.r, rectangle.z
+        dr, dz = rectangle.width / 2, rectangle.height / 2
+        return (
+            np.array([r - dr, r + dr, r + dr, r - dr, r - dr]),
+            np.array([z - dz, z - dz, z + dz, z + dz, z - dz]),
+        )
+    oblique = geometry.oblique
+    if oblique.has_value:
+        # Two sides from a corner, each at its own angle
+        dr_a = oblique.length_alpha * np.cos(oblique.alpha)
+        dz_a = oblique.length_alpha * np.sin(oblique.alpha)
+        dr_b = -oblique.length_beta * np.sin(oblique.beta)
+        dz_b = oblique.length_beta * np.cos(oblique.beta)
+        r, z = oblique.r, oblique.z
+        return (
+            np.array([r, r + dr_a, r + dr_a + dr_b, r + dr_b, r]),
+            np.array([z, z + dz_a, z + dz_a + dz_b, z + dz_b, z]),
+        )
+    logger.warning(
+        f"{str(name)!r} is skipped, as it has no outline, rectangle or oblique"
+    )
+    return [], []
+
+
+def _geometry_paths(paths, color="black", line_width=2):
+    """Paths of the outlines of parts of a machine, named on hover.
+
+    Args:
+        paths: List of (r, z, name) of each outline.
+        color: Colour of the lines.
+        line_width: Width of the lines.
+    """
+    return hv.Path(paths, vdims=["name"]).opts(
+        color=color,
+        line_width=line_width,
+        show_legend=False,
+        hover_tooltips=[("", "@name")],
+    )
+
+
 class NicePlotter(Viewer):
     # Input data, use negative precedence to hide from the UI
     communicator = param.ClassSelector(class_=NiceIntegration, precedence=-1)
     wall = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     pf_active = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    pf_passive = param.ClassSelector(class_=IDSToplevel, precedence=-1)
+    iron_core = param.ClassSelector(class_=IDSToplevel, precedence=-1)
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
@@ -54,6 +112,13 @@ class NicePlotter(Viewer):
     show_wall = param.Boolean(default=True, label="Show limiter and divertor")
     show_vacuum_vessel = param.Boolean(
         default=True, label="Show inner and outer vacuum vessel"
+    )
+    show_passive_structures = param.Boolean(
+        default=True, label="Show passive structures"
+    )
+    show_iron_core = param.Boolean(default=True, label="Show iron core")
+    show_plasma_facing_components = param.Boolean(
+        default=True, label="Show plasma facing components"
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
@@ -141,7 +206,10 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_xo_points),
             hv.DynamicMap(self._plot_coil_rectangles),
             hv.DynamicMap(self._plot_wall),
+            hv.DynamicMap(self._plot_components),
             hv.DynamicMap(self._plot_vacuum_vessel),
+            hv.DynamicMap(self._plot_passive_structures),
+            hv.DynamicMap(self._plot_iron_core),
             hv.DynamicMap(self._plot_plasma_shape),
             self.editable_points,
         ]
@@ -401,13 +469,7 @@ class NicePlotter(Viewer):
             show_legend=False,
             hover_tooltips=[("", "@name")],
         )
-        paths = hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=1,
-            show_legend=False,
-            hover_tooltips=[("", "@name")],
-        )
-        return rects * paths
+        return rects * _geometry_paths(paths, line_width=1)
 
     @pn.depends("communicator.equilibrium", "show_heatmap", "heatmap_alpha")
     def _plot_heatmap(self):
@@ -562,14 +624,17 @@ class NicePlotter(Viewer):
         if self.show_vacuum_vessel and self.wall is not None:
             for unit in self.wall.description_2d[0].vessel.unit:
                 name = str(unit.name)
-                r_vals = unit.annular.centreline.r
-                z_vals = unit.annular.centreline.z
-                paths.append((r_vals, z_vals, name))
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
+                annular = unit.annular
+                if len(annular.centreline.r):
+                    paths.append((annular.centreline.r, annular.centreline.z, name))
+                else:
+                    paths.append(
+                        (annular.outline_inner.r, annular.outline_inner.z, name)
+                    )
+                    paths.append(
+                        (annular.outline_outer.r, annular.outline_outer.z, name)
+                    )
+        return _geometry_paths(paths)
 
     @pn.depends("wall", "show_wall")
     def _plot_wall(self):
@@ -585,11 +650,57 @@ class NicePlotter(Viewer):
                 r_vals = unit.outline.r
                 z_vals = unit.outline.z
                 paths.append((r_vals, z_vals, name))
-        return hv.Path(paths, vdims=["name"]).opts(
-            color="black",
-            line_width=2,
-            hover_tooltips=[("", "@name")],
-        )
+        return _geometry_paths(paths)
+
+    @pn.depends("wall", "show_plasma_facing_components")
+    def _plot_components(self):
+        """Generates paths for the plasma facing components, which a machine
+        describes alongside the limiter it is computed with.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_plasma_facing_components and self.wall is not None:
+            # The first description is the limiter the equilibrium is computed with
+            for description in list(self.wall.description_2d)[1:]:
+                for unit in description.limiter.unit:
+                    outline = unit.outline
+                    paths.append(
+                        (outline.r, outline.z, str(unit.description or unit.name))
+                    )
+        return _geometry_paths(paths, color="gray", line_width=1)
+
+    @pn.depends("pf_passive", "show_passive_structures")
+    def _plot_passive_structures(self):
+        """Generates paths for the passive conducting structures.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_passive_structures and self.pf_passive is not None:
+            paths = [
+                (*_element_outline(element.geometry, loop.name), str(loop.name))
+                for loop in self.pf_passive.loop
+                for element in loop.element
+            ]
+        return _geometry_paths(paths, color="darkgray")
+
+    @pn.depends("iron_core", "show_iron_core")
+    def _plot_iron_core(self):
+        """Generates paths for the iron core segments.
+
+        Returns:
+            Holoviews path containing the geometry.
+        """
+        paths = []
+        if self.show_iron_core and self.iron_core is not None:
+            paths = [
+                (*_element_outline(segment.geometry, segment.name), str(segment.name))
+                for segment in self.iron_core.segment
+            ]
+        return _geometry_paths(paths, color="saddlebrown")
 
     @pn.depends("communicator.equilibrium", "show_xo")
     def _plot_xo_points(self):
