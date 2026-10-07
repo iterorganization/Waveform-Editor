@@ -86,6 +86,9 @@ class WestGaps(MachineGaps):
             "contour": lambda level: psi_contour(time_slice, level),
         }
 
+    def shape_inputs(self, x_points):
+        return {"x_points": x_points}
+
     def measure(self, outline_r, outline_z, x_points, magnetic_axis=None, contour=None):
         """The gaps of a WEST plasma, with the points they are measured between.
 

@@ -29,6 +29,14 @@ class MachineGaps(ABC):
             time_slice: The equilibrium time slice.
         """
 
+    def shape_inputs(self, x_points):
+        """The arguments of measure besides the outline, for a desired shape.
+
+        Args:
+            x_points: The (r, z) of each x-point of the shape.
+        """
+        return {}
+
     @abstractmethod
     def measure(self, outline_r, outline_z, *args, **kwargs):
         """The MeasuredGap of each gap of a plasma boundary."""
