@@ -1,6 +1,7 @@
 """The gaps between an ITER plasma and the first wall, as defined in DINA.
 
 The definitions follow DINA-IMAS (src/scenario/g_gaps_rus.f, tools/GUI/captions.py):
+
 - gaps 1 and 2 are the minimum distances from the reference strike points to the
   separatrix, which DINA only measures in the divertor phase, to the divertor legs;
 - gaps 4 and 5 are the minimum distances from points on the wall to the boundary,
