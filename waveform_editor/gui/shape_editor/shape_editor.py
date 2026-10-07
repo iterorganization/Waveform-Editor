@@ -311,6 +311,8 @@ class ShapeEditor(Viewer):
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
+        if self.nice_settings.is_direct_mode:
+            self.use_previous_run = True
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -508,6 +510,13 @@ class ShapeEditor(Viewer):
             self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
             self.metrics.Q95: float(global_quantities.q_95),
         }
+
+    @param.depends("nice_settings.mode", watch=True)
+    def _enable_warm_start_on_direct_mode(self):
+        """Warm start direct mode from the last run, if it converged. After a run that
+        did not, an earlier one can be picked from the previous runs."""
+        if self.nice_settings.is_direct_mode and self.communicator.converged:
+            self.use_previous_run = True
 
     @param.depends(
         "nice_settings.mode",
