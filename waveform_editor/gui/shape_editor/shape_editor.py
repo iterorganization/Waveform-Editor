@@ -20,17 +20,10 @@ from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.gaps.iter import IterGaps
-from waveform_editor.shape_editor.gaps.west import WestGaps
+from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 logger = logging.getLogger(__name__)
-
-MACHINE_GAPS = {
-    NiceSettings.PRESET_ITER: IterGaps(),
-    NiceSettings.PRESET_WEST: WestGaps(),
-}
-
 
 # NICE reads the desired boundary into an array of this fixed size
 # (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
