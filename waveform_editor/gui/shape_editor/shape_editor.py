@@ -20,10 +20,10 @@ from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 logger = logging.getLogger(__name__)
-
 
 # NICE reads the desired boundary into an array of this fixed size
 # (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
@@ -170,6 +170,8 @@ class ShapeEditor(Viewer):
         )
 
         self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
+        self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
+        self._update_machine_metrics()
         self._active_tab = 0
         options = pn.bind(
             self._create_options_tabs,
@@ -495,6 +497,22 @@ class ShapeEditor(Viewer):
         ):
             self._add_to_history()
 
+    def _update_machine_metrics(self, event=None):
+        """Show the gaps of the machine of the selected preset"""
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        self.metrics.machine_metrics = gaps.GAP_METADATA if gaps else {}
+
+    def _machine_gaps(self, time_slice):
+        """The gaps of the machine of the selected preset."""
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is None:
+            return {}
+        return {
+            name: value * 100 if gaps.GAP_METADATA[name][1] == "cm" else value
+            for name, value in gaps.compute_gaps(**gaps.gap_inputs(time_slice)).items()
+            if value is not None
+        }
+
     def _update_metrics(self):
         eq = self.communicator.equilibrium
         global_quantities = eq.time_slice[0].global_quantities
@@ -509,6 +527,7 @@ class ShapeEditor(Viewer):
             self.metrics.VERTICAL: float(boundary.geometric_axis.z),
             self.metrics.MINOR_RADIUS: float(boundary.minor_radius),
             self.metrics.Q95: float(global_quantities.q_95),
+            **self._machine_gaps(eq.time_slice[0]),
         }
 
     @param.depends("nice_settings.mode", watch=True)

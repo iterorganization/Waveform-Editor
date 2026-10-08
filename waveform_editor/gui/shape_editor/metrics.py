@@ -9,6 +9,7 @@ class Metrics(Viewer):
     """Chips row showing equilibrium metrics below the flux map."""
 
     metrics = param.Dict(default={})
+    machine_metrics = param.Dict(default={})
 
     ELONGATION = "elongation"
     TRIANGULARITY = "triangularity"
@@ -38,13 +39,21 @@ class Metrics(Viewer):
         """
         super().__init__(**params)
         self._pane = pn.pane.HTML(
-            pn.bind(self._render, self.param.metrics, max_width),
+            pn.bind(
+                self._render,
+                self.param.metrics,
+                self.param.machine_metrics,
+                max_width,
+            ),
             stylesheets=STYLES,
         )
 
-    def _render(self, metrics, max_width):
+    def _render(self, metrics, machine_metrics, max_width):
         chips = []
-        for key, (symbol, unit, tooltip) in self.METRICS.items():
+        for key, (symbol, unit, tooltip) in {
+            **self.METRICS,
+            **machine_metrics,
+        }.items():
             val = metrics.get(key, "—") if metrics else "—"
             if isinstance(val, float):
                 val = f"{val:.4g}"
