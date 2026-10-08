@@ -54,7 +54,9 @@ class Metrics(Viewer):
             **self.METRICS,
             **machine_metrics,
         }.items():
-            val = metrics.get(key, "—") if metrics else "—"
+            if key not in metrics:
+                continue
+            val = metrics[key]
             if isinstance(val, float):
                 val = f"{val:.4g}"
             display = f"{val} {unit}".strip()
@@ -64,6 +66,8 @@ class Metrics(Viewer):
                 f'<span class="mc-val">{display}</span>'
                 f"</span>"
             )
+        if not chips:
+            return ""
         return (
             f'<div class="mc-wrap" style="max-width: {max_width}px">'
             + "".join(chips)
