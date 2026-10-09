@@ -367,7 +367,10 @@ class NicePlotter(Viewer):
             self._figure.frame_height = self.frame_height
 
     @pn.depends(
-        "plasma_shape.shape_updated", "show_desired_shape", "nice_settings.mode"
+        "plasma_shape.shape_updated",
+        "plasma_shape.input_mode",
+        "show_desired_shape",
+        "nice_settings.mode",
     )
     def _plot_plasma_shape(self):
         shape = self.plasma_shape

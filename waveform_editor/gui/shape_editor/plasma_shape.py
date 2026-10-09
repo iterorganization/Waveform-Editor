@@ -525,7 +525,7 @@ class PlasmaShape(Viewer):
     )
     def _set_plasma_shape(self):
         """Update plasma boundary shape based on input mode."""
-        previous = (self.outline_r, self.outline_z)
+        previous = (self.outline_r, self.outline_z, self.param_weights)
         self.outline_r = self.outline_z = None
         self.gaps = []
         self.param_r = self.param_z = self.param_weights = None
@@ -537,7 +537,7 @@ class PlasmaShape(Viewer):
             self.has_shape = True
         else:
             self.has_shape = False
-        current = (self.outline_r, self.outline_z)
+        current = (self.outline_r, self.outline_z, self.param_weights)
         if not all(map(np.array_equal, previous, current)):
             self.param.trigger("shape_updated")
 
