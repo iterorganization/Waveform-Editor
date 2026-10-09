@@ -14,6 +14,7 @@ from panel.viewable import Viewer
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 matplotlib.use("Agg")
@@ -123,6 +124,9 @@ class NicePlotter(Viewer):
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_desired_shape = param.Boolean(default=True, label="Show desired shape")
+    show_gaps = param.Boolean(default=True, label="Show gaps")
+    show_desired_gaps = param.Boolean(default=True, label="Show desired shape gaps")
+    show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -213,6 +217,7 @@ class NicePlotter(Viewer):
             hv.DynamicMap(self._plot_passive_structures),
             hv.DynamicMap(self._plot_iron_core),
             hv.DynamicMap(self._plot_plasma_shape),
+            hv.DynamicMap(self._plot_clearance_gaps),
             self.editable_points,
         ]
         # Lets the weighted points be added, dragged and deleted on the plot
@@ -776,6 +781,94 @@ class NicePlotter(Viewer):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
+
+    @pn.depends(
+        "communicator.equilibrium",
+        "show_gaps",
+        "show_desired_gaps",
+        "show_result_gaps",
+        "nice_settings.machine_preset",
+        "plasma_shape.shape_updated",
+        "plasma_shape.input_mode",
+    )
+    def _plot_clearance_gaps(self):
+        """Plots the gaps of the desired shape in blue and of the resulting shape in
+        red, from the points they are measured from to the boundary."""
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        shape = self.plasma_shape
+        equilibrium = self.communicator.equilibrium
+        desired, result = [], []
+        if gaps is not None and self.show_gaps:
+            if (
+                self.show_desired_gaps
+                and not self.nice_settings.is_direct_mode
+                and shape.has_shape
+            ):
+                inputs = gaps.shape_inputs(shape.desired_x_points)
+                desired = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
+            if self.show_result_gaps and equilibrium is not None:
+                result = gaps.measure(**gaps.gap_inputs(equilibrium.time_slice[0]))
+        return self._plot_measured_gaps(gaps, desired, "blue") * (
+            self._plot_measured_gaps(gaps, result, "red")
+        )
+
+    def _plot_measured_gaps(self, gaps, measured, color):
+        """Plots measured gaps as a dashed line from the point they are measured from,
+        labelled with their symbol, to the point they are measured to.
+
+        Args:
+            gaps: The MachineGaps the gaps were measured with.
+            measured: The MeasuredGap of each gap.
+            color: The colour to plot them in.
+        """
+        rows = []
+        for gap in measured:
+            symbol, unit, name = gaps.GAP_METADATA[gap.key]
+            if gap.distance is None:
+                distance = "—"
+            elif unit == "m":
+                distance = f"{gap.distance:.4g} m"
+            else:
+                distance = f"{gap.distance * 100:.3g} cm"
+            rows.append(
+                {
+                    "r": gap.orig[0],
+                    "z": gap.orig[1],
+                    "r_target": gap.target[0],
+                    "z_target": gap.target[1],
+                    "name": name,
+                    "symbol": symbol,
+                    "distance": distance,
+                }
+            )
+        vdims = ["name", "symbol", "distance"]
+        tooltips = [("Gap", "@name (@symbol)"), ("Distance", "@distance")]
+        origins = hv.Points(rows, kdims=["r", "z"], vdims=vdims).opts(
+            color=color,
+            size=8,
+            marker="diamond",
+            hover_tooltips=[*tooltips, ("Location (R, Z)", "@r{0.000} m, @z{0.000} m")],
+            show_legend=False,
+        )
+        targets = hv.Points(rows, kdims=["r_target", "z_target"], vdims=vdims).opts(
+            color=color, size=5, hover_tooltips=tooltips, show_legend=False
+        )
+        lines = hv.Segments(
+            rows, kdims=["r", "z", "r_target", "z_target"], vdims=vdims
+        ).opts(
+            color=color,
+            line_dash="dashed",
+            line_width=2,
+            hover_tooltips=tooltips,
+            show_legend=False,
+        )
+        labels = hv.Labels(rows, kdims=["r", "z"], vdims=["symbol"]).opts(
+            text_font_size="10pt",
+            text_color=color,
+            text_baseline="bottom",
+            text_font_style="bold",
+        )
+        return origins * targets * lines * _no_hover(labels)
 
     def __panel__(self):
         return self.panel_layout

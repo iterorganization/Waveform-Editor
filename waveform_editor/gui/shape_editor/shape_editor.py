@@ -392,6 +392,10 @@ class ShapeEditor(Viewer):
     def _on_nice_run_finished(self, success):
         if success:
             pn.state.notifications.success("NICE run complete.")
+            # Show the gaps of the result, which the desired gaps were a target for
+            if self.nice_plotter.show_gaps:
+                self.nice_plotter.show_result_gaps = True
+                self.nice_plotter.show_desired_gaps = False
         else:
             pn.state.notifications.error(
                 "NICE did not converge. Check the terminal for details."

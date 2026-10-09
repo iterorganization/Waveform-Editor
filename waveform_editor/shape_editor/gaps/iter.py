@@ -42,11 +42,19 @@ class IterGaps(MachineGaps):
     }
 
     def gap_inputs(self, time_slice):
+        """Takes the separatrix up to the top of the plasma, as DINA does, only for a
+        diverted plasma, with an x-point on its boundary."""
         quantities = time_slice.global_quantities
+        outline = time_slice.boundary.outline
+        diverted = any(
+            node.critical_type == 1 and np.isclose(node.psi, quantities.psi_boundary)
+            for node in time_slice.contour_tree.node
+        )
+        pieces = psi_contour(time_slice, quantities.psi_boundary) if diverted else []
         return {
-            "outline_r": time_slice.boundary.outline.r,
-            "outline_z": time_slice.boundary.outline.z,
-            "separatrix": psi_contour(time_slice, quantities.psi_boundary),
+            "outline_r": outline.r,
+            "outline_z": outline.z,
+            "separatrix": [p for p in pieces if p[:, 1].min() <= np.max(outline.z)],
             "magnetic_axis": (quantities.magnetic_axis.r, quantities.magnetic_axis.z),
         }
 
@@ -56,9 +64,8 @@ class IterGaps(MachineGaps):
         Args:
             outline_r: Radial coordinates of the plasma boundary.
             outline_z: Height coordinates of the plasma boundary.
-            separatrix: The separatrix of a solved equilibrium, as (N, 2) arrays. Gaps 1
-                and 2 are only measured to its legs, which do not close as they leave
-                the domain.
+            separatrix: The separatrix of a diverted solved equilibrium, as (N, 2)
+                arrays. Gaps 1 and 2 are only measured with one.
             magnetic_axis: The (r, z) of the magnetic axis, the centre of the outline
                 is used without one.
         """
@@ -66,10 +73,9 @@ class IterGaps(MachineGaps):
         axis = magnetic_axis or geometric_centre(r, z)
         gaps = []
 
-        diverted = any(np.linalg.norm(p[0] - p[-1]) > 1e-3 for p in separatrix)
         for sign, key in ((-1, "gap1"), (1, "gap2")):
             point = GAP_POINTS[key]
-            if diverted:
+            if separatrix:
                 target, distance = closest_contour_point(point, separatrix)
                 distance *= sign * _side_of_axis(target, point, axis)
                 gaps.append(MeasuredGap(key, point, target, distance))

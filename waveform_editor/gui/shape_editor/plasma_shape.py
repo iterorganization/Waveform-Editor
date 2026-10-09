@@ -623,6 +623,13 @@ class PlasmaShape(Viewer):
         self.gap_ui.extend(new_gap_ui)
 
     @property
+    def desired_x_points(self):
+        """The x-points of the desired shape, which only a parameterized shape has."""
+        if self.input_mode != self.PARAMETERIZED_INPUT:
+            return []
+        return [(self.shape_params.rx, self.shape_params.zx)]
+
+    @property
     def uses_weighted_points(self):
         """Whether the weighted points table feeds the current input mode."""
         return self.input_mode == self.WEIGHTED_POINTS_INPUT or (
