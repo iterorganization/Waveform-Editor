@@ -46,6 +46,7 @@ class Metrics(Viewer):
                 max_width,
             ),
             stylesheets=STYLES,
+            visible=self.param.metrics.rx.bool(),
         )
 
     def _render(self, metrics, machine_metrics, max_width):
@@ -66,8 +67,6 @@ class Metrics(Viewer):
                 f'<span class="mc-val">{display}</span>'
                 f"</span>"
             )
-        if not chips:
-            return ""
         return (
             f'<div class="mc-wrap" style="max-width: {max_width}px">'
             + "".join(chips)
