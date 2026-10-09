@@ -29,6 +29,10 @@ class MachineGaps(ABC):
             time_slice: The equilibrium time slice.
         """
 
+    @abstractmethod
+    def default_gaps(self):
+        """The Gap of each gap the plasmas of the machine are designed with."""
+
     def shape_inputs(self, x_points):
         """The arguments of measure besides the outline, for a desired shape.
 

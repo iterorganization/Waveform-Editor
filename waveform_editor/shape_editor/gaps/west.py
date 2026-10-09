@@ -18,6 +18,7 @@ from waveform_editor.shape_editor.gaps.geometry import (
     project_point_to_line,
     psi_contour,
 )
+from waveform_editor.shape_editor.plasma_shape_calc import Gap
 
 # The arc the outer radial gaps are measured to, which passes through r=3 m on the
 # midplane, as (centre r, radius)
@@ -66,6 +67,34 @@ class WestGaps(MachineGaps):
             "Distance between the second and first separatrix on the outboard midplane",
         ),
     }
+
+    def default_gaps(self):
+        return [
+            Gap("Upper radial outer gap (UROG)", 2.9599, 0.25, math.pi, 0.06),
+            Gap("Equatorial radial outer gap (EROG)", 3.0000, 0.0, math.pi, 0.08),
+            Gap("Lower radial outer gap (LROG)", 2.9599, -0.25, math.pi, 0.06),
+            Gap(
+                "Lower x-point to divertor (dXlow)",
+                2.135,
+                -0.671,
+                -math.radians(68.0),
+                0.05,
+            ),
+            Gap(
+                "Upper x-point to divertor (dXup)",
+                2.173,
+                0.691,
+                math.radians(68.0),
+                0.10,
+            ),
+            Gap(
+                "Distance to baffle (dbaffle)",
+                2.381,
+                -0.6757,
+                -math.radians(135.0),
+                0.04,
+            ),
+        ]
 
     def gap_inputs(self, time_slice):
         """Orders the x-points as FEEQS does, that of the first separatrix, closest in
