@@ -1,8 +1,9 @@
 """The geometry the gaps are measured with."""
 
 import numpy as np
-from matplotlib.figure import Figure
 from scipy.interpolate import PchipInterpolator
+
+from waveform_editor.shape_editor.flux import flux_contours
 
 
 def closest_outline_point(point, r, z, is_closed=True, facing=None):
@@ -99,10 +100,5 @@ def psi_contour(time_slice, level):
     Returns:
         List of (N, 2) arrays of (r, z), one per piece of the contour.
     """
-    ggd = time_slice.ggd[0]
-    contour = (
-        Figure()
-        .add_subplot()
-        .tricontour(ggd.r[0].values, ggd.z[0].values, ggd.psi[0].values, levels=[level])
-    )
+    contour = flux_contours(time_slice, [level])
     return [np.asarray(piece) for piece in contour.allsegs[0] if len(piece) > 1]
