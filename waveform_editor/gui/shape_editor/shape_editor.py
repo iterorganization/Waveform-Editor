@@ -35,6 +35,9 @@ def _reactive_title(title, is_valid):
 
 
 class ShapeEditor(Viewer):
+    # The number of lines of the log that are kept
+    LOG_LINES = 10000
+
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
@@ -49,7 +52,7 @@ class ShapeEditor(Viewer):
         self.factory = imas.IDSFactory()
         self.terminal = pn.widgets.Terminal(
             sizing_mode="stretch_width",
-            options={"scrollback": 10000, "wrap": True},
+            options={"scrollback": self.LOG_LINES, "wrap": True},
             min_height=200,
             stylesheets=[":host { min-width: 0; overflow: hidden; }"],
         )
@@ -153,8 +156,6 @@ class ShapeEditor(Viewer):
             self.plasma_shape.param.has_shape,
             self.plasma_properties.param.has_properties,
         )
-        menu = pn.Column(buttons, self.terminal, sizing_mode="stretch_width")
-
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
             self.metrics,
@@ -179,7 +180,7 @@ class ShapeEditor(Viewer):
             left_col,
             plot_handle,
             pn.Column(
-                menu,
+                buttons,
                 options,
                 sizing_mode="stretch_both",
                 scroll=True,
@@ -219,6 +220,7 @@ class ShapeEditor(Viewer):
             )
         )
         items.append(("Coil Currents", self.coil_currents))
+        items.append(("Logging", self.terminal))
         tabs = pn.Tabs(
             *items,
             dynamic=True,
@@ -230,8 +232,16 @@ class ShapeEditor(Viewer):
         return tabs
 
     def _remember_active_tab(self, event):
-        """Keep the open tab open when the tabs are rebuilt."""
+        """Keep the open tab open when the tabs are rebuilt, and write log again"""
         self._active_tab = event.new
+
+        # Workaround since dynamic tabs only keep its last output:
+        # https://github.com/holoviz/panel/issues/8832
+
+        if event.obj[event.new] is self.terminal:
+            log = self.terminal.output.splitlines(keepends=True)[-self.LOG_LINES :]
+            self.terminal.clear()
+            self.terminal.write("".join(log))
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
