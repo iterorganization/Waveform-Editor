@@ -1,4 +1,5 @@
 import imas
+import numpy as np
 import pandas as pd
 import panel as pn
 import param
@@ -150,9 +151,11 @@ class PlasmaShapeParams(Viewer):
             if isinstance(self.param[n], param.Boolean):
                 return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
-                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
+                return FixedWidthEditableIntSlider.from_param(
+                    p, stretch_width=True, throttled=True
+                )
             self._sliders[n] = FormattedEditableFloatSlider.from_param(
-                p, stretch_width=True
+                p, stretch_width=True, throttled=True
             )
             return self._sliders[n]
 
@@ -437,7 +440,7 @@ class PlasmaShape(Viewer):
     )
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
-    shape_updated = param.Event(doc="Triggered whenever the plasma shape updates.")
+    shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
 
     def __init__(self):
         super().__init__()
@@ -522,6 +525,7 @@ class PlasmaShape(Viewer):
     )
     def _set_plasma_shape(self):
         """Update plasma boundary shape based on input mode."""
+        previous = (self.outline_r, self.outline_z, self.param_weights)
         self.outline_r = self.outline_z = None
         self.gaps = []
         self.param_r = self.param_z = self.param_weights = None
@@ -533,7 +537,9 @@ class PlasmaShape(Viewer):
             self.has_shape = True
         else:
             self.has_shape = False
-        self.param.trigger("shape_updated")
+        current = (self.outline_r, self.outline_z, self.param_weights)
+        if not all(map(np.array_equal, previous, current)):
+            self.param.trigger("shape_updated")
 
     def _load_shape_from_ids(self):
         """Load plasma boundary outline from IDS equilibrium input."""
@@ -617,7 +623,7 @@ class PlasmaShape(Viewer):
                 step=0.01,
                 stretch_width=True,
             )
-            value_input.param.watch(self._on_gap_change, "value")
+            value_input.param.watch(self._on_gap_change, "value_throttled")
             new_gap_ui.append(value_input)
 
         self.gap_ui.extend(new_gap_ui)
