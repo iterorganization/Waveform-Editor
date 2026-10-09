@@ -4,7 +4,6 @@ import holoviews as hv
 import numpy as np
 import panel as pn
 import param
-import scipy.interpolate as interp
 from bokeh.models import HoverTool, PointDrawTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
@@ -12,8 +11,8 @@ from panel.viewable import Viewer
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.flux import flux_contours, flux_grid
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
-from waveform_editor.shape_editor.gaps.geometry import flux_contours
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
 logger = logging.getLogger(__name__)
@@ -526,12 +525,12 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        flux_map = self._flux_map(equilibrium)
-        if flux_map is None:
+        if self._flux_map(equilibrium) is None:
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
-            self._heatmap_cache = (equilibrium, self._calc_heatmap(*flux_map))
+            grid = flux_grid(equilibrium.time_slice[0], self.HEATMAP_RESOLUTION)
+            self._heatmap_cache = (equilibrium, grid)
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
             .opts(self.HEATMAP_OPTS)
@@ -544,25 +543,6 @@ class NicePlotter(Viewer):
             .opts(self.HEATMAP_OPTS)
             .opts(alpha=0.0, colorbar=False)
         )
-
-    def _calc_heatmap(self, r, z, psi):
-        """Interpolates psi onto a regular grid for heatmap display.
-
-        Args:
-            r: Radial coordinates of the mesh nodes.
-            z: Height coordinates of the mesh nodes.
-            psi: Poloidal flux values at the mesh nodes.
-
-        Returns:
-            Tuple of (grid_r, grid_z, psi_grid).
-        """
-        r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
-        grid_r = np.linspace(r.min(), r.max(), self.HEATMAP_RESOLUTION)
-        grid_z = np.linspace(z.min(), z.max(), self.HEATMAP_RESOLUTION)
-        psi_grid = interp.griddata(
-            (r, z), np.asarray(psi, dtype=float), tuple(np.meshgrid(grid_r, grid_z))
-        )
-        return grid_r, grid_z, psi_grid
 
     @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):

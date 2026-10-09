@@ -1,11 +1,9 @@
 """The geometry the gaps are measured with."""
 
-from functools import lru_cache
-
 import numpy as np
-from matplotlib.figure import Figure
-from matplotlib.tri import Triangulation
 from scipy.interpolate import PchipInterpolator
+
+from waveform_editor.shape_editor.flux import flux_contours
 
 
 def closest_outline_point(point, r, z, is_closed=True, facing=None):
@@ -90,28 +88,6 @@ def interpolate_branch(x, y, at, branch):
 def geometric_centre(r, z):
     """The centre of the bounding box of an outline."""
     return (np.min(r) + np.max(r)) / 2, (np.min(z) + np.max(z)) / 2
-
-
-@lru_cache(maxsize=1)
-def _triangulation(r, z):
-    """The triangulation of the nodes of a mesh, given as bytes, which is the same
-    for every result of a machine."""
-    return Triangulation(np.frombuffer(r), np.frombuffer(z))
-
-
-def flux_contours(time_slice, levels):
-    """The contours of the poloidal flux on the GGD NICE fills.
-
-    Args:
-        time_slice: The equilibrium time slice.
-        levels: The number of contours, or the fluxes to contour.
-
-    Returns:
-        The matplotlib TriContourSet.
-    """
-    ggd = time_slice.ggd[0]
-    triangulation = _triangulation(ggd.r[0].values.tobytes(), ggd.z[0].values.tobytes())
-    return Figure().add_subplot().tricontour(triangulation, ggd.psi[0].values, levels)
 
 
 def psi_contour(time_slice, level):
