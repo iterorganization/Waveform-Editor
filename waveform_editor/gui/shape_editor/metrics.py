@@ -46,6 +46,7 @@ class Metrics(Viewer):
                 max_width,
             ),
             stylesheets=STYLES,
+            visible=self.param.metrics.rx.bool(),
         )
 
     def _render(self, metrics, machine_metrics, max_width):
@@ -54,7 +55,9 @@ class Metrics(Viewer):
             **self.METRICS,
             **machine_metrics,
         }.items():
-            val = metrics.get(key, "—") if metrics else "—"
+            if key not in metrics:
+                continue
+            val = metrics[key]
             if isinstance(val, float):
                 val = f"{val:.4g}"
             display = f"{val} {unit}".strip()
