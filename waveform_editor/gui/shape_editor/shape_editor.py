@@ -469,13 +469,13 @@ class ShapeEditor(Viewer):
             self.wall.serialize(),
             self.iron_core.serialize(),
         )
+        # NICE crashed without a result
+        if self.communicator.equilibrium is previous_equilibrium:
+            return
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
         self._update_metrics()
         # Only a converged run is worth restoring
-        if (
-            self.communicator.equilibrium is not previous_equilibrium
-            and self.communicator.converged
-        ):
+        if self.communicator.converged:
             self._add_to_history()
 
     def _update_machine_metrics(self, event=None):

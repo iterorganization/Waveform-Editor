@@ -525,7 +525,7 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        if self._flux_map(equilibrium) is None:
+        if not self._has_flux_map(equilibrium):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
@@ -561,23 +561,18 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
-    def _flux_map(self, equilibrium):
-        """The poloidal flux on the GGD that NICE fills.
+    def _has_flux_map(self, equilibrium):
+        """Whether NICE filled the poloidal flux on the GGD, which shows an error
+        if it did not.
 
         Args:
             equilibrium: The equilibrium IDS to read the flux from.
-
-        Returns:
-            Tuple of (r, z, psi) at the mesh nodes, or None if NICE did not fill them.
         """
         eqggd = equilibrium.time_slice[0].ggd[0]
-        r, z, psi = eqggd.r[0].values, eqggd.z[0].values, eqggd.psi[0].values
-        if not r or not z or not psi:
-            pn.state.notifications.error(
-                "NICE did not produce a valid poloidal flux field"
-            )
-            return None
-        return r, z, psi
+        if eqggd.r[0].values and eqggd.z[0].values and eqggd.psi[0].values:
+            return True
+        pn.state.notifications.error("NICE did not produce a valid poloidal flux field")
+        return False
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -590,7 +585,7 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        if self._flux_map(equilibrium) is None:
+        if not self._has_flux_map(equilibrium):
             return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = flux_contours(equilibrium.time_slice[0], levels)
