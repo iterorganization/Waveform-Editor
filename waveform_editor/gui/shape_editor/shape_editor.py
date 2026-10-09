@@ -66,6 +66,7 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
+        self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
         self.run_select = pn.widgets.Select(
@@ -143,7 +144,6 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
         )
 
-        self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
         self._update_machine_metrics()
         self._active_tab = 0
@@ -255,9 +255,12 @@ class ShapeEditor(Viewer):
         "nice_settings.md_iron_core.uri",
         watch=True,
     )
-    def _reset_run_history(self):
-        """Drop the runs, since they are of another machine description now."""
-        self.communicator.converged = False
+    def _clear_results(self):
+        """Drop the result and the runs, since they are of another machine description
+        now."""
+        self.communicator.equilibrium = None
+        self.communicator.pf_active = None
+        self.metrics.metrics = {}
         self.run_history = []
         self.run_select.options = {}
         self.run_select.disabled = True
