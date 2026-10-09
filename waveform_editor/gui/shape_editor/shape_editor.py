@@ -43,9 +43,6 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
-    use_previous_run = param.Boolean(
-        default=False, doc="Use previous run as warm start"
-    )
 
     def __init__(self, main_gui):
         super().__init__()
@@ -120,28 +117,6 @@ class ShapeEditor(Viewer):
             styles={"margin-left": "auto"},
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
-        warm_start_switch = pn.widgets.Switch.from_param(
-            self.param.use_previous_run,
-            name="",
-            disabled=self.communicator.param.converged.rx.not_(),
-            margin=(20, 15, 2, 10),
-        )
-        tooltip_msg = (
-            "Enable warm start to use the previous run's equilibrium as the "
-            "initial guess for the next run. This can improve convergence."
-        )
-        warm_start_label = pn.pane.HTML(
-            pn.bind(
-                lambda can: (
-                    f'<span title="{tooltip_msg}">Warm start</span>'
-                    if can
-                    else f'<span title="{tooltip_msg} No previous run is available '
-                    'yet, run NICE once to allow warm starting.">Warm start</span>'
-                ),
-                self.communicator.param.converged,
-            ),
-            margin=(15, 0, 2, 10),
-        )
         run_msg = "Restore a previous converged NICE run"
         run_label = pn.pane.HTML(
             f'<span title="{run_msg}">Previous run</span>', margin=(15, 0, 2, 10)
@@ -160,7 +135,6 @@ class ShapeEditor(Viewer):
             settings_modal,
             waveform_sync,
             nice_mode_radio,
-            pn.Row(warm_start_label, warm_start_switch, align="center", margin=0),
             pn.Row(run_label, self.run_select, align="center", margin=0),
             button_stop,
             button_start,
@@ -283,7 +257,6 @@ class ShapeEditor(Viewer):
     )
     def _reset_run_history(self):
         """Drop the runs, since they are of another machine description now."""
-        self.use_previous_run = False
         self.communicator.converged = False
         self.run_history = []
         self.run_select.options = {}
@@ -313,8 +286,6 @@ class ShapeEditor(Viewer):
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
-        if self.nice_settings.is_direct_mode:
-            self.use_previous_run = True
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -457,7 +428,7 @@ class ShapeEditor(Viewer):
         set_xml_parameter(
             xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
         )
-        use_previous_equilibrium = self.use_previous_run and self.communicator.converged
+        use_previous_equilibrium = self.communicator.converged
         if self.nice_settings.is_direct_mode:
             start_from_scratch = 0 if use_previous_equilibrium else 1
             set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
@@ -533,13 +504,6 @@ class ShapeEditor(Viewer):
             self.metrics.Q95: float(global_quantities.q_95),
             **self._machine_gaps(eq.time_slice[0]),
         }
-
-    @param.depends("nice_settings.mode", watch=True)
-    def _enable_warm_start_on_direct_mode(self):
-        """Warm start direct mode from the last run, if it converged. After a run that
-        did not, an earlier one can be picked from the previous runs."""
-        if self.nice_settings.is_direct_mode and self.communicator.converged:
-            self.use_previous_run = True
 
     @param.depends(
         "nice_settings.mode",
