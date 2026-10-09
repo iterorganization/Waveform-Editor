@@ -70,9 +70,10 @@ class ShapeEditor(Viewer):
         self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
-        # Whether auto run is running NICE, and whether the inputs changed since
-        self._auto_submitting = False
-        self._inputs_changed = False
+        # Whether runs are being started, and the next run to start: None, or whether
+        # to keep it in the run history
+        self._submitting = False
+        self._queued = None
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -89,7 +90,7 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        disabled_expr = (
+        self._cannot_run = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
                 & self.nice_settings.param.is_inverse_mode.rx()
@@ -108,12 +109,11 @@ class ShapeEditor(Viewer):
                     if disabled
                     else "Run simulation"
                 ),
-                disabled_expr,
+                self._cannot_run,
             ),
-            disabled=disabled_expr,
+            disabled=self._cannot_run,
             margin=(10, 0, 2, 0),
         )
-        self._cannot_run = disabled_expr
         auto_run_label = pn.pane.HTML(
             '<span title="Run NICE whenever the plasma shape, plasma properties or '
             "coil currents change. Only runs started with Run are kept in the "
@@ -405,8 +405,6 @@ class ShapeEditor(Viewer):
 
     def _on_nice_run_finished(self, success):
         if success:
-            if not self.auto_run:
-                pn.state.notifications.success("NICE run complete.")
             # Show the gaps of the result, which the desired gaps were a target for
             if self.nice_plotter.show_gaps:
                 self.nice_plotter.show_result_gaps = True
@@ -456,28 +454,40 @@ class ShapeEditor(Viewer):
             parameter.text = str(value)
         return True
 
-    async def _auto_submit(self, event=None):
-        """Run NICE on a change of its inputs, while auto run is on. Changes made
-        during a run are run once it is done."""
-        if not self.auto_run or self._cannot_run.rx.value:
-            return
-        self._inputs_changed = True
-        if self._auto_submitting:
-            return
-        self._auto_submitting = True
-        try:
-            while self._inputs_changed:
-                self._inputs_changed = False
-                await self.submit(keep_in_history=False)
-        finally:
-            self._auto_submitting = False
+    async def submit(self, event=None):
+        """Run NICE, keeping a converged result in the run history."""
+        await self._queue_run(keep_in_history=True)
 
-    async def submit(self, event=None, keep_in_history=True):
+    async def _auto_submit(self, event=None):
+        """Run NICE on a change of its inputs, while auto run is on."""
+        if self.auto_run:
+            await self._queue_run(keep_in_history=False)
+
+    async def _queue_run(self, keep_in_history):
+        """Run NICE, or once the current run is done, as NICE takes one at a time.
+
+        Args:
+            keep_in_history: Whether to keep a converged result in the run history.
+        """
+        # A run queued with Run stays kept when auto run queues it too
+        self._queued = keep_in_history or bool(self._queued)
+        if self._submitting:
+            return
+        self._submitting = True
+        try:
+            while self._queued is not None:
+                keep_in_history, self._queued = self._queued, None
+                # The inputs or auto run may have changed during the last run
+                if (keep_in_history or self.auto_run) and not self._cannot_run.rx.value:
+                    await self._run_nice(keep_in_history)
+        finally:
+            self._submitting = False
+
+    async def _run_nice(self, keep_in_history):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS.
 
         Args:
-            event: The click on the Run button.
             keep_in_history: Whether to keep a converged result in the run history.
         """
 
@@ -506,7 +516,7 @@ class ShapeEditor(Viewer):
             )
         else:
             self.coil_currents.update_xml(xml_params)
-        if warm_start and not self.auto_run:
+        if warm_start and keep_in_history:
             pn.state.notifications.info("Starting from previous equilibrium.")
         if from_data:
             # Copy, so the stored result in the run history is not modified
@@ -535,6 +545,7 @@ class ShapeEditor(Viewer):
         self._update_metrics()
         # Only a converged run is worth restoring
         if keep_in_history and self.communicator.converged:
+            pn.state.notifications.success("NICE run complete.")
             self._add_to_history()
         elif self.run_history:
             # So that any previous run can be selected to return to it
@@ -584,6 +595,7 @@ class ShapeEditor(Viewer):
     )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
+        self._queued = None
         await self.communicator.close()
 
     def __panel__(self):
