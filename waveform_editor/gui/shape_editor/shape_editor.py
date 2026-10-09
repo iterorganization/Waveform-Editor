@@ -117,7 +117,7 @@ class ShapeEditor(Viewer):
         auto_run_label = pn.pane.HTML(
             '<span title="Run NICE whenever the plasma shape, plasma properties or '
             "coil currents change. Only runs started with Run are kept in the "
-            'previous runs.">Auto run</span>',
+            'run history.">Auto run</span>',
             margin=(15, 0, 2, 10),
         )
         auto_run_switch = pn.widgets.Switch.from_param(
@@ -133,7 +133,7 @@ class ShapeEditor(Viewer):
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         run_msg = "Restore a previous converged NICE run"
         run_label = pn.pane.HTML(
-            f'<span title="{run_msg}">Previous run</span>', margin=(15, 0, 2, 10)
+            f'<span title="{run_msg}">Run history</span>', margin=(15, 0, 2, 10)
         )
         settings_modal = SettingsModal(self.nice_plotter)
         waveform_sync = WaveformSync(main_gui, self.communicator)
@@ -306,7 +306,7 @@ class ShapeEditor(Viewer):
         self.run_select.disabled = False
 
     def _list_runs(self, unsaved=False):
-        """List the previous runs, newest first.
+        """List the runs in the run history, newest first.
 
         Args:
             unsaved: Whether to list the result shown, which is not kept, on top.
@@ -478,7 +478,7 @@ class ShapeEditor(Viewer):
 
         Args:
             event: The click on the Run button.
-            keep_in_history: Whether to keep a converged result in the previous runs.
+            keep_in_history: Whether to keep a converged result in the run history.
         """
 
         if not self._has_valid_boundary():
