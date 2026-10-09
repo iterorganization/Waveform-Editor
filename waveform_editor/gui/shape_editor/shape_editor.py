@@ -281,10 +281,13 @@ class ShapeEditor(Viewer):
         self.run_select.disabled = False
 
     def _restore_run(self, event):
-        """Restore the equilibrium and coil currents of the selected run."""
+        """Restore the equilibrium and coil currents of the selected run, unless it
+        is shown already, as a new run is when it is added."""
         if event.new is None:
             return
         _, equilibrium, pf_active = self.run_history[event.new]
+        if equilibrium is self.communicator.equilibrium:
+            return
         self.communicator.equilibrium = equilibrium
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
@@ -431,22 +434,22 @@ class ShapeEditor(Viewer):
         set_xml_parameter(
             xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
         )
-        use_previous_equilibrium = self.communicator.converged
+        converged = self.communicator.converged
+        from_memory = converged and self.communicator.holds_result
+        from_data = converged and not from_memory and self.nice_settings.is_direct_mode
+        warm_start = from_memory or from_data
+        start_from_scratch = 0 if warm_start else 1
+        set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
+        set_xml_parameter(xml_params, "algoStartPsiFromInData", 1 if from_data else 0)
         if self.nice_settings.is_direct_mode:
-            start_from_scratch = 0 if use_previous_equilibrium else 1
-            set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
             set_xml_parameter(
                 xml_params, "algoStartFromScratchReconAB", start_from_scratch
             )
-            set_xml_parameter(
-                xml_params,
-                "algoStartPsiFromInData",
-                1 if use_previous_equilibrium else 0,
-            )
         else:
             self.coil_currents.update_xml(xml_params)
-        if use_previous_equilibrium:
+        if warm_start:
             pn.state.notifications.info("Starting from previous equilibrium.")
+        if from_data:
             # Copy, so the stored result in the run history is not modified
             equilibrium = copy.deepcopy(self.communicator.equilibrium)
         else:

@@ -1,7 +1,10 @@
 """The geometry the gaps are measured with."""
 
+from functools import lru_cache
+
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.tri import Triangulation
 from scipy.interpolate import PchipInterpolator
 
 
@@ -89,6 +92,28 @@ def geometric_centre(r, z):
     return (np.min(r) + np.max(r)) / 2, (np.min(z) + np.max(z)) / 2
 
 
+@lru_cache(maxsize=1)
+def _triangulation(r, z):
+    """The triangulation of the nodes of a mesh, given as bytes, which is the same
+    for every result of a machine."""
+    return Triangulation(np.frombuffer(r), np.frombuffer(z))
+
+
+def flux_contours(time_slice, levels):
+    """The contours of the poloidal flux on the GGD NICE fills.
+
+    Args:
+        time_slice: The equilibrium time slice.
+        levels: The number of contours, or the fluxes to contour.
+
+    Returns:
+        The matplotlib TriContourSet.
+    """
+    ggd = time_slice.ggd[0]
+    triangulation = _triangulation(ggd.r[0].values.tobytes(), ggd.z[0].values.tobytes())
+    return Figure().add_subplot().tricontour(triangulation, ggd.psi[0].values, levels)
+
+
 def psi_contour(time_slice, level):
     """The contour of the poloidal flux on the GGD NICE fills, at a level.
 
@@ -99,10 +124,5 @@ def psi_contour(time_slice, level):
     Returns:
         List of (N, 2) arrays of (r, z), one per piece of the contour.
     """
-    ggd = time_slice.ggd[0]
-    contour = (
-        Figure()
-        .add_subplot()
-        .tricontour(ggd.r[0].values, ggd.z[0].values, ggd.psi[0].values, levels=[level])
-    )
+    contour = flux_contours(time_slice, [level])
     return [np.asarray(piece) for piece in contour.allsegs[0] if len(piece) > 1]

@@ -1,8 +1,6 @@
 import logging
 
 import holoviews as hv
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
@@ -15,9 +13,9 @@ from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
+from waveform_editor.shape_editor.gaps.geometry import flux_contours
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
-matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
@@ -612,18 +610,17 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        flux_map = self._flux_map(equilibrium)
-        if flux_map is None:
+        if self._flux_map(equilibrium) is None:
             return hv.Contours(([0], [0], 0), vdims="psi")
 
-        trics = plt.tricontour(*flux_map, levels=levels)
+        trics = flux_contours(equilibrium.time_slice[0], levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
 
         Args:
-            tricontour: Output from plt.tricontour.
+            tricontour: Output from flux_contours.
 
         Returns:
             Segment dictionaries with 'x', 'y', and 'psi'.
