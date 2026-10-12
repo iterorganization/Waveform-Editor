@@ -729,7 +729,8 @@ class PlasmaShape(Viewer):
                 f'<span class="mc-lbl">{symbol}</span>'
                 f'<span class="mc-val">{display}</span></span>'
             )
-        return f'<div class="mc-wrap">{"".join(chips)}</div>'
+        title = '<span class="mc-title">Desired shape gaps</span>'
+        return f'<div class="mc-wrap">{title}{"".join(chips)}</div>'
 
     def __panel__(self):
         return self.panel
