@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import importlib.resources
 import logging
@@ -36,6 +37,8 @@ def _reactive_title(title, is_valid):
 
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
+    # Seconds the inputs must be unchanged before auto run runs NICE again
+    AUTO_RUN_DELAY = 0.3
 
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
@@ -72,9 +75,9 @@ class ShapeEditor(Viewer):
         self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
-        # Whether runs are being started, and the next run: None, or whether it is kept
+        # Whether auto run is running NICE, and whether the inputs changed since
         self._submitting = False
-        self._next_run = None
+        self._inputs_changed = False
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -105,19 +108,22 @@ class ShapeEditor(Viewer):
             icon="player-play",
             on_click=self.submit,
             description=pn.bind(
-                lambda disabled: (
-                    "Cannot run: missing required inputs"
-                    if disabled
+                lambda cannot_run, auto_run: (
+                    "Disabled while auto run is on"
+                    if auto_run
+                    else "Cannot run: missing required inputs"
+                    if cannot_run
                     else "Run simulation"
                 ),
                 self._cannot_run,
+                self.param.auto_run,
             ),
-            disabled=self._cannot_run,
+            disabled=self._cannot_run | self.param.auto_run.rx(),
             margin=(10, 0, 2, 0),
         )
         auto_run_label = pn.pane.HTML(
             '<span title="Run NICE whenever the plasma shape, plasma properties or '
-            "coil currents change. Only runs started with Run are kept in the "
+            "coil currents change. The latest converged auto run is kept in the "
             'run history.">Auto run</span>',
             margin=(15, 0, 2, 10),
         )
@@ -301,11 +307,18 @@ class ShapeEditor(Viewer):
         self.run_select.options = {}
         self.run_select.disabled = True
 
-    def _add_to_history(self):
-        """Store the result of the last run in the run history."""
+    def _add_to_history(self, auto=False):
+        """Store the result of the last run in the run history. That of an auto run
+        replaces that of the auto run right before it.
+
+        Args:
+            auto: Whether the run is an auto run.
+        """
+        if auto and self.run_history and self.run_history[-1][0].startswith("Auto"):
+            self.run_history.pop()
         label = (
-            f"Run {len(self.run_history) + 1}: {self.nice_settings.mode} "
-            f"({datetime.now():%H:%M:%S})"
+            f"{'Auto run' if auto else 'Run'} {len(self.run_history) + 1}: "
+            f"{self.nice_settings.mode} ({datetime.now():%H:%M:%S})"
         )
         self.run_history.append(
             (label, self.communicator.equilibrium, self.communicator.pf_active)
@@ -465,44 +478,38 @@ class ShapeEditor(Viewer):
         return True
 
     async def submit(self, event=None):
-        """Run NICE, keeping a converged result in the run history."""
-        await self._queue_run(keep_in_history=True)
+        """Run NICE once, while auto run is off."""
+        await self._run_nice(auto=False)
 
     async def _auto_submit(self, event=None):
-        """Run NICE on a change of its inputs, while auto run is on."""
-        if self.auto_run:
-            await self._queue_run(keep_in_history=False)
-
-    async def _queue_run(self, keep_in_history):
-        """Run NICE, or once the current run is done, as NICE takes one at a time.
-
-        Args:
-            keep_in_history: Whether to keep a converged result in the run history.
+        """Run NICE on a change of its inputs, while auto run is on. Changes made
+        during a run are run together once they have settled.
         """
-        # A run queued with Run stays kept when auto run queues it too
-        self._next_run = keep_in_history or bool(self._next_run)
+        if not self.auto_run:
+            return
+        self._inputs_changed = True
         if self._submitting:
             return
         self._submitting = True
         try:
-            while self._next_run is not None:
-                keep_in_history = self._next_run
-                self._next_run = None
-                # While this run waited for the previous one, auto run may have been
-                # switched off, or the inputs may have become incomplete
-                if not keep_in_history and not self.auto_run:
-                    continue
-                if not self._cannot_run.rx.value:
-                    await self._run_nice(keep_in_history)
+            settled = True
+            while self._inputs_changed and self.auto_run:
+                self._inputs_changed = False
+                if not settled:
+                    await asyncio.sleep(self.AUTO_RUN_DELAY)
+                    settled = not self._inputs_changed
+                if settled and not self._cannot_run.rx.value:
+                    await self._run_nice(auto=True)
+                    settled = False
         finally:
             self._submitting = False
 
-    async def _run_nice(self, keep_in_history):
+    async def _run_nice(self, auto):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
         description IDSs and an input equilibrium IDS.
 
         Args:
-            keep_in_history: Whether to keep a converged result in the run history.
+            auto: Whether the run is an auto run.
         """
 
         if not self._has_valid_boundary():
@@ -529,7 +536,7 @@ class ShapeEditor(Viewer):
             )
         else:
             self.coil_currents.update_xml(xml_params)
-        if start is not Start.SCRATCH and keep_in_history:
+        if start is not Start.SCRATCH and not auto:
             pn.state.notifications.info("Starting from previous equilibrium.")
         if start is Start.DATA:
             # Copy, so the stored result in the run history is not modified
@@ -557,12 +564,12 @@ class ShapeEditor(Viewer):
         self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
         self._update_metrics()
         # Only a converged run is worth restoring
-        if keep_in_history and self.communicator.converged:
-            pn.state.notifications.success("NICE run complete.")
-            self._add_to_history()
+        if self.communicator.converged:
+            if not auto:
+                pn.state.notifications.success("NICE run complete.")
+            self._add_to_history(auto)
         elif self.run_history:
-            label = "Not converged" if keep_in_history else "Auto run result"
-            self._list_runs(unsaved=label)
+            self._list_runs(unsaved="Not converged")
             self.run_select.value = None
 
     def _update_machine_metrics(self, event=None):
@@ -608,7 +615,7 @@ class ShapeEditor(Viewer):
     )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
-        self._next_run = None
+        self._inputs_changed = False
         await self.communicator.close()
 
     def __panel__(self):
