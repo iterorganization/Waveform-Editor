@@ -175,6 +175,15 @@ class NiceIntegration(param.Parameterized):
         self.closing = False
         self.pf_active = None
         self._poll_task = None
+        self._last_result = None
+
+    @property
+    def holds_result(self):
+        """Whether the equilibrium is the last result of the running NICE, which it
+        keeps in memory to restart from."""
+        return (
+            self.running and not self.closing and self.equilibrium is self._last_result
+        )
 
     def _write_output(self, text: str | bytes):
         self.on_output(text)
@@ -236,6 +245,7 @@ class NiceIntegration(param.Parameterized):
         if self.running:
             raise RuntimeError("Already running!")
         self.running = True
+        self._last_result = None
 
         self.xml_config_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
 
@@ -369,18 +379,25 @@ class NiceIntegration(param.Parameterized):
         )
         self.processing = True
 
-        # Wait until we have a result
-        while not self.communicator_pipe.poll():
-            await asyncio.sleep(0.1)
+        # Wait until we have a result, or the communicator has stopped
+        loop = asyncio.get_running_loop()
+        readable = asyncio.Event()
+        pipe_fd = self.communicator_pipe.fileno()
+        loop.add_reader(pipe_fd, readable.set)
+        try:
+            await readable.wait()
+        finally:
+            loop.remove_reader(pipe_fd)
         try:
             eq, pfa = self.communicator_pipe.recv()
-        except EOFError:  # NICE and/or communicator has crashed
+        except (EOFError, ConnectionResetError):  # NICE or communicator crashed
             self.processing = False
             return
 
         # Set output
         equilibrium = self.imas_factory.new("equilibrium")
         equilibrium.deserialize(eq)
+        self._last_result = equilibrium
         self.equilibrium = equilibrium
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)

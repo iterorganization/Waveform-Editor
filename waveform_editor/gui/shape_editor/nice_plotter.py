@@ -1,12 +1,9 @@
 import logging
 
 import holoviews as hv
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
 import param
-import scipy.interpolate as interp
 from bokeh.models import HoverTool, PointDrawTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
@@ -14,10 +11,10 @@ from panel.viewable import Viewer
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.flux import flux_contours, flux_grid
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
-matplotlib.use("Agg")
 logger = logging.getLogger(__name__)
 
 
@@ -528,12 +525,12 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        flux_map = self._flux_map(equilibrium)
-        if flux_map is None:
+        if not self._has_flux_map(equilibrium):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
-            self._heatmap_cache = (equilibrium, self._calc_heatmap(*flux_map))
+            grid = flux_grid(equilibrium.time_slice[0], self.HEATMAP_RESOLUTION)
+            self._heatmap_cache = (equilibrium, grid)
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
             .opts(self.HEATMAP_OPTS)
@@ -546,25 +543,6 @@ class NicePlotter(Viewer):
             .opts(self.HEATMAP_OPTS)
             .opts(alpha=0.0, colorbar=False)
         )
-
-    def _calc_heatmap(self, r, z, psi):
-        """Interpolates psi onto a regular grid for heatmap display.
-
-        Args:
-            r: Radial coordinates of the mesh nodes.
-            z: Height coordinates of the mesh nodes.
-            psi: Poloidal flux values at the mesh nodes.
-
-        Returns:
-            Tuple of (grid_r, grid_z, psi_grid).
-        """
-        r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
-        grid_r = np.linspace(r.min(), r.max(), self.HEATMAP_RESOLUTION)
-        grid_z = np.linspace(z.min(), z.max(), self.HEATMAP_RESOLUTION)
-        psi_grid = interp.griddata(
-            (r, z), np.asarray(psi, dtype=float), tuple(np.meshgrid(grid_r, grid_z))
-        )
-        return grid_r, grid_z, psi_grid
 
     @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
@@ -583,23 +561,18 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
-    def _flux_map(self, equilibrium):
-        """The poloidal flux on the GGD that NICE fills.
+    def _has_flux_map(self, equilibrium):
+        """Whether NICE filled the poloidal flux on the GGD, which shows an error
+        if it did not.
 
         Args:
             equilibrium: The equilibrium IDS to read the flux from.
-
-        Returns:
-            Tuple of (r, z, psi) at the mesh nodes, or None if NICE did not fill them.
         """
         eqggd = equilibrium.time_slice[0].ggd[0]
-        r, z, psi = eqggd.r[0].values, eqggd.z[0].values, eqggd.psi[0].values
-        if not r or not z or not psi:
-            pn.state.notifications.error(
-                "NICE did not produce a valid poloidal flux field"
-            )
-            return None
-        return r, z, psi
+        if eqggd.r[0].values and eqggd.z[0].values and eqggd.psi[0].values:
+            return True
+        pn.state.notifications.error("NICE did not produce a valid poloidal flux field")
+        return False
 
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
@@ -612,18 +585,17 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        flux_map = self._flux_map(equilibrium)
-        if flux_map is None:
+        if not self._has_flux_map(equilibrium):
             return hv.Contours(([0], [0], 0), vdims="psi")
 
-        trics = plt.tricontour(*flux_map, levels=levels)
+        trics = flux_contours(equilibrium.time_slice[0], levels)
         return hv.Contours(self._extract_contour_segments(trics), vdims="psi")
 
     def _extract_contour_segments(self, tricontour):
         """Extracts contour segments from matplotlib tricontour.
 
         Args:
-            tricontour: Output from plt.tricontour.
+            tricontour: Output from flux_contours.
 
         Returns:
             Segment dictionaries with 'x', 'y', and 'psi'.
