@@ -310,11 +310,21 @@ class ShapeEditor(Viewer):
         self.run_history.append(
             (label, self.communicator.equilibrium, self.communicator.pf_active)
         )
-        self.run_select.options = {
-            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
-        }
+        self._list_runs()
         self.run_select.value = len(self.run_history) - 1
         self.run_select.disabled = False
+
+    def _list_runs(self, unsaved=None):
+        """List the runs in the run history, newest first.
+
+        Args:
+            unsaved: The label of the result shown, if it is not kept, to list on top
+                so that any run in the history can be selected to return to it.
+        """
+        runs = {
+            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
+        }
+        self.run_select.options = {unsaved: None, **runs} if unsaved else runs
 
     def _restore_run(self, event):
         """Restore the equilibrium and coil currents of the selected run, unless it
@@ -328,6 +338,7 @@ class ShapeEditor(Viewer):
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
+        self._list_runs()
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -549,6 +560,10 @@ class ShapeEditor(Viewer):
         if keep_in_history and self.communicator.converged:
             pn.state.notifications.success("NICE run complete.")
             self._add_to_history()
+        elif self.run_history:
+            label = "Not converged" if keep_in_history else "Auto run result"
+            self._list_runs(unsaved=label)
+            self.run_select.value = None
 
     def _update_machine_metrics(self, event=None):
         """Show the gaps of the machine of the selected preset"""
