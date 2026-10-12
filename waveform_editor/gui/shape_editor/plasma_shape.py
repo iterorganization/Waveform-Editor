@@ -176,17 +176,6 @@ class PlasmaShapeParams(Viewer):
             )
 
         return pn.Column(
-            _group(
-                "Emphasize region",
-                _slider("weight_enabled"),
-                pn.Column(
-                    _slider("weight_position"),
-                    _slider("weight_spread"),
-                    _slider("weight_height"),
-                    visible=self.param.weight_enabled.rx(),
-                    margin=(0, 0, 0, 0),
-                ),
-            ),
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
             _group(
                 "Shape coefficients",
@@ -223,6 +212,17 @@ class PlasmaShapeParams(Viewer):
                 ),
             ),
             _group("Boundary", _slider("n_desired_bnd_points")),
+            _group(
+                "Emphasize region",
+                _slider("weight_enabled"),
+                pn.Column(
+                    _slider("weight_position"),
+                    _slider("weight_spread"),
+                    _slider("weight_height"),
+                    visible=self.param.weight_enabled.rx(),
+                    margin=(0, 0, 0, 0),
+                ),
+            ),
             _group(
                 "Extra points",
                 _slider("extra_points_enabled"),
@@ -416,7 +416,7 @@ class WeightedPointsTable(param.Parameterized):
 class PlasmaShape(Viewer):
     PARAMETERIZED_INPUT = "Parameterized"
     EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
-    GAP_INPUT = "Gaps"
+    GAP_INPUT = "Equilibrium IDS Gaps"
     WEIGHTED_POINTS_INPUT = "Weighted Points"
     input_mode = param.ObjectSelector(
         default=EQUILIBRIUM_INPUT,
@@ -427,13 +427,6 @@ class PlasmaShape(Viewer):
             WEIGHTED_POINTS_INPUT,
         ],
         label="Shape input mode",
-    )
-    GAP_SOURCE_DEFAULT = "Default Gaps"
-    GAP_SOURCE_IDS = "Equilibrium IDS"
-    gap_source = param.ObjectSelector(
-        default=GAP_SOURCE_DEFAULT,
-        objects=[GAP_SOURCE_DEFAULT, GAP_SOURCE_IDS],
-        label="Gap Source",
     )
     input_outline = param.ClassSelector(
         class_=EquilibriumInput, default=EquilibriumInput()
@@ -467,24 +460,6 @@ class PlasmaShape(Viewer):
         self.weighted_points_indicator = _indicator(
             "At least 1 point is required to define a plasma shape"
         )
-        self.gap_source_radio = pn.widgets.RadioButtonGroup(
-            options={
-                "Default Gaps": self.GAP_SOURCE_DEFAULT,
-                "Equilibrium IDS": self.GAP_SOURCE_IDS,
-            },
-            value=self.gap_source,
-            button_type="primary",
-            sizing_mode="stretch_width",
-            margin=(5, 20, 5, 20),
-        )
-        self.gap_source_radio.link(self, value="gap_source", bidirectional=True)
-        self.reset_default_gaps_button = pn.widgets.Button(
-            name="Reset Defaults",
-            button_type="default",
-            sizing_mode="stretch_width",
-            margin=(5, 20, 5, 20),
-        )
-        self.reset_default_gaps_button.on_click(self._on_reset_default_gaps)
         self._mode_config = {
             self.EQUILIBRIUM_INPUT: (
                 self._load_shape_from_ids,
@@ -492,7 +467,6 @@ class PlasmaShape(Viewer):
                     self.input_outline,
                     self.outline_indicator,
                     margin=(10, 20, 0, 20),
-                    sizing_mode="stretch_width",
                 ),
             ),
             self.PARAMETERIZED_INPUT: (
@@ -501,26 +475,23 @@ class PlasmaShape(Viewer):
             ),
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
-                self._panel_gap_options,
+                lambda: pn.Row(
+                    self.input_gaps, self.gap_indicator, margin=(10, 20, 0, 20)
+                ),
             ),
             self.WEIGHTED_POINTS_INPUT: (
                 self._load_shape_from_weighted_points,
                 lambda: pn.Row(
-                    self.weighted_points_table,
-                    self.weighted_points_indicator,
-                    sizing_mode="stretch_width",
+                    self.weighted_points_table, self.weighted_points_indicator
                 ),
             ),
         }
-        self.gap_ui = pn.Column(
-            visible=self.param.input_mode.rx() == self.GAP_INPUT,
-            sizing_mode="stretch_width",
-        )
+        self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
         self.radio_box = pn.widgets.RadioButtonGroup(
             options={
                 "Equilibrium\nIDS Outline": self.EQUILIBRIUM_INPUT,
                 "Parameterized": self.PARAMETERIZED_INPUT,
-                "Gaps": self.GAP_INPUT,
+                "Equilibrium\nIDS Gaps": self.GAP_INPUT,
                 "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
             },
             value=self.input_mode,
@@ -539,9 +510,8 @@ class PlasmaShape(Viewer):
         self.panel = pn.Column(
             self.radio_box,
             self.gap_pills_pane,
-            pn.panel(self._panel_shape_options, sizing_mode="stretch_width"),
+            self._panel_shape_options,
             self.gap_ui,
-            sizing_mode="stretch_width",
         )
         self.outline_r = None
         self.outline_z = None
@@ -565,8 +535,6 @@ class PlasmaShape(Viewer):
         "input_gaps.load",
         "weighted_points_table.param",
         "input_mode",
-        "gap_source",
-        "nice_settings.machine_preset",
         watch=True,
     )
     def _set_plasma_shape(self):
@@ -588,47 +556,6 @@ class PlasmaShape(Viewer):
         if not all(map(np.array_equal, previous, current)):
             self.param.trigger("shape_updated")
 
-    @property
-    def _active_gap_source(self):
-        """Where the gaps come from: the chosen source, except for a machine without
-        default gaps, which can only take them from an IDS. The choice is kept, for
-        when a machine with defaults is selected again."""
-        if self.nice_settings.machine_preset in MACHINE_GAPS:
-            return self.gap_source
-        return self.GAP_SOURCE_IDS
-
-    def _panel_gap_options(self):
-        """Render controls for Gaps mode: gap source toggle and appropriate loaders."""
-        preset = self.nice_settings.machine_preset
-        if self._active_gap_source == self.GAP_SOURCE_DEFAULT:
-            content = pn.Row(
-                pn.pane.Markdown(
-                    f"**{preset} Default Gap Definitions**",
-                    margin=(8, 10, 0, 20),
-                ),
-                self.reset_default_gaps_button,
-                sizing_mode="stretch_width",
-            )
-        else:
-            content = pn.Row(
-                self.input_gaps,
-                self.gap_indicator,
-                margin=(10, 20, 0, 20),
-                sizing_mode="stretch_width",
-            )
-        has_defaults = preset in MACHINE_GAPS
-        return pn.Column(
-            # Without defaults there is nothing to choose between
-            *([self.gap_source_radio] if has_defaults else []),
-            content,
-            sizing_mode="stretch_width",
-        )
-
-    def _on_reset_default_gaps(self, event=None):
-        """Reset default gaps back to their machine defaults."""
-        self._load_shape_from_gaps()
-        self.param.trigger("shape_updated")
-
     def _load_shape_from_ids(self):
         """Load plasma boundary outline from IDS equilibrium input."""
         if not self.input_outline.uri:
@@ -649,12 +576,10 @@ class PlasmaShape(Viewer):
             self.outline_r = self.outline_z = None
 
     def _load_shape_from_gaps(self):
-        """Load plasma boundary outline from default machine gaps or IDS equilibrium."""
+        """Load plasma boundary outline from IDS equilibrium gap definitions."""
         self.gaps = []
 
-        if self._active_gap_source == self.GAP_SOURCE_DEFAULT:
-            self.gaps = MACHINE_GAPS[self.nice_settings.machine_preset].default_gaps()
-        elif self.input_gaps.uri:
+        if self.input_gaps.uri:
             try:
                 with imas.DBEntry(self.input_gaps.uri, "r") as entry:
                     equilibrium = entry.get_slice(
@@ -705,23 +630,11 @@ class PlasmaShape(Viewer):
 
         new_gap_ui = []
         for i, gap in enumerate(self.gaps):
-            name_lower = gap.name.lower()
-            is_divertor = any(
-                k in name_lower for k in ("divertor", "g1", "g2", "dxlow", "dxup")
-            )
-            start_val = -0.5 if is_divertor else 0.0
-            end_val = 0.5 if is_divertor else 1.0
-            val = float(gap.value)
-            if val < start_val:
-                start_val = round(val - 0.1, 2)
-            if val > end_val:
-                end_val = round(val + 0.1, 2)
-
             value_input = FormattedEditableFloatSlider(
                 name=f"Gap {i}: {gap.name} Value [m]",
-                value=val,
-                start=start_val,
-                end=end_val,
+                value=float(gap.value),
+                start=0,
+                end=1,
                 step=0.01,
                 stretch_width=True,
             )
@@ -732,13 +645,10 @@ class PlasmaShape(Viewer):
 
     @property
     def desired_x_points(self):
-        """The x-points of the desired shape: that of a parameterized shape, or those
-        the dX gaps of a shape given as gaps are measured to."""
-        if self.input_mode == self.PARAMETERIZED_INPUT:
-            return [(self.shape_params.rx, self.shape_params.zx)]
-        if self.input_mode == self.GAP_INPUT:
-            return [(gap.r_sep, gap.z_sep) for gap in self.gaps if "dX" in gap.name]
-        return []
+        """The x-points of the desired shape, which only a parameterized shape has."""
+        if self.input_mode != self.PARAMETERIZED_INPUT:
+            return []
+        return [(self.shape_params.rx, self.shape_params.zx)]
 
     @property
     def uses_weighted_points(self):
@@ -795,25 +705,19 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_r + extra_r
         self.outline_z = self.outline_z + extra_z
 
-    @param.depends("input_mode", "gap_source", "nice_settings.machine_preset")
+    @param.depends("input_mode")
     def _panel_shape_options(self):
         _, panel_factory = self._mode_config[self.input_mode]
         return panel_factory()
 
     @param.depends("nice_settings.machine_preset", "shape_updated")
     def _render_target_gap_pills(self):
-        """Pills with the gaps of the desired shape, showing the value set for those
-        given as gaps, by their symbol in the gap name."""
+        """Pills with the gaps of the desired shape."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is None or not self.has_shape:
             return ""
         inputs = gaps.shape_inputs(self.desired_x_points)
         values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
-        if self.input_mode == self.GAP_INPUT:
-            for gap in self.gaps:
-                for key, (symbol, _, _) in gaps.GAP_METADATA.items():
-                    if symbol in gap.name:
-                        values[key] = gap.value
         chips = []
         for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
             value = values.get(key)
