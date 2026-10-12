@@ -72,10 +72,9 @@ class ShapeEditor(Viewer):
         self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
-        # Whether runs are being started, and the next run to start: None, or whether
-        # to keep it in the run history
+        # Whether runs are being started, and the next run: None, or whether it is kept
         self._submitting = False
-        self._queued = None
+        self._next_run = None
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -311,20 +310,11 @@ class ShapeEditor(Viewer):
         self.run_history.append(
             (label, self.communicator.equilibrium, self.communicator.pf_active)
         )
-        self._list_runs()
-        self.run_select.value = len(self.run_history) - 1
-        self.run_select.disabled = False
-
-    def _list_runs(self, unsaved=False):
-        """List the runs in the run history, newest first.
-
-        Args:
-            unsaved: Whether to list the result shown, which is not kept, on top.
-        """
-        runs = {
+        self.run_select.options = {
             name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
         }
-        self.run_select.options = {"Unsaved result": None, **runs} if unsaved else runs
+        self.run_select.value = len(self.run_history) - 1
+        self.run_select.disabled = False
 
     def _restore_run(self, event):
         """Restore the equilibrium and coil currents of the selected run, unless it
@@ -338,7 +328,6 @@ class ShapeEditor(Viewer):
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
-        self._list_runs()
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -480,15 +469,19 @@ class ShapeEditor(Viewer):
             keep_in_history: Whether to keep a converged result in the run history.
         """
         # A run queued with Run stays kept when auto run queues it too
-        self._queued = keep_in_history or bool(self._queued)
+        self._next_run = keep_in_history or bool(self._next_run)
         if self._submitting:
             return
         self._submitting = True
         try:
-            while self._queued is not None:
-                keep_in_history, self._queued = self._queued, None
-                # The inputs or auto run may have changed during the last run
-                if (keep_in_history or self.auto_run) and not self._cannot_run.rx.value:
+            while self._next_run is not None:
+                keep_in_history = self._next_run
+                self._next_run = None
+                # While this run waited for the previous one, auto run may have been
+                # switched off, or the inputs may have become incomplete
+                if not keep_in_history and not self.auto_run:
+                    continue
+                if not self._cannot_run.rx.value:
                     await self._run_nice(keep_in_history)
         finally:
             self._submitting = False
@@ -556,10 +549,6 @@ class ShapeEditor(Viewer):
         if keep_in_history and self.communicator.converged:
             pn.state.notifications.success("NICE run complete.")
             self._add_to_history()
-        elif self.run_history:
-            # So that any previous run can be selected to return to it
-            self._list_runs(unsaved=True)
-            self.run_select.value = None
 
     def _update_machine_metrics(self, event=None):
         """Show the gaps of the machine of the selected preset"""
@@ -604,7 +593,7 @@ class ShapeEditor(Viewer):
     )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
-        self._queued = None
+        self._next_run = None
         await self.communicator.close()
 
     def __panel__(self):

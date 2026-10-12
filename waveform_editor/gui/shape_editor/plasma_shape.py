@@ -524,7 +524,8 @@ class PlasmaShape(Viewer):
         watch=True,
     )
     def _set_plasma_shape(self):
-        """Update plasma boundary shape based on input mode."""
+        """Update plasma boundary shape based on input mode, triggering shape_updated
+        only if it changed."""
         previous = (self.outline_r, self.outline_z, self.param_weights)
         self.outline_r = self.outline_z = None
         self.gaps = []
