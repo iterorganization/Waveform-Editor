@@ -52,6 +52,21 @@ MACHINE_SHAPES = {
 }
 
 
+def _card(title, *children, visible=True):
+    """A card with a title, holding a group of inputs."""
+    return pn.Column(
+        pn.pane.HTML(
+            f"<b>{title}</b><hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
+            margin=(0, 0, 0, 0),
+        ),
+        *children,
+        css_classes=["property-card"],
+        stylesheets=[CARD_CSS],
+        margin=(0, 0, 8, 0),
+        visible=visible,
+    )
+
+
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
 
@@ -160,30 +175,16 @@ class PlasmaShapeParams(Viewer):
             )
             return self._sliders[n]
 
-        def _group(title, *children, visible=True):
-            return pn.Column(
-                pn.pane.HTML(
-                    f"<b>{title}</b>"
-                    "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
-                    margin=(0, 0, 0, 0),
-                ),
-                *children,
-                css_classes=["property-card"],
-                stylesheets=[CARD_CSS],
-                margin=(0, 0, 8, 0),
-                visible=visible,
-            )
-
         return pn.Column(
-            _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
-            _group(
+            _card("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
+            _card(
                 "Shape coefficients",
                 _slider("kappa"),
                 _slider("delta"),
                 # A double null takes its shape from its x-points instead
                 visible=self.param.second_x_point.rx.not_(),
             ),
-            _group(
+            _card(
                 "X point",
                 _slider("rx"),
                 _slider("zx"),
@@ -209,8 +210,8 @@ class PlasmaShapeParams(Viewer):
                     margin=0,
                 ),
             ),
-            _group("Boundary", _slider("n_desired_bnd_points")),
-            _group(
+            _card("Boundary", _slider("n_desired_bnd_points")),
+            _card(
                 "Emphasize region",
                 _slider("weight_enabled"),
                 pn.Column(
@@ -221,7 +222,7 @@ class PlasmaShapeParams(Viewer):
                     margin=(0, 0, 0, 0),
                 ),
             ),
-            _group(
+            _card(
                 "Extra points",
                 _slider("extra_points_enabled"),
                 pn.Row(
@@ -442,6 +443,10 @@ class PlasmaShape(Viewer):
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
     nice_settings = param.ClassSelector(class_=NiceSettings)
+    fit_gaps = param.Boolean(label="Fit the shape to these gaps")
+
+    # The shape parameters that are fitted to the gaps
+    FIT_PARAMS = ("a", "center_r", "center_z", "kappa", "delta", "rx", "zx")
 
     def __init__(self):
         super().__init__(nice_settings=settings.nice)
@@ -469,7 +474,7 @@ class PlasmaShape(Viewer):
             ),
             self.PARAMETERIZED_INPUT: (
                 self._load_shape_from_params,
-                lambda: self.shape_params,
+                self._panel_parameterized,
             ),
             self.GAP_INPUT: (
                 self._load_shape_from_gaps,
@@ -499,6 +504,8 @@ class PlasmaShape(Viewer):
             stylesheets=[CARD_CSS],
         )
         self.radio_box.link(self, value="input_mode", bidirectional=True)
+        self.gap_sliders = pn.Column(visible=self.param.fit_gaps.rx(), margin=0)
+        self.param.watch(self._fit_to_gaps, "fit_gaps")
         self.gap_pills_pane = pn.pane.HTML(
             self._render_target_gap_pills,
             sizing_mode="stretch_width",
@@ -526,6 +533,8 @@ class PlasmaShape(Viewer):
             self.shape_params.apply_machine_shape, "machine_preset"
         )
         self.shape_params.apply_machine_shape()
+        self.nice_settings.param.watch(self._create_gap_sliders, "machine_preset")
+        self._create_gap_sliders()
 
     @pn.depends(
         "shape_params.param",
@@ -662,10 +671,10 @@ class PlasmaShape(Viewer):
             self.weighted_points_table.get_outline_coordinates()
         )
 
-    def _load_shape_from_params(self):
-        """Compute plasma boundary outline from parameterized shape inputs."""
+    def _shape_arguments(self):
+        """The arguments of compute_outline_from_params of the parameterized shape."""
         p = self.shape_params
-        r, z = compute_outline_from_params(
+        return dict(
             a=p.a,
             center_r=p.center_r,
             center_z=p.center_z,
@@ -677,6 +686,11 @@ class PlasmaShape(Viewer):
             rx_upper=p.rx_upper if p.second_x_point else None,
             zx_upper=p.zx_upper if p.second_x_point else None,
         )
+
+    def _load_shape_from_params(self):
+        """Compute plasma boundary outline from parameterized shape inputs."""
+        p = self.shape_params
+        r, z = compute_outline_from_params(**self._shape_arguments())
         self.param_r, self.param_z = r, z
 
         if p.weight_enabled:
@@ -703,10 +717,83 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_r + extra_r
         self.outline_z = self.outline_z + extra_z
 
-    @param.depends("input_mode")
+    @param.depends("input_mode", "nice_settings.machine_preset")
     def _panel_shape_options(self):
         _, panel_factory = self._mode_config[self.input_mode]
         return panel_factory()
+
+    def _panel_parameterized(self):
+        """The shape parameters, and for a machine with gaps, the gaps to fit them
+        to."""
+        if self.nice_settings.machine_preset not in MACHINE_GAPS:
+            return self.shape_params
+        fit_card = _card(
+            "Fit to gaps",
+            pn.widgets.Checkbox.from_param(self.param.fit_gaps),
+            self.gap_sliders,
+        )
+        return pn.Column(
+            self.shape_params,
+            pn.Column(fit_card, margin=(0, 20, 0, 20)),
+            sizing_mode="stretch_width",
+        )
+
+    def _shape_gaps(self, gaps, arguments):
+        """The gaps of a parameterized shape, in metres by name."""
+        r, z = compute_outline_from_params(**arguments)
+        x_points = [(arguments["rx"], arguments["zx"])]
+        return gaps.compute_gaps(r, z, **gaps.shape_inputs(x_points))
+
+    def _create_gap_sliders(self, event=None):
+        """A slider for each gap the parameterized shape can be measured on, starting
+        at the gap the machine is designed with, or else at that of the shape."""
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is None:
+            return
+        self._gap_sliders = {}
+        for key, value in self._shape_gaps(gaps, self._shape_arguments()).items():
+            if value is None:
+                continue
+            symbol, unit, name = gaps.GAP_METADATA[key]
+            value = gaps.DEFAULT_GAPS.get(key, value)
+            start, end = (value - 1, value + 1) if unit == "m" else (-0.1, 1)
+            slider = FormattedEditableFloatSlider(
+                name=f"{symbol}: {name} [m]",
+                value=value,
+                start=start,
+                end=end,
+                step=0.005,
+                stretch_width=True,
+            )
+            slider.param.watch(self._fit_to_gaps, "value_throttled")
+            self._gap_sliders[key] = slider
+        self.gap_sliders.objects = list(self._gap_sliders.values())
+        self._fit_to_gaps()
+
+    def _fit_to_gaps(self, event=None):
+        """Set the shape parameters to those whose gaps come closest to the gap
+        sliders, while fitting to gaps is on."""
+        if not self.fit_gaps:
+            return
+        gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
+        targets = {key: slider.value for key, slider in self._gap_sliders.items()}
+        ranges = {
+            name: self.shape_params.param[name].softbounds for name in self.FIT_PARAMS
+        }
+        fitted = gaps.fit_shape(self._shape_arguments(), targets, ranges)
+        self.shape_params.param.update(
+            **{name: fitted[name] for name in self.FIT_PARAMS}
+        )
+        reached = self._shape_gaps(gaps, fitted)
+        missed = {
+            key: np.inf if reached.get(key) is None else abs(reached[key] - target)
+            for key, target in targets.items()
+        }
+        worst = max(missed, key=missed.get)
+        if missed[worst] > 0.005:
+            symbol = gaps.GAP_METADATA[worst][0]
+            by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
+            pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
 
     @param.depends("nice_settings.machine_preset", "shape_updated")
     def _render_target_gap_pills(self):

@@ -40,6 +40,14 @@ class IterGaps(MachineGaps):
         "Rmin": ("Rₘᵢₙ", "m", "Inboard boundary radius"),
         "Rmax": ("Rₘₐₓ", "m", "Outboard boundary radius"),
     }
+    DEFAULT_GAPS = {
+        "gap1": 0.0,
+        "gap2": 0.0,
+        "gap4": 0.228,
+        "gap5": 0.596,
+        "Rmin": 4.2099,
+        "Rmax": 8.2006,
+    }
 
     def gap_inputs(self, time_slice):
         """Takes the separatrix up to the top of the plasma, as DINA does, only for a
