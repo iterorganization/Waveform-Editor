@@ -12,6 +12,7 @@ from waveform_editor.gui.util import (
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
     WarningIndicator,
+    metric_pill,
 )
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
@@ -153,11 +154,9 @@ class PlasmaShapeParams(Viewer):
             if isinstance(self.param[n], param.Boolean):
                 return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
-                return FixedWidthEditableIntSlider.from_param(
-                    p, stretch_width=True, throttled=True
-                )
+                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
             self._sliders[n] = FormattedEditableFloatSlider.from_param(
-                p, stretch_width=True, throttled=True
+                p, stretch_width=True
             )
             return self._sliders[n]
 
@@ -638,7 +637,7 @@ class PlasmaShape(Viewer):
                 step=0.01,
                 stretch_width=True,
             )
-            value_input.param.watch(self._on_gap_change, "value_throttled")
+            value_input.param.watch(self._on_gap_change, "value")
             new_gap_ui.append(value_input)
 
         self.gap_ui.extend(new_gap_ui)
@@ -724,11 +723,7 @@ class PlasmaShape(Viewer):
             if value is None:
                 continue
             display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
-            chips.append(
-                f'<span class="mc" title="{name}">'
-                f'<span class="mc-lbl">{symbol}</span>'
-                f'<span class="mc-val">{display}</span></span>'
-            )
+            chips.append(metric_pill(symbol, display, name))
         title = '<span class="mc-title">Desired shape gaps</span>'
         return f'<div class="mc-wrap">{title}{"".join(chips)}</div>'
 
