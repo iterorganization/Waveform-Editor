@@ -221,6 +221,8 @@ class ShapeEditor(Viewer):
         # The log is shown below the tabs, so that it is not rendered again, which
         # would lose its output: https://github.com/holoviz/panel/issues/8832
         items.append(("Logging", pn.Spacer(height=0)))
+        log_tab = len(items) - 1
+        # Without a margin, as hidden tabs still take up the margin of their content
         tabs = pn.Tabs(
             *(
                 (title, pn.Column(content, margin=0, sizing_mode="stretch_width"))
@@ -230,9 +232,9 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
-        tabs.active = min(self._active_tab, len(items) - 1)
+        tabs.active = min(self._active_tab, log_tab)
         tabs.param.watch(self._remember_active_tab, "active")
-        self.terminal.visible = tabs.param.active.rx() == len(items) - 1
+        self.terminal.visible = tabs.param.active.rx() == log_tab
         return tabs
 
     def _remember_active_tab(self, event):
