@@ -177,14 +177,11 @@ class PlasmaProfiles(Viewer):
         self._ids_load_gamma = self.gamma
         self._resetting = False
 
-        self._alpha_input = FormattedEditableFloatSlider.from_param(
-            self.param.alpha, name="Alpha", margin=0, stretch_width=True
-        )
-        self._beta_input = FormattedEditableFloatSlider.from_param(
-            self.param.beta, name="Beta", margin=0, stretch_width=True
-        )
-        self._gamma_input = FormattedEditableFloatSlider.from_param(
-            self.param.gamma, name="Gamma", margin=0, stretch_width=True
+        self._alpha_input, self._beta_input, self._gamma_input = (
+            FormattedEditableFloatSlider.from_param(
+                p, margin=0, stretch_width=True, throttled=True
+            )
+            for p in (self.param.alpha, self.param.beta, self.param.gamma)
         )
         self._profiles_pane = pn.pane.HoloViews(
             hv.DynamicMap(self._plot_profiles),

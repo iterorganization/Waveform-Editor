@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import importlib.resources
 import logging
@@ -36,10 +37,13 @@ def _reactive_title(title, is_valid):
 
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
+    # Seconds the inputs must be unchanged before auto run runs NICE again
+    AUTO_RUN_DELAY = 0.3
 
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties)
+    auto_run = param.Boolean(doc="Run NICE whenever its inputs change")
 
     pf_active = param.ClassSelector(class_=IDSToplevel)
     pf_passive = param.ClassSelector(class_=IDSToplevel)
@@ -71,6 +75,9 @@ class ShapeEditor(Viewer):
         self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
+        # Whether auto run is running NICE, and whether the inputs changed since
+        self._submitting = False
+        self._inputs_changed = False
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -87,7 +94,7 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        disabled_expr = (
+        self._cannot_run = (
             (
                 self.plasma_shape.param.has_shape.rx.not_()
                 & self.nice_settings.param.is_inverse_mode.rx()
@@ -101,15 +108,27 @@ class ShapeEditor(Viewer):
             icon="player-play",
             on_click=self.submit,
             description=pn.bind(
-                lambda disabled: (
-                    "Cannot run: missing required inputs"
-                    if disabled
+                lambda cannot_run, auto_run: (
+                    "Disabled while auto run is on"
+                    if auto_run
+                    else "Cannot run: missing required inputs"
+                    if cannot_run
                     else "Run simulation"
                 ),
-                disabled_expr,
+                self._cannot_run,
+                self.param.auto_run,
             ),
-            disabled=disabled_expr,
+            disabled=self._cannot_run | self.param.auto_run.rx(),
             margin=(10, 0, 2, 0),
+        )
+        auto_run_label = pn.pane.HTML(
+            '<span title="Run NICE whenever the plasma shape, plasma properties or '
+            "coil currents change. The latest converged auto run is kept in the "
+            'run history.">Auto run</span>',
+            margin=(15, 0, 2, 10),
+        )
+        auto_run_switch = pn.widgets.Switch.from_param(
+            self.param.auto_run, name="", margin=(20, 15, 2, 10)
         )
         button_stop = pn.widgets.Button(
             name="Stop",
@@ -121,7 +140,7 @@ class ShapeEditor(Viewer):
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         run_msg = "Restore a previous converged NICE run"
         run_label = pn.pane.HTML(
-            f'<span title="{run_msg}">Previous run</span>', margin=(15, 0, 2, 10)
+            f'<span title="{run_msg}">Run history</span>', margin=(15, 0, 2, 10)
         )
         settings_modal = SettingsModal(self.nice_plotter)
         waveform_sync = WaveformSync(main_gui, self.communicator)
@@ -138,7 +157,15 @@ class ShapeEditor(Viewer):
             waveform_sync,
             nice_mode_radio,
             pn.Row(run_label, self.run_select, align="center", margin=0),
-            pn.Row(button_stop, button_start, margin=0, styles={"margin-left": "auto"}),
+            pn.Row(
+                auto_run_label,
+                auto_run_switch,
+                button_stop,
+                button_start,
+                align="center",
+                margin=0,
+                styles={"margin-left": "auto"},
+            ),
             flex_wrap="wrap",
             align_items="center",
             sizing_mode="stretch_width",
@@ -146,6 +173,13 @@ class ShapeEditor(Viewer):
 
         self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
         self._update_machine_metrics()
+        for obj, name in (
+            (self, "auto_run"),
+            (self.plasma_shape, "shape_updated"),
+            (self.plasma_properties, "profile_updated"),
+            (self.coil_currents, "edited"),
+        ):
+            obj.param.watch(self._auto_submit, name)
         self._active_tab = 0
         options = pn.bind(
             self._create_options_tabs,
@@ -273,20 +307,37 @@ class ShapeEditor(Viewer):
         self.run_select.options = {}
         self.run_select.disabled = True
 
-    def _add_to_history(self):
-        """Store the result of the last run in the run history."""
+    def _add_to_history(self, auto=False):
+        """Store the result of the last run in the run history. That of an auto run
+        replaces that of the auto run right before it.
+
+        Args:
+            auto: Whether the run is an auto run.
+        """
+        if auto and self.run_history and self.run_history[-1][0].startswith("Auto"):
+            self.run_history.pop()
         label = (
-            f"Run {len(self.run_history) + 1}: {self.nice_settings.mode} "
-            f"({datetime.now():%H:%M:%S})"
+            f"{'Auto run' if auto else 'Run'} {len(self.run_history) + 1}: "
+            f"{self.nice_settings.mode} ({datetime.now():%H:%M:%S})"
         )
         self.run_history.append(
             (label, self.communicator.equilibrium, self.communicator.pf_active)
         )
-        self.run_select.options = {
-            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
-        }
+        self._list_runs()
         self.run_select.value = len(self.run_history) - 1
         self.run_select.disabled = False
+
+    def _list_runs(self, unsaved=None):
+        """List the runs in the run history, newest first.
+
+        Args:
+            unsaved: The label of the result shown, if it is not kept, to list on top
+                so that any run in the history can be selected to return to it.
+        """
+        runs = {
+            name: i for i, (name, _, _) in reversed(list(enumerate(self.run_history)))
+        }
+        self.run_select.options = {unsaved: None, **runs} if unsaved else runs
 
     def _restore_run(self, event):
         """Restore the equilibrium and coil currents of the selected run, unless it
@@ -300,6 +351,7 @@ class ShapeEditor(Viewer):
         self.communicator.pf_active = pf_active
         self.coil_currents.sync_ui_with_pf_active(pf_active)
         self._update_metrics()
+        self._list_runs()
 
     @param.depends("nice_settings.md_pf_active.uri", watch=True)
     def _load_pf_active(self):
@@ -376,7 +428,6 @@ class ShapeEditor(Viewer):
 
     def _on_nice_run_finished(self, success):
         if success:
-            pn.state.notifications.success("NICE run complete.")
             # Show the gaps of the result, which the desired gaps were a target for
             if self.nice_plotter.show_gaps:
                 self.nice_plotter.show_result_gaps = True
@@ -427,8 +478,39 @@ class ShapeEditor(Viewer):
         return True
 
     async def submit(self, event=None):
+        """Run NICE once, while auto run is off."""
+        await self._run_nice(auto=False)
+
+    async def _auto_submit(self, event=None):
+        """Run NICE on a change of its inputs, while auto run is on. Changes made
+        during a run are run together once they have settled.
+        """
+        if not self.auto_run:
+            return
+        self._inputs_changed = True
+        if self._submitting:
+            return
+        self._submitting = True
+        try:
+            settled = True
+            while self._inputs_changed and self.auto_run:
+                self._inputs_changed = False
+                if not settled:
+                    await asyncio.sleep(self.AUTO_RUN_DELAY)
+                    settled = not self._inputs_changed
+                if settled and not self._cannot_run.rx.value:
+                    await self._run_nice(auto=True)
+                    settled = False
+        finally:
+            self._submitting = False
+
+    async def _run_nice(self, auto):
         """Submit a new equilibrium reconstruction job to NICE, passing the machine
-        description IDSs and an input equilibrium IDS."""
+        description IDSs and an input equilibrium IDS.
+
+        Args:
+            auto: Whether the run is an auto run.
+        """
 
         if not self._has_valid_boundary():
             return
@@ -454,7 +536,7 @@ class ShapeEditor(Viewer):
             )
         else:
             self.coil_currents.update_xml(xml_params)
-        if start is not Start.SCRATCH:
+        if start is not Start.SCRATCH and not auto:
             pn.state.notifications.info("Starting from previous equilibrium.")
         if start is Start.DATA:
             # Copy, so the stored result in the run history is not modified
@@ -483,7 +565,12 @@ class ShapeEditor(Viewer):
         self._update_metrics()
         # Only a converged run is worth restoring
         if self.communicator.converged:
-            self._add_to_history()
+            if not auto:
+                pn.state.notifications.success("NICE run complete.")
+            self._add_to_history(auto)
+        elif self.run_history:
+            self._list_runs(unsaved="Not converged")
+            self.run_select.value = None
 
     def _update_machine_metrics(self, event=None):
         """Show the gaps of the machine of the selected preset"""
@@ -528,6 +615,7 @@ class ShapeEditor(Viewer):
     )
     async def stop_nice(self, event=None):
         logger.info("Stopping NICE...")
+        self._inputs_changed = False
         await self.communicator.close()
 
     def __panel__(self):

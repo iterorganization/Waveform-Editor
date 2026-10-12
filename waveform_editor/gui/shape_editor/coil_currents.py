@@ -51,6 +51,7 @@ class CoilCurrentEntry(param.Parameterized):
 
 class CoilCurrents(Viewer):
     coils = param.List(doc="List of CoilCurrentEntry for each coil")
+    edited = param.Event(doc="Triggered whenever the user edits a coil.")
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -231,15 +232,18 @@ class CoilCurrents(Viewer):
             coil.penalty_weight = float(event.value)
         else:
             raise RuntimeError(f"Cannot edit column {event.column}")
+        self.param.trigger("edited")
 
     def _on_cell_click(self, event):
         coil = self.coils[event.row]
         if event.column == self.FIX_CURRENT:
             coil.fix_current = not coil.fix_current
-            self._update_table()
         elif event.column == self.PENALIZE_ZERO:
             coil.penalize_to_zero = not coil.penalize_to_zero
-            self._update_table()
+        else:
+            return
+        self._update_table()
+        self.param.trigger("edited")
 
     def fill_pf_active(self, pf_active):
         """Update the coil currents of the provided pf_active IDS. Also stores current
