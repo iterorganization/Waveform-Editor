@@ -35,8 +35,7 @@ def _reactive_title(title, is_valid):
 
 
 class ShapeEditor(Viewer):
-    # The number of lines of the log that are kept
-    LOG_LINES = 10000
+    MAX_LOG_LINES = 10000
 
     nice_settings = param.ClassSelector(class_=NiceSettings)
     plasma_shape = param.ClassSelector(class_=PlasmaShape)
@@ -51,8 +50,8 @@ class ShapeEditor(Viewer):
         super().__init__()
         self.factory = imas.IDSFactory()
         self.terminal = pn.widgets.Terminal(
-            sizing_mode="stretch_width",
-            options={"scrollback": self.LOG_LINES, "wrap": True},
+            sizing_mode="stretch_both",
+            options={"scrollback": self.MAX_LOG_LINES, "wrap": True},
             min_height=200,
             stylesheets=[":host { min-width: 0; overflow: hidden; }"],
         )
@@ -118,7 +117,6 @@ class ShapeEditor(Viewer):
             icon="player-stop",
             on_click=self.stop_nice,
             margin=(10, 10, 2, 0),
-            styles={"margin-left": "auto"},
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
         run_msg = "Restore a previous converged NICE run"
@@ -140,8 +138,7 @@ class ShapeEditor(Viewer):
             waveform_sync,
             nice_mode_radio,
             pn.Row(run_label, self.run_select, align="center", margin=0),
-            button_stop,
-            button_start,
+            pn.Row(button_stop, button_start, margin=0, styles={"margin-left": "auto"}),
             flex_wrap="wrap",
             align_items="center",
             sizing_mode="stretch_width",
@@ -182,6 +179,7 @@ class ShapeEditor(Viewer):
             pn.Column(
                 buttons,
                 options,
+                self.terminal,
                 sizing_mode="stretch_both",
                 scroll=True,
             ),
@@ -220,28 +218,26 @@ class ShapeEditor(Viewer):
             )
         )
         items.append(("Coil Currents", self.coil_currents))
-        items.append(("Logging", self.terminal))
+        # The log is shown below the tabs, so that it is not rendered again, which
+        # would lose its output: https://github.com/holoviz/panel/issues/8832
+        items.append(("Logging", pn.Spacer(height=0)))
         tabs = pn.Tabs(
-            *items,
+            *(
+                (title, pn.Column(content, margin=0, sizing_mode="stretch_width"))
+                for title, content in items
+            ),
             dynamic=True,
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
         tabs.active = min(self._active_tab, len(items) - 1)
         tabs.param.watch(self._remember_active_tab, "active")
+        self.terminal.visible = tabs.param.active.rx() == len(items) - 1
         return tabs
 
     def _remember_active_tab(self, event):
-        """Keep the open tab open when the tabs are rebuilt, and write log again"""
+        """Keep the open tab open when the tabs are rebuilt."""
         self._active_tab = event.new
-
-        # Workaround since dynamic tabs only keep its last output:
-        # https://github.com/holoviz/panel/issues/8832
-
-        if event.obj[event.new] is self.terminal:
-            log = self.terminal.output.splitlines(keepends=True)[-self.LOG_LINES :]
-            self.terminal.clear()
-            self.terminal.write("".join(log))
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
@@ -382,7 +378,7 @@ class ShapeEditor(Viewer):
                 self.nice_plotter.show_desired_gaps = False
         else:
             pn.state.notifications.error(
-                "NICE did not converge. Check the terminal for details."
+                "NICE did not converge. Check the Logging tab for details."
             )
 
     def _has_valid_boundary(self):
