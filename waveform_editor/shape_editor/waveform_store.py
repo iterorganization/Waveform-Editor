@@ -1,3 +1,5 @@
+import math
+
 import imas
 from imas.ids_path import IDSPath
 from ruamel.yaml.comments import CommentedMap
@@ -60,12 +62,13 @@ class WaveformStore:
     def __init__(self, config):
         self.config = config
 
-    def get_quantities(self, equilibrium, pf_active):
+    def get_quantities(self, equilibrium, pf_active, gaps=None):
         """The quantities of a NICE run that can be stored in waveforms.
 
         Args:
             equilibrium: The equilibrium IDS NICE returned, or None.
             pf_active: The pf_active IDS NICE returned, or None.
+            gaps: The MachineGaps of the machine, to measure on the equilibrium.
 
         Returns:
             List of (group, waveform name, value, units), empty when NICE has not run
@@ -101,6 +104,40 @@ class WaveformStore:
                         # does not apply to the mode that was run
                         continue
                     rows.append((group, f"{ids_name}/{name}", value, units))
+        if gaps is not None and equilibrium is not None:
+            rows += self._gap_quantities(gaps, equilibrium, dd_idss["equilibrium"])
+        return rows
+
+    def _gap_quantities(self, gaps, equilibrium, dd_equilibrium):
+        """The gaps of the machine measured on an equilibrium
+
+        Args:
+            gaps: The MachineGaps of the machine.
+            equilibrium: The equilibrium IDS NICE returned.
+            dd_equilibrium: An equilibrium IDS of the data dictionary version of the
+                configuration.
+
+        Returns:
+            List of (group, waveform name, value, units).
+        """
+        rows = []
+        order = list(gaps.GAP_METADATA)
+        for gap in gaps.measure(**gaps.gap_inputs(equilibrium.time_slice[0])):
+            if gap.distance is None:
+                continue
+            (r, z), (r_to, z_to) = gap.orig, gap.target
+            sign = -1 if gap.distance < 0 else 1
+            angle = -math.atan2(sign * (z_to - z), sign * (r_to - r))
+            path = f"time_slice(1)/boundary/gap({order.index(gap.key) + 1})"
+            for field, value in (
+                ("value", gap.distance),
+                ("r", r),
+                ("z", z),
+                ("angle", angle),
+            ):
+                name, units = self._describe(dd_equilibrium, f"{path}/{field}")
+                if name is not None:
+                    rows.append(("Plasma Gaps", f"equilibrium/{name}", value, units))
         return rows
 
     def _describe(self, dd_ids, path):

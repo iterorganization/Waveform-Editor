@@ -4,6 +4,8 @@ import pytest
 
 from tests.conftest import TEST_DD_VERSION
 from waveform_editor.configuration import WaveformConfiguration
+from waveform_editor.shape_editor.gaps.base import MachineGaps, MeasuredGap
+from waveform_editor.shape_editor.plasma_shape_calc import Gap
 from waveform_editor.shape_editor.waveform_store import WaveformStore
 
 ELONGATION = "equilibrium/time_slice/boundary/elongation"
@@ -60,6 +62,37 @@ def test_quantities_of_a_run(equilibrium, pf_active):
     assert by_name[IP] == ("Plasma Global Quantities", -1.5e7, "A")
     assert by_name[COIL_1] == ("Coil Currents", 100.0, "A")
     assert len({name for _, name, _, _ in quantities}) == len(quantities)
+
+
+class FakeGaps(MachineGaps):
+    GAP_METADATA = {"g1": (), "g2": (), "g3": ()}
+
+    def gap_inputs(self, time_slice):
+        return {}
+
+    def measure(self):
+        return [
+            MeasuredGap("g1", (1.0, 2.0), (1.6, 2.8), 1.0),
+            MeasuredGap("g2", (4.0, -3.0), (4.3, -3.4), -0.5),
+            MeasuredGap("g3", (5.0, 0.0), (5.0, 0.0), None),
+        ]
+
+
+def test_gaps_of_a_run(equilibrium, pf_active):
+    quantities = make_store().get_quantities(equilibrium, pf_active, FakeGaps())
+
+    gaps = {
+        name: value for group, name, value, _ in quantities if group == "Plasma Gaps"
+    }
+    gap = "equilibrium/time_slice/boundary/gap"
+    assert sorted(gaps) == sorted(
+        f"{gap}({i})/{field}" for i in (1, 2) for field in ("value", "r", "z", "angle")
+    )
+    # Placing a gap from its values gives back the point it was measured to
+    for i, target in ((1, (1.6, 2.8)), (2, (4.3, -3.4))):
+        values = {field: gaps[f"{gap}({i})/{field}"] for field in ("r", "z", "angle")}
+        placed = Gap("", value=gaps[f"{gap}({i})/value"], **values)
+        assert (placed.r_sep, placed.z_sep) == pytest.approx(target)
 
 
 def test_store_creates_waveforms_per_group(equilibrium, pf_active):

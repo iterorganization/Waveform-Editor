@@ -6,6 +6,8 @@ import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.util import STYLES
+from waveform_editor.settings import settings
+from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.waveform_store import WaveformStore
 
 
@@ -79,7 +81,9 @@ class WaveformSync(Viewer):
     def _frame(self):
         """The quantities of the last run, as a table."""
         quantities = self.store.get_quantities(
-            self.communicator.equilibrium, self.communicator.pf_active
+            self.communicator.equilibrium,
+            self.communicator.pf_active,
+            MACHINE_GAPS.get(settings.nice.machine_preset),
         )
         rows = [
             (group, name, f"{value:.4g}", units)
@@ -93,7 +97,9 @@ class WaveformSync(Viewer):
     def _store(self, event=None):
         """Store every quantity of the last run in its waveform."""
         quantities = self.store.get_quantities(
-            self.communicator.equilibrium, self.communicator.pf_active
+            self.communicator.equilibrium,
+            self.communicator.pf_active,
+            MACHINE_GAPS.get(settings.nice.machine_preset),
         )
         created = self.store.store(quantities, self.export_time)
         if created:
