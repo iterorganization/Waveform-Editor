@@ -525,7 +525,7 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        if not self._has_flux_map(equilibrium):
+        if not self._check_flux_map(equilibrium):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
@@ -561,7 +561,7 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
-    def _has_flux_map(self, equilibrium):
+    def _check_flux_map(self, equilibrium):
         """Whether NICE filled the poloidal flux on the GGD, which shows an error
         if it did not.
 
@@ -585,7 +585,7 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        if not self._has_flux_map(equilibrium):
+        if not self._check_flux_map(equilibrium):
             return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = flux_contours(equilibrium.time_slice[0], levels)

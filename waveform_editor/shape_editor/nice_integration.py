@@ -8,6 +8,7 @@ import signal
 import subprocess
 import tempfile
 from collections.abc import Callable
+from enum import Enum
 
 import param
 import ymmsl
@@ -142,6 +143,14 @@ def run_muscle_manager(
     manager.stop()
 
 
+class Start(Enum):
+    """The initial guess of a NICE run."""
+
+    SCRATCH = "scratch"  # No initial, NICE starts from scratch
+    MEMORY = "memory"  # The result of NICE's last run, still in its memory
+    DATA = "data"  # A previous result, sent to NICE with the inputs
+
+
 class NiceIntegration(param.Parameterized):
     """Core API for running NICE, submitting problems and getting the resulting
     equilibrium back.
@@ -177,13 +186,18 @@ class NiceIntegration(param.Parameterized):
         self._poll_task = None
         self._last_result = None
 
-    @property
-    def holds_result(self):
-        """Whether the equilibrium is the last result of the running NICE, which it
-        keeps in memory to restart from."""
-        return (
-            self.running and not self.closing and self.equilibrium is self._last_result
-        )
+    def start_mode(self, is_direct_mode):
+        """What the next run starts from. A converged result NICE still holds is
+        reused from memory, any other is sent to NICE, but only in direct mode.
+
+        Args:
+            is_direct_mode: Whether the next run is in direct mode.
+        """
+        if not self.converged:
+            return Start.SCRATCH
+        if self.running and not self.closing and self.equilibrium is self._last_result:
+            return Start.MEMORY
+        return Start.DATA if is_direct_mode else Start.SCRATCH
 
     def _write_output(self, text: str | bytes):
         self.on_output(text)

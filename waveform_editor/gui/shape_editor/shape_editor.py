@@ -21,7 +21,7 @@ from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
-from waveform_editor.shape_editor.nice_integration import NiceIntegration
+from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
 
 logger = logging.getLogger(__name__)
 
@@ -434,22 +434,21 @@ class ShapeEditor(Viewer):
         set_xml_parameter(
             xml_params, "algoMode", 11 if self.nice_settings.is_direct_mode else 31
         )
-        converged = self.communicator.converged
-        from_memory = converged and self.communicator.holds_result
-        from_data = converged and not from_memory and self.nice_settings.is_direct_mode
-        warm_start = from_memory or from_data
-        start_from_scratch = 0 if warm_start else 1
+        start = self.communicator.start_mode(self.nice_settings.is_direct_mode)
+        start_from_scratch = int(start is Start.SCRATCH)
         set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
-        set_xml_parameter(xml_params, "algoStartPsiFromInData", 1 if from_data else 0)
+        set_xml_parameter(
+            xml_params, "algoStartPsiFromInData", int(start is Start.DATA)
+        )
         if self.nice_settings.is_direct_mode:
             set_xml_parameter(
                 xml_params, "algoStartFromScratchReconAB", start_from_scratch
             )
         else:
             self.coil_currents.update_xml(xml_params)
-        if warm_start:
+        if start is not Start.SCRATCH:
             pn.state.notifications.info("Starting from previous equilibrium.")
-        if from_data:
+        if start is Start.DATA:
             # Copy, so the stored result in the run history is not modified
             equilibrium = copy.deepcopy(self.communicator.equilibrium)
         else:
