@@ -66,6 +66,14 @@ class WestGaps(MachineGaps):
             "Distance between the second and first separatrix on the outboard midplane",
         ),
     }
+    DEFAULT_GAPS = {
+        "UROG": 0.06,
+        "EROG": 0.08,
+        "LROG": 0.06,
+        "dXlow": 0.05,
+        "dXup": 0.10,
+        "dbaffle": 0.04,
+    }
 
     def gap_inputs(self, time_slice):
         """Orders the x-points as FEEQS does, that of the first separatrix, closest in
