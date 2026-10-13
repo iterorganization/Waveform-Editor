@@ -178,9 +178,7 @@ class PlasmaProfiles(Viewer):
         self._resetting = False
 
         self._alpha_input, self._beta_input, self._gamma_input = (
-            FormattedEditableFloatSlider.from_param(
-                p, margin=0, stretch_width=True, throttled=True
-            )
+            FormattedEditableFloatSlider.from_param(p, margin=0, stretch_width=True)
             for p in (self.param.alpha, self.param.beta, self.param.gamma)
         )
         self._profiles_pane = pn.pane.HoloViews(

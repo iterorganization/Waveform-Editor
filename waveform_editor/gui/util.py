@@ -26,6 +26,20 @@ def set_xml_parameter(xml_params, name, value):
     parameter.text = str(value)
 
 
+def metric_pill(symbol, value, tooltip):
+    """The HTML of a pill showing a metric.
+
+    Args:
+        symbol: The symbol of the metric.
+        value: The value to show, with its unit.
+        tooltip: The full name of the metric, shown on hover.
+    """
+    return (
+        f'<span class="mc" title="{tooltip}"><span class="mc-lbl">{symbol}</span>'
+        f'<span class="mc-val">{value}</span></span>'
+    )
+
+
 def _resolve_width(width, stretch_width, params):
     if stretch_width:
         params.setdefault("sizing_mode", "stretch_width")

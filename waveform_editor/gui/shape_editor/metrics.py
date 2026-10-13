@@ -2,7 +2,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import STYLES
+from waveform_editor.gui.util import STYLES, metric_pill
 
 
 class Metrics(Viewer):
@@ -60,13 +60,7 @@ class Metrics(Viewer):
             val = metrics[key]
             if isinstance(val, float):
                 val = f"{val:.4g}"
-            display = f"{val} {unit}".strip()
-            chips.append(
-                f'<span class="mc" title="{tooltip}">'
-                f'<span class="mc-lbl">{symbol}</span>'
-                f'<span class="mc-val">{display}</span>'
-                f"</span>"
-            )
+            chips.append(metric_pill(symbol, f"{val} {unit}".strip(), tooltip))
         return (
             f'<div class="mc-wrap" style="max-width: {max_width}px">'
             + "".join(chips)

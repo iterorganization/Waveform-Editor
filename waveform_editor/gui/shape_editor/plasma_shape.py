@@ -7,12 +7,15 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
     CARD_CSS,
+    STYLES,
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
     WarningIndicator,
+    metric_pill,
 )
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.plasma_shape_calc import (
     Gap,
     apply_point_weights,
@@ -151,11 +154,9 @@ class PlasmaShapeParams(Viewer):
             if isinstance(self.param[n], param.Boolean):
                 return pn.widgets.Checkbox.from_param(p)
             if isinstance(self.param[n], param.Integer):
-                return FixedWidthEditableIntSlider.from_param(
-                    p, stretch_width=True, throttled=True
-                )
+                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
             self._sliders[n] = FormattedEditableFloatSlider.from_param(
-                p, stretch_width=True, throttled=True
+                p, stretch_width=True
             )
             return self._sliders[n]
 
@@ -174,17 +175,6 @@ class PlasmaShapeParams(Viewer):
             )
 
         return pn.Column(
-            _group(
-                "Emphasize region",
-                _slider("weight_enabled"),
-                pn.Column(
-                    _slider("weight_position"),
-                    _slider("weight_spread"),
-                    _slider("weight_height"),
-                    visible=self.param.weight_enabled.rx(),
-                    margin=(0, 0, 0, 0),
-                ),
-            ),
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
             _group(
                 "Shape coefficients",
@@ -221,6 +211,17 @@ class PlasmaShapeParams(Viewer):
                 ),
             ),
             _group("Boundary", _slider("n_desired_bnd_points")),
+            _group(
+                "Emphasize region",
+                _slider("weight_enabled"),
+                pn.Column(
+                    _slider("weight_position"),
+                    _slider("weight_spread"),
+                    _slider("weight_height"),
+                    visible=self.param.weight_enabled.rx(),
+                    margin=(0, 0, 0, 0),
+                ),
+            ),
             _group(
                 "Extra points",
                 _slider("extra_points_enabled"),
@@ -441,9 +442,10 @@ class PlasmaShape(Viewer):
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
+    nice_settings = param.ClassSelector(class_=NiceSettings)
 
     def __init__(self):
-        super().__init__()
+        super().__init__(nice_settings=settings.nice)
 
         def _indicator(tooltip):
             return WarningIndicator(
@@ -498,7 +500,18 @@ class PlasmaShape(Viewer):
             stylesheets=[CARD_CSS],
         )
         self.radio_box.link(self, value="input_mode", bidirectional=True)
-        self.panel = pn.Column(self.radio_box, self._panel_shape_options, self.gap_ui)
+        self.gap_pills_pane = pn.pane.HTML(
+            self._render_target_gap_pills,
+            sizing_mode="stretch_width",
+            margin=(5, 20, 0, 20),
+            stylesheets=STYLES,
+        )
+        self.panel = pn.Column(
+            self.radio_box,
+            self.gap_pills_pane,
+            self._panel_shape_options,
+            self.gap_ui,
+        )
         self.outline_r = None
         self.outline_z = None
         self.gaps = []
@@ -510,7 +523,7 @@ class PlasmaShape(Viewer):
         self.param_weights = None
         self.shape_params.extra_points_table = self.weighted_points_table
         # Last, because applying a shape fires the watchers above
-        settings.nice.param.watch(
+        self.nice_settings.param.watch(
             self.shape_params.apply_machine_shape, "machine_preset"
         )
         self.shape_params.apply_machine_shape()
@@ -624,7 +637,7 @@ class PlasmaShape(Viewer):
                 step=0.01,
                 stretch_width=True,
             )
-            value_input.param.watch(self._on_gap_change, "value_throttled")
+            value_input.param.watch(self._on_gap_change, "value")
             new_gap_ui.append(value_input)
 
         self.gap_ui.extend(new_gap_ui)
@@ -695,6 +708,24 @@ class PlasmaShape(Viewer):
     def _panel_shape_options(self):
         _, panel_factory = self._mode_config[self.input_mode]
         return panel_factory()
+
+    @param.depends("nice_settings.machine_preset", "shape_updated")
+    def _render_target_gap_pills(self):
+        """Pills with the gaps of the desired shape."""
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is None or not self.has_shape:
+            return ""
+        inputs = gaps.shape_inputs(self.desired_x_points)
+        values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
+        chips = []
+        for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
+            value = values.get(key)
+            if value is None:
+                continue
+            display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
+            chips.append(metric_pill(symbol, display, name))
+        title = '<span class="mc-title">Desired shape gaps</span>'
+        return f'<div class="mc-wrap">{title}{"".join(chips)}</div>'
 
     def __panel__(self):
         return self.panel
