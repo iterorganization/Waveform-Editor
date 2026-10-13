@@ -68,6 +68,12 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
+        self.plasma_properties.param.watch(
+            lambda event: self.coil_currents.scale_to_ip(
+                event.new, self.plasma_properties.scale_coil_currents
+            ),
+            "ip",
+        )
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
@@ -270,14 +276,15 @@ class ShapeEditor(Viewer):
             sizing_mode="stretch_width",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
-        tabs.active = min(self._active_tab, log_tab)
+        # Without the plasma shape tab, the other tabs move one to the left
+        tabs.active = max(self._active_tab - (not is_inverse_mode), 0)
         tabs.param.watch(self._remember_active_tab, "active")
         self.terminal.visible = tabs.param.active.rx() == log_tab
         return tabs
 
     def _remember_active_tab(self, event):
         """Keep the open tab open when the tabs are rebuilt."""
-        self._active_tab = event.new
+        self._active_tab = event.new + (not self.nice_settings.is_inverse_mode)
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
@@ -353,7 +360,9 @@ class ShapeEditor(Viewer):
             return
         self.communicator.equilibrium = equilibrium
         self.communicator.pf_active = pf_active
-        self.coil_currents.sync_ui_with_pf_active(pf_active)
+        self.coil_currents.sync_ui_with_pf_active(
+            pf_active, equilibrium.time_slice[0].global_quantities.ip
+        )
         self._update_metrics()
         self._list_runs()
 
@@ -557,7 +566,9 @@ class ShapeEditor(Viewer):
         # NICE crashed without a result
         if self.communicator.equilibrium is previous_equilibrium:
             return
-        self.coil_currents.sync_ui_with_pf_active(self.communicator.pf_active)
+        self.coil_currents.sync_ui_with_pf_active(
+            self.communicator.pf_active, self.plasma_properties.ip
+        )
         self._update_metrics()
         # Only a converged run is worth restoring
         if self.communicator.converged:
