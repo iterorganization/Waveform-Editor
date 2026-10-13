@@ -49,6 +49,7 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
+    tf = param.ClassSelector(class_=IDSToplevel)
 
     def __init__(self, main_gui):
         super().__init__()
@@ -384,6 +385,22 @@ class ShapeEditor(Viewer):
         self.nice_plotter.iron_core = self.iron_core
         self.nice_settings.md_iron_core.loaded = self.iron_core is not None
 
+    @param.depends("nice_settings.md_tf.uri", watch=True)
+    def _load_tf(self):
+        self.tf = self._load_slice(self.nice_settings.md_tf.uri, "tf")
+        self.plasma_properties.tf = self.tf
+        self.nice_settings.md_tf.loaded = self.tf is not None
+
+    def _iron_core_or_empty(self):
+        """The iron_core to send to NICE, an empty one for a machine without."""
+        if self.iron_core is not None:
+            return self.iron_core
+        iron_core = self.factory.new("iron_core")
+        iron_core.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
+        )
+        return iron_core
+
     def _create_equilibrium(self):
         """Create and initialize an equilibrium IDS.
 
@@ -556,7 +573,7 @@ class ShapeEditor(Viewer):
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
             self.wall.serialize(),
-            self.iron_core.serialize(),
+            self._iron_core_or_empty().serialize(),
         )
         # NICE crashed without a result
         if self.communicator.equilibrium is previous_equilibrium:

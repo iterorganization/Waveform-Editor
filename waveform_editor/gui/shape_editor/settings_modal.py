@@ -185,21 +185,27 @@ class SettingsModal(Viewer):
         preset_selector = pn.widgets.Select.from_param(
             self.nice_settings.param.machine_preset, name="", width=self.PRESET_WIDTH
         )
-        md_rows = []
+        md_rows = {True: [], False: []}
         for md in self.nice_settings.machine_descriptions:
             self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
-            md_rows.append(
+            not_loaded = md.param.loaded.rx.not_()
+            if not md.required:
+                # An optional machine description may be left empty
+                not_loaded = not_loaded & md.param.uri.rx.pipe(bool)
+            md_rows[md.required].append(
                 self._form_row(
                     md.ids_name,
                     self._md_inputs[md],
-                    WarningIndicator(margin=10, visible=md.param.loaded.rx.not_()),
+                    WarningIndicator(margin=10, visible=not_loaded),
                 )
             )
         machine_preset_content = pn.Column(
             self._section_label("Preset"),
             preset_selector,
-            self._section_label("Machine Description URIs"),
-            self._settings_section(*md_rows),
+            self._section_label("Required Machine Descriptions"),
+            self._settings_section(*md_rows[True]),
+            self._section_label("Optional Machine Descriptions"),
+            self._settings_section(*md_rows[False]),
             sizing_mode="stretch_width",
             scroll=True,
         )

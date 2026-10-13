@@ -13,6 +13,8 @@ from waveform_editor.gui.util import (
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
+    tf_current,
+    toroidal_field,
 )
 
 
@@ -124,6 +126,7 @@ MACHINE_PROPERTIES = {
         "ip": -1.5e7,
         "r0": 6.2,
         "b0": -5.3,
+        "tf_current": -6.8e4,
         "alpha": 1.0,
         "beta": 0.65,
         "gamma": 1.05,
@@ -132,6 +135,7 @@ MACHINE_PROPERTIES = {
         "ip": -4.0e5,
         "r0": 2.42,
         "b0": -3.76,
+        "tf_current": -1255.0,
         "alpha": 1.0,
         "beta": 0.85,
         "gamma": 1.2,
@@ -356,6 +360,19 @@ class PlasmaProperties(Viewer):
         doc="Triggered whenever the dpressure_dpsi and f_df_dpsi are updated."
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
+    tf = param.Parameter(
+        default=None,
+        precedence=-1,
+        doc="The tf machine description, which the toroidal field is computed with.",
+    )
+    use_tf_current = param.Boolean(
+        default=True,
+        label="Set toroidal field by TF coil current",
+        doc="Compute the toroidal field from the TF coil current and the tf IDS.",
+    )
+    from_tf = param.Boolean(
+        precedence=-1, doc="Whether the toroidal field is computed from the tf IDS."
+    )
 
     def __init__(self):
         super().__init__()
@@ -372,6 +389,12 @@ class PlasmaProperties(Viewer):
             "Toroidal magnetic field [T]",
             default_value=DEFAULT_PROPERTIES["b0"],
         )
+        self._tf_current = PropertyInput(
+            "TF coil current [A]",
+            default_value=DEFAULT_PROPERTIES["tf_current"],
+            step=100,
+        )
+        self._tf_field = pn.pane.HTML(margin=(0, 0, 8, 0))
         self._profiles = PlasmaProfiles()
 
         self._ids_source = EquilibriumInput()
@@ -384,8 +407,9 @@ class PlasmaProperties(Viewer):
         self.r0 = None
         self.b0 = None
 
-        for widget in [self._ip, self._r0, self._b0, self._profiles]:
+        for widget in [self._ip, self._r0, self._b0, self._tf_current, self._profiles]:
             widget.param.watch(self._load_plasma_properties, "changed")
+        self.param.watch(self._load_plasma_properties, "from_tf")
 
         settings.nice.param.watch(self.apply_machine_properties, "machine_preset")
         self.apply_machine_properties()
@@ -399,6 +423,7 @@ class PlasmaProperties(Viewer):
         self._ip.value = properties["ip"]
         self._r0.value = properties["r0"]
         self._b0.value = properties["b0"]
+        self._tf_current.value = properties["tf_current"]
         self._profiles.param.update(
             alpha=properties["alpha"],
             beta=properties["beta"],
@@ -431,15 +456,27 @@ class PlasmaProperties(Viewer):
                         getattr(self, attr).load_value(float(eq[path]))
                     except Exception as e:
                         pn.state.notifications.error(f"Could not load {path}: {e}")
+                if self.tf is not None:
+                    self._tf_current.load_value(
+                        tf_current(self.tf, self._b0.value, self._r0.value)
+                    )
         except Exception as e:
             pn.state.notifications.error(f"Could not open IDS {uri}: {e}")
             return
         self._profiles.load_from_ids(uri, time)
 
+    @param.depends("tf", "use_tf_current", watch=True, on_init=True)
+    def _set_from_tf(self):
+        self.from_tf = self.tf is not None and self.use_tf_current
+
     def _load_plasma_properties(self, _event=None):
         self.ip = self._ip.resolved_value
         self.r0 = self._r0.resolved_value
-        self.b0 = self._b0.resolved_value
+        if self.from_tf:
+            self.b0 = toroidal_field(self.tf, self._tf_current.resolved_value, self.r0)
+            self._tf_field.object = f"Toroidal magnetic field at R₀: {self.b0:.4g} T"
+        else:
+            self.b0 = self._b0.resolved_value
 
         self._profiles.r0 = self.r0
         self.psi_norm = self._profiles.psi_norm
@@ -457,7 +494,16 @@ class PlasmaProperties(Viewer):
             self._ids_source,
             self._ip,
             self._r0,
-            self._b0,
+            pn.widgets.Checkbox.from_param(
+                self.param.use_tf_current, visible=self.param.tf.rx.is_not(None)
+            ),
+            pn.Column(self._b0, visible=self.param.from_tf.rx.not_(), margin=0),
+            pn.Column(
+                self._tf_current,
+                self._tf_field,
+                visible=self.param.from_tf,
+                margin=0,
+            ),
             self._profiles,
             sizing_mode="stretch_width",
             margin=(20, 20),

@@ -19,9 +19,10 @@ class MachineDescription(param.Parameterized):
     uri = param.String()
     loaded = param.Boolean(default=False, precedence=-1)
 
-    def __init__(self, ids_name: str, **params):
+    def __init__(self, ids_name: str, required=True, **params):
         super().__init__(**params)
         self.ids_name = ids_name
+        self.required = required
         self.param.uri.label = f"'{ids_name}' machine description URI"
         self.custom_uri = ""
 
@@ -40,7 +41,7 @@ class NiceSettings(param.Parameterized):
             "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
             "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
             "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
-            "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
+            "tf": "imas:hdf5?path=/home/sebbe/projects/iter_python/Waveform-Editor/data/tf",  # noqa E501
         },
         PRESET_WEST: {
             "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
@@ -84,7 +85,12 @@ class NiceSettings(param.Parameterized):
     )
     md_iron_core = param.ClassSelector(
         class_=MachineDescription,
-        default=MachineDescription("iron_core"),
+        default=MachineDescription("iron_core", required=False),
+        precedence=-1,
+    )
+    md_tf = param.ClassSelector(
+        class_=MachineDescription,
+        default=MachineDescription("tf", required=False),
         precedence=-1,
     )
 
@@ -114,6 +120,7 @@ class NiceSettings(param.Parameterized):
             self.md_pf_passive,
             self.md_wall,
             self.md_iron_core,
+            self.md_tf,
         )
 
         for md in self.machine_descriptions:
@@ -154,22 +161,13 @@ class NiceSettings(param.Parameterized):
     @param.depends("machine_preset", watch=True)
     def set_machine_preset(self):
         preset = self._available_presets.get(self.machine_preset)
-
-        if preset is None:
-            uris = tuple(md.custom_uri for md in self.machine_descriptions)
-        else:
-            uris = (
-                preset["pf_active"],
-                preset["pf_passive"],
-                preset["wall"],
-                preset["iron_core"],
-            )
-
-        for md, uri in zip(self.machine_descriptions, uris, strict=True):
-            md.uri = uri
+        for md in self.machine_descriptions:
+            md.uri = md.custom_uri if preset is None else preset.get(md.ids_name, "")
 
     def _check_required_params_filled(self, *events):
-        if not all(md.uri and md.loaded for md in self.machine_descriptions):
+        if not all(
+            md.uri and md.loaded for md in self.machine_descriptions if md.required
+        ):
             self.are_required_filled = False
             return
 
