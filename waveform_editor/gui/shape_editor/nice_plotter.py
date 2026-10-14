@@ -10,6 +10,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.flux import flux_contours, flux_grid
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
@@ -229,6 +230,10 @@ class NicePlotter(Viewer):
         self.flux_map_pane = pn.pane.HoloViews(
             flux_map_overlay,
             loading=self.communicator.param.processing,
+        )
+        # Bokeh cannot draw a legend for this overlay, so it is HTML below the plot
+        self.legend = pn.pane.HTML(
+            self._legend_html, stylesheets=STYLES, margin=(5, 10, 0, 10)
         )
 
         self.plasma_shape.param.watch(self._update_points_visibility, "input_mode")
@@ -612,7 +617,8 @@ class NicePlotter(Viewer):
 
     @pn.depends("communicator.equilibrium", "show_separatrix")
     def _plot_separatrix(self):
-        """Plots the separatrix from the equilibrium boundary.
+        """Plots the separatrix from the equilibrium boundary, and the second
+        separatrix through the other x-point, if there is one.
 
         Returns:
             Holoviews curve containing the separatrix.
@@ -627,12 +633,72 @@ class NicePlotter(Viewer):
 
             boundary_psi = equilibrium.time_slice[0].boundary.psi
             contour = self._calc_contours(equilibrium, [boundary_psi])
-        return hv.Curve((r, z)).opts(
-            color="red",
-            line_width=4,
-            show_legend=False,
-            hover_tooltips=[("", "Separatrix")],
-        ) * contour.opts(self.CONTOUR_OPTS)
+        return (
+            hv.Curve((r, z)).opts(
+                color="red",
+                line_width=4,
+                show_legend=False,
+                hover_tooltips=[("", "Separatrix")],
+            )
+            * contour.opts(self.CONTOUR_OPTS)
+            * hv.Path(self._secondary_separatrices()).opts(
+                color="darkorange",
+                line_width=2,
+                show_legend=False,
+                hover_tooltips=[("", "Second separatrix")],
+            )
+        )
+
+    def _secondary_separatrices(self):
+        """The (r, z) of the separatrix NICE gives through each secondary x-point.
+        Node 0 is the magnetic axis and node 1 the primary x-point, so these are the
+        x-points after them."""
+        equilibrium = self.communicator.equilibrium
+        if not self.show_separatrix or equilibrium is None:
+            return []
+        return [
+            (node.levelset.r, node.levelset.z)
+            for node in list(equilibrium.time_slice[0].contour_tree.node)[2:]
+            if node.critical_type == 1 and len(node.levelset.r) > 1
+        ]
+
+    @pn.depends(
+        "communicator.equilibrium",
+        "show_separatrix",
+        "show_target_shape",
+        "plasma_shape.shape_updated",
+        "plasma_shape.input_mode",
+        "nice_settings.mode",
+    )
+    def _legend_html(self):
+        """The legend of the lines in the plot."""
+        shape = self.plasma_shape
+        equilibrium = self.communicator.equilibrium
+        separatrix = self.show_separatrix and equilibrium is not None
+        items = (
+            (
+                "Target shape",
+                "2px solid blue",
+                not self.nice_settings.is_direct_mode
+                and self.show_target_shape
+                and shape.has_shape
+                and shape.input_mode != shape.WEIGHTED_POINTS_INPUT
+                # A weighted boundary is coloured by its weights
+                and shape.param_weights is None,
+            ),
+            ("Separatrix", "3px solid red", separatrix),
+            (
+                "Second separatrix",
+                "2px solid darkorange",
+                self._secondary_separatrices(),
+            ),
+        )
+        return "".join(
+            f'<span class="lg-item"><span class="lg-line" style="border-top: {line}">'
+            f"</span>{name}</span>"
+            for name, line, shown in items
+            if shown
+        )
 
     @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):

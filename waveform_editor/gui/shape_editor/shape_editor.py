@@ -189,6 +189,7 @@ class ShapeEditor(Viewer):
         )
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
+            self.nice_plotter.legend,
             self.metrics,
             sizing_mode="stretch_height",
             scroll=True,

@@ -647,7 +647,10 @@ class PlasmaShape(Viewer):
         """The x-points of the target shape, which only a parameterized shape has."""
         if self.input_mode != self.PARAMETERIZED_INPUT:
             return []
-        return [(self.shape_params.rx, self.shape_params.zx)]
+        p = self.shape_params
+        if p.second_x_point:
+            return [(p.rx, p.zx), (p.rx_upper, p.zx_upper)]
+        return [(p.rx, p.zx)]
 
     @property
     def uses_weighted_points(self):
