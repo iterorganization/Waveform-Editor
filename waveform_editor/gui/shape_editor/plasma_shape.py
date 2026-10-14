@@ -28,13 +28,13 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
 # (value, slider range) per parameter
 MACHINE_SHAPES = {
     NiceSettings.PRESET_ITER: {
-        "a": (1.9, (1, 2)),
-        "center_r": (6.2, (5, 7)),
-        "center_z": (0.545, (0, 1.5)),
-        "kappa": (1.8, (0, 3)),
-        "delta": (0.43, (-1, 1)),
-        "rx": (5.089, (4.5, 6)),
-        "zx": (-3.346, (-4, -2)),
+        "a": (1.98, (1, 2.5)),
+        "center_r": (6.21, (5, 7)),
+        "center_z": (0.87, (0, 1.5)),
+        "kappa": (1.58, (0, 3)),
+        "delta": (0.41, (-1, 1)),
+        "rx": (5.117, (4.5, 6)),
+        "zx": (-3.414, (-4, -2)),
         "rx_upper": (5.089, (4.5, 6)),
         "zx_upper": (3.346, (2, 4)),
     },
