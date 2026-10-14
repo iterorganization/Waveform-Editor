@@ -1,29 +1,34 @@
 from abc import ABC, abstractmethod
 
 import imas
-import numpy as np
+from imas.ids_data_type import IDSDataType
 from imas.ids_path import IDSPath
 from ruamel.yaml import YAML
 
 from waveform_editor.annotations import Annotations
 
+_DD_TYPE_TO_PYTHON = {
+    IDSDataType.FLT: float,
+    IDSDataType.INT: int,
+    IDSDataType.STR: str,
+}
 
-class BaseWaveform(ABC):
+
+class ConfigEntry(ABC):
+    is_time_trace = True
+
     def __init__(self, yaml_str, name, dd_version):
         yaml_dict = YAML().load(yaml_str)
         self.yaml = yaml_dict[name] if yaml_dict else None
-        self.tendencies = []
         self.name = name
         self.metadata = self.get_metadata(dd_version)
         self.annotations = Annotations()
         self.units = self.metadata.units if self.metadata else "a.u."
-        self.value_type = float
-
-    @abstractmethod
-    def get_value(
-        self, time: np.ndarray | None = None
-    ) -> tuple[np.ndarray, np.ndarray]:
-        raise NotImplementedError
+        self.value_type = (
+            _DD_TYPE_TO_PYTHON.get(self.metadata.data_type, float)
+            if self.metadata
+            else float
+        )
 
     @abstractmethod
     def get_yaml_string(self) -> str:

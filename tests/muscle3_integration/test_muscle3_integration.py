@@ -23,10 +23,10 @@ def _run_coupling(tmp_path, name):
 
 
 def test_muscle3_integration(tmp_path):
-    """Fresh-export mode: the actor is driven with timestamps."""
+    """One time slice per message: the actor is driven with a timestamp per call."""
     _run_coupling(tmp_path, "coupling")
 
 
-def test_muscle3_overlay_integration(tmp_path):
-    """Overlay mode: the actor augments an equilibrium flowing through it."""
-    _run_coupling(tmp_path, "overlay")
+def test_muscle3_whole_trace_integration(tmp_path):
+    """A whole trace in one message: the actor evaluates every time slice at once."""
+    _run_coupling(tmp_path, "whole_trace")

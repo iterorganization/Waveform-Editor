@@ -248,13 +248,15 @@ def test_dump():
     """Check if YAML dump contains all waveforms in configuration."""
 
     yaml_str = """
-    ec_launchers:
-      beams:
-        power_launched:
-          ec_launchers/beam(0)/power_launched: 
-          - {to: 8.33e5, duration: 20} 
-          - {type: constant, duration: 20}
-          - {type: smooth, duration: 25, to: 0}"""
+    output:
+      ec_launchers:
+        beams:
+          power_launched:
+            ec_launchers/beam(0)/power_launched: 
+            - {to: 8.33e5, duration: 20} 
+            - {type: constant, duration: 20}
+            - {type: smooth, duration: 25, to: 0}
+"""
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
 
@@ -304,18 +306,18 @@ def test_dump_comments():
     """Check if comments for waveforms are preserved."""
 
     yaml_str = dedent(f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-      machine_description:
-        ec_launchers: imas:hdf5?path=test_md
-    ec_launchers:
-      beams:
-        power_launched:
-          ec_launchers/beam(0)/power_launched: # comment1
-          - {{to: 8.33e5, duration: 20}} # comment2
-          - {{type: constant, duration: 20}}
-          # comment3
-          - {{duration: 25, to: 0}}""")
+    dd_version: {TEST_DD_VERSION}
+    input:
+      machine: imas:hdf5?path=test_md
+    output:
+      ec_launchers:
+        beams:
+          power_launched:
+            ec_launchers/beam(0)/power_launched: # comment1
+            - {{to: 8.33e5, duration: 20}} # comment2
+            - {{type: constant, duration: 20}}
+            # comment3
+            - {{duration: 25, to: 0}}""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     dumped_yaml = config.dump()
@@ -324,31 +326,33 @@ def test_dump_comments():
 
 def test_dump_globals():
     yaml_str = dedent("""
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle:
-      - {to: 8.33e5, duration: 20} # comment""")
+    output:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle:
+        - {to: 8.33e5, duration: 20} # comment""")
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     config.globals.dd_version = TEST_DD_VERSION
-    config.globals.machine_description = {"ec_launchers": "imas:mdsplus?path=test"}
+    config.globals.imports = {"machine": "imas:mdsplus?path=test"}
     dumped_yaml = config.dump()
     expected_dump = dedent(f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-      machine_description:
-        ec_launchers: imas:mdsplus?path=test
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle:
-      - {{to: 8.33e5, duration: 20}} # comment""")
+    dd_version: {TEST_DD_VERSION}
+    input:
+      machine: imas:mdsplus?path=test
+    output:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle:
+        - {{to: 8.33e5, duration: 20}} # comment""")
     assert expected_dump.strip() == dumped_yaml.strip()
 
 
 def test_load_yaml_duplicate():
     """Check if configuration fails to load if there are duplicate entries."""
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(2)/phase/angle: 1.23
-      ec_launchers/beam(2)/phase/angle: 1.23
+    output:
+      ec_launchers:
+        ec_launchers/beam(2)/phase/angle: 1.23
+        ec_launchers/beam(2)/phase/angle: 1.23
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -359,11 +363,12 @@ def test_load_yaml_duplicate():
 
 def test_load_yaml_bounds():
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle: 
-      - {start: 10, end: 20}
-      ec_launchers/beam(2)/phase/angle:
-      - {start: 5, end: 15}
+    output:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle: 
+        - {start: 10, end: 20}
+        ec_launchers/beam(2)/phase/angle:
+        - {start: 5, end: 15}
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
@@ -374,25 +379,26 @@ def test_load_yaml_bounds():
 def test_load_yaml_globals():
     """Check if global variables are loaded from YAML."""
     yaml_str = f"""
-    globals:
-      dd_version: {TEST_DD_VERSION}
-      machine_description:
-        ec_launchers: imas:hdf5?path=testdb
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle: 1e-3
+    dd_version: {TEST_DD_VERSION}
+    input:
+      machine: imas:hdf5?path=testdb
+    output:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config = WaveformConfiguration()
     config.load_yaml(yaml_str)
     assert config.globals.dd_version == TEST_DD_VERSION
-    assert config.globals.machine_description["ec_launchers"] == "imas:hdf5?path=testdb"
+    assert config.globals.imports["machine"] == "imas:hdf5?path=testdb"
 
     yaml_str = """
-    ec_launchers:
-      ec_launchers/beam(1)/phase/angle: 1e-3
+    output:
+      ec_launchers:
+        ec_launchers/beam(1)/phase/angle: 1e-3
     """
     config.load_yaml(yaml_str)
     assert config.globals.dd_version == LATEST_DD_VERSION
-    assert not config.globals.machine_description
+    assert not config.globals.imports
 
 
 def test_bounds(config):

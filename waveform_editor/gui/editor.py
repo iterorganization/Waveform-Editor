@@ -4,15 +4,15 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.config_entry import ConfigEntry
 from waveform_editor.derived_waveform import DerivedWaveform
-from waveform_editor.waveform import Waveform
 
 
 class WaveformEditor(Viewer):
     """A Panel interface for waveform editing."""
 
     waveform = param.ClassSelector(
-        class_=(Waveform, DerivedWaveform),
+        class_=ConfigEntry,
         doc="Waveform currently being edited. Use `set_waveform` to change.",
     )
     stored_string = param.String(
