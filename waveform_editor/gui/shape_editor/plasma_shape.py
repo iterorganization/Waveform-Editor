@@ -161,7 +161,8 @@ class PlasmaShapeParams(Viewer):
             return self._sliders[n]
 
         def _group(title, *children, visible=True):
-            return pn.Column(
+            # The card's display: block would override hiding it, so hide a wrapper
+            card = pn.Column(
                 pn.pane.HTML(
                     f"<b>{title}</b>"
                     "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
@@ -171,8 +172,8 @@ class PlasmaShapeParams(Viewer):
                 css_classes=["property-card"],
                 stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
-                visible=visible,
             )
+            return pn.Column(card, visible=visible, margin=0)
 
         return pn.Column(
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
