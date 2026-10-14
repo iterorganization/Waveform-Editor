@@ -2,7 +2,6 @@
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 8px 12px 12px 12px;
-    display: block;
 }
 
 :host(.ids-source-card) {
