@@ -332,7 +332,6 @@ class PlasmaProfiles(Viewer):
                 self._alpha_input,
                 self._beta_input,
                 self._gamma_input,
-                align="end",
                 margin=(4, 0, 0, 0),
                 visible=is_not_from_ids,
             ),

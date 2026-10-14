@@ -200,7 +200,6 @@ class PlasmaShapeParams(Viewer):
                         align="center",
                         margin=(0, 0, 0, -10),
                     ),
-                    align="center",
                     margin=(0, 0, 5, 0),
                 ),
                 pn.Column(
