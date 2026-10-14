@@ -103,12 +103,19 @@ class CoilCurrents(Viewer):
             self.PENALIZE_ZERO: None,
             self.PENALTY_WEIGHT: {"type": "number", "step": 0.01},
         }
+        # A checkbox that lets the click through to the cell, which toggles it
+        checkbox = '<input type="checkbox" style="pointer-events: none" {}>'
+        checkbox_formatter = {
+            "type": "tickCross",
+            "tickElement": checkbox.format("checked"),
+            "crossElement": checkbox.format(""),
+        }
         formatters = {
-            self.FIX_CURRENT: {"type": "tickCross"},
+            self.FIX_CURRENT: checkbox_formatter,
             self.CURRENT: NumberFormatter(),
             self.PREV_CURRENT: NumberFormatter(),
             self.CURRENT_LIMIT: NumberFormatter(),
-            self.PENALIZE_ZERO: {"type": "tickCross"},
+            self.PENALIZE_ZERO: checkbox_formatter,
         }
         self.table = pn.widgets.Tabulator(
             value=pd.DataFrame(columns=list(titles)),
