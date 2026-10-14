@@ -18,12 +18,12 @@ class Gap:
 
     @property
     def r_sep(self):
-        """Major radius of the point on the desired separatrix"""
+        """Major radius of the point on the target separatrix"""
         return self.r + self.value * math.cos(-self.angle)
 
     @property
     def z_sep(self):
-        """Height of the point on the desired separatrix"""
+        """Height of the point on the target separatrix"""
         return self.z + self.value * math.sin(-self.angle)
 
 

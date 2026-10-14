@@ -643,8 +643,8 @@ class PlasmaShape(Viewer):
         self.gap_ui.extend(new_gap_ui)
 
     @property
-    def desired_x_points(self):
-        """The x-points of the desired shape, which only a parameterized shape has."""
+    def target_x_points(self):
+        """The x-points of the target shape, which only a parameterized shape has."""
         if self.input_mode != self.PARAMETERIZED_INPUT:
             return []
         return [(self.shape_params.rx, self.shape_params.zx)]
@@ -711,11 +711,11 @@ class PlasmaShape(Viewer):
 
     @param.depends("nice_settings.machine_preset", "shape_updated")
     def _render_target_gap_pills(self):
-        """Pills with the gaps of the desired shape."""
+        """Pills with the gaps of the target shape."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is None or not self.has_shape:
             return ""
-        inputs = gaps.shape_inputs(self.desired_x_points)
+        inputs = gaps.shape_inputs(self.target_x_points)
         values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
         chips = []
         for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
@@ -724,7 +724,7 @@ class PlasmaShape(Viewer):
                 continue
             display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
             chips.append(metric_pill(symbol, display, name))
-        title = '<span class="mc-title">Desired shape gaps</span>'
+        title = '<span class="mc-title">Target shape gaps</span>'
         return f'<div class="mc-wrap">{title}{"".join(chips)}</div>'
 
     def __panel__(self):

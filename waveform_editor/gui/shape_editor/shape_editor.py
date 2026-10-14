@@ -26,7 +26,7 @@ from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
 
 logger = logging.getLogger(__name__)
 
-# NICE reads the desired boundary into an array of this fixed size
+# NICE reads the target boundary into an array of this fixed size
 # (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
 MAX_BOUNDARY_POINTS = 5000
 
@@ -428,17 +428,17 @@ class ShapeEditor(Viewer):
 
     def _on_nice_run_finished(self, success):
         if success:
-            # Show the gaps of the result, which the desired gaps were a target for
+            # Show the gaps of the result, instead of the target gaps
             if self.nice_plotter.show_gaps:
                 self.nice_plotter.show_result_gaps = True
-                self.nice_plotter.show_desired_gaps = False
+                self.nice_plotter.show_target_gaps = False
         else:
             pn.state.notifications.error(
                 "NICE did not converge. Check the Logging tab for details."
             )
 
     def _has_valid_boundary(self):
-        """Check that the desired boundary fits in the fixed size array NICE reads it
+        """Check that the target boundary fits in the fixed size array NICE reads it
         into.
 
         Returns:
