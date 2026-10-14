@@ -215,8 +215,8 @@ class SettingsModal(Viewer):
         # Which gaps "Show gaps" shows, nested under it and only there while it is on
         gap_options = pn.Column(
             pn.widgets.Checkbox.from_param(
-                self.nice_plotter.param.show_desired_gaps,
-                name="Desired shape",
+                self.nice_plotter.param.show_target_gaps,
+                name="Target shape",
                 visible=self.nice_settings.param.is_inverse_mode.rx(),
             ),
             pn.widgets.Checkbox.from_param(
@@ -243,12 +243,12 @@ class SettingsModal(Viewer):
                         "show_plasma_facing_components",
                         "show_xo",
                         "show_separatrix",
-                        "show_desired_shape",
+                        "show_target_shape",
                         "show_gaps",
                     ],
                     show_name=False,
                     widgets={
-                        "show_desired_shape": {
+                        "show_target_shape": {
                             "visible": self.nice_settings.param.is_inverse_mode.rx()
                         },
                     },

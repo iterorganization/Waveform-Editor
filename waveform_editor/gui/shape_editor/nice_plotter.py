@@ -120,9 +120,9 @@ class NicePlotter(Viewer):
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
-    show_desired_shape = param.Boolean(default=True, label="Show desired shape")
+    show_target_shape = param.Boolean(default=True, label="Show target shape")
     show_gaps = param.Boolean(default=True, label="Show gaps")
-    show_desired_gaps = param.Boolean(default=True, label="Show desired shape gaps")
+    show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
     show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
 
     # Renderer of the editable points, set once the plot is first rendered
@@ -192,7 +192,7 @@ class NicePlotter(Viewer):
             colorbar_opts={"title": "Poloidal flux [Wb]"},
             show_legend=False,
         )
-        self.DESIRED_SHAPE_OPTS = hv.opts.Curve(color="blue")
+        self.TARGET_SHAPE_OPTS = hv.opts.Curve(color="blue")
         # Static on purpose. The draw tool binds to this element's renderer, and
         # redrawing it either breaks the binding or feeds edits back into redraws.
         self.editable_points = hv.Points([], kdims=["r", "z"], vdims=["weight"]).opts(
@@ -244,7 +244,7 @@ class NicePlotter(Viewer):
             self.param,
             show_name=False,
             widgets={
-                "show_desired_shape": {
+                "show_target_shape": {
                     "visible": self.nice_settings.param.is_inverse_mode
                 }
             },
@@ -369,18 +369,18 @@ class NicePlotter(Viewer):
     @pn.depends(
         "plasma_shape.shape_updated",
         "plasma_shape.input_mode",
-        "show_desired_shape",
+        "show_target_shape",
         "nice_settings.mode",
     )
     def _plot_plasma_shape(self):
         shape = self.plasma_shape
         if (
             self.nice_settings.is_direct_mode
-            or not self.show_desired_shape
+            or not self.show_target_shape
             or not shape.has_shape
             or shape.input_mode == shape.WEIGHTED_POINTS_INPUT
         ):
-            return hv.Overlay([hv.Curve([]).opts(self.DESIRED_SHAPE_OPTS)])
+            return hv.Overlay([hv.Curve([]).opts(self.TARGET_SHAPE_OPTS)])
 
         if shape.input_mode == shape.GAP_INPUT:
             return self._plot_gaps(shape.outline_r, shape.outline_z)
@@ -408,10 +408,10 @@ class NicePlotter(Viewer):
             r = np.append(r, r[0])
             z = np.append(z, z[0])
 
-        return hv.Overlay([hv.Curve((r, z)).opts(self.DESIRED_SHAPE_OPTS)])
+        return hv.Overlay([hv.Curve((r, z)).opts(self.TARGET_SHAPE_OPTS)])
 
     def _plot_gaps(self, r, z):
-        """Plots the reference point, value and the desired boundary point of the gaps.
+        """Plots the reference point, value and the target boundary point of the gaps.
 
         Args:
             r: Radial coordinates of the outline.
@@ -760,30 +760,30 @@ class NicePlotter(Viewer):
     @pn.depends(
         "communicator.equilibrium",
         "show_gaps",
-        "show_desired_gaps",
+        "show_target_gaps",
         "show_result_gaps",
         "nice_settings.machine_preset",
         "plasma_shape.shape_updated",
         "plasma_shape.input_mode",
     )
     def _plot_clearance_gaps(self):
-        """Plots the gaps of the desired shape in blue and of the resulting shape in
+        """Plots the gaps of the target shape in blue and of the resulting shape in
         red, from the points they are measured from to the boundary."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         shape = self.plasma_shape
         equilibrium = self.communicator.equilibrium
-        desired, result = [], []
+        target, result = [], []
         if gaps is not None and self.show_gaps:
             if (
-                self.show_desired_gaps
+                self.show_target_gaps
                 and not self.nice_settings.is_direct_mode
                 and shape.has_shape
             ):
-                inputs = gaps.shape_inputs(shape.desired_x_points)
-                desired = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
+                inputs = gaps.shape_inputs(shape.target_x_points)
+                target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
             if self.show_result_gaps and equilibrium is not None:
                 result = gaps.measure(**gaps.gap_inputs(equilibrium.time_slice[0]))
-        return self._plot_measured_gaps(gaps, desired, "blue") * (
+        return self._plot_measured_gaps(gaps, target, "blue") * (
             self._plot_measured_gaps(gaps, result, "red")
         )
 

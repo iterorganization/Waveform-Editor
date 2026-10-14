@@ -11,7 +11,7 @@ The Waveform Editor provides a Graphical User Interface (GUI), with which you ca
 * Edit waveforms through a text editor with live plot updates and error
   highlighting.
 * Export waveform data to various formats, including IDS, CSV, PNG, and PCSSP XML.
-* Graphically edit and design the desired plasma shape using NICE.
+* Graphically edit and design the target plasma shape using NICE.
 
 Launching the GUI
 -----------------
@@ -239,7 +239,7 @@ Plasma Shape Editor
 The Plasma Shape Editor provides an interactive interface for running the 
 `NICE <https://gitlab.inria.fr/blfauger/nice>`__ (Newton direct and Inverse Computation 
 for Equilibrium) solver. This allows you to design and analyze plasma equilibria by 
-either specifying a desired shape and finding the necessary coil currents (Inverse Mode) 
+either specifying a target shape and finding the necessary coil currents (Inverse Mode) 
 or by providing coil currents and calculating the resulting plasma shape (Direct Mode).
 
 The interface is primarily divided into two sections: a large plotting area on the left 

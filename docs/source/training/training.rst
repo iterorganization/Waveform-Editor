@@ -666,7 +666,7 @@ Exercise 6b: Running NICE inverse
       requires some extra input to run. We focus on the inverse mode of NICE for now.
       For this mode NICE requires the following:
 
-      - A desired plasma shape
+      - A target plasma shape
       - The plasma current
       - Characteristics of the vacuum toroidal field; R0 and B0
       - p' and ff' profiles
@@ -690,7 +690,7 @@ Exercise 6b: Running NICE inverse
 
    .. md-tab-item:: Solution
       
-      If NICE inverse converged with your desired plasma shape, you will see the resulting 
+      If NICE inverse converged with your target plasma shape, you will see the resulting 
       equilibrium contour lines appear on the plot on the left. 
 
       When you hover over the coil outlines, you will see the currents calculated by NICE. 
@@ -711,7 +711,7 @@ Exercise 6c: Configuring the Plasma Shape
    .. md-tab-item:: Exercise
 
 
-      There are three ways to configure the desired plasma shape for NICE inverse in the Plasma Shape Editor.
+      There are three ways to configure the target plasma shape for NICE inverse in the Plasma Shape Editor.
 
       1. By providing an equilibrium IDS containing a `boundary outline <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-outline>`_.
       2. By providing a geometric parameterization.
@@ -730,7 +730,7 @@ Exercise 6c: Configuring the Plasma Shape
 
             imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
       2. Select the ``Parameterized`` option, and update some of the 
-         parameter sliders to change your desired shape. Run NICE in inverse mode, does it converge?
+         parameter sliders to change your target shape. Run NICE in inverse mode, does it converge?
 
    .. md-tab-item:: Solution
       
@@ -763,9 +763,9 @@ Exercise 6d: Fixing Coil Currents
    .. md-tab-item:: Exercise
 
 
-      By default, NICE is able to freely change all coil currents to achieve the desired
+      By default, NICE is able to freely change all coil currents to achieve the target
       plasma shape. It is possible, however, you fix any of the coils to a specific value,
-      and NICE will try to achieve your desired plasma shape by varying the unfixed coil
+      and NICE will try to achieve your target plasma shape by varying the unfixed coil
       currents. You can do this in the ``Coil Currents`` panel.
 
       Load the plasma outline from previous exercise using the given IDS. Set
@@ -780,12 +780,12 @@ Exercise 6d: Fixing Coil Currents
    .. md-tab-item:: Solution
       
          After running NICE with PF2 and PF5 fixed, you will see that the unfixed coil 
-         currents change to get the desired plasma shape, for example:
+         currents change to get the target plasma shape, for example:
 
          .. image:: ../images/training/fixed_coils.png
             :align: center
 
-         If you fix too many coil currents, NICE is not able to represent the desired plasma
+         If you fix too many coil currents, NICE is not able to represent the target plasma
          shape anymore by changing the unfixed coil currents, and so NICE may not converge to
          the correct shape, for example:
 
@@ -798,7 +798,7 @@ Exercise 6e: Running NICE direct
 .. md-tab-set::
    .. md-tab-item:: Exercise
 
-      In inverse mode, NICE calculates the coil currents required to obtain a desired
+      In inverse mode, NICE calculates the coil currents required to obtain a target
       plasma shape. In direct mode it works the other way around: NICE takes the coil
       currents as input, and calculates the resulting equilibrium and plasma shape.
       A common workflow is to first obtain a good equilibrium using NICE inverse, and then
@@ -821,7 +821,7 @@ Exercise 6e: Running NICE direct
       1. NICE inverse converges and the ``Coil Currents`` panel is filled with the 
          coil currents calculated by NICE.
       2. In direct mode, the ``Plasma Shape`` panel is hidden, since NICE direct does 
-         not require a desired plasma shape. The desired shape is also no longer plotted.
+         not require a target plasma shape. The target shape is also no longer plotted.
          The ``Fix``, ``Penalize to 0`` and ``Penalty weight`` columns are hidden from
          the ``Coil Currents`` panel, as these only apply to inverse mode.
       3. Since the coil currents are the ones calculated by NICE inverse, NICE direct 

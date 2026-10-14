@@ -30,7 +30,7 @@ class MachineGaps(ABC):
         """
 
     def shape_inputs(self, x_points):
-        """The arguments of measure besides the outline, for a desired shape.
+        """The arguments of measure besides the outline, for a target shape.
 
         Args:
             x_points: The (r, z) of each x-point of the shape.
