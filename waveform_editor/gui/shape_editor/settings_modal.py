@@ -191,7 +191,7 @@ class SettingsModal(Viewer):
             not_loaded = md.param.loaded.rx.not_()
             if not md.required:
                 # An optional machine description may be left empty
-                not_loaded = not_loaded & md.param.uri.rx.pipe(bool)
+                not_loaded = not_loaded & md.param.uri.rx.bool()
             md_rows[md.required].append(
                 self._form_row(
                     md.ids_name,

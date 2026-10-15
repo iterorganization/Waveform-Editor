@@ -41,7 +41,7 @@ class NiceSettings(param.Parameterized):
             "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
             "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
             "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
-            "tf": "imas:hdf5?path=/home/sebbe/projects/iter_python/Waveform-Editor/data/tf",  # noqa E501
+            "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",
         },
         PRESET_WEST: {
             "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501

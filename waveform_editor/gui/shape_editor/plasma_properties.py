@@ -13,8 +13,7 @@ from waveform_editor.gui.util import (
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
-    tf_current,
-    toroidal_field,
+    tf_field_per_current,
 )
 
 
@@ -372,9 +371,6 @@ class PlasmaProperties(Viewer):
         label="Set toroidal field by TF coil current",
         doc="Compute the toroidal field from the TF coil current and the tf IDS.",
     )
-    from_tf = param.Boolean(
-        precedence=-1, doc="Whether the toroidal field is computed from the tf IDS."
-    )
 
     def __init__(self):
         super().__init__()
@@ -432,7 +428,7 @@ class PlasmaProperties(Viewer):
 
         for widget in [self._ip, self._r0, self._b0, self._tf_current, self._profiles]:
             widget.param.watch(self._load_plasma_properties, "changed")
-        self.param.watch(self._load_plasma_properties, "from_tf")
+        self.param.watch(self._load_plasma_properties, ["tf", "use_tf_current"])
 
         settings.nice.param.watch(self.apply_machine_properties, "machine_preset")
         self.apply_machine_properties()
@@ -481,22 +477,20 @@ class PlasmaProperties(Viewer):
                         pn.state.notifications.error(f"Could not load {path}: {e}")
                 if self.tf is not None:
                     self._tf_current.load_value(
-                        tf_current(self.tf, self._b0.value, self._r0.value)
+                        self._b0.value / tf_field_per_current(self.tf, self._r0.value)
                     )
         except Exception as e:
             pn.state.notifications.error(f"Could not open IDS {uri}: {e}")
             return
         self._profiles.load_from_ids(uri, time)
 
-    @param.depends("tf", "use_tf_current", watch=True, on_init=True)
-    def _set_from_tf(self):
-        self.from_tf = self.tf is not None and self.use_tf_current
-
     def _load_plasma_properties(self, _event=None):
         self.ip = self._ip.resolved_value
         self.r0 = self._r0.resolved_value
-        if self.from_tf:
-            self.b0 = toroidal_field(self.tf, self._tf_current.resolved_value, self.r0)
+        if self.tf is not None and self.use_tf_current:
+            self.b0 = self._tf_current.resolved_value * tf_field_per_current(
+                self.tf, self.r0
+            )
             self._tf_field.object = f"Toroidal magnetic field at R₀: {self.b0:.4g} T"
         else:
             self.b0 = self._b0.resolved_value
@@ -513,12 +507,13 @@ class PlasmaProperties(Viewer):
         self.param.trigger("profile_updated")
 
     def __panel__(self):
+        from_tf = self.param.tf.rx.is_not(None) & self.param.use_tf_current.rx()
         return pn.Column(
             self._ids_source,
             self._ip,
             self._r0,
-            pn.Column(self._b0, visible=self.param.from_tf.rx.not_(), margin=0),
-            pn.Column(self._tf_current, visible=self.param.from_tf, margin=0),
+            pn.Column(self._b0, visible=from_tf.rx.not_(), margin=0),
+            pn.Column(self._tf_current, visible=from_tf, margin=0),
             self._profiles,
             sizing_mode="stretch_width",
             margin=(20, 20),
