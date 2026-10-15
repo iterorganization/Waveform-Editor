@@ -138,6 +138,8 @@ class NiceSettings(param.Parameterized):
         for preset_name, preset in self.PRESET_URIS.items():
             try:
                 for ids_name, uri in preset.items():
+                    if not getattr(self, f"md_{ids_name}").required:
+                        continue
                     with imas.DBEntry(uri, "r") as entry:
                         entry.get(ids_name, lazy=True)
 
