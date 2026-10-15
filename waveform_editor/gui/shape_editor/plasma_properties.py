@@ -59,9 +59,10 @@ class PropertyInput(Viewer):
     changed = param.Event()
     input_state = param.String(default="manual", precedence=-1)
 
-    def __init__(self, label, default_value, step=0.01, **params):
+    def __init__(self, label, default_value, step=0.01, extra=(), **params):
         super().__init__(**params)
         self._label = label
+        self._extra = extra
         self.value = default_value
         self.resolved_value = default_value
 
@@ -114,6 +115,7 @@ class PropertyInput(Viewer):
         return pn.Column(
             header,
             self._value_input,
+            *self._extra,
             css_classes=["property-card"],
             stylesheets=[CARD_CSS],
             sizing_mode="stretch_width",
@@ -385,16 +387,37 @@ class PlasmaProperties(Viewer):
             "Reference major radius [m]",
             default_value=DEFAULT_PROPERTIES["r0"],
         )
+
+        def tf_checkbox():
+            return pn.Row(
+                pn.widgets.Checkbox.from_param(self.param.use_tf_current),
+                pn.widgets.TooltipIcon(
+                    value=(
+                        "Compute the toroidal field at R₀ from the current in the TF "
+                        "coils, with B₀ = μ₀ N I / (2π R₀), where N is the total "
+                        "number of turns of the TF coils in the tf machine description "
+                        "and I the current in each turn."
+                    ),
+                    align="center",
+                    margin=(0, 0, 0, -10),
+                ),
+                visible=self.param.tf.rx.is_not(None),
+                margin=(8, 0, 0, 0),
+            )
+
+        self._tf_field = pn.pane.HTML(margin=(8, 0, 0, 0))
+
         self._b0 = PropertyInput(
             "Toroidal magnetic field [T]",
             default_value=DEFAULT_PROPERTIES["b0"],
+            extra=[tf_checkbox()],
         )
         self._tf_current = PropertyInput(
             "TF coil current [A]",
             default_value=DEFAULT_PROPERTIES["tf_current"],
             step=100,
+            extra=[self._tf_field, tf_checkbox()],
         )
-        self._tf_field = pn.pane.HTML(margin=(0, 0, 8, 0))
         self._profiles = PlasmaProfiles()
 
         self._ids_source = EquilibriumInput()
@@ -494,16 +517,8 @@ class PlasmaProperties(Viewer):
             self._ids_source,
             self._ip,
             self._r0,
-            pn.widgets.Checkbox.from_param(
-                self.param.use_tf_current, visible=self.param.tf.rx.is_not(None)
-            ),
             pn.Column(self._b0, visible=self.param.from_tf.rx.not_(), margin=0),
-            pn.Column(
-                self._tf_current,
-                self._tf_field,
-                visible=self.param.from_tf,
-                margin=0,
-            ),
+            pn.Column(self._tf_current, visible=self.param.from_tf, margin=0),
             self._profiles,
             sizing_mode="stretch_width",
             margin=(20, 20),
