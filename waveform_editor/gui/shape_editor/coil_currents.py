@@ -52,6 +52,11 @@ class CoilCurrentEntry(param.Parameterized):
 class CoilCurrents(Viewer):
     coils = param.List(doc="List of CoilCurrentEntry for each coil")
     edited = param.Event(doc="Triggered whenever the user edits a coil.")
+    ip = param.Number(
+        default=None,
+        precedence=-1,
+        doc="The plasma current the coil currents are of, None if unknown.",
+    )
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -153,6 +158,7 @@ class CoilCurrents(Viewer):
         Args:
             pf_active: pf_active IDS containing coils with current values.
         """
+        self.ip = None
         if not pf_active:
             self.coils = []
             return
@@ -264,15 +270,37 @@ class CoilCurrents(Viewer):
             if coil.current is not None:
                 pf_active.coil[i].current.data = np.array([coil.current])
 
-    def sync_ui_with_pf_active(self, pf_active):
+    def sync_ui_with_pf_active(self, pf_active, ip):
         """Synchronize UI with the current values from the pf_active IDS.
 
         Args:
             pf_active: pf_active IDS for which the coil currents are used.
+            ip: The plasma current the coil currents are of [A].
         """
         for i, coil in enumerate(pf_active.coil):
             self.coils[i].current = coil.current.data[0]
+        self.ip = ip
         self._update_table()
+
+    def scale_to_ip(self, ip, scale):
+        """Scale the coil currents to a new plasma current. The Grad-Shafranov
+        equation is linear in the currents, so scaling all of them by the same factor
+        keeps the plasma shape.
+
+        Args:
+            ip: The new plasma current [A].
+            scale: Whether to scale the coil currents, or only take over the new
+                plasma current.
+        """
+        if not self.ip or ip is None:
+            return
+        if scale:
+            for coil in self.coils:
+                if coil.current is not None:
+                    coil.current *= ip / self.ip
+            self._update_table()
+            self._warn_exceeded()
+        self.ip = ip
 
     def update_xml(self, xml_params: ET.Element):
         """Update XML parameters based on coil current table configuration.
