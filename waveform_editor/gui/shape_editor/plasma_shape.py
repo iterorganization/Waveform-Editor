@@ -161,7 +161,8 @@ class PlasmaShapeParams(Viewer):
             return self._sliders[n]
 
         def _group(title, *children, visible=True):
-            return pn.Column(
+            # The card's display: block would override hiding it, so hide a wrapper
+            card = pn.Column(
                 pn.pane.HTML(
                     f"<b>{title}</b>"
                     "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
@@ -171,8 +172,8 @@ class PlasmaShapeParams(Viewer):
                 css_classes=["property-card"],
                 stylesheets=[CARD_CSS],
                 margin=(0, 0, 8, 0),
-                visible=visible,
             )
+            return pn.Column(card, visible=visible, margin=0)
 
         return pn.Column(
             _group("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
@@ -646,7 +647,10 @@ class PlasmaShape(Viewer):
         """The x-points of the target shape, which only a parameterized shape has."""
         if self.input_mode != self.PARAMETERIZED_INPUT:
             return []
-        return [(self.shape_params.rx, self.shape_params.zx)]
+        p = self.shape_params
+        if p.second_x_point:
+            return [(p.rx, p.zx), (p.rx_upper, p.zx_upper)]
+        return [(p.rx, p.zx)]
 
     @property
     def uses_weighted_points(self):

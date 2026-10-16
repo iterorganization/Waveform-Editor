@@ -68,3 +68,13 @@ a.title, span.title { display: none !important; }
 .mc-lbl { color: #000; margin-right: 6px; }
 .mc-val { font-weight: 600; }
 .mc-title { align-self: center; font-size: 0.85em; color: #6c757d; }
+
+/* Plot legend */
+.lg-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 12px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.lg-line { display: inline-block; width: 20px; margin-right: 5px; }
