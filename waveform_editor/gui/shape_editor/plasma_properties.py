@@ -13,6 +13,7 @@ from waveform_editor.gui.util import (
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_properties_calc import (
     compute_profiles_from_params,
+    tf_field_per_current,
 )
 
 
@@ -57,9 +58,10 @@ class PropertyInput(Viewer):
     changed = param.Event()
     input_state = param.String(default="manual", precedence=-1)
 
-    def __init__(self, label, default_value, step=0.01, **params):
+    def __init__(self, label, default_value, step=0.01, extra=(), **params):
         super().__init__(**params)
         self._label = label
+        self._extra = extra
         self.value = default_value
         self.resolved_value = default_value
 
@@ -112,6 +114,7 @@ class PropertyInput(Viewer):
         return pn.Column(
             header,
             self._value_input,
+            *self._extra,
             css_classes=["property-card"],
             stylesheets=[CARD_CSS],
             sizing_mode="stretch_width",
@@ -124,6 +127,7 @@ MACHINE_PROPERTIES = {
         "ip": -1.5e7,
         "r0": 6.2,
         "b0": -5.3,
+        "tf_current": -6.8e4,
         "alpha": 1.0,
         "beta": 0.65,
         "gamma": 1.05,
@@ -132,6 +136,7 @@ MACHINE_PROPERTIES = {
         "ip": -4.0e5,
         "r0": 2.42,
         "b0": -3.76,
+        "tf_current": -1255.0,
         "alpha": 1.0,
         "beta": 0.85,
         "gamma": 1.2,
@@ -355,6 +360,16 @@ class PlasmaProperties(Viewer):
         doc="Triggered whenever the dpressure_dpsi and f_df_dpsi are updated."
     )
     has_properties = param.Boolean(doc="Whether the plasma properties are loaded.")
+    tf = param.Parameter(
+        default=None,
+        precedence=-1,
+        doc="The tf machine description, which the toroidal field is computed with.",
+    )
+    use_tf_current = param.Boolean(
+        default=True,
+        label="Set toroidal field by TF coil current",
+        doc="Compute the toroidal field from the TF coil current and the tf IDS.",
+    )
 
     def __init__(self):
         super().__init__()
@@ -367,9 +382,36 @@ class PlasmaProperties(Viewer):
             "Reference major radius [m]",
             default_value=DEFAULT_PROPERTIES["r0"],
         )
+
+        def tf_checkbox():
+            return pn.Row(
+                pn.widgets.Checkbox.from_param(self.param.use_tf_current),
+                pn.widgets.TooltipIcon(
+                    value=(
+                        "Compute the toroidal field at R₀ from the current in the TF "
+                        "coils, with B₀ = μ₀ N I / (2π R₀), where N is the total "
+                        "number of turns of the TF coils in the tf machine description "
+                        "and I the current in each turn."
+                    ),
+                    align="center",
+                    margin=(0, 0, 0, -10),
+                ),
+                visible=self.param.tf.rx.is_not(None),
+                margin=(8, 0, 0, 0),
+            )
+
+        self._tf_field = pn.pane.HTML(margin=(8, 0, 0, 0))
+
         self._b0 = PropertyInput(
             "Toroidal magnetic field [T]",
             default_value=DEFAULT_PROPERTIES["b0"],
+            extra=[tf_checkbox()],
+        )
+        self._tf_current = PropertyInput(
+            "TF coil current [A]",
+            default_value=DEFAULT_PROPERTIES["tf_current"],
+            step=100,
+            extra=[self._tf_field, tf_checkbox()],
         )
         self._profiles = PlasmaProfiles()
 
@@ -383,8 +425,9 @@ class PlasmaProperties(Viewer):
         self.r0 = None
         self.b0 = None
 
-        for widget in [self._ip, self._r0, self._b0, self._profiles]:
+        for widget in [self._ip, self._r0, self._b0, self._tf_current, self._profiles]:
             widget.param.watch(self._load_plasma_properties, "changed")
+        self.param.watch(self._load_plasma_properties, ["tf", "use_tf_current"])
 
         settings.nice.param.watch(self.apply_machine_properties, "machine_preset")
         self.apply_machine_properties()
@@ -398,6 +441,7 @@ class PlasmaProperties(Viewer):
         self._ip.value = properties["ip"]
         self._r0.value = properties["r0"]
         self._b0.value = properties["b0"]
+        self._tf_current.value = properties["tf_current"]
         self._profiles.param.update(
             alpha=properties["alpha"],
             beta=properties["beta"],
@@ -430,6 +474,10 @@ class PlasmaProperties(Viewer):
                         getattr(self, attr).load_value(float(eq[path]))
                     except Exception as e:
                         pn.state.notifications.error(f"Could not load {path}: {e}")
+                if self.tf is not None:
+                    self._tf_current.load_value(
+                        self._b0.value / tf_field_per_current(self.tf, self._r0.value)
+                    )
         except Exception as e:
             pn.state.notifications.error(f"Could not open IDS {uri}: {e}")
             return
@@ -438,7 +486,13 @@ class PlasmaProperties(Viewer):
     def _load_plasma_properties(self, _event=None):
         self.ip = self._ip.resolved_value
         self.r0 = self._r0.resolved_value
-        self.b0 = self._b0.resolved_value
+        if self.tf is not None and self.use_tf_current:
+            self.b0 = self._tf_current.resolved_value * tf_field_per_current(
+                self.tf, self.r0
+            )
+            self._tf_field.object = f"Toroidal magnetic field at R₀: {self.b0:.4g} T"
+        else:
+            self.b0 = self._b0.resolved_value
 
         self._profiles.r0 = self.r0
         self.psi_norm = self._profiles.psi_norm
@@ -452,11 +506,13 @@ class PlasmaProperties(Viewer):
         self.param.trigger("profile_updated")
 
     def __panel__(self):
+        from_tf = self.param.tf.rx.is_not(None) & self.param.use_tf_current.rx()
         return pn.Column(
             self._ids_source,
             self._ip,
             self._r0,
-            self._b0,
+            pn.Column(self._b0, visible=from_tf.rx.not_(), margin=0),
+            pn.Column(self._tf_current, visible=from_tf, margin=0),
             self._profiles,
             sizing_mode="stretch_width",
             margin=(20, 20),

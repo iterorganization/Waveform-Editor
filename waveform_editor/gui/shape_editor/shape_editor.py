@@ -49,6 +49,7 @@ class ShapeEditor(Viewer):
     pf_passive = param.ClassSelector(class_=IDSToplevel)
     wall = param.ClassSelector(class_=IDSToplevel)
     iron_core = param.ClassSelector(class_=IDSToplevel)
+    tf = param.ClassSelector(class_=IDSToplevel)
 
     def __init__(self, main_gui):
         super().__init__()
@@ -86,6 +87,9 @@ class ShapeEditor(Viewer):
         )
         self.run_select.param.watch(self._restore_run, "value")
         self.nice_settings = settings.nice
+        for md in self.nice_settings.machine_descriptions:
+            md.param.watch(self._load_machine_description, "uri")
+            md.param.trigger("uri")
 
         self.xml_text = (
             importlib.resources.files("waveform_editor.shape_editor.xml_param")
@@ -353,36 +357,28 @@ class ShapeEditor(Viewer):
         self._update_metrics()
         self._list_runs()
 
-    @param.depends("nice_settings.md_pf_active.uri", watch=True)
-    def _load_pf_active(self):
-        self.pf_active = self._load_slice(
-            self.nice_settings.md_pf_active.uri, "pf_active"
-        )
-        self.nice_plotter.pf_active = self.pf_active
-        self.coil_currents.create_ui(self.pf_active)
-        self.nice_settings.md_pf_active.loaded = self.pf_active is not None
+    def _load_machine_description(self, event):
+        """Load a machine description into the parameter of its IDS name, and into
+        that of the components that use it."""
+        md = event.obj
+        ids = self._load_slice(md.uri, md.ids_name)
+        self.param.update({md.ids_name: ids})
+        for component in (self.nice_plotter, self.plasma_properties):
+            if md.ids_name in component.param:
+                component.param.update({md.ids_name: ids})
+        if md.ids_name == "pf_active":
+            self.coil_currents.create_ui(ids)
+        md.loaded = ids is not None
 
-    @param.depends("nice_settings.md_pf_passive.uri", watch=True)
-    def _load_pf_passive(self):
-        self.pf_passive = self._load_slice(
-            self.nice_settings.md_pf_passive.uri, "pf_passive"
+    def _iron_core_or_empty(self):
+        """The iron_core to send to NICE, an empty one for a machine without."""
+        if self.iron_core is not None:
+            return self.iron_core
+        iron_core = self.factory.new("iron_core")
+        iron_core.ids_properties.homogeneous_time = (
+            imas.ids_defs.IDS_TIME_MODE_INDEPENDENT
         )
-        self.nice_plotter.pf_passive = self.pf_passive
-        self.nice_settings.md_pf_passive.loaded = self.pf_passive is not None
-
-    @param.depends("nice_settings.md_wall.uri", watch=True)
-    def _load_wall(self):
-        self.wall = self._load_slice(self.nice_settings.md_wall.uri, "wall")
-        self.nice_plotter.wall = self.wall
-        self.nice_settings.md_wall.loaded = self.wall is not None
-
-    @param.depends("nice_settings.md_iron_core.uri", watch=True)
-    def _load_iron_core(self):
-        self.iron_core = self._load_slice(
-            self.nice_settings.md_iron_core.uri, "iron_core"
-        )
-        self.nice_plotter.iron_core = self.iron_core
-        self.nice_settings.md_iron_core.loaded = self.iron_core is not None
+        return iron_core
 
     def _create_equilibrium(self):
         """Create and initialize an equilibrium IDS.
@@ -556,7 +552,7 @@ class ShapeEditor(Viewer):
             self.pf_active.serialize(),
             self.pf_passive.serialize(),
             self.wall.serialize(),
-            self.iron_core.serialize(),
+            self._iron_core_or_empty().serialize(),
         )
         # NICE crashed without a result
         if self.communicator.equilibrium is previous_equilibrium:
