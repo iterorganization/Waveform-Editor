@@ -311,8 +311,7 @@ class ShapeEditor(Viewer):
     def _clear_results(self):
         """Drop the result and the runs, since they are of another machine description
         now."""
-        self.communicator.equilibrium = None
-        self.communicator.pf_active = None
+        self.communicator.param.update(equilibrium=None, pf_active=None)
         self.metrics.metrics = {}
         self.run_history = []
         self.run_select.options = {}
@@ -358,8 +357,7 @@ class ShapeEditor(Viewer):
         _, equilibrium, pf_active = self.run_history[event.new]
         if equilibrium is self.communicator.equilibrium:
             return
-        self.communicator.equilibrium = equilibrium
-        self.communicator.pf_active = pf_active
+        self.communicator.param.update(equilibrium=equilibrium, pf_active=pf_active)
         self.coil_currents.sync_ui_with_pf_active(
             pf_active, equilibrium.time_slice[0].global_quantities.ip
         )

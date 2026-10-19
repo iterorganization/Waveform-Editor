@@ -203,11 +203,7 @@ class NicePlotter(Viewer):
             hooks=[self._capture_points_renderer],
         )
         flux_map_elements = [
-            hv.DynamicMap(self._plot_heatmap),
-            hv.DynamicMap(self._plot_contours),
-            hv.DynamicMap(self._plot_separatrix),
-            hv.DynamicMap(self._plot_xo_points),
-            hv.DynamicMap(self._plot_coil_rectangles),
+            hv.DynamicMap(self._plot_result),
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_components),
             hv.DynamicMap(self._plot_vacuum_vessel),
@@ -462,7 +458,29 @@ class NicePlotter(Viewer):
         )
         return hv.Overlay([curve])
 
-    @pn.depends("pf_active", "show_coils", "communicator.pf_active")
+    @pn.depends(
+        "communicator.equilibrium",
+        "communicator.pf_active",
+        "show_heatmap",
+        "heatmap_alpha",
+        "show_contour",
+        "levels",
+        "show_separatrix",
+        "show_xo",
+        "pf_active",
+        "show_coils",
+    )
+    def _plot_result(self):
+        """The layers that change with a NICE result, in one DynamicMap so that a
+        result redraws the plot once rather than once per layer."""
+        return (
+            self._plot_heatmap()
+            * self._plot_contours()
+            * self._plot_separatrix()
+            * self._plot_xo_points()
+            * self._plot_coil_rectangles()
+        )
+
     def _plot_coil_rectangles(self):
         """Creates rectangular and path overlays for PF coils.
 
@@ -517,7 +535,6 @@ class NicePlotter(Viewer):
         )
         return rects * _geometry_paths(paths, line_width=1)
 
-    @pn.depends("communicator.equilibrium", "show_heatmap", "heatmap_alpha")
     def _plot_heatmap(self):
         """Generates heatmap plot for poloidal flux.
 
@@ -547,7 +564,6 @@ class NicePlotter(Viewer):
             .opts(alpha=0.0, colorbar=False)
         )
 
-    @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
         """Generates contour plot for poloidal flux.
 
@@ -610,7 +626,6 @@ class NicePlotter(Viewer):
                     segments.append({"x": seg[:, 0], "y": seg[:, 1], "psi": level})
         return segments
 
-    @pn.depends("communicator.equilibrium", "show_separatrix")
     def _plot_separatrix(self):
         """Plots the separatrix from the equilibrium boundary.
 
@@ -723,7 +738,6 @@ class NicePlotter(Viewer):
             ]
         return _geometry_paths(paths, color="saddlebrown")
 
-    @pn.depends("communicator.equilibrium", "show_xo")
     def _plot_xo_points(self):
         """Plots X-points and O-points from the equilibrium.
 
