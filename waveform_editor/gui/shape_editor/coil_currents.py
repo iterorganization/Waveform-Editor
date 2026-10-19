@@ -299,6 +299,10 @@ class CoilCurrents(Viewer):
                 if coil.current is not None:
                     coil.current *= ip / self.ip
             self._update_table()
+            pn.state.notifications.info(
+                f"Scaled the coil currents by {ip / self.ip:.4g} with the plasma "
+                "current."
+            )
             self._warn_exceeded()
         self.ip = ip
 

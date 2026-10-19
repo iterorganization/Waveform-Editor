@@ -396,9 +396,8 @@ class PlasmaProperties(Viewer):
                             "last NICE run."
                         ),
                         align="center",
-                        margin=(0, 0, 0, -10),
+                        margin=(-3, 0, 0, -10),
                     ),
-                    align="center",
                     margin=(8, 0, 0, 0),
                 )
             ],
