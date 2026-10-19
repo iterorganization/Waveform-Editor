@@ -36,8 +36,9 @@ class CoilCurrentEntry(param.Parameterized):
     )
     penalty_weight = param.Number(
         default=1.0,
-        doc="NICE's group_special_weight. Below 1 weighs this coil's current more "
-        "heavily, holding it closer to what it is penalized towards.",
+        doc="How strongly this coil's current is penalized, the inverse of NICE's "
+        "group_special_weight. Above 1 holds it closer to what it is penalized "
+        "towards.",
     )
 
     @property
@@ -89,9 +90,8 @@ class CoilCurrents(Viewer):
                 "penalized towards the current it was loaded with."
             ),
             self.PENALTY_WEIGHT: (
-                "Scales how far this coil's current may stray from what it is "
-                "penalized towards. Below 1 holds it closer, above 1 lets it drift "
-                "further."
+                "How strongly this coil's current is held to what it is penalized "
+                "towards. Above 1 holds it closer, below 1 lets it drift further."
             ),
         }
         editors = {
@@ -366,7 +366,7 @@ class CoilCurrents(Viewer):
         set_xml_parameter(
             xml_params,
             "group_special_weight",
-            " ".join(str(weights[group][1]) for group in groups),
+            " ".join(str(1 / weights[group][1]) for group in groups),
         )
 
     def __panel__(self):
