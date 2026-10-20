@@ -68,12 +68,7 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
-        self.plasma_properties.param.watch(
-            lambda event: self.coil_currents.scale_to_ip(
-                event.new, self.plasma_properties.scale_coil_currents
-            ),
-            "ip",
-        )
+        self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
@@ -285,6 +280,11 @@ class ShapeEditor(Viewer):
     def _remember_active_tab(self, event):
         """Keep the open tab open when the tabs are rebuilt."""
         self._active_tab = event.new + (not self.nice_settings.is_inverse_mode)
+
+    def _scale_coil_currents(self, event):
+        """Scale the coil currents with the plasma current, when that is enabled."""
+        if self.plasma_properties.scale_coil_currents:
+            self.coil_currents.scale_to_ip(event.new)
 
     def _load_slice(self, uri, ids_name, time=0):
         """Load an IDS slice and return it.
