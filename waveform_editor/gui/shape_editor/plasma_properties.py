@@ -370,6 +370,13 @@ class PlasmaProperties(Viewer):
         label="Set toroidal field by TF coil current",
         doc="Compute the toroidal field from the TF coil current and the tf IDS.",
     )
+    ip = param.Number(default=None, precedence=-1, doc="The plasma current [A].")
+    scale_coil_currents = param.Boolean(
+        default=False,
+        label="Scale coil currents with the plasma current",
+        doc="Scale the coil currents by the change of the plasma current, which keeps "
+        "the plasma shape for the same plasma profiles.",
+    )
 
     def __init__(self):
         super().__init__()
@@ -377,6 +384,23 @@ class PlasmaProperties(Viewer):
             "Plasma current [A]",
             default_value=DEFAULT_PROPERTIES["ip"],
             step=1e6,
+            extra=[
+                pn.Row(
+                    pn.widgets.Checkbox.from_param(self.param.scale_coil_currents),
+                    pn.widgets.TooltipIcon(
+                        value=(
+                            "Multiply all coil currents by the ratio of the new to "
+                            "the previous plasma current. For the same profiles, this "
+                            "keeps the plasma shape, which is useful in direct mode. "
+                            "The currents are scaled from the plasma current of the "
+                            "last NICE run."
+                        ),
+                        align="center",
+                        margin=(-3, 0, 0, -10),
+                    ),
+                    margin=(8, 0, 0, 0),
+                )
+            ],
         )
         self._r0 = PropertyInput(
             "Reference major radius [m]",

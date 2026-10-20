@@ -53,6 +53,12 @@ class CoilCurrentEntry(param.Parameterized):
 class CoilCurrents(Viewer):
     coils = param.List(doc="List of CoilCurrentEntry for each coil")
     edited = param.Event(doc="Triggered whenever the user edits a coil.")
+    reference_ip = param.Number(
+        default=None,
+        precedence=-1,
+        doc="The plasma current the coil currents were computed for, None before "
+        "the first NICE run.",
+    )
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -153,6 +159,7 @@ class CoilCurrents(Viewer):
         Args:
             pf_active: pf_active IDS containing coils with current values.
         """
+        self.reference_ip = None
         if not pf_active:
             self.coils = []
             return
@@ -264,15 +271,45 @@ class CoilCurrents(Viewer):
             if coil.current is not None:
                 pf_active.coil[i].current.data = np.array([coil.current])
 
-    def sync_ui_with_pf_active(self, pf_active):
+    def sync_ui_with_pf_active(self, pf_active, ip):
         """Synchronize UI with the current values from the pf_active IDS.
 
         Args:
             pf_active: pf_active IDS for which the coil currents are used.
+            ip: The plasma current the coil currents were computed for.
         """
         for i, coil in enumerate(pf_active.coil):
             self.coils[i].current = coil.current.data[0]
+        self.reference_ip = ip
         self._update_table()
+
+    def scale_to_ip(self, ip):
+        """Scale the coil currents from the plasma current they were computed for to
+        a new one. The Grad-Shafranov equation is linear in the currents, so scaling
+        all of them by the same factor keeps the plasma shape.
+
+        Args:
+            ip: The new plasma current [A].
+        """
+        if self.reference_ip is None:
+            pn.state.notifications.info(
+                "Run NICE first: the coil currents are scaled from the plasma "
+                "current of the last run."
+            )
+            return
+        # There is no scale factor to or from a plasma current of 0 A
+        if ip == 0 or self.reference_ip == 0:
+            return
+        factor = ip / self.reference_ip
+        for coil in self.coils:
+            if coil.current is not None:
+                coil.current *= factor
+        self.reference_ip = ip
+        self._update_table()
+        pn.state.notifications.info(
+            f"Scaled the coil currents by {factor:.4g} with the plasma current."
+        )
+        self._warn_exceeded()
 
     def update_xml(self, xml_params: ET.Element):
         """Update XML parameters based on coil current table configuration.
