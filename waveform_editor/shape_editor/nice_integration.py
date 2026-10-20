@@ -412,10 +412,9 @@ class NiceIntegration(param.Parameterized):
         equilibrium = self.imas_factory.new("equilibrium")
         equilibrium.deserialize(eq)
         self._last_result = equilibrium
-        self.equilibrium = equilibrium
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
-        self.pf_active = pf_active
+        self.param.update(equilibrium=equilibrium, pf_active=pf_active)
         self.on_run_finished(self.converged)
         self.processing = False
 
