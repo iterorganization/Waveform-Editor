@@ -40,14 +40,6 @@ class IterGaps(MachineGaps):
         "Rmin": ("Rₘᵢₙ", "m", "Inboard boundary radius"),
         "Rmax": ("Rₘₐₓ", "m", "Outboard boundary radius"),
     }
-    DEFAULT_GAPS = {
-        "gap1": 0.0,
-        "gap2": 0.0,
-        "gap4": 0.228,
-        "gap5": 0.596,
-        "Rmin": 4.2099,
-        "Rmax": 8.2006,
-    }
 
     def gap_inputs(self, time_slice):
         """Takes the separatrix up to the top of the plasma, as DINA does, only for a
@@ -96,8 +88,9 @@ class IterGaps(MachineGaps):
             if target is not None:
                 gaps.append(MeasuredGap(key, point, target, distance))
 
+        # Only their points are drawn, not the line from r=0 they are measured along
         for key, i in (("Rmin", np.argmin(r)), ("Rmax", np.argmax(r))):
-            gaps.append(MeasuredGap(key, (0.0, z[i]), (r[i], z[i]), r[i]))
+            gaps.append(MeasuredGap(key, (r[i], z[i]), (r[i], z[i]), r[i]))
         return gaps
 
 

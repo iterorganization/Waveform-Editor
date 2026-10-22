@@ -11,17 +11,16 @@ from waveform_editor.gui.util import (
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
-    WarningIndicator,
     metric_pill,
 )
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.plasma_shape_calc import (
-    Gap,
     apply_point_weights,
     compute_gaussian_weights,
     compute_outline_from_params,
-    update_outline_from_gaps,
+    fit_params_to_outline,
+    resample_outline,
 )
 
 # A shape to start from for each machine, taken from one of its discharges, as
@@ -52,17 +51,41 @@ MACHINE_SHAPES = {
 }
 
 
-def _card(title, *children, visible=True):
-    """A card with a title, holding a group of inputs."""
+# Sliders have a fixed width, and are put side by side as far as there is room
+SLIDER_WIDTH = 320
+
+
+def _group(title, *children, visible=True):
+    """A group of inputs under a divider and a title, without a box around it."""
     return pn.Column(
         pn.pane.HTML(
-            f"<b>{title}</b><hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
-            margin=(0, 0, 0, 0),
+            f"<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'><b>{title}</b>",
+            sizing_mode="stretch_width",
+            margin=0,
+        ),
+        pn.FlexBox(*children, margin=0),
+        sizing_mode="stretch_width",
+        margin=0,
+        visible=visible,
+    )
+
+
+def _card(title, *children, visible=True):
+    """A box with a title, holding one part of the panel."""
+    return pn.Column(
+        pn.pane.HTML(
+            pn.rx(
+                "<b>{}</b><hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>"
+            ).format(title),
+            sizing_mode="stretch_width",
+            margin=0,
         ),
         *children,
         css_classes=["property-card"],
         stylesheets=[CARD_CSS],
-        margin=(0, 0, 8, 0),
+        styles={"background": "white"},
+        sizing_mode="stretch_width",
+        margin=(0, 0, 12, 0),
         visible=visible,
     )
 
@@ -76,7 +99,7 @@ class PlasmaShapeParams(Viewer):
         bounds=(0, None),
         inclusive_bounds=(False, True),
         softbounds=[1, 2],
-        label="Minor Radius",
+        label="Minor radius",
     )
     center_r = param.Number(
         default=6.2,
@@ -128,7 +151,7 @@ class PlasmaShapeParams(Viewer):
         default=3.346, step=0.01, softbounds=[2, 4], label="Second x-point height"
     )
     n_desired_bnd_points = param.Integer(
-        default=96,
+        default=100,
         bounds=(3, 5000),
         softbounds=[3, 200],
         label="Number of boundary points",
@@ -146,50 +169,104 @@ class PlasmaShapeParams(Viewer):
     )
     extra_points_table = param.Parameter()
 
-    def apply_machine_shape(self, event=None):
-        """Start from the shape of the machine of the selected preset."""
+    def __init__(self, **params):
+        super().__init__(**params)
+        # The float sliders shown, so that their range can follow the machine
+        self._sliders = {}
+
+    def apply_machine_shape(self, values=True):
+        """Start from the shape of the machine of the selected preset.
+
+        Args:
+            values: Whether to take its values, or only the ranges of the sliders.
+        """
         shape = MACHINE_SHAPES.get(settings.nice.machine_preset)
         if shape is None:  # a custom machine, whose shape we cannot know
             return
         for name, (_, slider_range) in shape.items():
             if name in self.param:
                 self.param[name].softbounds = slider_range
-            if name in getattr(self, "_sliders", {}):
+            if name in self._sliders:
                 self._sliders[name].start, self._sliders[name].end = slider_range
+        if not values:
+            return
         self.param.update(
             **{name: value for name, (value, _) in shape.items() if name in self.param}
         )
 
-    def __panel__(self):
-        # The sliders of this panel, so that their range can follow the machine
-        self._sliders = {}
+    def _slider(self, n):
+        """The widget of a parameter. The float sliders are kept, so that their
+        range can follow the machine."""
+        p = getattr(self.param, n)
+        if isinstance(self.param[n], param.Boolean):
+            return pn.widgets.Checkbox.from_param(p, sizing_mode="stretch_width")
+        if isinstance(self.param[n], param.Integer):
+            return FixedWidthEditableIntSlider.from_param(p, width=SLIDER_WIDTH)
+        self._sliders[n] = FormattedEditableFloatSlider.from_param(
+            p, width=SLIDER_WIDTH
+        )
+        return self._sliders[n]
 
-        def _slider(n):
-            p = getattr(self.param, n)
-            if isinstance(self.param[n], param.Boolean):
-                return pn.widgets.Checkbox.from_param(p)
-            if isinstance(self.param[n], param.Integer):
-                return FixedWidthEditableIntSlider.from_param(p, stretch_width=True)
-            self._sliders[n] = FormattedEditableFloatSlider.from_param(
-                p, stretch_width=True
-            )
-            return self._sliders[n]
+    def fine_tuning(self, boundary_points=True):
+        """The inputs that refine the boundary NICE is given.
 
+        Args:
+            boundary_points: Whether to include the number of boundary points, which
+                only a parameterized boundary has.
+        """
+        _slider = self._slider
         return pn.Column(
-            _card("Geometry", _slider("a"), _slider("center_r"), _slider("center_z")),
-            _card(
-                "Shape coefficients",
+            _group(
+                "Boundary points",
+                _slider("n_desired_bnd_points"),
+                visible=boundary_points,
+            ),
+            _group(
+                "Emphasized region",
+                _slider("weight_enabled"),
+                pn.FlexBox(
+                    _slider("weight_position"),
+                    _slider("weight_spread"),
+                    _slider("weight_height"),
+                    visible=self.param.weight_enabled.rx(),
+                    sizing_mode="stretch_width",
+                    margin=0,
+                ),
+            ),
+            _group(
+                "Extra points",
+                _slider("extra_points_enabled"),
+                pn.Row(
+                    self.extra_points_table,
+                    visible=self.param.extra_points_enabled.rx(),
+                    sizing_mode="stretch_width",
+                ),
+            ),
+            margin=0,
+        )
+
+    def __panel__(self):
+        _slider = self._slider
+        return pn.Column(
+            _group(
+                "Size and position",
+                _slider("a"),
+                _slider("center_r"),
+                _slider("center_z"),
+            ),
+            _group(
+                "Elongation and triangularity",
                 _slider("kappa"),
                 _slider("delta"),
                 # A double null takes its shape from its x-points instead
                 visible=self.param.second_x_point.rx.not_(),
             ),
-            _card(
-                "X point",
+            _group(
+                "X-point",
                 _slider("rx"),
                 _slider("zx"),
                 pn.Row(
-                    _slider("second_x_point"),
+                    pn.widgets.Checkbox.from_param(self.param.second_x_point),
                     pn.widgets.TooltipIcon(
                         value=(
                             "NICE inverse mode fits the target LCFS boundary points by "
@@ -201,36 +278,18 @@ class PlasmaShapeParams(Viewer):
                         align="center",
                         margin=(0, 0, 0, -10),
                     ),
+                    sizing_mode="stretch_width",
                     margin=(0, 0, 5, 0),
                 ),
-                pn.Column(
+                pn.FlexBox(
                     _slider("rx_upper"),
                     _slider("zx_upper"),
                     visible=self.param.second_x_point.rx(),
+                    sizing_mode="stretch_width",
                     margin=0,
                 ),
             ),
-            _card("Boundary", _slider("n_desired_bnd_points")),
-            _card(
-                "Emphasize region",
-                _slider("weight_enabled"),
-                pn.Column(
-                    _slider("weight_position"),
-                    _slider("weight_spread"),
-                    _slider("weight_height"),
-                    visible=self.param.weight_enabled.rx(),
-                    margin=(0, 0, 0, 0),
-                ),
-            ),
-            _card(
-                "Extra points",
-                _slider("extra_points_enabled"),
-                pn.Row(
-                    self.extra_points_table,
-                    visible=self.param.extra_points_enabled.rx(),
-                ),
-            ),
-            margin=(10, 20, 0, 20),
+            margin=0,
         )
 
 
@@ -413,263 +472,408 @@ class WeightedPointsTable(param.Parameterized):
 
 
 class PlasmaShape(Viewer):
-    PARAMETERIZED_INPUT = "Parameterized"
-    EQUILIBRIUM_INPUT = "Equilibrium IDS outline"
-    GAP_INPUT = "Equilibrium IDS Gaps"
-    WEIGHTED_POINTS_INPUT = "Weighted Points"
-    input_mode = param.ObjectSelector(
-        default=EQUILIBRIUM_INPUT,
-        objects=[
-            EQUILIBRIUM_INPUT,
-            PARAMETERIZED_INPUT,
-            GAP_INPUT,
-            WEIGHTED_POINTS_INPUT,
-        ],
-        label="Shape input mode",
+    """The target shape of the plasma that NICE is given. It starts from a reference
+    shape, and is changed with the parameterisation, with gaps, or as free points."""
+
+    EDIT_REFERENCE = "Reference shape"
+    EDIT_SLIDERS = "Shape parameterisation"
+    EDIT_GAPS = "Target gaps"
+    EDIT_POINTS = "Free points"
+    edit_by = param.Selector(
+        default=EDIT_REFERENCE,
+        objects=[EDIT_REFERENCE, EDIT_SLIDERS, EDIT_GAPS, EDIT_POINTS],
+    )
+    SOURCE_NONE = "Choose a reference…"
+    SOURCE_DEFAULT = "Machine default"
+    SOURCE_IDS = "Equilibrium IDS"
+    SOURCE_RESULT = "Last NICE result"
+    reference_source = param.Selector(
+        default=SOURCE_NONE,
+        objects=[SOURCE_NONE, SOURCE_DEFAULT, SOURCE_IDS, SOURCE_RESULT],
     )
     input_outline = param.ClassSelector(
         class_=EquilibriumInput, default=EquilibriumInput()
     )
-    input_gaps = param.ClassSelector(
-        class_=EquilibriumInput, default=EquilibriumInput()
+    # The free-form shape, and the points added on top of the parameterized one
+    points_table = param.ClassSelector(
+        class_=WeightedPointsTable, default=WeightedPointsTable()
     )
-    weighted_points_table = param.ClassSelector(
+    extra_points_table = param.ClassSelector(
         class_=WeightedPointsTable, default=WeightedPointsTable()
     )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
+    last_result = param.Parameter(
+        default=None, precedence=-1, doc="The equilibrium of the last NICE run."
+    )
+    preview = param.Parameter(
+        default=None, precedence=-1, doc="The equilibrium IDS loaded, before it is set."
+    )
+    show_reference = param.Boolean(default=True, label="Show reference shape")
+    reference_name = param.String(precedence=-1, doc="Where the reference is from.")
 
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
+    redraw = param.Event(doc="Triggered whenever what is drawn of the shape changes.")
     nice_settings = param.ClassSelector(class_=NiceSettings)
-    fit_gaps = param.Boolean(label="Fit the shape to these gaps")
 
     # The shape parameters that are fitted to the gaps
     FIT_PARAMS = ("a", "center_r", "center_z", "kappa", "delta", "rx", "zx")
+    # How far a fitted shape may miss what it is fitted to without a warning [m]
+    FIT_TOLERANCE = 0.005
 
     def __init__(self):
         super().__init__(nice_settings=settings.nice)
-
-        def _indicator(tooltip):
-            return WarningIndicator(
-                tooltip=tooltip, visible=self.param.has_shape.rx.not_()
-            )
-
-        self.outline_indicator = _indicator(
-            "No valid equilibrium IDS with outline loaded"
-        )
-        self.gap_indicator = _indicator("No valid equilibrium IDS with gaps loaded")
-        self.weighted_points_indicator = _indicator(
-            "At least 1 point is required to define a plasma shape"
-        )
-        self._mode_config = {
-            self.EQUILIBRIUM_INPUT: (
-                self._load_shape_from_ids,
-                lambda: pn.Row(
-                    self.input_outline,
-                    self.outline_indicator,
-                    margin=(10, 20, 0, 20),
-                ),
-            ),
-            self.PARAMETERIZED_INPUT: (
-                self._load_shape_from_params,
-                self._panel_parameterized,
-            ),
-            self.GAP_INPUT: (
-                self._load_shape_from_gaps,
-                lambda: pn.Row(
-                    self.input_gaps, self.gap_indicator, margin=(10, 20, 0, 20)
-                ),
-            ),
-            self.WEIGHTED_POINTS_INPUT: (
-                self._load_shape_from_weighted_points,
-                lambda: pn.Row(
-                    self.weighted_points_table, self.weighted_points_indicator
-                ),
-            ),
-        }
-        self.gap_ui = pn.Column(visible=self.param.input_mode.rx() == self.GAP_INPUT)
-        self.radio_box = pn.widgets.RadioButtonGroup(
-            options={
-                "Equilibrium\nIDS Outline": self.EQUILIBRIUM_INPUT,
-                "Parameterized": self.PARAMETERIZED_INPUT,
-                "Equilibrium\nIDS Gaps": self.GAP_INPUT,
-                "Weighted\nPoints": self.WEIGHTED_POINTS_INPUT,
-            },
-            value=self.input_mode,
-            button_type="primary",
-            sizing_mode="stretch_width",
-            margin=(15, 20, 0, 20),
-            stylesheets=[CARD_CSS],
-        )
-        self.radio_box.link(self, value="input_mode", bidirectional=True)
-        self.gap_sliders = pn.Column(visible=self.param.fit_gaps.rx(), margin=0)
-        self.param.watch(self._fit_to_gaps, "fit_gaps")
-        self.gap_pills_pane = pn.pane.HTML(
-            self._render_target_gap_pills,
-            sizing_mode="stretch_width",
-            margin=(5, 20, 0, 20),
-            stylesheets=STYLES,
-        )
-        self.panel = pn.Column(
-            self.radio_box,
-            self.gap_pills_pane,
-            self._panel_shape_options,
-            self.gap_ui,
-        )
         self.outline_r = None
         self.outline_z = None
-        self.gaps = []
         # Unduplicated parameterized boundary points and their per-point weight,
         # kept alongside the (possibly duplicated) outline_r/outline_z so the
         # plot can colour the boundary by weight. None when weighting is off.
         self.param_r = None
         self.param_z = None
         self.param_weights = None
-        self.shape_params.extra_points_table = self.weighted_points_table
-        # Last, because applying a shape fires the watchers above
-        self.nice_settings.param.watch(
-            self.shape_params.apply_machine_shape, "machine_preset"
+        # The outline the shape was started from, drawn dashed for comparison
+        self.reference_r = None
+        self.reference_z = None
+        self.shape_params.extra_points_table = self.extra_points_table
+        # The equilibrium IDS loaded to see it before it is set, and its name
+        self._preview_name = None
+        self.input_outline.param.watch(self._load_preview, "load")
+        # The parameterisation and free points last in sync, see _on_edit_by
+        self._synced = None
+        # Whether the parameterisation is still to be fitted to the reference shape
+        self._fit_pending = False
+        self._reference_x_point = None
+
+        self._source_select = pn.widgets.Select.from_param(
+            self.param.reference_source,
+            name="",
+            # "Change reference…" is only shown while no source is chosen
+            stylesheets=["option:first-child { display: none; }"],
+            margin=(0, 10, 8, 0),
         )
-        self.shape_params.apply_machine_shape()
-        self.nice_settings.param.watch(self._create_gap_sliders, "machine_preset")
-        self._create_gap_sliders()
+        self.gap_sliders = pn.FlexBox(margin=0)
+        # The target shape is shown once a reference shape is set, and is out of the
+        # way while another one is chosen
+        editing = pn.bind(
+            lambda name, source: bool(name) and source == self.SOURCE_NONE,
+            self.param.reference_name,
+            self.param.reference_source,
+        )
+        self.panel = pn.Column(
+            _card(
+                self.param.reference_name.rx().rx.pipe(
+                    lambda name: (
+                        f"Reference shape: {name}" if name else "Reference shape"
+                    )
+                ),
+                pn.Row(
+                    self._source_select,
+                    pn.widgets.Checkbox.from_param(
+                        self.param.show_reference,
+                        # The reference is then the target shape itself, or the
+                        # equilibrium IDS being chosen is always shown
+                        disabled=pn.bind(
+                            lambda edit_by, source: (
+                                edit_by == self.EDIT_REFERENCE
+                                or source == self.SOURCE_IDS
+                            ),
+                            self.param.edit_by,
+                            self.param.reference_source,
+                        ),
+                        align="center",
+                        margin=(0, 0, 8, 0),
+                    ),
+                    margin=0,
+                ),
+                pn.Column(
+                    self.input_outline,
+                    visible=self.param.reference_source.rx() == self.SOURCE_IDS,
+                    sizing_mode="stretch_width",
+                    margin=0,
+                ),
+                pn.widgets.Button(
+                    name="Set reference shape",
+                    button_type="primary",
+                    disabled=self.param.reference_source.rx() == self.SOURCE_NONE,
+                    margin=0,
+                    on_click=self._set_reference,
+                ),
+            ),
+            _card(
+                "Target gaps",
+                pn.pane.HTML(
+                    self._render_gaps,
+                    sizing_mode="stretch_width",
+                    stylesheets=STYLES,
+                    margin=0,
+                ),
+                visible=pn.bind(
+                    lambda preset, editing: preset in MACHINE_GAPS and editing,
+                    self.nice_settings.param.machine_preset,
+                    editing,
+                ),
+            ),
+            _card(
+                "Target shape",
+                pn.widgets.RadioButtonGroup.from_param(
+                    self.param.edit_by,
+                    name="",
+                    button_type="primary",
+                    button_style="outline",
+                    stylesheets=[CARD_CSS],
+                    sizing_mode="stretch_width",
+                    max_width=560,
+                    margin=(0, 0, 8, 0),
+                ),
+                self._panel_edit,
+                visible=editing,
+            ),
+            margin=(15, 20, 12, 20),
+        )
+        self.param.watch(self._on_edit_by, "edit_by")
+        # One event for the plot, so that it can be drawn once for several changes
+        self._hold_redraw = False
+        self.param.watch(
+            lambda *events: self._hold_redraw or self.param.trigger("redraw"),
+            [
+                "shape_updated",
+                "edit_by",
+                "show_reference",
+                "preview",
+                "reference_source",
+                "last_result",
+            ],
+        )
+        self.nice_settings.param.watch(self._update_sources, "machine_preset")
+        self.param.watch(self._update_sources, "last_result")
+        self._update_sources()
+        # Last, because clearing the shape fires the watchers above
+        self.nice_settings.param.watch(self._clear_reference, "machine_preset")
+        self._clear_reference()
 
     @pn.depends(
         "shape_params.param",
-        "input_outline.load",
-        "input_gaps.load",
-        "weighted_points_table.param",
-        "input_mode",
+        "points_table.param",
+        "extra_points_table.param",
+        "edit_by",
         watch=True,
     )
     def _set_plasma_shape(self):
-        """Update plasma boundary shape based on input mode, triggering shape_updated
-        only if it changed."""
+        """Update plasma boundary shape, triggering shape_updated only if it
+        changed."""
         previous = (self.outline_r, self.outline_z, self.param_weights)
-        self.outline_r = self.outline_z = None
-        self.gaps = []
         self.param_r = self.param_z = self.param_weights = None
-
-        loader, _ = self._mode_config[self.input_mode]
-        loader()
-
-        if self.outline_r and self.outline_z:
-            self.has_shape = True
+        if self.edit_by == self.EDIT_POINTS:
+            self.outline_r, self.outline_z = self.points_table.get_outline_coordinates()
+        elif self.reference_r is None:  # no reference shape is set yet
+            self.outline_r = self.outline_z = None
+        elif self.edit_by == self.EDIT_REFERENCE:
+            self._refine_shape(
+                np.asarray(self.reference_r).tolist(),
+                np.asarray(self.reference_z).tolist(),
+            )
         else:
-            self.has_shape = False
+            self._refine_shape(*compute_outline_from_params(**self._shape_arguments()))
+        self.has_shape = bool(self.outline_r and self.outline_z)
         current = (self.outline_r, self.outline_z, self.param_weights)
         if not all(map(np.array_equal, previous, current)):
             self.param.trigger("shape_updated")
 
-    def _load_shape_from_ids(self):
-        """Load plasma boundary outline from IDS equilibrium input."""
-        if not self.input_outline.uri:
-            return
-        try:
-            with imas.DBEntry(self.input_outline.uri, "r") as entry:
-                equilibrium = entry.get_slice(
-                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
-                )
-
-            self.outline_r = equilibrium.time_slice[0].boundary.outline.r
-            self.outline_z = equilibrium.time_slice[0].boundary.outline.z
-        except Exception as e:
-            pn.state.notifications.error(
-                f"Could not load plasma boundary outline from {self.input_outline.uri}:"
-                f" {str(e)}"
-            )
-            self.outline_r = self.outline_z = None
-
-    def _load_shape_from_gaps(self):
-        """Load plasma boundary outline from IDS equilibrium gap definitions."""
-        self.gaps = []
-
-        if self.input_gaps.uri:
-            try:
-                with imas.DBEntry(self.input_gaps.uri, "r") as entry:
-                    equilibrium = entry.get_slice(
-                        "equilibrium",
-                        self.input_gaps.time,
-                        imas.ids_defs.CLOSEST_INTERP,
-                    )
-                input_gaps = equilibrium.time_slice[0].boundary.gap
-                if not input_gaps:
-                    pn.state.notifications.error(
-                        "The equilibrium IDS does not have any gaps"
-                    )
-                else:
-                    for gap in input_gaps:
-                        self.gaps.append(
-                            Gap(
-                                r=gap.r,
-                                z=gap.z,
-                                name=gap.name,
-                                angle=gap.angle,
-                                value=gap.value,
-                            )
-                        )
-            except Exception as e:
-                pn.state.notifications.error(
-                    f"Could not load gaps from {self.input_gaps.uri}: {str(e)}"
-                )
-
-        self._update_outline_from_gaps()
-        self._create_gap_ui()
-
-    def _update_outline_from_gaps(self):
-        """Update outline coordinates from current gap data."""
-        self.outline_r, self.outline_z = update_outline_from_gaps(self.gaps)
-
-    def _on_gap_change(self, event):
-        """Callback function triggered when gap UI values change."""
-        for i, value_widget in enumerate(self.gap_ui):
-            self.gaps[i].value = value_widget.value
-        self._update_outline_from_gaps()
-        self.param.trigger("shape_updated")
-
-    def _create_gap_ui(self):
-        """Create the UI for each gap and populate the gap_ui list."""
-        self.gap_ui.clear()
-        if not self.gaps:
-            return
-
-        new_gap_ui = []
-        for i, gap in enumerate(self.gaps):
-            value_input = FormattedEditableFloatSlider(
-                name=f"Gap {i}: {gap.name} Value [m]",
-                value=float(gap.value),
-                start=0,
-                end=1,
-                step=0.01,
-                stretch_width=True,
-            )
-            value_input.param.watch(self._on_gap_change, "value")
-            new_gap_ui.append(value_input)
-
-        self.gap_ui.extend(new_gap_ui)
-
     @property
     def target_x_points(self):
         """The x-points of the target shape, which only a parameterized shape has."""
-        if self.input_mode != self.PARAMETERIZED_INPUT:
+        if self.edit_by in (self.EDIT_REFERENCE, self.EDIT_POINTS):
             return []
-        return [(self.shape_params.rx, self.shape_params.zx)]
+        p = self.shape_params
+        if p.second_x_point:
+            return [(p.rx, p.zx), (p.rx_upper, p.zx_upper)]
+        return [(p.rx, p.zx)]
 
     @property
-    def uses_weighted_points(self):
-        """Whether the weighted points table feeds the current input mode."""
-        return self.input_mode == self.WEIGHTED_POINTS_INPUT or (
-            self.input_mode == self.PARAMETERIZED_INPUT
-            and self.shape_params.extra_points_enabled
+    def active_points_table(self):
+        """The point table the plot edits, None when no points are in use."""
+        if self.edit_by == self.EDIT_POINTS:
+            return self.points_table
+        if self.shape_params.extra_points_enabled:
+            return self.extra_points_table
+        return None
+
+    @property
+    def candidate_outline(self):
+        """The (r, z) of the reference shape of the chosen source, None if no source
+        is chosen or it has no shape yet, such as an equilibrium IDS not loaded."""
+        if self.reference_source == self.SOURCE_DEFAULT:
+            shape = MACHINE_SHAPES[self.nice_settings.machine_preset]
+            return compute_outline_from_params(
+                **{
+                    **self._shape_arguments(),
+                    **{name: value for name, (value, _) in shape.items()},
+                    "rx_upper": None,
+                    "zx_upper": None,
+                }
+            )
+        equilibrium = {
+            self.SOURCE_RESULT: self.last_result,
+            self.SOURCE_IDS: self.preview,
+        }.get(self.reference_source)
+        if equilibrium is None:
+            return None
+        outline = equilibrium.time_slice[0].boundary.outline
+        return outline.r, outline.z
+
+    def _update_sources(self, event=None):
+        """Disable the sources there is nothing to take the reference from."""
+        unavailable = []
+        if self.nice_settings.machine_preset not in MACHINE_SHAPES:
+            unavailable.append(self.SOURCE_DEFAULT)
+        if self.last_result is None:
+            unavailable.append(self.SOURCE_RESULT)
+        if self.reference_source in unavailable:
+            self.reference_source = self.SOURCE_NONE
+        self._source_select.disabled_options = unavailable
+
+    def _set_reference(self, event=None):
+        """Start from the reference of the selected source."""
+        # The plot is drawn once, for all that changes
+        self._hold_redraw = True
+        try:
+            if self.reference_source == self.SOURCE_DEFAULT:
+                self._start_from_default()
+            elif self.reference_source == self.SOURCE_RESULT:
+                self.start_from_equilibrium(self.last_result, "Last NICE result")
+            elif not self._start_from_ids():
+                return
+            # Out of the way until the reference is changed again
+            self.reference_source = self.SOURCE_NONE
+        finally:
+            self._hold_redraw = False
+            self.param.trigger("redraw")
+
+    def _clear_reference(self, event=None):
+        """Start without a reference shape, for one to be chosen first."""
+        self.shape_params.apply_machine_shape(values=False)
+        self.reference_r = self.reference_z = None
+        self.reference_name = ""
+        self.reference_source = self.SOURCE_NONE
+        self._fit_pending = False
+        self.points_table.set_points([], [], [])
+        self._synced = self._sync_state()
+        self.edit_by = self.EDIT_REFERENCE
+        self.param.trigger("edit_by")
+
+    def _start_from_default(self, event=None):
+        """Start from the shape of the machine of the selected preset."""
+        preset = self.nice_settings.machine_preset
+        self._fit_pending = False
+        self.shape_params.apply_machine_shape()
+        self.reference_r, self.reference_z = compute_outline_from_params(
+            **self._shape_arguments()
+        )
+        self.reference_name = (
+            f"{preset} default" if preset in MACHINE_SHAPES else "Default shape"
+        )
+        self._copy_parameterized_shape()
+        self._start_editing()
+
+    def _start_from_ids(self):
+        """Start from the equilibrium IDS that is loaded.
+
+        Returns:
+            Whether an equilibrium IDS was loaded.
+        """
+        if self.preview is None:
+            pn.state.notifications.warning("Load an equilibrium IDS first")
+            return False
+        self.start_from_equilibrium(self.preview, self._preview_name)
+        return True
+
+    @param.depends("reference_source", watch=True)
+    def _clear_preview(self):
+        """The loaded equilibrium IDS is only drawn, as the reference, while it can be
+        set."""
+        if self.reference_source == self.SOURCE_IDS:
+            self.show_reference = True
+        else:
+            self.preview = None
+
+    def _load_preview(self, event=None):
+        """Load the entered equilibrium IDS, to see it on the plot before it is set."""
+        try:
+            with imas.DBEntry(self.input_outline.uri, "r") as entry:
+                self._preview_name = (
+                    f"Equilibrium IDS, t = {self.input_outline.time:g} s"
+                )
+                self.preview = entry.get_slice(
+                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
+                )
+        except Exception as e:
+            pn.state.notifications.error(
+                f"Could not load the equilibrium from {self.input_outline.uri}: {e}"
+            )
+
+    def start_from_equilibrium(self, equilibrium, name):
+        """Start from the boundary of an equilibrium, and keep it as it is as the free
+        points. The parameterisation is fitted to it once it is used.
+
+        Args:
+            equilibrium: The equilibrium IDS.
+            name: What the equilibrium is, shown as the reference.
+        """
+        time_slice = equilibrium.time_slice[0]
+        r = np.asarray(time_slice.boundary.outline.r, dtype=float)
+        z = np.asarray(time_slice.boundary.outline.z, dtype=float)
+        if len(r) < 3:
+            pn.state.notifications.error("The equilibrium has no boundary outline")
+            return
+        nodes = time_slice.contour_tree.node
+        # The primary x-point is node 1, see the Data Dictionary
+        x_point = None
+        if len(nodes) > 1 and nodes[1].critical_type == 1:
+            x_point = (float(nodes[1].r), float(nodes[1].z))
+
+        self.reference_r, self.reference_z = r, z
+        self._reference_x_point = x_point
+        self._fit_pending = True
+        # As many points as the boundary is set to have, from the x-point on
+        points_r, points_z = resample_outline(
+            r,
+            z,
+            self.shape_params.n_desired_bnd_points,
+            start=x_point or (r[z.argmin()], z.min()),
+        )
+        self.points_table.set_points(points_r, points_z, [1] * len(points_r))
+        self.reference_name = name
+        self._start_editing()
+
+    def _fit_to_reference(self):
+        """Fit the parameterisation to the reference shape of an equilibrium."""
+        r, z = self.reference_r, self.reference_z
+        p = self.shape_params
+        fitted, distances = fit_params_to_outline(
+            {"n_desired_bnd_points": p.n_desired_bnd_points},
+            r,
+            z,
+            self._reference_x_point,
+        )
+        self._warn_misfit(distances, "the reference shape")
+        top = z.argmax()
+        p.param.update(
+            **{name: fitted[name] for name in self.FIT_PARAMS},
+            second_x_point=False,
+            # Ready for a double null: the second x-point at the top of the outline
+            rx_upper=float(r[top]),
+            zx_upper=float(z[top]),
         )
 
-    def _load_shape_from_weighted_points(self):
-        """Load plasma boundary outline from weighted points."""
-        self.outline_r, self.outline_z = (
-            self.weighted_points_table.get_outline_coordinates()
-        )
+    def _start_editing(self):
+        """Give NICE the new reference as it is."""
+        self._synced = self._sync_state()
+        self._create_gap_sliders()
+        self.edit_by = self.EDIT_REFERENCE
+        self.param.trigger("edit_by")  # the views available depend on the machine
+        self.param.trigger("shape_updated")  # the reference is drawn
 
     def _shape_arguments(self):
         """The arguments of compute_outline_from_params of the parameterized shape."""
@@ -687,10 +891,10 @@ class PlasmaShape(Viewer):
             zx_upper=p.zx_upper if p.second_x_point else None,
         )
 
-    def _load_shape_from_params(self):
-        """Compute plasma boundary outline from parameterized shape inputs."""
+    def _refine_shape(self, r, z):
+        """The outline NICE is given from a boundary: with its emphasized region and
+        extra points."""
         p = self.shape_params
-        r, z = compute_outline_from_params(**self._shape_arguments())
         self.param_r, self.param_z = r, z
 
         if p.weight_enabled:
@@ -701,7 +905,6 @@ class PlasmaShape(Viewer):
                 r, z, self.param_weights
             )
         else:
-            self.param_weights = None
             self.outline_r, self.outline_z = r, z
 
         if p.extra_points_enabled:
@@ -711,32 +914,86 @@ class PlasmaShape(Viewer):
         """Append the weighted points to the parameterized boundary. They go last
         because NICE measures every point against the first one, so repeats of the
         first point would cancel out."""
-        extra_r, extra_z = self.weighted_points_table.get_outline_coordinates()
+        extra_r, extra_z = self.extra_points_table.get_outline_coordinates()
         if not extra_r:
             return
         self.outline_r = self.outline_r + extra_r
         self.outline_z = self.outline_z + extra_z
 
-    @param.depends("input_mode", "nice_settings.machine_preset")
-    def _panel_shape_options(self):
-        _, panel_factory = self._mode_config[self.input_mode]
-        return panel_factory()
+    def _copy_parameterized_shape(self):
+        """Replace the free points by the boundary of the parameterised shape."""
+        r, z = compute_outline_from_params(**self._shape_arguments())
+        self.points_table.set_points(r, z, [1] * len(r))
 
-    def _panel_parameterized(self):
-        """The shape parameters, and for a machine with gaps, the gaps to fit them
-        to."""
-        if self.nice_settings.machine_preset not in MACHINE_GAPS:
-            return self.shape_params
-        fit_card = _card(
-            "Fit to gaps",
-            pn.widgets.Checkbox.from_param(self.param.fit_gaps),
-            self.gap_sliders,
+    def _fit_to_points(self):
+        """Fit the parameterisation to the free points."""
+        r, z, _ = self.points_table.get_points()
+        if len(r) < 3:
+            pn.state.notifications.error("At least 3 points are needed to fit to")
+            return
+        fitted, distances = fit_params_to_outline(
+            {"n_desired_bnd_points": self.shape_params.n_desired_bnd_points}, r, z
         )
-        return pn.Column(
-            self.shape_params,
-            pn.Column(fit_card, margin=(0, 20, 0, 20)),
-            sizing_mode="stretch_width",
+        self._warn_misfit(distances, "the free points")
+        self.shape_params.param.update(
+            **{name: fitted[name] for name in self.FIT_PARAMS}, second_x_point=False
         )
+
+    def _warn_misfit(self, distances, fitted_to):
+        """Warn when the parameterisation misses what it was fitted to."""
+        if distances.max() > self.FIT_TOLERANCE:
+            pn.state.notifications.warning(
+                f"The shape parameterisation misses {fitted_to} by up to "
+                f"{distances.max() * 100:.1f} cm"
+            )
+
+    def _sync_state(self):
+        return self._shape_arguments(), self.points_table.get_points()
+
+    def _on_edit_by(self, event):
+        """Each view starts from the shape last changed in another: leaving changed
+        free points fits the parameterisation to them, and a changed parameterisation
+        replaces the free points. The parameterisation is fitted to the reference
+        shape of an equilibrium when it is first used."""
+        parameterisation, points = self._synced
+        if event.old == self.EDIT_POINTS and self.points_table.get_points() != points:
+            self._fit_to_points()
+            self._fit_pending = False  # the free points are newer
+        if event.new in (self.EDIT_SLIDERS, self.EDIT_GAPS) and self._fit_pending:
+            self._fit_pending = False
+            self._fit_to_reference()
+        if (
+            event.new == self.EDIT_POINTS
+            and self._shape_arguments() != parameterisation
+        ):
+            self._copy_parameterized_shape()
+        self._synced = self._sync_state()
+        if event.new == self.EDIT_GAPS:
+            if self.nice_settings.machine_preset not in MACHINE_GAPS:
+                pn.state.notifications.warning(
+                    "Gaps are only defined for the ITER and WEST presets"
+                )
+                self.edit_by = self.EDIT_SLIDERS
+                return
+            self._create_gap_sliders()
+
+    @param.depends("edit_by")
+    def _panel_edit(self):
+        if self.edit_by == self.EDIT_REFERENCE:
+            return self.shape_params.fine_tuning(boundary_points=False)
+        if self.edit_by == self.EDIT_POINTS:
+            return pn.Column(
+                pn.widgets.Button(
+                    name="Clear points",
+                    icon="trash",
+                    on_click=lambda event: self.points_table.set_points([], [], []),
+                    margin=(8, 0),
+                ),
+                self.points_table,
+                margin=0,
+            )
+        main = self.gap_sliders if self.edit_by == self.EDIT_GAPS else self.shape_params
+        return pn.Column(main, self.shape_params.fine_tuning(), margin=0)
 
     def _shape_gaps(self, gaps, arguments):
         """The gaps of a parameterized shape, in metres by name."""
@@ -746,37 +1003,39 @@ class PlasmaShape(Viewer):
 
     def _create_gap_sliders(self, event=None):
         """A slider for each gap the parameterized shape can be measured on, starting
-        at the gap the machine is designed with, or else at that of the shape."""
+        at the gap of the current shape."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
-        if gaps is None:
-            return
         self._gap_sliders = {}
+        if gaps is None:
+            self.gap_sliders.objects = []
+            return
         for key, value in self._shape_gaps(gaps, self._shape_arguments()).items():
             if value is None:
                 continue
             symbol, unit, name = gaps.GAP_METADATA[key]
-            value = gaps.DEFAULT_GAPS.get(key, value)
             start, end = (value - 1, value + 1) if unit == "m" else (-0.1, 1)
+            # In the unit the gap pills show it in
+            scale = 100 if unit == "cm" else 1
             slider = FormattedEditableFloatSlider(
-                name=f"{symbol}: {name} [m]",
-                value=value,
-                start=start,
-                end=end,
-                step=0.005,
-                stretch_width=True,
+                name=f"{symbol}: {name} [{unit}]",
+                value=value * scale,
+                start=start * scale,
+                end=end * scale,
+                step=0.005 * scale,
+                width=SLIDER_WIDTH,
             )
-            slider.param.watch(self._fit_to_gaps, "value_throttled")
+            slider.param.watch(self._fit_to_gaps, "value")
             self._gap_sliders[key] = slider
         self.gap_sliders.objects = list(self._gap_sliders.values())
-        self._fit_to_gaps()
 
     def _fit_to_gaps(self, event=None):
         """Set the shape parameters to those whose gaps come closest to the gap
-        sliders, while fitting to gaps is on."""
-        if not self.fit_gaps:
-            return
+        sliders."""
         gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = {key: slider.value for key, slider in self._gap_sliders.items()}
+        targets = {
+            key: slider.value / (100 if gaps.GAP_METADATA[key][1] == "cm" else 1)
+            for key, slider in self._gap_sliders.items()
+        }
         ranges = {
             name: self.shape_params.param[name].softbounds for name in self.FIT_PARAMS
         }
@@ -790,28 +1049,26 @@ class PlasmaShape(Viewer):
             for key, target in targets.items()
         }
         worst = max(missed, key=missed.get)
-        if missed[worst] > 0.005:
+        if missed[worst] > self.FIT_TOLERANCE:
             symbol = gaps.GAP_METADATA[worst][0]
             by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
             pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
 
-    @param.depends("nice_settings.machine_preset", "shape_updated")
-    def _render_target_gap_pills(self):
-        """Pills with the gaps of the target shape."""
-        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
-        if gaps is None or not self.has_shape:
-            return ""
-        inputs = gaps.shape_inputs(self.target_x_points)
-        values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
+    @param.depends("nice_settings.machine_preset", "redraw")
+    def _render_gaps(self):
+        """The gaps of the target shape."""
         chips = []
-        for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
-            value = values.get(key)
-            if value is None:
-                continue
-            display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
-            chips.append(metric_pill(symbol, display, name))
-        title = '<span class="mc-title">Target shape gaps</span>'
-        return f'<div class="mc-wrap">{title}{"".join(chips)}</div>'
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is not None and self.has_shape:
+            inputs = gaps.shape_inputs(self.target_x_points)
+            values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
+            for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
+                value = values.get(key)
+                if value is None:
+                    continue
+                display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
+                chips.append(metric_pill(symbol, display, name))
+        return f'<div class="mc-wrap">{"".join(chips)}</div>'
 
     def __panel__(self):
         return self.panel

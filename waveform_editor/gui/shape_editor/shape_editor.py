@@ -37,6 +37,8 @@ def _reactive_title(title, is_valid):
 
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
+    # Pixels below the top of the plot that are not its frame, of its axis
+    BELOW_PLOT = 80
     # Seconds the inputs must be unchanged before auto run runs NICE again
     AUTO_RUN_DELAY = 0.3
 
@@ -68,6 +70,10 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
+        self.communicator.param.watch(
+            lambda event: self.plasma_shape.param.update(last_result=event.new),
+            "equilibrium",
+        )
         self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
@@ -194,6 +200,7 @@ class ShapeEditor(Viewer):
         )
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
+            self.nice_plotter.legend,
             self.metrics,
             sizing_mode="stretch_height",
             scroll=True,
@@ -207,6 +214,7 @@ class ShapeEditor(Viewer):
             visible=self.collapse_plot.param.value.rx.not_(),
         )
         plot_handle.param.watch(self._resize_plot, "dx")
+        plot_handle.param.watch(self._fit_plot, "room")
         self.nice_plotter.param.watch(
             lambda event: self._limit_drag(plot_handle), "frame_width"
         )
@@ -230,6 +238,16 @@ class ShapeEditor(Viewer):
         if event.new:
             self.nice_plotter.resize(event.new)
             event.obj.dx = 0
+
+    def _fit_plot(self, event):
+        """Make the plot as large as the browser window has room for, beside the
+        inputs."""
+        right, below = event.new
+        plot = self.nice_plotter
+        # The handle moves with the right of the plot, as far as it widens
+        plot.fit(
+            plot.frame_width + right - event.obj.min_right, below - self.BELOW_PLOT
+        )
 
     def _limit_drag(self, handle):
         """Let the handle go only as far as the plot can be resized."""
@@ -594,6 +612,9 @@ class ShapeEditor(Viewer):
         }
 
     def _update_metrics(self):
+        if not self.communicator.converged:
+            self.metrics.metrics = {}  # the shape of a run that did not converge
+            return
         eq = self.communicator.equilibrium
         global_quantities = eq.time_slice[0].global_quantities
         boundary = eq.time_slice[0].boundary

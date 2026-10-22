@@ -73,6 +73,20 @@ class EquilibriumInput(Viewer):
     )
 
     def __panel__(self):
+        slider = pn.widgets.DiscreteSlider(
+            name="",
+            options=self.param.times.rx().rx.or_([0.0]),
+            value=self.time,
+            show_value=False,
+            sizing_mode="stretch_width",
+            align="end",
+            margin=(0, 0, 14, 0),
+        )
+        # Once it is let go, as each time is loaded
+        slider.param.watch(
+            lambda event: setattr(self, "time", event.new), "value_throttled"
+        )
+        self.param.watch(lambda event: setattr(slider, "value", event.new), "time")
         return pn.Column(
             pn.pane.HTML("<b>Equilibrium IDS source</b>", margin=(0, 0, 6, 0)),
             pn.widgets.TextInput.from_param(
@@ -91,23 +105,7 @@ class EquilibriumInput(Viewer):
                     format="0[.]000",
                     margin=(0, 20, 10, 0),
                 ),
-                pn.widgets.DiscreteSlider.from_param(
-                    self.param.time,
-                    name="",
-                    options=self.param.times.rx().rx.or_([0.0]),
-                    show_value=False,
-                    sizing_mode="stretch_width",
-                    align="end",
-                    margin=(0, 0, 14, 0),
-                ),
-                pn.widgets.Button(
-                    name="Load",
-                    button_type="primary",
-                    width=80,
-                    align="end",
-                    margin=(0, 0, 10, 10),
-                    on_click=self._on_load,
-                ),
+                slider,
                 margin=0,
                 visible=self.param.times.rx.bool(),
             ),
@@ -128,9 +126,11 @@ class EquilibriumInput(Viewer):
             self.typed_time = self.time
 
     @param.depends("time", watch=True)
-    def _show_time(self):
-        """Show the time of the slice in use, also when the slider set it."""
+    async def _load_time(self):
+        """Show the time of the slice in use, also when the slider set it, and load
+        it."""
         self.typed_time = self.time
+        await self._on_load()
 
     async def _on_load(self, event=None):
         """Load the IDS, for whoever is listening for it."""
@@ -144,6 +144,9 @@ class EquilibriumInput(Viewer):
     async def _read_times(self):
         """Read the times the IDS holds a slice for, so that only those can be
         chosen."""
+        if self.uri != self.uri.strip():
+            self.uri = self.uri.strip()  # reads the times again, without the spaces
+            return
         self.reading = True
         await asyncio.sleep(0.05)
         self.times = self._ids_times()
@@ -151,7 +154,10 @@ class EquilibriumInput(Viewer):
             self.step = (self.times[-1] - self.times[0]) / (len(self.times) - 1)
         self.reading = False
         if self.times:
-            self.time = self.times[0]
+            # Loaded also when the first slice is at the time of the one before
+            with param.discard_events(self):
+                self.time = self.times[0]
+            self.param.trigger("time")
 
     def _ids_times(self):
         """The times of the equilibrium IDS at the URI, empty when it cannot be read.
@@ -187,6 +193,9 @@ class DragHandle(JSComponent):
     min_right = param.Integer(
         default=500, doc="Pixels to keep free right of the handle, for what is there"
     )
+    room = param.List(
+        default=[], doc="Pixels from the handle to the right and bottom of the window"
+    )
 
     _esm = """
     export function render({ model, el }) {
@@ -214,6 +223,16 @@ class DragHandle(JSComponent):
         bar.classList.remove("dragging")
       })
       el.appendChild(bar)
+      // Report the room the window leaves, once laid out and after it is resized
+      let timer = null
+      const report = () => {
+        const box = bar.getBoundingClientRect()
+        if (!box.width) return
+        model.room = [window.innerWidth - box.left, window.innerHeight - box.top]
+      }
+      const later = () => { clearTimeout(timer); timer = setTimeout(report, 200) }
+      window.addEventListener("resize", later)
+      later()
     }
     """
 
