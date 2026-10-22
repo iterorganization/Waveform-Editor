@@ -53,6 +53,8 @@ MACHINE_SHAPES = {
 
 # Sliders have a fixed width, and are put side by side as far as there is room
 SLIDER_WIDTH = 320
+# The gap sliders are in the unit the gap pills show the gaps in, from metres
+GAP_SCALE = {"m": 1, "cm": 100}
 
 
 def _group(title, *children, visible=True):
@@ -191,7 +193,8 @@ class PlasmaShapeParams(Viewer):
         if not values:
             return
         self.param.update(
-            **{name: value for name, (value, _) in shape.items() if name in self.param}
+            **{name: value for name, (value, _) in shape.items() if name in self.param},
+            second_x_point=False,
         )
 
     def _slider(self, n):
@@ -537,8 +540,6 @@ class PlasmaShape(Viewer):
         self.reference_r = None
         self.reference_z = None
         self.shape_params.extra_points_table = self.extra_points_table
-        # The equilibrium IDS loaded to see it before it is set, and its name
-        self._preview_name = None
         self.input_outline.param.watch(self._load_preview, "load")
         # The parameterisation and free points last in sync, see _on_edit_by
         self._synced = None
@@ -549,7 +550,7 @@ class PlasmaShape(Viewer):
         self._source_select = pn.widgets.Select.from_param(
             self.param.reference_source,
             name="",
-            # "Change reference…" is only shown while no source is chosen
+            # SOURCE_NONE is only shown while no source is chosen
             stylesheets=["option:first-child { display: none; }"],
             margin=(0, 10, 8, 0),
         )
@@ -670,10 +671,7 @@ class PlasmaShape(Viewer):
         elif self.reference_r is None:  # no reference shape is set yet
             self.outline_r = self.outline_z = None
         elif self.edit_by == self.EDIT_REFERENCE:
-            self._refine_shape(
-                np.asarray(self.reference_r).tolist(),
-                np.asarray(self.reference_z).tolist(),
-            )
+            self._refine_shape(self.reference_r, self.reference_z)
         else:
             self._refine_shape(*compute_outline_from_params(**self._shape_arguments()))
         self.has_shape = bool(self.outline_r and self.outline_z)
@@ -759,21 +757,14 @@ class PlasmaShape(Viewer):
         self.reference_source = self.SOURCE_NONE
         self._fit_pending = False
         self.points_table.set_points([], [], [])
-        self._synced = self._sync_state()
-        self.edit_by = self.EDIT_REFERENCE
-        self.param.trigger("edit_by")
+        self._start_editing()
 
-    def _start_from_default(self, event=None):
+    def _start_from_default(self):
         """Start from the shape of the machine of the selected preset."""
-        preset = self.nice_settings.machine_preset
+        self.reference_r, self.reference_z = self.candidate_outline
+        self.reference_name = f"{self.nice_settings.machine_preset} default"
         self._fit_pending = False
         self.shape_params.apply_machine_shape()
-        self.reference_r, self.reference_z = compute_outline_from_params(
-            **self._shape_arguments()
-        )
-        self.reference_name = (
-            f"{preset} default" if preset in MACHINE_SHAPES else "Default shape"
-        )
         self._copy_parameterized_shape()
         self._start_editing()
 
@@ -786,11 +777,13 @@ class PlasmaShape(Viewer):
         if self.preview is None:
             pn.state.notifications.warning("Load an equilibrium IDS first")
             return False
-        self.start_from_equilibrium(self.preview, self._preview_name)
+        self.start_from_equilibrium(
+            self.preview, f"Equilibrium IDS, t = {self.input_outline.time:g} s"
+        )
         return True
 
     @param.depends("reference_source", watch=True)
-    def _clear_preview(self):
+    def _on_reference_source(self):
         """The loaded equilibrium IDS is only drawn, as the reference, while it can be
         set."""
         if self.reference_source == self.SOURCE_IDS:
@@ -802,13 +795,11 @@ class PlasmaShape(Viewer):
         """Load the entered equilibrium IDS, to see it on the plot before it is set."""
         try:
             with imas.DBEntry(self.input_outline.uri, "r") as entry:
-                self._preview_name = (
-                    f"Equilibrium IDS, t = {self.input_outline.time:g} s"
-                )
                 self.preview = entry.get_slice(
                     "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
                 )
         except Exception as e:
+            self.preview = None
             pn.state.notifications.error(
                 f"Could not load the equilibrium from {self.input_outline.uri}: {e}"
             )
@@ -833,7 +824,7 @@ class PlasmaShape(Viewer):
         if len(nodes) > 1 and nodes[1].critical_type == 1:
             x_point = (float(nodes[1].r), float(nodes[1].z))
 
-        self.reference_r, self.reference_z = r, z
+        self.reference_r, self.reference_z = r.tolist(), z.tolist()
         self._reference_x_point = x_point
         self._fit_pending = True
         # As many points as the boundary is set to have, from the x-point on
@@ -847,33 +838,11 @@ class PlasmaShape(Viewer):
         self.reference_name = name
         self._start_editing()
 
-    def _fit_to_reference(self):
-        """Fit the parameterisation to the reference shape of an equilibrium."""
-        r, z = self.reference_r, self.reference_z
-        p = self.shape_params
-        fitted, distances = fit_params_to_outline(
-            {"n_desired_bnd_points": p.n_desired_bnd_points},
-            r,
-            z,
-            self._reference_x_point,
-        )
-        self._warn_misfit(distances, "the reference shape")
-        top = z.argmax()
-        p.param.update(
-            **{name: fitted[name] for name in self.FIT_PARAMS},
-            second_x_point=False,
-            # Ready for a double null: the second x-point at the top of the outline
-            rx_upper=float(r[top]),
-            zx_upper=float(z[top]),
-        )
-
     def _start_editing(self):
         """Give NICE the new reference as it is."""
         self._synced = self._sync_state()
-        self._create_gap_sliders()
         self.edit_by = self.EDIT_REFERENCE
-        self.param.trigger("edit_by")  # the views available depend on the machine
-        self.param.trigger("shape_updated")  # the reference is drawn
+        self.param.trigger("edit_by")  # also when it was, to take the new reference
 
     def _shape_arguments(self):
         """The arguments of compute_outline_from_params of the parameterized shape."""
@@ -925,27 +894,33 @@ class PlasmaShape(Viewer):
         r, z = compute_outline_from_params(**self._shape_arguments())
         self.points_table.set_points(r, z, [1] * len(r))
 
-    def _fit_to_points(self):
-        """Fit the parameterisation to the free points."""
-        r, z, _ = self.points_table.get_points()
+    def _fit_to(self, r, z, fitted_to, x_point=None):
+        """Fit the parameterisation to an outline, warning when it misses it.
+
+        Args:
+            r: Radial coordinates of the outline.
+            z: Height coordinates of the outline.
+            fitted_to: What the outline is, for the warning.
+            x_point: The (r, z) of its x-point, if known.
+        """
         if len(r) < 3:
             pn.state.notifications.error("At least 3 points are needed to fit to")
             return
-        fitted, distances = fit_params_to_outline(
-            {"n_desired_bnd_points": self.shape_params.n_desired_bnd_points}, r, z
-        )
-        self._warn_misfit(distances, "the free points")
-        self.shape_params.param.update(
-            **{name: fitted[name] for name in self.FIT_PARAMS}, second_x_point=False
-        )
-
-    def _warn_misfit(self, distances, fitted_to):
-        """Warn when the parameterisation misses what it was fitted to."""
+        p = self.shape_params
+        fitted, distances = fit_params_to_outline(r, z, p.n_desired_bnd_points, x_point)
         if distances.max() > self.FIT_TOLERANCE:
             pn.state.notifications.warning(
                 f"The shape parameterisation misses {fitted_to} by up to "
                 f"{distances.max() * 100:.1f} cm"
             )
+        top = np.argmax(z)
+        p.param.update(
+            **{name: fitted[name] for name in self.FIT_PARAMS},
+            second_x_point=False,
+            # Ready for a double null: the second x-point at the top of the outline
+            rx_upper=float(r[top]),
+            zx_upper=float(z[top]),
+        )
 
     def _sync_state(self):
         return self._shape_arguments(), self.points_table.get_points()
@@ -957,11 +932,16 @@ class PlasmaShape(Viewer):
         shape of an equilibrium when it is first used."""
         parameterisation, points = self._synced
         if event.old == self.EDIT_POINTS and self.points_table.get_points() != points:
-            self._fit_to_points()
+            self._fit_to(*self.points_table.get_points()[:2], "the free points")
             self._fit_pending = False  # the free points are newer
         if event.new in (self.EDIT_SLIDERS, self.EDIT_GAPS) and self._fit_pending:
             self._fit_pending = False
-            self._fit_to_reference()
+            self._fit_to(
+                self.reference_r,
+                self.reference_z,
+                "the reference shape",
+                self._reference_x_point,
+            )
         if (
             event.new == self.EDIT_POINTS
             and self._shape_arguments() != parameterisation
@@ -1001,7 +981,7 @@ class PlasmaShape(Viewer):
         x_points = [(arguments["rx"], arguments["zx"])]
         return gaps.compute_gaps(r, z, **gaps.shape_inputs(x_points))
 
-    def _create_gap_sliders(self, event=None):
+    def _create_gap_sliders(self):
         """A slider for each gap the parameterized shape can be measured on, starting
         at the gap of the current shape."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
@@ -1014,8 +994,7 @@ class PlasmaShape(Viewer):
                 continue
             symbol, unit, name = gaps.GAP_METADATA[key]
             start, end = (value - 1, value + 1) if unit == "m" else (-0.1, 1)
-            # In the unit the gap pills show it in
-            scale = 100 if unit == "cm" else 1
+            scale = GAP_SCALE[unit]
             slider = FormattedEditableFloatSlider(
                 name=f"{symbol}: {name} [{unit}]",
                 value=value * scale,
@@ -1033,7 +1012,7 @@ class PlasmaShape(Viewer):
         sliders."""
         gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
         targets = {
-            key: slider.value / (100 if gaps.GAP_METADATA[key][1] == "cm" else 1)
+            key: slider.value / GAP_SCALE[gaps.GAP_METADATA[key][1]]
             for key, slider in self._gap_sliders.items()
         }
         ranges = {

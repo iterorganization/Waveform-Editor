@@ -73,20 +73,6 @@ class EquilibriumInput(Viewer):
     )
 
     def __panel__(self):
-        slider = pn.widgets.DiscreteSlider(
-            name="",
-            options=self.param.times.rx().rx.or_([0.0]),
-            value=self.time,
-            show_value=False,
-            sizing_mode="stretch_width",
-            align="end",
-            margin=(0, 0, 14, 0),
-        )
-        # Once it is let go, as each time is loaded
-        slider.param.watch(
-            lambda event: setattr(self, "time", event.new), "value_throttled"
-        )
-        self.param.watch(lambda event: setattr(slider, "value", event.new), "time")
         return pn.Column(
             pn.pane.HTML("<b>Equilibrium IDS source</b>", margin=(0, 0, 6, 0)),
             pn.widgets.TextInput.from_param(
@@ -105,7 +91,17 @@ class EquilibriumInput(Viewer):
                     format="0[.]000",
                     margin=(0, 20, 10, 0),
                 ),
-                slider,
+                pn.widgets.DiscreteSlider.from_param(
+                    self.param.time,
+                    name="",
+                    options=self.param.times.rx().rx.or_([0.0]),
+                    show_value=False,
+                    # Only once it is let go, as each time is loaded
+                    throttled=True,
+                    sizing_mode="stretch_width",
+                    align="end",
+                    margin=(0, 0, 14, 0),
+                ),
                 margin=0,
                 visible=self.param.times.rx.bool(),
             ),
@@ -128,12 +124,8 @@ class EquilibriumInput(Viewer):
     @param.depends("time", watch=True)
     async def _load_time(self):
         """Show the time of the slice in use, also when the slider set it, and load
-        it."""
+        it for whoever is listening."""
         self.typed_time = self.time
-        await self._on_load()
-
-    async def _on_load(self, event=None):
-        """Load the IDS, for whoever is listening for it."""
         self.reading = True
         # The moment the browser needs to show the spinner before this session is busy
         await asyncio.sleep(0.05)
@@ -153,11 +145,10 @@ class EquilibriumInput(Viewer):
         if len(self.times) > 1:
             self.step = (self.times[-1] - self.times[0]) / (len(self.times) - 1)
         self.reading = False
-        if self.times:
-            # Loaded also when the first slice is at the time of the one before
-            with param.discard_events(self):
-                self.time = self.times[0]
-            self.param.trigger("time")
+        if self.times and self.time == self.times[0]:
+            await self._load_time()  # the time is unchanged, so not loaded by itself
+        elif self.times:
+            self.time = self.times[0]
 
     def _ids_times(self):
         """The times of the equilibrium IDS at the URI, empty when it cannot be read.

@@ -1,4 +1,5 @@
 import logging
+import math
 
 import holoviews as hv
 import numpy as np
@@ -261,6 +262,7 @@ class NicePlotter(Viewer):
         )
 
     def _on_points_table_change(self, *events):
+        """Show the points of the table now in use, if any."""
         self._update_points_visibility()
         self._push_points_to_plot()
 
@@ -341,9 +343,7 @@ class NicePlotter(Viewer):
         Args:
             dx: Pixels to change the width of the plot by.
         """
-        low, high = self.param.frame_height.bounds
-        height = round((self.frame_width + dx) * self.frame_height / self.frame_width)
-        self.frame_height = max(low, min(high, height))
+        self.fit(self.frame_width + dx, math.inf)
 
     def fit(self, width, height):
         """Make the plot as large as fits in a width and height, keeping the aspect of
@@ -407,22 +407,30 @@ class NicePlotter(Viewer):
         empty = hv.Overlay([hv.Curve([]).opts(self.TARGET_SHAPE_OPTS)])
         if self.nice_settings.is_direct_mode or not self.show_target_shape:
             return empty
-        previewing = shape.candidate_outline is not None
         reference = hv.Curve([])
         if (outline := self._reference_outline()) is not None:
             r, z = outline
             reference = hv.Curve((np.append(r, r[0]), np.append(z, z[0]))).opts(
                 color="gray", line_dash="dashed", line_width=1.5, show_legend=False
             )
-        # Free points are drawn by the point draw tool, and while a reference shape
-        # is chosen only it is drawn
-        if previewing or not shape.has_shape or shape.edit_by == shape.EDIT_POINTS:
+        # Free points are drawn by the point draw tool
+        if not self._has_target() or shape.edit_by == shape.EDIT_POINTS:
             return empty * reference
         if shape.param_weights is not None:
             return self._plot_weighted_boundary() * reference
         # The boundary points, so that extra points appended to the outline
         # are not drawn as part of the boundary curve
         return self._plot_outline_shape(shape.param_r, shape.param_z) * reference
+
+    def _has_target(self):
+        """Whether there is a target shape to draw, which there is not in direct mode
+        or while a reference shape is chosen."""
+        shape = self.plasma_shape
+        return (
+            not self.nice_settings.is_direct_mode
+            and shape.has_shape
+            and shape.candidate_outline is None
+        )
 
     def _reference_outline(self):
         """The (r, z) of the reference shape drawn dashed, None if it is not drawn.
@@ -454,17 +462,14 @@ class NicePlotter(Viewer):
     def _legend_html(self):
         """The legend of the lines in the plot."""
         shape = self.plasma_shape
-        equilibrium = self.communicator.equilibrium
-        target = not self.nice_settings.is_direct_mode and self.show_target_shape
-        # While a reference shape is chosen, the target shape is not drawn
-        current = target and shape.candidate_outline is None
+        shapes = not self.nice_settings.is_direct_mode and self.show_target_shape
         gaps = self.nice_settings.machine_preset in MACHINE_GAPS and self.show_gaps
         items = (
             (
                 "Target shape",
                 "2px solid blue",
-                current
-                and shape.has_shape
+                shapes
+                and self._has_target()
                 and shape.edit_by != shape.EDIT_POINTS
                 # A weighted boundary is coloured by its weights
                 and shape.param_weights is None,
@@ -472,17 +477,17 @@ class NicePlotter(Viewer):
             (
                 "Reference shape",
                 "2px dashed gray",
-                target and self._reference_outline() is not None,
+                shapes and self._reference_outline() is not None,
             ),
             (
                 "Separatrix",
                 "3px solid red",
-                self.show_separatrix and equilibrium is not None,
+                self.show_separatrix and self.communicator.equilibrium is not None,
             ),
             (
                 "Target gaps",
                 "2px dashed blue",
-                gaps and self.show_target_gaps and current and shape.has_shape,
+                gaps and self.show_target_gaps and self._has_target(),
             ),
             (
                 "Result gaps",
@@ -864,12 +869,7 @@ class NicePlotter(Viewer):
         equilibrium = self.communicator.equilibrium
         target, result = [], []
         if gaps is not None and self.show_gaps:
-            if (
-                self.show_target_gaps
-                and not self.nice_settings.is_direct_mode
-                and shape.has_shape
-                and shape.candidate_outline is None
-            ):
+            if self.show_target_gaps and self._has_target():
                 inputs = gaps.shape_inputs(shape.target_x_points)
                 target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
             if self.show_result_gaps and self.communicator.converged:

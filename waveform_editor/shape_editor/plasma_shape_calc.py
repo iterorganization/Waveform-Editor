@@ -232,15 +232,14 @@ def outline_distances(r, z, outline_r, outline_z):
     return np.linalg.norm(points[:, None] - closest, axis=2).min(axis=1)
 
 
-def fit_params_to_outline(params, outline_r, outline_z, x_point=None):
+def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
     """The single null parameters whose shape comes closest to an outline, with the
     x-point kept in place.
 
     Args:
-        params: The arguments of compute_outline_from_params, for the number of
-            boundary points.
         outline_r: Radial coordinates of the outline.
         outline_z: Height coordinates of the outline.
+        n_points: The number of boundary points of the shape.
         x_point: The (r, z) of the x-point, the lowest point of the outline without.
 
     Returns:
@@ -256,7 +255,7 @@ def fit_params_to_outline(params, outline_r, outline_z, x_point=None):
     if x_point is None:
         x_point = (r[z.argmin()], z_min)
     start = {
-        **params,
+        "n_desired_bnd_points": n_points,
         "a": a,
         "center_r": center_r,
         "center_z": center_z,
