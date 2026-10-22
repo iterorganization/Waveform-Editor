@@ -21,9 +21,13 @@ from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.flux import has_flux_map
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
-from waveform_editor.shape_editor.plasma_shape_calc import outline_metrics
+from waveform_editor.shape_editor.plasma_shape_calc import (
+    outline_distances,
+    outline_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -455,15 +459,38 @@ class ShapeEditor(Viewer):
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
     def _on_nice_run_finished(self, success):
-        if success:
+        problem = self._result_problem() if success else ""
+        if success and not problem:
             # Show the gaps of the result, instead of the target gaps
             if self.nice_plotter.show_gaps:
                 self.nice_plotter.show_result_gaps = True
                 self.nice_plotter.show_target_gaps = False
-        else:
-            pn.state.notifications.error(
-                "NICE did not converge. Check the Logging tab for details."
-            )
+            return
+        self.communicator.converged = False
+        pn.state.notifications.error(
+            f"NICE did not converge{problem}. Check the Logging tab for details."
+        )
+
+    def _result_problem(self):
+        """Why the result of a run NICE says converged is wrong, empty if it is not:
+        it has no poloidal flux, or it misses the target shape of an inverse run by
+        more than a quarter of its minor radius, as when NICE converges to a plasma
+        elsewhere."""
+        time_slice = self.communicator.equilibrium.time_slice[0]
+        if not has_flux_map(time_slice):
+            return ": it gave no poloidal flux"
+        shape = self.plasma_shape
+        if self.nice_settings.is_direct_mode or not shape.has_shape:
+            return ""
+        outline = time_slice.boundary.outline
+        if len(outline.r) < 3:
+            return ": its result has no boundary"
+        distance = outline_distances(
+            shape.outline_r, shape.outline_z, outline.r, outline.z
+        ).max()
+        if distance < outline_metrics(shape.outline_r, shape.outline_z)["a"] / 4:
+            return ""
+        return f": its result misses the target shape by up to {distance:.2f} m"
 
     def _has_valid_boundary(self):
         """Check that the target boundary fits in the fixed size array NICE reads it

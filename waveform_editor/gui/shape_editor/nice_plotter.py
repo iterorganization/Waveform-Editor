@@ -13,7 +13,7 @@ from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.flux import flux_contours, flux_grid
+from waveform_editor.shape_editor.flux import flux_contours, flux_grid, has_flux_map
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -635,7 +635,7 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        if not self._check_flux_map(equilibrium):
+        if not has_flux_map(equilibrium.time_slice[0]):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
@@ -670,19 +670,6 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
-    def _check_flux_map(self, equilibrium):
-        """Whether NICE filled the poloidal flux on the GGD, which shows an error
-        if it did not.
-
-        Args:
-            equilibrium: The equilibrium IDS to read the flux from.
-        """
-        eqggd = equilibrium.time_slice[0].ggd[0]
-        if eqggd.r[0].values and eqggd.z[0].values and eqggd.psi[0].values:
-            return True
-        pn.state.notifications.error("NICE did not produce a valid poloidal flux field")
-        return False
-
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
 
@@ -694,7 +681,7 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        if not self._check_flux_map(equilibrium):
+        if not has_flux_map(equilibrium.time_slice[0]):
             return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = flux_contours(equilibrium.time_slice[0], levels)
