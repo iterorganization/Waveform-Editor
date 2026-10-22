@@ -414,7 +414,7 @@ class NicePlotter(Viewer):
                 color="gray", line_dash="dashed", line_width=1.5, show_legend=False
             )
         # Free points are drawn by the point draw tool
-        if not self._has_target() or shape.edit_by == shape.EDIT_POINTS:
+        if not self.has_target() or shape.edit_by == shape.EDIT_POINTS:
             return empty * reference
         if shape.param_weights is not None:
             return self._plot_weighted_boundary() * reference
@@ -422,7 +422,7 @@ class NicePlotter(Viewer):
         # are not drawn as part of the boundary curve
         return self._plot_outline_shape(shape.param_r, shape.param_z) * reference
 
-    def _has_target(self):
+    def has_target(self):
         """Whether there is a target shape to draw, which there is not in direct mode
         or while a reference shape is chosen."""
         shape = self.plasma_shape
@@ -469,7 +469,7 @@ class NicePlotter(Viewer):
                 "Target shape",
                 "2px solid blue",
                 shapes
-                and self._has_target()
+                and self.has_target()
                 and shape.edit_by != shape.EDIT_POINTS
                 # A weighted boundary is coloured by its weights
                 and shape.param_weights is None,
@@ -487,7 +487,7 @@ class NicePlotter(Viewer):
             (
                 "Target gaps",
                 "2px dashed blue",
-                gaps and self.show_target_gaps and self._has_target(),
+                gaps and self.show_target_gaps and self.has_target(),
             ),
             (
                 "Result gaps",
@@ -869,7 +869,7 @@ class NicePlotter(Viewer):
         equilibrium = self.communicator.equilibrium
         target, result = [], []
         if gaps is not None and self.show_gaps:
-            if self.show_target_gaps and self._has_target():
+            if self.show_target_gaps and self.has_target():
                 inputs = gaps.shape_inputs(shape.target_x_points)
                 target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
             if self.show_result_gaps and self.communicator.converged:

@@ -26,17 +26,40 @@ def set_xml_parameter(xml_params, name, value):
     parameter.text = str(value)
 
 
-def metric_pill(symbol, value, tooltip):
-    """The HTML of a pill showing a metric.
+# Pixels wide of a slider or number input, which are put side by side where there is
+# room for them
+INPUT_WIDTH = 320
+
+
+def card(title, *children, beside_title=(), **params):
+    """A box with a title above a line, holding one part of a panel.
 
     Args:
-        symbol: The symbol of the metric.
-        value: The value to show, with its unit.
-        tooltip: The full name of the metric, shown on hover.
+        title: The title, or a reactive expression of it.
+        children: What the box holds.
+        beside_title: What is shown right of the title.
+        params: Parameters of the box.
     """
-    return (
-        f'<span class="mc" title="{tooltip}"><span class="mc-lbl">{symbol}</span>'
-        f'<span class="mc-val">{value}</span></span>'
+    return pn.Column(
+        pn.Row(
+            pn.pane.HTML(
+                pn.rx("<b>{}</b>").format(title), sizing_mode="stretch_width", margin=0
+            ),
+            *beside_title,
+            sizing_mode="stretch_width",
+            margin=0,
+        ),
+        pn.pane.HTML(
+            "<hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>",
+            sizing_mode="stretch_width",
+            margin=0,
+        ),
+        *children,
+        css_classes=["property-card"],
+        stylesheets=[CARD_CSS],
+        sizing_mode="stretch_width",
+        margin=(0, 0, 12, 0),
+        **params,
     )
 
 

@@ -7,7 +7,7 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import set_xml_parameter
+from waveform_editor.gui.util import card, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 
 # The NICE current group of each coil of a machine, in the order the coils appear in
@@ -151,7 +151,9 @@ class CoilCurrents(Viewer):
         self._update_column_visibility()
         self.nice_settings.param.watch(self._update_column_visibility, "is_direct_mode")
 
-        self.panel = self.table
+        self.panel = pn.Column(
+            card("Coil currents", self.table), margin=(15, 20, 12, 20)
+        )
 
     def create_ui(self, pf_active):
         """Create the UI for each coil in the provided pf_active IDS.

@@ -285,3 +285,30 @@ def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
 
     fitted = fit_shape_params(start, ranges, misfit)
     return fitted, misfit(fitted)
+
+
+def outline_metrics(r, z):
+    """The shape of an outline, as the Data Dictionary defines it for a boundary.
+
+    Args:
+        r: Radial coordinates of the outline.
+        z: Height coordinates of the outline.
+
+    Returns:
+        The elongation, triangularity (also upper and lower), geometric axis (r0,
+        z0) and minor radius (a) by name.
+    """
+    r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
+    a = (r.max() - r.min()) / 2
+    r0 = (r.max() + r.min()) / 2
+    upper = (r0 - r[z.argmax()]) / a
+    lower = (r0 - r[z.argmin()]) / a
+    return {
+        "elongation": (z.max() - z.min()) / (2 * a),
+        "triangularity": (upper + lower) / 2,
+        "tri_upper": upper,
+        "tri_lower": lower,
+        "r0": r0,
+        "z0": (z.max() + z.min()) / 2,
+        "a": a,
+    }

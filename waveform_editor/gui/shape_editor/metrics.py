@@ -1,14 +1,17 @@
+import pandas as pd
 import panel as pn
 import param
+from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import STYLES, metric_pill
+from waveform_editor.gui.util import card
 
 
 class Metrics(Viewer):
-    """Chips row showing equilibrium metrics below the flux map."""
+    """Table of the shape of the target and of the NICE result."""
 
-    metrics = param.Dict(default={})
+    target = param.Dict(default={}, doc="The shape of the target, by metric")
+    result = param.Dict(default={}, doc="The shape of the NICE result, by metric")
     machine_metrics = param.Dict(default={})
 
     ELONGATION = "elongation"
@@ -32,40 +35,54 @@ class Metrics(Viewer):
         MINOR_RADIUS: ("a", "m", "Minor radius"),
     }
 
-    def __init__(self, max_width, **params):
-        """
-        Args:
-            max_width: The width the chips wrap at
-        """
+    def __init__(self, **params):
         super().__init__(**params)
-        self._pane = pn.pane.HTML(
-            pn.bind(
-                self._render,
-                self.param.metrics,
-                self.param.machine_metrics,
-                max_width,
-            ),
-            stylesheets=STYLES,
-            visible=self.param.metrics.rx.bool(),
+        self._table = pn.widgets.Tabulator(
+            disabled=True,
+            show_index=False,
+            margin=0,
+            sortable=False,
+            selectable=False,
+            layout="fit_data_table",
+            text_align="right",
+            sizing_mode="stretch_width",
         )
 
-    def _render(self, metrics, machine_metrics, max_width):
-        chips = []
-        for key, (symbol, unit, tooltip) in {
-            **self.METRICS,
-            **machine_metrics,
-        }.items():
-            if key not in metrics:
-                continue
-            val = metrics[key]
-            if isinstance(val, float):
-                val = f"{val:.4g}"
-            chips.append(metric_pill(symbol, f"{val} {unit}".strip(), tooltip))
-        return (
-            f'<div class="mc-wrap" style="max-width: {max_width}px">'
-            + "".join(chips)
-            + "</div>"
+    @param.depends("target", "result", "machine_metrics", watch=True)
+    def _update_table(self):
+        """A column per metric the target or result has, with how far apart they are."""
+        metrics = {
+            key: metadata
+            for key, metadata in {**self.METRICS, **self.machine_metrics}.items()
+            if key in self.target or key in self.result
+        }
+        titles = {
+            key: f"{symbol} [{unit}]" if unit else symbol
+            for key, (symbol, unit, _) in metrics.items()
+        }
+        difference = {
+            key: self.result[key] - self.target[key]
+            for key in self.target.keys() & self.result.keys()
+        }
+        table = pd.DataFrame(
+            [self.target, self.result, difference],
+            index=["Target", "Result", "Difference"],
+            columns=list(metrics),
+        )
+        self._table.param.update(
+            value=table.rename(columns=titles).rename_axis("").reset_index(),
+            header_tooltips={
+                titles[key]: name for key, (_, _, name) in metrics.items()
+            },
+            formatters={
+                title: NumberFormatter(format="0.[000]", nan_format="—")
+                for title in titles.values()
+            },
         )
 
     def __panel__(self):
-        return self._pane
+        return card(
+            "Target vs result metrics",
+            self._table,
+            visible=self.param.target.rx.bool() | self.param.result.rx.bool(),
+        )

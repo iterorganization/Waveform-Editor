@@ -7,8 +7,10 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
     CARD_CSS,
+    INPUT_WIDTH,
     EquilibriumInput,
     FormattedEditableFloatSlider,
+    card,
 )
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.plasma_properties_calc import (
@@ -66,10 +68,7 @@ class PropertyInput(Viewer):
         self.resolved_value = default_value
 
         self._value_input = pn.widgets.FloatInput.from_param(
-            self.param.value,
-            step=step,
-            sizing_mode="stretch_width",
-            margin=(4, 0, 0, 0),
+            self.param.value, step=step, width=INPUT_WIDTH
         )
         self._from_ids_badge, self._edited_badge, self._reset_btn = _make_badges(
             self.param.input_state, self.reset_to_ids
@@ -98,27 +97,11 @@ class PropertyInput(Viewer):
         self.param.trigger("changed")
 
     def __panel__(self):
-        badge_area = pn.Row(
-            self._from_ids_badge,
-            self._edited_badge,
-            self._reset_btn,
-            margin=0,
-            align="center",
-        )
-        header = pn.Row(
-            pn.pane.HTML(self._label, sizing_mode="stretch_width", margin=(5, 0)),
-            badge_area,
-            sizing_mode="stretch_width",
-            margin=0,
-        )
-        return pn.Column(
-            header,
+        return card(
+            self._label,
             self._value_input,
             *self._extra,
-            css_classes=["property-card"],
-            stylesheets=[CARD_CSS],
-            sizing_mode="stretch_width",
-            margin=(0, 0, 8, 0),
+            beside_title=(self._from_ids_badge, self._edited_badge, self._reset_btn),
         )
 
 
@@ -183,7 +166,7 @@ class PlasmaProfiles(Viewer):
         self._resetting = False
 
         self._alpha_input, self._beta_input, self._gamma_input = (
-            FormattedEditableFloatSlider.from_param(p, margin=0, stretch_width=True)
+            FormattedEditableFloatSlider.from_param(p, width=INPUT_WIDTH)
             for p in (self.param.alpha, self.param.beta, self.param.gamma)
         )
         self._profiles_pane = pn.pane.HoloViews(
@@ -317,34 +300,22 @@ class PlasmaProfiles(Viewer):
 
     def __panel__(self):
         is_not_from_ids = pn.bind(lambda s: s != "from_ids", self.param.input_state)
-        badge_area = pn.Row(
-            self._from_ids_badge,
-            self._edited_badge,
-            self._reset_btn,
-            self._use_parametric_btn,
-            margin=0,
-            align="center",
-        )
-        header = pn.Row(
-            pn.pane.HTML("Profile source", sizing_mode="stretch_width", margin=(5, 0)),
-            badge_area,
-            sizing_mode="stretch_width",
-            margin=0,
-        )
-        return pn.Column(
-            header,
-            pn.Column(
+        return card(
+            "Profile source",
+            pn.FlexBox(
                 self._alpha_input,
                 self._beta_input,
                 self._gamma_input,
-                margin=(4, 0, 0, 0),
+                margin=0,
                 visible=is_not_from_ids,
             ),
             self._profiles_pane,
-            css_classes=["property-card"],
-            stylesheets=[CARD_CSS],
-            sizing_mode="stretch_width",
-            margin=(0, 0, 8, 0),
+            beside_title=(
+                self._from_ids_badge,
+                self._edited_badge,
+                self._reset_btn,
+                self._use_parametric_btn,
+            ),
         )
 
 
@@ -539,5 +510,5 @@ class PlasmaProperties(Viewer):
             pn.Column(self._tf_current, visible=from_tf, margin=0),
             self._profiles,
             sizing_mode="stretch_width",
-            margin=(20, 20),
+            margin=(15, 20, 12, 20),
         )

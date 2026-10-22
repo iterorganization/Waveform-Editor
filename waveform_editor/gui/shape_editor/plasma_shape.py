@@ -7,11 +7,11 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.util import (
     CARD_CSS,
-    STYLES,
+    INPUT_WIDTH,
     EquilibriumInput,
     FixedWidthEditableIntSlider,
     FormattedEditableFloatSlider,
-    metric_pill,
+    card,
 )
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
@@ -51,8 +51,6 @@ MACHINE_SHAPES = {
 }
 
 
-# Sliders have a fixed width, and are put side by side as far as there is room
-SLIDER_WIDTH = 320
 # The gap sliders are in the unit the gap pills show the gaps in, from metres
 GAP_SCALE = {"m": 1, "cm": 100}
 
@@ -68,26 +66,6 @@ def _group(title, *children, visible=True):
         pn.FlexBox(*children, margin=0),
         sizing_mode="stretch_width",
         margin=0,
-        visible=visible,
-    )
-
-
-def _card(title, *children, visible=True):
-    """A box with a title, holding one part of the panel."""
-    return pn.Column(
-        pn.pane.HTML(
-            pn.rx(
-                "<b>{}</b><hr style='margin:4px 0 8px 0;border-color:#dee2e6;'>"
-            ).format(title),
-            sizing_mode="stretch_width",
-            margin=0,
-        ),
-        *children,
-        css_classes=["property-card"],
-        stylesheets=[CARD_CSS],
-        styles={"background": "white"},
-        sizing_mode="stretch_width",
-        margin=(0, 0, 12, 0),
         visible=visible,
     )
 
@@ -204,10 +182,8 @@ class PlasmaShapeParams(Viewer):
         if isinstance(self.param[n], param.Boolean):
             return pn.widgets.Checkbox.from_param(p, sizing_mode="stretch_width")
         if isinstance(self.param[n], param.Integer):
-            return FixedWidthEditableIntSlider.from_param(p, width=SLIDER_WIDTH)
-        self._sliders[n] = FormattedEditableFloatSlider.from_param(
-            p, width=SLIDER_WIDTH
-        )
+            return FixedWidthEditableIntSlider.from_param(p, width=INPUT_WIDTH)
+        self._sliders[n] = FormattedEditableFloatSlider.from_param(p, width=INPUT_WIDTH)
         return self._sliders[n]
 
     def fine_tuning(self, boundary_points=True):
@@ -322,7 +298,10 @@ class WeightedPointsTable(param.Parameterized):
             },
             layout="fit_data_fill",
             sizing_mode="stretch_width",
+            # Scrolled within, rather than the panel, when there are many points
+            max_height=400,
             show_index=False,
+            margin=0,
             on_click=self._on_delete_click,
             on_edit=self._on_edit,
         )
@@ -555,15 +534,8 @@ class PlasmaShape(Viewer):
             margin=(0, 10, 8, 0),
         )
         self.gap_sliders = pn.FlexBox(margin=0)
-        # The target shape is shown once a reference shape is set, and is out of the
-        # way while another one is chosen
-        editing = pn.bind(
-            lambda name, source: bool(name) and source == self.SOURCE_NONE,
-            self.param.reference_name,
-            self.param.reference_source,
-        )
         self.panel = pn.Column(
-            _card(
+            card(
                 self.param.reference_name.rx().rx.pipe(
                     lambda name: (
                         f"Reference shape: {name}" if name else "Reference shape"
@@ -602,21 +574,7 @@ class PlasmaShape(Viewer):
                     on_click=self._set_reference,
                 ),
             ),
-            _card(
-                "Target gaps",
-                pn.pane.HTML(
-                    self._render_gaps,
-                    sizing_mode="stretch_width",
-                    stylesheets=STYLES,
-                    margin=0,
-                ),
-                visible=pn.bind(
-                    lambda preset, editing: preset in MACHINE_GAPS and editing,
-                    self.nice_settings.param.machine_preset,
-                    editing,
-                ),
-            ),
-            _card(
+            card(
                 "Target shape",
                 pn.widgets.RadioButtonGroup.from_param(
                     self.param.edit_by,
@@ -629,7 +587,13 @@ class PlasmaShape(Viewer):
                     margin=(0, 0, 8, 0),
                 ),
                 self._panel_edit,
-                visible=editing,
+                # Once a reference shape is set, and out of the way while another one
+                # is chosen
+                visible=pn.bind(
+                    lambda name, source: bool(name) and source == self.SOURCE_NONE,
+                    self.param.reference_name,
+                    self.param.reference_source,
+                ),
             ),
             margin=(15, 20, 12, 20),
         )
@@ -1001,7 +965,7 @@ class PlasmaShape(Viewer):
                 start=start * scale,
                 end=end * scale,
                 step=0.005 * scale,
-                width=SLIDER_WIDTH,
+                width=INPUT_WIDTH,
             )
             slider.param.watch(self._fit_to_gaps, "value")
             self._gap_sliders[key] = slider
@@ -1032,22 +996,6 @@ class PlasmaShape(Viewer):
             symbol = gaps.GAP_METADATA[worst][0]
             by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
             pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
-
-    @param.depends("nice_settings.machine_preset", "redraw")
-    def _render_gaps(self):
-        """The gaps of the target shape."""
-        chips = []
-        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
-        if gaps is not None and self.has_shape:
-            inputs = gaps.shape_inputs(self.target_x_points)
-            values = gaps.compute_gaps(self.outline_r, self.outline_z, **inputs)
-            for key, (symbol, unit, name) in gaps.GAP_METADATA.items():
-                value = values.get(key)
-                if value is None:
-                    continue
-                display = f"{value:.4g} m" if unit == "m" else f"{value * 100:.3g} cm"
-                chips.append(metric_pill(symbol, display, name))
-        return f'<div class="mc-wrap">{"".join(chips)}</div>'
 
     def __panel__(self):
         return self.panel

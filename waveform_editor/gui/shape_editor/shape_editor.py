@@ -16,13 +16,14 @@ from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.plasma_shape import GAP_SCALE, PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
+from waveform_editor.shape_editor.plasma_shape_calc import outline_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
-        self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
+        self.metrics = Metrics()
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
         # Whether auto run is running NICE, and whether the inputs changed since
@@ -184,6 +185,10 @@ class ShapeEditor(Viewer):
 
         self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
         self._update_machine_metrics()
+        self.plasma_shape.param.watch(self._update_target_metrics, "redraw")
+        self.nice_settings.param.watch(
+            self._update_target_metrics, ["mode", "machine_preset"]
+        )
         for obj, name in (
             (self, "auto_run"),
             (self.plasma_shape, "shape_updated"),
@@ -201,7 +206,6 @@ class ShapeEditor(Viewer):
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
             self.nice_plotter.legend,
-            self.metrics,
             sizing_mode="stretch_height",
             scroll=True,
             visible=self.collapse_plot.param.value.rx.not_(),
@@ -264,9 +268,12 @@ class ShapeEditor(Viewer):
         """
         items = []
         if is_inverse_mode:
-            items.append(
-                (_reactive_title("Plasma Shape", has_shape), self.plasma_shape)
+            shape_tab = pn.Column(
+                self.plasma_shape,
+                pn.Column(self.metrics, margin=(0, 20, 12, 20)),
+                margin=0,
             )
+            items.append((_reactive_title("Plasma Shape", has_shape), shape_tab))
         # The profiles plot is part of the plasma properties panel itself
         items.append(
             (
@@ -330,7 +337,7 @@ class ShapeEditor(Viewer):
         """Drop the result and the runs, since they are of another machine description
         now."""
         self.communicator.param.update(equilibrium=None, pf_active=None)
-        self.metrics.metrics = {}
+        self.metrics.result = {}
         self.run_history = []
         self.run_select.options = {}
         self.run_select.disabled = True
@@ -600,26 +607,51 @@ class ShapeEditor(Viewer):
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         self.metrics.machine_metrics = gaps.GAP_METADATA if gaps else {}
 
+    @staticmethod
+    def _gaps_in_units(gaps, values):
+        """Gaps by name in the unit they are shown in, without those not measured."""
+        return {
+            name: value * GAP_SCALE[gaps.GAP_METADATA[name][1]]
+            for name, value in values.items()
+            if value is not None
+        }
+
     def _machine_gaps(self, time_slice):
         """The gaps of the machine of the selected preset."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is None:
             return {}
-        return {
-            name: value * 100 if gaps.GAP_METADATA[name][1] == "cm" else value
-            for name, value in gaps.compute_gaps(**gaps.gap_inputs(time_slice)).items()
-            if value is not None
-        }
+        return self._gaps_in_units(
+            gaps, gaps.compute_gaps(**gaps.gap_inputs(time_slice))
+        )
+
+    def _update_target_metrics(self, *events):
+        """Show the shape of the target, if there is one drawn."""
+        shape = self.plasma_shape
+        if not self.nice_plotter.has_target():
+            self.metrics.target = {}
+            return
+        # The boundary itself, without the extra points
+        if shape.param_r is not None:
+            target = outline_metrics(shape.param_r, shape.param_z)
+        else:
+            target = outline_metrics(shape.outline_r, shape.outline_z)
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is not None:
+            inputs = gaps.shape_inputs(shape.target_x_points)
+            values = gaps.compute_gaps(shape.outline_r, shape.outline_z, **inputs)
+            target.update(self._gaps_in_units(gaps, values))
+        self.metrics.target = target
 
     def _update_metrics(self):
         if not self.communicator.converged:
-            self.metrics.metrics = {}  # the shape of a run that did not converge
+            self.metrics.result = {}  # the shape of a run that did not converge
             return
         eq = self.communicator.equilibrium
         global_quantities = eq.time_slice[0].global_quantities
         boundary = eq.time_slice[0].boundary
 
-        self.metrics.metrics = {
+        self.metrics.result = {
             self.metrics.ELONGATION: float(boundary.elongation),
             self.metrics.TRIANGULARITY: float(boundary.triangularity),
             self.metrics.TRI_UPPER: float(boundary.triangularity_upper),
