@@ -70,8 +70,13 @@ class Metrics(Viewer):
             dtype=float,  # a gap that could not be measured is None
         ) * [GAP_SCALE.get(unit, 1) for _, unit, _ in metrics.values()]
         table.loc["Difference"] = table.loc["Result"] - table.loc["Target"]
+        value = table.rename(columns=titles).rename_axis("").reset_index()
+        # Only the values change while the shape is edited, which is quicker to send
+        if self._table.value is not None and list(self._table.value) == list(value):
+            self._table.value = value
+            return
         self._table.param.update(
-            value=table.rename(columns=titles).rename_axis("").reset_index(),
+            value=value,
             header_tooltips={
                 titles[key]: name for key, (_, _, name) in metrics.items()
             },

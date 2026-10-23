@@ -323,6 +323,8 @@ class NicePlotter(Viewer):
 
     def _capture_figure(self, plot, element):
         """Keep hold of the figure, so its ranges can follow the machine preset."""
+        if self._figure is plot.state:  # called on every redraw, set up once
+            return
         self._figure = plot.state
         # Scrolling over an axis zooms the whole plot, not that axis alone, which
         # would stretch the machine
