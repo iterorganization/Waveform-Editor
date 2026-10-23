@@ -109,3 +109,6 @@ ENV/
 .vscode/
 .idea/
 
+
+# Profiling output
+performance.sqlite
