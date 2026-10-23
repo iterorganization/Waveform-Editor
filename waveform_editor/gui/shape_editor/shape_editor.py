@@ -17,6 +17,7 @@ from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
@@ -77,7 +78,7 @@ class ShapeEditor(Viewer):
         self.coil_currents = CoilCurrents()
         # Only a converged result can be a reference shape
         self.communicator.param.watch(
-            lambda *events: self.plasma_shape.param.update(
+            lambda *events: self.plasma_shape.reference.param.update(
                 last_result=self.communicator.equilibrium
                 if self.communicator.converged
                 else None
@@ -281,8 +282,8 @@ class ShapeEditor(Viewer):
                     self.metrics,
                     margin=(0, 20, 12, 20),
                     # Out of the way while a reference shape is chosen
-                    visible=self.plasma_shape.param.reference_source.rx()
-                    == PlasmaShape.SOURCE_NONE,
+                    visible=self.plasma_shape.reference.param.source.rx()
+                    == ReferenceShape.SOURCE_NONE,
                 ),
                 margin=0,
             )

@@ -429,22 +429,23 @@ class NicePlotter(Viewer):
         return (
             not self.nice_settings.is_direct_mode
             and shape.has_shape
-            and shape.reference_source == shape.SOURCE_NONE
+            and shape.reference.source == shape.reference.SOURCE_NONE
         )
 
     def _reference_outline(self):
         """The (r, z) of the reference shape drawn dashed, None if it is not drawn.
         While a reference shape is chosen, it is drawn in place of the current one."""
         shape = self.plasma_shape
-        if shape.reference_source != shape.SOURCE_NONE:
-            return shape.candidate_outline
+        reference = shape.reference
+        if reference.source != reference.SOURCE_NONE:
+            return reference.candidate_outline
         # In the reference shape view, the reference is the target shape itself
         if (
-            shape.show_reference
-            and shape.reference_r is not None
+            reference.show
+            and reference.r is not None
             and shape.edit_by != shape.EDIT_REFERENCE
         ):
-            return shape.reference_r, shape.reference_z
+            return reference.r, reference.z
         return None
 
     @pn.depends(

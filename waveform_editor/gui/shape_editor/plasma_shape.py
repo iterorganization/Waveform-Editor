@@ -1,18 +1,16 @@
-import imas
 import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
+from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.shape_params import (
-    MACHINE_SHAPES,
     PlasmaShapeParams,
 )
 from waveform_editor.gui.util import (
     CARD_CSS,
     INPUT_WIDTH,
-    EquilibriumInput,
     FormattedEditableFloatSlider,
     card,
 )
@@ -43,17 +41,6 @@ class PlasmaShape(Viewer):
         default=EDIT_REFERENCE,
         objects=[EDIT_REFERENCE, EDIT_SLIDERS, EDIT_GAPS, EDIT_POINTS],
     )
-    SOURCE_NONE = "Choose a reference…"
-    SOURCE_DEFAULT = "Machine default"
-    SOURCE_IDS = "Equilibrium IDS"
-    SOURCE_RESULT = "NICE result"
-    reference_source = param.Selector(
-        default=SOURCE_NONE,
-        objects=[SOURCE_NONE, SOURCE_DEFAULT, SOURCE_IDS, SOURCE_RESULT],
-    )
-    input_outline = param.ClassSelector(
-        class_=EquilibriumInput, default=EquilibriumInput()
-    )
     # The free-form shape, and the points added on top of the parameterized one
     points_table = param.ClassSelector(
         class_=WeightedPointsTable, default=WeightedPointsTable()
@@ -64,15 +51,6 @@ class PlasmaShape(Viewer):
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
-    last_result = param.Parameter(
-        default=None, precedence=-1, doc="The equilibrium of the last NICE run."
-    )
-    preview = param.Parameter(
-        default=None, precedence=-1, doc="The equilibrium IDS loaded, before it is set."
-    )
-    show_reference = param.Boolean(default=True, label="Show reference shape")
-    reference_name = param.String(precedence=-1, doc="Where the reference is from.")
-
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
     redraw = param.Event(doc="Triggered whenever what is drawn of the shape changes.")
@@ -93,22 +71,12 @@ class PlasmaShape(Viewer):
         self.param_r = None
         self.param_z = None
         self.param_weights = None
-        # The outline the shape was started from, drawn dashed for comparison
-        self.reference_r = None
-        self.reference_z = None
+        self.reference = ReferenceShape(
+            on_set=self._take_reference, shape_params=self.shape_params
+        )
         self.shape_params.extra_points_table = self.extra_points_table
-        self.input_outline.param.watch(self._load_preview, "load")
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
-        self._reference_x_point = None
-
-        self._source_select = pn.widgets.Select.from_param(
-            self.param.reference_source,
-            name="",
-            # SOURCE_NONE is only shown while no source is chosen
-            stylesheets=["option:first-child { display: none; }"],
-            margin=(0, 10, 8, 0),
-        )
         self.gap_sliders = pn.FlexBox(margin=0)
         edit_by = self.param.edit_by.rx()
         # The inputs of every view, of which only those of the view are shown, as
@@ -148,53 +116,7 @@ class PlasmaShape(Viewer):
             margin=0,
         )
         self.panel = pn.Column(
-            card(
-                self.param.reference_name.rx().rx.pipe(
-                    lambda name: (
-                        f"Reference shape: {name}" if name else "Reference shape"
-                    )
-                ),
-                pn.Row(
-                    self._source_select,
-                    pn.widgets.Checkbox.from_param(
-                        self.param.show_reference,
-                        # The reference is then the target shape itself, or the
-                        # equilibrium IDS being chosen is always shown
-                        disabled=pn.bind(
-                            lambda edit_by, source: (
-                                edit_by == self.EDIT_REFERENCE
-                                or source == self.SOURCE_IDS
-                            ),
-                            self.param.edit_by,
-                            self.param.reference_source,
-                        ),
-                        align="center",
-                        margin=(0, 0, 8, 0),
-                    ),
-                    margin=0,
-                ),
-                pn.Column(
-                    self.input_outline,
-                    visible=self.param.reference_source.rx() == self.SOURCE_IDS,
-                    sizing_mode="stretch_width",
-                    margin=0,
-                ),
-                pn.widgets.Button(
-                    name="Set reference shape",
-                    button_type="primary",
-                    # Until there is a reference shape to set
-                    disabled=pn.bind(
-                        lambda source, preview: (
-                            source == self.SOURCE_NONE
-                            or (source == self.SOURCE_IDS and preview is None)
-                        ),
-                        self.param.reference_source,
-                        self.param.preview,
-                    ),
-                    margin=0,
-                    on_click=self._set_reference,
-                ),
-            ),
+            self.reference,
             card(
                 "Target shape",
                 pn.FlexBox(
@@ -231,9 +153,11 @@ class PlasmaShape(Viewer):
                 # Once a reference shape is set, and out of the way while another one
                 # is chosen
                 visible=pn.bind(
-                    lambda name, source: bool(name) and source == self.SOURCE_NONE,
-                    self.param.reference_name,
-                    self.param.reference_source,
+                    lambda origin, source: (
+                        bool(origin) and source == ReferenceShape.SOURCE_NONE
+                    ),
+                    self.reference.param.origin,
+                    self.reference.param.source,
                 ),
             ),
             margin=(15, 20, 12, 20),
@@ -241,20 +165,13 @@ class PlasmaShape(Viewer):
         self.param.watch(self._on_edit_by, "edit_by")
         # One event for the plot, so that it can be drawn once for several changes
         self._hold_redraw = False
-        self.param.watch(
-            lambda *events: self._hold_redraw or self.param.trigger("redraw"),
-            [
-                "shape_updated",
-                "edit_by",
-                "show_reference",
-                "preview",
-                "reference_source",
-                "last_result",
-            ],
-        )
-        self.nice_settings.param.watch(self._update_sources, "machine_preset")
-        self.param.watch(self._update_sources, "last_result")
-        self._update_sources()
+
+        def redraw(*events):
+            if not self._hold_redraw:
+                self.param.trigger("redraw")
+
+        self.param.watch(redraw, ["shape_updated", "edit_by"])
+        self.reference.param.watch(redraw, ["show", "preview", "source", "last_result"])
         # Last, because clearing the shape fires the watchers above
         self.nice_settings.param.watch(self._clear_reference, "machine_preset")
         self._clear_reference()
@@ -273,10 +190,10 @@ class PlasmaShape(Viewer):
         self.param_r = self.param_z = self.param_weights = None
         if self.edit_by == self.EDIT_POINTS:
             self.outline_r, self.outline_z = self.points_table.get_outline_coordinates()
-        elif self.reference_r is None:  # no reference shape is set yet
+        elif self.reference.r is None:  # no reference shape is set yet
             self.outline_r = self.outline_z = None
         elif self.edit_by == self.EDIT_REFERENCE:
-            self._refine_shape(self.reference_r, self.reference_z)
+            self._refine_shape(self.reference.r, self.reference.z)
         else:
             self._refine_shape(*compute_outline_from_params(**self._shape_arguments()))
         self.has_shape = bool(self.outline_r and self.outline_z)
@@ -303,73 +220,17 @@ class PlasmaShape(Viewer):
             return self.extra_points_table
         return None
 
-    @property
-    def candidate_outline(self):
-        """The (r, z) of the reference shape of the chosen source, None if no source
-        is chosen or it has no shape yet, such as an equilibrium IDS not loaded."""
-        if self.reference_source == self.SOURCE_DEFAULT:
-            shape = MACHINE_SHAPES[self.nice_settings.machine_preset]
-            return compute_outline_from_params(
-                **{
-                    **self._shape_arguments(),
-                    **{name: value for name, (value, _) in shape.items()},
-                    "rx_upper": None,
-                    "zx_upper": None,
-                }
-            )
-        if (equilibrium := self._source_equilibrium) is None:
-            return None
-        outline = equilibrium.time_slice[0].boundary.outline
-        return outline.r, outline.z
-
-    @property
-    def _source_equilibrium(self):
-        """The equilibrium IDS of the chosen source, None if it has none (yet)."""
-        sources = {self.SOURCE_RESULT: self.last_result, self.SOURCE_IDS: self.preview}
-        return sources.get(self.reference_source)
-
-    def _update_sources(self, event=None):
-        """Disable the sources there is nothing to take the reference from."""
-        unavailable = []
-        if self.nice_settings.machine_preset not in MACHINE_SHAPES:
-            unavailable.append(self.SOURCE_DEFAULT)
-        if self.last_result is None:
-            unavailable.append(self.SOURCE_RESULT)
-        if self.reference_source in unavailable:
-            self.reference_source = self.SOURCE_NONE
-        self._source_select.disabled_options = unavailable
-
-    def _set_reference(self, event=None):
-        """Start from the reference shape of the chosen source. The parameterisation
-        is fitted to that of an equilibrium once it is used."""
-        r, z = self.candidate_outline
-        if len(r) < 3:
-            pn.state.notifications.error("The equilibrium has no boundary outline")
-            return
-        equilibrium = self._source_equilibrium
-        self.reference_name = {
-            self.SOURCE_DEFAULT: f"{self.nice_settings.machine_preset} default",
-            self.SOURCE_RESULT: "NICE result",
-            self.SOURCE_IDS: (
-                f"{self.input_outline.uri} at t = {self.input_outline.time:g} s"
-            ),
-        }[self.reference_source]
+    def _take_reference(self):
+        """Give NICE the reference shape just set, as it is. The parameterisation is
+        fitted to that of an equilibrium once it is used."""
         # The plot is drawn once, for all that changes
         self._hold_redraw = True
         try:
-            if equilibrium is None:  # the machine default, a parameterized shape
+            if not self.reference.of_equilibrium:  # the machine default
                 self.shape_params.apply_machine_shape()
-            else:
-                nodes = equilibrium.time_slice[0].contour_tree.node
-                # The primary x-point is node 1, see the Data Dictionary
-                is_x_point = len(nodes) > 1 and nodes[1].critical_type == 1
-                self._reference_x_point = (
-                    (float(nodes[1].r), float(nodes[1].z)) if is_x_point else None
-                )
-            self._fit_pending = equilibrium is not None
-            self.reference_r, self.reference_z = list(r), list(z)
+            self._fit_pending = self.reference.of_equilibrium
             # Out of the way until the reference is changed again
-            self.reference_source = self.SOURCE_NONE
+            self.reference.source = ReferenceShape.SOURCE_NONE
             self._start_editing()
         finally:
             self._hold_redraw = False
@@ -378,35 +239,9 @@ class PlasmaShape(Viewer):
     def _clear_reference(self, event=None):
         """Start without a reference shape, for one to be chosen first."""
         self.shape_params.apply_machine_shape(values=False)
-        self.reference_r = self.reference_z = None
-        self.reference_name = ""
-        self.reference_source = self.SOURCE_NONE
+        self.reference.clear()
         self._fit_pending = False
         self._start_editing()
-
-    @param.depends("reference_source", watch=True)
-    def _on_reference_source(self):
-        """The loaded equilibrium IDS is only drawn, as the reference, while it can be
-        set."""
-        if self.reference_source == self.SOURCE_IDS:
-            self.show_reference = True
-            if self.input_outline.times:  # an IDS entered before, loaded again
-                self._load_preview()
-        else:
-            self.preview = None
-
-    def _load_preview(self, event=None):
-        """Load the entered equilibrium IDS, to see it on the plot before it is set."""
-        try:
-            with imas.DBEntry(self.input_outline.uri, "r") as entry:
-                self.preview = entry.get_slice(
-                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
-                )
-        except Exception as e:
-            self.preview = None
-            pn.state.notifications.error(
-                f"Could not load the equilibrium from {self.input_outline.uri}: {e}"
-            )
 
     def _start_editing(self):
         """Give NICE the new reference as it is."""
@@ -461,6 +296,8 @@ class PlasmaShape(Viewer):
     def _edit_as_points(self, event=None):
         """Edit the target shape as it is, with its weights and extra points, as free
         points."""
+        if self.edit_by == self.EDIT_POINTS:  # a second click, before it was hidden
+            return
         r, z = list(self.param_r), list(self.param_z)
         weights = (
             [1] * len(r) if self.param_weights is None else list(self.param_weights)
@@ -508,14 +345,11 @@ class PlasmaShape(Viewer):
     def _on_edit_by(self, event):
         """The parameterisation is fitted to the reference shape of an equilibrium
         when it is first used."""
+        self.reference.is_target = event.new == self.EDIT_REFERENCE
         if event.new in (self.EDIT_SLIDERS, self.EDIT_GAPS) and self._fit_pending:
             self._fit_pending = False
-            self._fit_to(
-                self.reference_r,
-                self.reference_z,
-                "the reference shape",
-                self._reference_x_point,
-            )
+            ref = self.reference
+            self._fit_to(ref.r, ref.z, "the reference shape", ref.x_point)
         if event.new == self.EDIT_GAPS:
             if self.nice_settings.machine_preset not in MACHINE_GAPS:
                 pn.state.notifications.warning(
