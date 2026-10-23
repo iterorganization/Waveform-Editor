@@ -17,12 +17,18 @@ from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.shape_editor.flux import has_flux_map
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
+from waveform_editor.shape_editor.plasma_shape_calc import (
+    outline_distances,
+    outline_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,8 @@ def _reactive_title(title, is_valid):
 
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
+    # Pixels below the top of the plot that are not its frame, of its axis
+    BELOW_PLOT = 80
     # Seconds the inputs must be unchanged before auto run runs NICE again
     AUTO_RUN_DELAY = 0.3
 
@@ -68,13 +76,22 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
+        # Only a converged result can be a reference shape
+        self.communicator.param.watch(
+            lambda *events: self.plasma_shape.reference.param.update(
+                last_result=self.communicator.equilibrium
+                if self.communicator.converged
+                else None
+            ),
+            ["equilibrium", "converged"],
+        )
         self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
-        self.metrics = Metrics(max_width=self.nice_plotter.param.frame_width.rx() + 200)
+        self.metrics = Metrics()
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
         # Whether auto run is running NICE, and whether the inputs changed since
@@ -178,6 +195,10 @@ class ShapeEditor(Viewer):
 
         self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
         self._update_machine_metrics()
+        self.plasma_shape.param.watch(self._update_target_metrics, "redraw")
+        self.nice_settings.param.watch(
+            self._update_target_metrics, ["mode", "machine_preset"]
+        )
         for obj, name in (
             (self, "auto_run"),
             (self.plasma_shape, "shape_updated"),
@@ -189,12 +210,11 @@ class ShapeEditor(Viewer):
         options = pn.bind(
             self._create_options_tabs,
             self.nice_settings.param.is_inverse_mode,
-            self.plasma_shape.param.has_shape,
             self.plasma_properties.param.has_properties,
         )
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
-            self.metrics,
+            self.nice_plotter.legend,
             sizing_mode="stretch_height",
             scroll=True,
             visible=self.collapse_plot.param.value.rx.not_(),
@@ -207,6 +227,7 @@ class ShapeEditor(Viewer):
             visible=self.collapse_plot.param.value.rx.not_(),
         )
         plot_handle.param.watch(self._resize_plot, "dx")
+        plot_handle.param.watch(self._fit_plot, "room")
         self.nice_plotter.param.watch(
             lambda event: self._limit_drag(plot_handle), "frame_width"
         )
@@ -231,24 +252,44 @@ class ShapeEditor(Viewer):
             self.nice_plotter.resize(event.new)
             event.obj.dx = 0
 
+    def _fit_plot(self, event):
+        """Make the plot as large as the browser window has room for, beside the
+        inputs."""
+        right, below = event.new
+        plot = self.nice_plotter
+        # The handle moves with the right of the plot, as far as it widens
+        plot.fit(
+            plot.frame_width + right - event.obj.min_right, below - self.BELOW_PLOT
+        )
+
     def _limit_drag(self, handle):
         """Let the handle go only as far as the plot can be resized."""
         handle.min_dx, handle.max_dx = self.nice_plotter.drag_range()
 
-    def _create_options_tabs(self, is_inverse_mode, has_shape, has_properties):
+    def _create_options_tabs(self, is_inverse_mode, has_properties):
         """Create the tabs holding the inputs for a run.
 
         Args:
             is_inverse_mode: Whether NICE runs in inverse mode, which is the only
                 mode that takes a plasma shape.
-            has_shape: Whether a plasma shape is given, which warns in its title.
             has_properties: Whether the plasma properties are given.
         """
         items = []
         if is_inverse_mode:
-            items.append(
-                (_reactive_title("Plasma Shape", has_shape), self.plasma_shape)
+            shape_tab = pn.Column(
+                self.plasma_shape,
+                pn.Column(
+                    self.metrics,
+                    margin=(0, 20, 12, 20),
+                    # Out of the way while a reference shape is chosen
+                    visible=self.plasma_shape.reference.param.source.rx()
+                    == ReferenceShape.SOURCE_NONE,
+                ),
+                margin=0,
             )
+            # No warning in its title for a missing shape, which would rebuild all
+            # tabs, flashing them, whenever a reference shape is set
+            items.append(("Plasma Shape", shape_tab))
         # The profiles plot is part of the plasma properties panel itself
         items.append(
             (
@@ -312,7 +353,7 @@ class ShapeEditor(Viewer):
         """Drop the result and the runs, since they are of another machine description
         now."""
         self.communicator.param.update(equilibrium=None, pf_active=None)
-        self.metrics.metrics = {}
+        self.metrics.result = {}
         self.run_history = []
         self.run_select.options = {}
         self.run_select.disabled = True
@@ -430,15 +471,39 @@ class ShapeEditor(Viewer):
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
     def _on_nice_run_finished(self, success):
-        if success:
+        problem = self._result_problem() if success else ""
+        if success and not problem:
             # Show the gaps of the result, instead of the target gaps
             if self.nice_plotter.show_gaps:
                 self.nice_plotter.show_result_gaps = True
                 self.nice_plotter.show_target_gaps = False
-        else:
-            pn.state.notifications.error(
-                "NICE did not converge. Check the Logging tab for details."
-            )
+            return
+        self.communicator.converged = False
+        pn.state.notifications.error(
+            f"NICE did not converge{problem}. Check the Logging tab for details."
+        )
+
+    def _result_problem(self):
+        """Why the result of a run NICE says converged is wrong, empty if it is not:
+        it has no poloidal flux, or it misses the target shape of an inverse run by
+        more than a quarter of its minor radius, as when NICE converges to a plasma
+        elsewhere."""
+        time_slice = self.communicator.equilibrium.time_slice[0]
+        if not has_flux_map(time_slice):
+            return ": it gave no poloidal flux"
+        shape = self.plasma_shape
+        if self.nice_settings.is_direct_mode or not shape.has_shape:
+            return ""
+        outline = time_slice.boundary.outline
+        if len(outline.r) < 3:
+            return ": its result has no boundary"
+        distance = outline_distances(
+            shape.outline_r, shape.outline_z, outline.r, outline.z
+        ).max()
+        minor_radius = (max(shape.outline_r) - min(shape.outline_r)) / 2
+        if distance < minor_radius / 4:
+            return ""
+        return f": its result misses the target shape by up to {distance:.2f} m"
 
     def _has_valid_boundary(self):
         """Check that the target boundary fits in the fixed size array NICE reads it
@@ -587,18 +652,37 @@ class ShapeEditor(Viewer):
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is None:
             return {}
-        return {
-            name: value * 100 if gaps.GAP_METADATA[name][1] == "cm" else value
-            for name, value in gaps.compute_gaps(**gaps.gap_inputs(time_slice)).items()
-            if value is not None
-        }
+        return gaps.compute_gaps(**gaps.gap_inputs(time_slice))
+
+    def _update_target_metrics(self, *events):
+        """Show the shape of the target, if there is one drawn."""
+        shape = self.plasma_shape
+        if not self.nice_plotter.has_target():
+            self.metrics.target = {}
+            return
+        # The boundary itself, without the extra points
+        r, z = (
+            (shape.param_r, shape.param_z)
+            if shape.param_r is not None
+            else (shape.outline_r, shape.outline_z)
+        )
+        # Free points being placed may not span a width to measure a shape by yet
+        target = outline_metrics(r, z) if max(r) > min(r) else {}
+        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
+        if gaps is not None:
+            inputs = gaps.shape_inputs(shape.target_x_points)
+            target.update(gaps.compute_gaps(shape.outline_r, shape.outline_z, **inputs))
+        self.metrics.target = target
 
     def _update_metrics(self):
+        if not self.communicator.converged:
+            self.metrics.result = {}  # the shape of a run that did not converge
+            return
         eq = self.communicator.equilibrium
         global_quantities = eq.time_slice[0].global_quantities
         boundary = eq.time_slice[0].boundary
 
-        self.metrics.metrics = {
+        self.metrics.result = {
             self.metrics.ELONGATION: float(boundary.elongation),
             self.metrics.TRIANGULARITY: float(boundary.triangularity),
             self.metrics.TRI_UPPER: float(boundary.triangularity_upper),

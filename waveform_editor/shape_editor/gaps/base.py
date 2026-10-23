@@ -3,6 +3,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from waveform_editor.shape_editor.plasma_shape_calc import (
+    compute_outline_from_params,
+    fit_shape_params,
+)
+
 
 @dataclass
 class MeasuredGap:
@@ -45,3 +50,28 @@ class MachineGaps(ABC):
         """The gaps in metres by name, None for those that could not be measured.
         Takes the arguments of measure."""
         return {gap.key: gap.distance for gap in self.measure(*args, **kwargs)}
+
+    def fit_shape(self, params, targets, ranges):
+        """The parameters of the parameterized shape whose gaps come closest to the
+        targets. Of the shapes that reach them, it is the one closest to params.
+
+        Args:
+            params: The arguments of compute_outline_from_params to start from.
+            targets: The gap to reach in metres, by name.
+            ranges: The (min, max) each parameter to fit stays within, by name.
+
+        Returns:
+            The arguments of compute_outline_from_params of the fitted shape.
+        """
+
+        def misfit(fitted):
+            r, z = compute_outline_from_params(**fitted)
+            x_points = [(fitted["rx"], fitted["zx"])]
+            gaps = self.compute_gaps(r, z, **self.shape_inputs(x_points))
+            # A gap the shape can no longer be measured on counts as a metre off
+            return [
+                1.0 if gaps.get(key) is None else gaps[key] - target
+                for key, target in targets.items()
+            ]
+
+        return fit_shape_params(params, ranges, misfit)

@@ -1,30 +1,9 @@
 """Pure geometry calculations for the plasma shape, with no Panel dependency."""
 
 import math
-from dataclasses import dataclass
 
 import numpy as np
-
-
-@dataclass
-class Gap:
-    """Helper dataclass representing the properties of a gap."""
-
-    name: str
-    r: float  # Major radius of the reference point
-    z: float  # Height of the reference point
-    angle: float
-    value: float
-
-    @property
-    def r_sep(self):
-        """Major radius of the point on the target separatrix"""
-        return self.r + self.value * math.cos(-self.angle)
-
-    @property
-    def z_sep(self):
-        """Height of the point on the target separatrix"""
-        return self.z + self.value * math.sin(-self.angle)
+from scipy.optimize import least_squares
 
 
 def _divertor_leg(midplane, x_point, n_points):
@@ -179,15 +158,127 @@ def apply_point_weights(r, z, weights):
     return np.repeat(r, weights).tolist(), np.repeat(z, weights).tolist()
 
 
-def update_outline_from_gaps(gaps):
-    """Compute outline coordinates from a list of Gap objects.
+def fit_shape_params(params, ranges, misfit):
+    """The parameters that bring misfit closest to zero. Of the parameters that do,
+    it is those closest to params, so that the shape changes no more than needed.
 
     Args:
-        gaps: List of Gap objects.
+        params: The arguments of compute_outline_from_params to start from.
+        ranges: The (min, max) each parameter to fit stays within, by name.
+        misfit: Function of the arguments of compute_outline_from_params, returning
+            the misfits to bring to zero.
 
     Returns:
-        Tuple of (outline_r, outline_z), or (None, None) if gaps is empty.
+        The arguments of compute_outline_from_params of the fitted shape.
     """
-    if not gaps:
-        return None, None
-    return [gap.r_sep for gap in gaps], [gap.z_sep for gap in gaps]
+    names = list(ranges)
+    low, high = np.array(list(ranges.values()), dtype=float).T
+    start = np.clip([params[name] for name in names], low, high)
+    scale = high - low
+
+    def residuals(x):
+        fitted = {**params, **dict(zip(names, x, strict=True))}
+        return np.concatenate([misfit(fitted), 1e-2 * (x - start) / scale])
+
+    result = least_squares(residuals, start, bounds=(low, high), x_scale=scale)
+    return {**params, **dict(zip(names, result.x, strict=True))}
+
+
+def outline_distances(r, z, outline_r, outline_z):
+    """The distance of each point to a closed outline.
+
+    Args:
+        r: Radial coordinates of the points.
+        z: Height coordinates of the points.
+        outline_r: Radial coordinates of the outline.
+        outline_z: Height coordinates of the outline.
+    """
+    points = np.column_stack([r, z])
+    start = np.column_stack([outline_r, outline_z])
+    segment = np.roll(start, -1, axis=0) - start
+    length2 = np.maximum((segment**2).sum(axis=1), 1e-30)
+    along = ((points[:, None] - start[None]) * segment[None]).sum(axis=2) / length2
+    closest = start[None] + np.clip(along, 0, 1)[..., None] * segment[None]
+    return np.linalg.norm(points[:, None] - closest, axis=2).min(axis=1)
+
+
+def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
+    """The single null parameters whose shape comes closest to an outline, with the
+    x-point kept in place.
+
+    Args:
+        outline_r: Radial coordinates of the outline.
+        outline_z: Height coordinates of the outline.
+        n_points: The number of boundary points of the shape.
+        x_point: The (r, z) of the x-point, the lowest point of the outline without.
+
+    Returns:
+        The fitted arguments of compute_outline_from_params, and the distances
+        between the two outlines [m].
+    """
+    r, z = np.asarray(outline_r, dtype=float), np.asarray(outline_z, dtype=float)
+    r_min, r_max, z_min, z_max = r.min(), r.max(), z.min(), z.max()
+    a = (r_max - r_min) / 2
+    center_r = (r_max + r_min) / 2
+    center_z = z[r.argmax()]
+    top = z.argmax()
+    if x_point is None:
+        x_point = (r[z.argmin()], z_min)
+    start = {
+        "n_desired_bnd_points": n_points,
+        "a": a,
+        "center_r": center_r,
+        "center_z": center_z,
+        "kappa": max((z_max - center_z) / a, 0.1),
+        "delta": float(np.clip((center_r - r[top]) / a, -0.9, 0.9)),
+        "rx": x_point[0],
+        "zx": x_point[1],
+        "rx_upper": None,
+        "zx_upper": None,
+    }
+    ranges = {
+        "a": (0.5 * a, 1.5 * a),
+        "center_r": (r_min, r_max),
+        "center_z": (z_min, z_max),
+        "kappa": (0.1, 3),
+        "delta": (-0.95, 0.95),
+    }
+
+    def misfit(fitted):
+        fit_r, fit_z = compute_outline_from_params(**fitted)
+        return np.concatenate(
+            [
+                outline_distances(r, z, fit_r, fit_z),
+                outline_distances(fit_r, fit_z, r, z),
+            ]
+        )
+
+    fitted = fit_shape_params(start, ranges, misfit)
+    return fitted, misfit(fitted)
+
+
+def outline_metrics(r, z):
+    """The shape of an outline, as the Data Dictionary defines it for a boundary.
+
+    Args:
+        r: Radial coordinates of the outline.
+        z: Height coordinates of the outline.
+
+    Returns:
+        The elongation, triangularity (also upper and lower), geometric axis (r0,
+        z0) and minor radius (a) by name.
+    """
+    r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
+    a = (r.max() - r.min()) / 2
+    r0 = (r.max() + r.min()) / 2
+    upper = (r0 - r[z.argmax()]) / a
+    lower = (r0 - r[z.argmin()]) / a
+    return {
+        "elongation": (z.max() - z.min()) / (2 * a),
+        "triangularity": (upper + lower) / 2,
+        "tri_upper": upper,
+        "tri_lower": lower,
+        "r0": r0,
+        "z0": (z.max() + z.min()) / 2,
+        "a": a,
+    }
