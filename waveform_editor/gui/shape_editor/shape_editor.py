@@ -204,7 +204,6 @@ class ShapeEditor(Viewer):
         options = pn.bind(
             self._create_options_tabs,
             self.nice_settings.param.is_inverse_mode,
-            self.plasma_shape.param.has_shape,
             self.plasma_properties.param.has_properties,
         )
         left_col = pn.Column(
@@ -261,23 +260,30 @@ class ShapeEditor(Viewer):
         """Let the handle go only as far as the plot can be resized."""
         handle.min_dx, handle.max_dx = self.nice_plotter.drag_range()
 
-    def _create_options_tabs(self, is_inverse_mode, has_shape, has_properties):
+    def _create_options_tabs(self, is_inverse_mode, has_properties):
         """Create the tabs holding the inputs for a run.
 
         Args:
             is_inverse_mode: Whether NICE runs in inverse mode, which is the only
                 mode that takes a plasma shape.
-            has_shape: Whether a plasma shape is given, which warns in its title.
             has_properties: Whether the plasma properties are given.
         """
         items = []
         if is_inverse_mode:
             shape_tab = pn.Column(
                 self.plasma_shape,
-                pn.Column(self.metrics, margin=(0, 20, 12, 20)),
+                pn.Column(
+                    self.metrics,
+                    margin=(0, 20, 12, 20),
+                    # Out of the way while a reference shape is chosen
+                    visible=self.plasma_shape.param.reference_source.rx()
+                    == PlasmaShape.SOURCE_NONE,
+                ),
                 margin=0,
             )
-            items.append((_reactive_title("Plasma Shape", has_shape), shape_tab))
+            # No warning in its title for a missing shape, which would rebuild all
+            # tabs, flashing them, whenever a reference shape is set
+            items.append(("Plasma Shape", shape_tab))
         # The profiles plot is part of the plasma properties panel itself
         items.append(
             (
