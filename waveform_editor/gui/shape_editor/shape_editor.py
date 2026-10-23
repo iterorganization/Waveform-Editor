@@ -16,7 +16,7 @@ from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
 from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
-from waveform_editor.gui.shape_editor.plasma_shape import GAP_SCALE, PlasmaShape
+from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
@@ -75,9 +75,14 @@ class ShapeEditor(Viewer):
         self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
+        # Only a converged result can be a reference shape
         self.communicator.param.watch(
-            lambda event: self.plasma_shape.param.update(last_result=event.new),
-            "equilibrium",
+            lambda *events: self.plasma_shape.param.update(
+                last_result=self.communicator.equilibrium
+                if self.communicator.converged
+                else None
+            ),
+            ["equilibrium", "converged"],
         )
         self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
@@ -494,7 +499,8 @@ class ShapeEditor(Viewer):
         distance = outline_distances(
             shape.outline_r, shape.outline_z, outline.r, outline.z
         ).max()
-        if distance < outline_metrics(shape.outline_r, shape.outline_z)["a"] / 4:
+        minor_radius = (max(shape.outline_r) - min(shape.outline_r)) / 2
+        if distance < minor_radius / 4:
             return ""
         return f": its result misses the target shape by up to {distance:.2f} m"
 
@@ -640,23 +646,12 @@ class ShapeEditor(Viewer):
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         self.metrics.machine_metrics = gaps.GAP_METADATA if gaps else {}
 
-    @staticmethod
-    def _gaps_in_units(gaps, values):
-        """Gaps by name in the unit they are shown in, without those not measured."""
-        return {
-            name: value * GAP_SCALE[gaps.GAP_METADATA[name][1]]
-            for name, value in values.items()
-            if value is not None
-        }
-
     def _machine_gaps(self, time_slice):
         """The gaps of the machine of the selected preset."""
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is None:
             return {}
-        return self._gaps_in_units(
-            gaps, gaps.compute_gaps(**gaps.gap_inputs(time_slice))
-        )
+        return gaps.compute_gaps(**gaps.gap_inputs(time_slice))
 
     def _update_target_metrics(self, *events):
         """Show the shape of the target, if there is one drawn."""
@@ -675,8 +670,7 @@ class ShapeEditor(Viewer):
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is not None:
             inputs = gaps.shape_inputs(shape.target_x_points)
-            values = gaps.compute_gaps(shape.outline_r, shape.outline_z, **inputs)
-            target.update(self._gaps_in_units(gaps, values))
+            target.update(gaps.compute_gaps(shape.outline_r, shape.outline_z, **inputs))
         self.metrics.target = target
 
     def _update_metrics(self):

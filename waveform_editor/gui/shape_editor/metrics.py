@@ -4,14 +4,15 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.plasma_shape import GAP_SCALE
 from waveform_editor.gui.util import card
 
 
 class Metrics(Viewer):
     """Table of the shape of the target and of the NICE result."""
 
-    target = param.Dict(default={}, doc="The shape of the target, by metric")
-    result = param.Dict(default={}, doc="The shape of the NICE result, by metric")
+    target = param.Dict(default={}, doc="The shape of the target, by metric [m]")
+    result = param.Dict(default={}, doc="The shape of the NICE result, by metric [m]")
     machine_metrics = param.Dict(default={})
 
     ELONGATION = "elongation"
@@ -54,21 +55,21 @@ class Metrics(Viewer):
         metrics = {
             key: metadata
             for key, metadata in {**self.METRICS, **self.machine_metrics}.items()
-            if key in self.target or key in self.result
+            if self.target.get(key) is not None or self.result.get(key) is not None
         }
+        if not metrics:
+            return
         titles = {
             key: f"{symbol} [{unit}]" if unit else symbol
             for key, (symbol, unit, _) in metrics.items()
         }
-        difference = {
-            key: self.result[key] - self.target[key]
-            for key in self.target.keys() & self.result.keys()
-        }
         table = pd.DataFrame(
-            [self.target, self.result, difference],
-            index=["Target", "Result", "Difference"],
+            [self.target, self.result],
+            index=["Target", "Result"],
             columns=list(metrics),
-        )
+            dtype=float,  # a gap that could not be measured is None
+        ) * [GAP_SCALE.get(unit, 1) for _, unit, _ in metrics.values()]
+        table.loc["Difference"] = table.loc["Result"] - table.loc["Target"]
         self._table.param.update(
             value=table.rename(columns=titles).rename_axis("").reset_index(),
             header_tooltips={
