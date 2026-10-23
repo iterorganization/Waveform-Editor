@@ -36,10 +36,6 @@ logger = logging.getLogger(__name__)
 MAX_BOUNDARY_POINTS = 5000
 
 
-def _reactive_title(title, is_valid):
-    return title if is_valid else f"{title} ⚠️"
-
-
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
     # Pixels below the top of the plot that are not its frame, of its axis
@@ -116,32 +112,46 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        self._cannot_run = (
-            (
-                self.plasma_shape.param.has_shape.rx.not_()
-                & self.nice_settings.param.is_inverse_mode.rx()
+        # What is missing to run NICE, empty when nothing is
+        missing = pn.rx(
+            lambda is_inverse, has_shape, has_properties, has_settings: " and ".join(
+                text
+                for text, is_missing in (
+                    ("Set a target shape", is_inverse and not has_shape),
+                    ("Fill in the plasma properties", not has_properties),
+                    ("Set the machine description in the settings", not has_settings),
+                )
+                if is_missing
             )
-            | self.plasma_properties.param.has_properties.rx.not_()
-            | self.nice_settings.param.are_required_filled.rx.not_()
+        )(
+            self.nice_settings.param.is_inverse_mode,
+            self.plasma_shape.param.has_shape,
+            self.plasma_properties.param.has_properties,
+            self.nice_settings.param.are_required_filled,
         )
+        self._cannot_run = missing.rx.bool()
         button_start = pn.widgets.Button(
             name="Run",
             button_type="primary",
             icon="player-play",
             on_click=self.submit,
             description=pn.bind(
-                lambda cannot_run, auto_run: (
+                lambda missing, auto_run: (
                     "Disabled while auto run is on"
                     if auto_run
-                    else "Cannot run: missing required inputs"
-                    if cannot_run
-                    else "Run simulation"
+                    else missing or "Run simulation"
                 ),
-                self._cannot_run,
+                missing,
                 self.param.auto_run,
             ),
             disabled=self._cannot_run | self.param.auto_run.rx(),
             margin=(10, 0, 2, 0),
+        )
+        # What is missing is shown on hover
+        cannot_run_hint = pn.pane.HTML(
+            pn.rx('<span title="{}" style="cursor:help">⚠️</span>').format(missing),
+            visible=self._cannot_run,
+            margin=(15, 10, 2, 0),
         )
         auto_run_label = pn.pane.HTML(
             '<span title="Run NICE whenever the plasma shape, plasma properties or '
@@ -182,6 +192,7 @@ class ShapeEditor(Viewer):
             pn.Row(
                 auto_run_label,
                 auto_run_switch,
+                cannot_run_hint,
                 button_stop,
                 button_start,
                 align="center",
@@ -208,9 +219,7 @@ class ShapeEditor(Viewer):
             obj.param.watch(self._auto_submit, name)
         self._active_tab = 0
         options = pn.bind(
-            self._create_options_tabs,
-            self.nice_settings.param.is_inverse_mode,
-            self.plasma_properties.param.has_properties,
+            self._create_options_tabs, self.nice_settings.param.is_inverse_mode
         )
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
@@ -240,8 +249,7 @@ class ShapeEditor(Viewer):
             plot_handle,
             pn.Column(
                 buttons,
-                options,
-                self.terminal,
+                pn.panel(options, sizing_mode="stretch_both"),
                 sizing_mode="stretch_both",
                 scroll=True,
             ),
@@ -268,43 +276,36 @@ class ShapeEditor(Viewer):
         """Let the handle go only as far as the plot can be resized."""
         handle.min_dx, handle.max_dx = self.nice_plotter.drag_range()
 
-    def _create_options_tabs(self, is_inverse_mode, has_properties):
+    def _create_options_tabs(self, is_inverse_mode):
         """Create the tabs holding the inputs for a run.
 
         Args:
             is_inverse_mode: Whether NICE runs in inverse mode, which is the only
                 mode that takes a plasma shape.
-            has_properties: Whether the plasma properties are given.
         """
         items = []
         if is_inverse_mode:
             items.append(("Plasma Shape", self.plasma_shape))
         # The profiles plot is part of the plasma properties panel itself
-        items.append(
-            (
-                _reactive_title("Plasma Properties", has_properties),
-                self.plasma_properties,
-            )
-        )
+        items.append(("Plasma Properties", self.plasma_properties))
         items.append(("Coil Currents", self.coil_currents))
-        # The log is shown below the tabs, so that it is not rendered again, which
-        # would lose its output: https://github.com/holoviz/panel/issues/8832
-        items.append(("Logging", pn.Spacer(height=0)))
-        log_tab = len(items) - 1
-        # Without a margin, as hidden tabs still take up the margin of their content
+        items.append(("Logging", self.terminal))
         tabs = pn.Tabs(
             *(
-                (title, pn.Column(content, margin=0, sizing_mode="stretch_width"))
+                (
+                    title,
+                    pn.Column(
+                        content, margin=0, sizing_mode="stretch_both", scroll=True
+                    ),
+                )
                 for title, content in items
             ),
-            dynamic=True,
-            sizing_mode="stretch_width",
+            sizing_mode="stretch_both",
             stylesheets=[".bk-tab { flex: 1; text-align: center; }"],
         )
         # Without the plasma shape tab, the other tabs move one to the left
         tabs.active = max(self._active_tab - (not is_inverse_mode), 0)
         tabs.param.watch(self._remember_active_tab, "active")
-        self.terminal.visible = tabs.param.active.rx() == log_tab
         return tabs
 
     def _remember_active_tab(self, event):
