@@ -5,7 +5,7 @@ import holoviews as hv
 import numpy as np
 import panel as pn
 import param
-from bokeh.models import HoverTool, PointDrawTool
+from bokeh.models import HoverTool, PointDrawTool, WheelZoomTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -323,7 +323,13 @@ class NicePlotter(Viewer):
 
     def _capture_figure(self, plot, element):
         """Keep hold of the figure, so its ranges can follow the machine preset."""
+        if self._figure is plot.state:  # called on every redraw, set up once
+            return
         self._figure = plot.state
+        # Scrolling over an axis zooms the whole plot, not that axis alone, which
+        # would stretch the machine
+        for tool in plot.state.select(WheelZoomTool):
+            tool.zoom_on_axis = False
 
     def _machine_ranges(self):
         """The r and z range of the machine of the selected preset."""
