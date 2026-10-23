@@ -167,6 +167,12 @@ class ShapeEditor(Viewer):
             button_type="danger",
             icon="player-stop",
             on_click=self.stop_nice,
+            disabled=pn.bind(
+                lambda *running: not any(running),
+                self.communicator.param.nice_running,
+                self.communicator.param.muscle_manager_running,
+                self.communicator.param.communicator_running,
+            ),
             margin=(10, 10, 2, 0),
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
