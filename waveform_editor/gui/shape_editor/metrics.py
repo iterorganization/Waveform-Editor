@@ -78,8 +78,13 @@ class Metrics(Viewer):
         )
         if self.nice_settings.is_direct_mode:  # which has no target shape
             table = table.loc[["Result"]]
+        value = table.rename(columns=titles).rename_axis("").reset_index()
+        # Only the values change while the shape is edited, which is quicker to send
+        if self._table.value is not None and list(self._table.value) == list(value):
+            self._table.value = value
+            return
         self._table.param.update(
-            value=table.rename(columns=titles).rename_axis("").reset_index(),
+            value=value,
             header_tooltips={
                 titles[key]: name for key, (_, _, name) in metrics.items()
             },
