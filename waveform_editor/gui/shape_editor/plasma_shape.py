@@ -20,7 +20,6 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_gaussian_weights,
     compute_outline_from_params,
     fit_params_to_outline,
-    resample_outline,
 )
 
 # A shape to start from for each machine, taken from one of its discharges, as
@@ -51,6 +50,8 @@ MACHINE_SHAPES = {
 }
 
 
+# Pixels high of the view switch and the button beside it, so that they line up
+BUTTON_HEIGHT = 32
 # The gap sliders are in the unit the gap pills show the gaps in, from metres
 GAP_SCALE = {"m": 1, "cm": 100}
 
@@ -520,8 +521,6 @@ class PlasmaShape(Viewer):
         self.reference_z = None
         self.shape_params.extra_points_table = self.extra_points_table
         self.input_outline.param.watch(self._load_preview, "load")
-        # The parameterisation and free points last in sync, see _on_edit_by
-        self._synced = None
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
         self._reference_x_point = None
@@ -576,15 +575,35 @@ class PlasmaShape(Viewer):
             ),
             card(
                 "Target shape",
-                pn.widgets.RadioButtonGroup.from_param(
-                    self.param.edit_by,
-                    name="",
-                    button_type="primary",
-                    button_style="outline",
-                    stylesheets=[CARD_CSS],
-                    sizing_mode="stretch_width",
-                    max_width=560,
-                    margin=(0, 0, 8, 0),
+                pn.FlexBox(
+                    pn.widgets.RadioButtonGroup.from_param(
+                        self.param.edit_by,
+                        name="",
+                        # Free points are reached from these, and none is shown active
+                        options=[
+                            self.EDIT_REFERENCE,
+                            self.EDIT_SLIDERS,
+                            self.EDIT_GAPS,
+                        ],
+                        button_type="primary",
+                        button_style="outline",
+                        stylesheets=[CARD_CSS],
+                        width=480,
+                        height=BUTTON_HEIGHT,
+                        margin=(0, 10, 8, 0),
+                    ),
+                    pn.widgets.Button(
+                        name="Edit as free points",
+                        icon="pencil",
+                        button_type="primary",
+                        button_style="outline",
+                        stylesheets=[CARD_CSS],
+                        height=BUTTON_HEIGHT,
+                        on_click=self._edit_as_points,
+                        visible=self.param.edit_by.rx() != self.EDIT_POINTS,
+                        margin=(0, 0, 8, 0),
+                    ),
+                    margin=0,
                 ),
                 self._panel_edit,
                 # Once a reference shape is set, and out of the way while another one
@@ -720,7 +739,6 @@ class PlasmaShape(Viewer):
         self.reference_name = ""
         self.reference_source = self.SOURCE_NONE
         self._fit_pending = False
-        self.points_table.set_points([], [], [])
         self._start_editing()
 
     def _start_from_default(self):
@@ -729,7 +747,6 @@ class PlasmaShape(Viewer):
         self.reference_name = f"{self.nice_settings.machine_preset} default"
         self._fit_pending = False
         self.shape_params.apply_machine_shape()
-        self._copy_parameterized_shape()
         self._start_editing()
 
     def _start_from_ids(self):
@@ -769,8 +786,8 @@ class PlasmaShape(Viewer):
             )
 
     def start_from_equilibrium(self, equilibrium, name):
-        """Start from the boundary of an equilibrium, and keep it as it is as the free
-        points. The parameterisation is fitted to it once it is used.
+        """Start from the boundary of an equilibrium. The parameterisation is fitted to
+        it once it is used.
 
         Args:
             equilibrium: The equilibrium IDS.
@@ -791,20 +808,11 @@ class PlasmaShape(Viewer):
         self.reference_r, self.reference_z = r.tolist(), z.tolist()
         self._reference_x_point = x_point
         self._fit_pending = True
-        # As many points as the boundary is set to have, from the x-point on
-        points_r, points_z = resample_outline(
-            r,
-            z,
-            self.shape_params.n_desired_bnd_points,
-            start=x_point or (r[z.argmin()], z.min()),
-        )
-        self.points_table.set_points(points_r, points_z, [1] * len(points_r))
         self.reference_name = name
         self._start_editing()
 
     def _start_editing(self):
         """Give NICE the new reference as it is."""
-        self._synced = self._sync_state()
         self.edit_by = self.EDIT_REFERENCE
         self.param.trigger("edit_by")  # also when it was, to take the new reference
 
@@ -853,10 +861,24 @@ class PlasmaShape(Viewer):
         self.outline_r = self.outline_r + extra_r
         self.outline_z = self.outline_z + extra_z
 
-    def _copy_parameterized_shape(self):
-        """Replace the free points by the boundary of the parameterised shape."""
-        r, z = compute_outline_from_params(**self._shape_arguments())
-        self.points_table.set_points(r, z, [1] * len(r))
+    def _edit_as_points(self, event=None):
+        """Edit the target shape as it is, with its weights and extra points, as free
+        points."""
+        r, z = list(self.param_r), list(self.param_z)
+        weights = (
+            [1] * len(r) if self.param_weights is None else list(self.param_weights)
+        )
+        if self.shape_params.extra_points_enabled:
+            extra_r, extra_z, extra_weights = self.extra_points_table.get_points()
+            r, z, weights = r + extra_r, z + extra_z, weights + extra_weights
+        self.points_table.set_points(r, z, weights)
+        self.edit_by = self.EDIT_POINTS
+
+    def _fit_to_points(self, event=None):
+        """Fit the parameterisation to the free points, and show it."""
+        self._fit_to(*self.points_table.get_points()[:2], "the free points")
+        self._fit_pending = False  # the free points are newer than the reference
+        self.edit_by = self.EDIT_SLIDERS
 
     def _fit_to(self, r, z, fitted_to, x_point=None):
         """Fit the parameterisation to an outline, warning when it misses it.
@@ -886,18 +908,9 @@ class PlasmaShape(Viewer):
             zx_upper=float(z[top]),
         )
 
-    def _sync_state(self):
-        return self._shape_arguments(), self.points_table.get_points()
-
     def _on_edit_by(self, event):
-        """Each view starts from the shape last changed in another: leaving changed
-        free points fits the parameterisation to them, and a changed parameterisation
-        replaces the free points. The parameterisation is fitted to the reference
-        shape of an equilibrium when it is first used."""
-        parameterisation, points = self._synced
-        if event.old == self.EDIT_POINTS and self.points_table.get_points() != points:
-            self._fit_to(*self.points_table.get_points()[:2], "the free points")
-            self._fit_pending = False  # the free points are newer
+        """The parameterisation is fitted to the reference shape of an equilibrium
+        when it is first used."""
         if event.new in (self.EDIT_SLIDERS, self.EDIT_GAPS) and self._fit_pending:
             self._fit_pending = False
             self._fit_to(
@@ -906,12 +919,6 @@ class PlasmaShape(Viewer):
                 "the reference shape",
                 self._reference_x_point,
             )
-        if (
-            event.new == self.EDIT_POINTS
-            and self._shape_arguments() != parameterisation
-        ):
-            self._copy_parameterized_shape()
-        self._synced = self._sync_state()
         if event.new == self.EDIT_GAPS:
             if self.nice_settings.machine_preset not in MACHINE_GAPS:
                 pn.state.notifications.warning(
@@ -923,21 +930,33 @@ class PlasmaShape(Viewer):
 
     @param.depends("edit_by")
     def _panel_edit(self):
-        if self.edit_by == self.EDIT_REFERENCE:
-            return self.shape_params.fine_tuning(boundary_points=False)
         if self.edit_by == self.EDIT_POINTS:
             return pn.Column(
-                pn.widgets.Button(
-                    name="Clear points",
-                    icon="trash",
-                    on_click=lambda event: self.points_table.set_points([], [], []),
-                    margin=(8, 0),
+                pn.Row(
+                    pn.widgets.Button(
+                        name="Fit parameterisation to points",
+                        on_click=self._fit_to_points,
+                        margin=(0, 10, 0, 0),
+                    ),
+                    pn.widgets.Button(
+                        name="Clear points",
+                        icon="trash",
+                        on_click=lambda event: self.points_table.set_points([], [], []),
+                        margin=0,
+                    ),
+                    margin=(0, 0, 8, 0),
                 ),
                 self.points_table,
                 margin=0,
             )
-        main = self.gap_sliders if self.edit_by == self.EDIT_GAPS else self.shape_params
-        return pn.Column(main, self.shape_params.fine_tuning(), margin=0)
+        if self.edit_by == self.EDIT_REFERENCE:
+            # Only a parameterized boundary has a number of points
+            views = [self.shape_params.fine_tuning(boundary_points=False)]
+        elif self.edit_by == self.EDIT_GAPS:
+            views = [self.gap_sliders, self.shape_params.fine_tuning()]
+        else:
+            views = [self.shape_params, self.shape_params.fine_tuning()]
+        return pn.Column(*views, margin=0)
 
     def _shape_gaps(self, gaps, arguments):
         """The gaps of a parameterized shape, in metres by name."""

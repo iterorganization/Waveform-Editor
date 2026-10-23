@@ -665,10 +665,13 @@ class ShapeEditor(Viewer):
             self.metrics.target = {}
             return
         # The boundary itself, without the extra points
-        if shape.param_r is not None:
-            target = outline_metrics(shape.param_r, shape.param_z)
-        else:
-            target = outline_metrics(shape.outline_r, shape.outline_z)
+        r, z = (
+            (shape.param_r, shape.param_z)
+            if shape.param_r is not None
+            else (shape.outline_r, shape.outline_z)
+        )
+        # Free points being placed may not span a width to measure a shape by yet
+        target = outline_metrics(r, z) if max(r) > min(r) else {}
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is not None:
             inputs = gaps.shape_inputs(shape.target_x_points)

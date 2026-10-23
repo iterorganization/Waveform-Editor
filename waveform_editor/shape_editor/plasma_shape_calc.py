@@ -158,36 +158,6 @@ def apply_point_weights(r, z, weights):
     return np.repeat(r, weights).tolist(), np.repeat(z, weights).tolist()
 
 
-def resample_outline(r, z, n_points, start=None):
-    """Points evenly spaced along a closed outline.
-
-    Args:
-        r: Radial coordinates of the outline.
-        z: Height coordinates of the outline.
-        n_points: The number of points to take.
-        start: The (r, z) the points start from, the point of the outline closest
-            to it, so that a corner such as the x-point is kept.
-
-    Returns:
-        Tuple of (r, z) arrays of the points.
-    """
-    r, z = np.asarray(r, dtype=float), np.asarray(z, dtype=float)
-    if r[0] == r[-1] and z[0] == z[-1]:
-        r, z = r[:-1], z[:-1]
-    if start is not None:
-        first = np.argmin(np.hypot(r - start[0], z - start[1]))
-        r, z = np.roll(r, -first), np.roll(z, -first)
-    # Along the outline, closed again
-    r_closed, z_closed = np.append(r, r[0]), np.append(z, z[0])
-    distance = np.concatenate(
-        [[0], np.cumsum(np.hypot(np.diff(r_closed), np.diff(z_closed)))]
-    )
-    targets = np.linspace(0, distance[-1], n_points, endpoint=False)
-    return np.interp(targets, distance, r_closed), np.interp(
-        targets, distance, z_closed
-    )
-
-
 def fit_shape_params(params, ranges, misfit):
     """The parameters that bring misfit closest to zero. Of the parameters that do,
     it is those closest to params, so that the shape changes no more than needed.
