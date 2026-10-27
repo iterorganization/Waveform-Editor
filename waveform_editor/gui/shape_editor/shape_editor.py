@@ -112,18 +112,7 @@ class ShapeEditor(Viewer):
         )
 
         # UI Configuration
-        # What is missing to run NICE, empty when nothing is
-        missing = pn.rx(
-            lambda is_inverse, has_shape, has_properties, has_settings: " and ".join(
-                text
-                for text, is_missing in (
-                    ("Set a target shape", is_inverse and not has_shape),
-                    ("Fill in the plasma properties", not has_properties),
-                    ("Set the machine description in the settings", not has_settings),
-                )
-                if is_missing
-            )
-        )(
+        missing = pn.rx(self._missing_inputs)(
             self.nice_settings.param.is_inverse_mode,
             self.plasma_shape.param.has_shape,
             self.plasma_properties.param.has_properties,
@@ -277,6 +266,18 @@ class ShapeEditor(Viewer):
             self.PLOT_OFFSET = (left - plot.frame_width, top)
         left, top = self.PLOT_OFFSET
         plot.fit(width - left - event.obj.min_right, height - top - self.BELOW_PLOT)
+
+    def _missing_inputs(self, is_inverse, has_shape, has_properties, has_settings):
+        """What is missing to run NICE, empty when nothing is."""
+        return " and ".join(
+            text
+            for text, is_missing in (
+                ("Set a target shape", is_inverse and not has_shape),
+                ("Fill in the plasma properties", not has_properties),
+                ("Set the machine description in the settings", not has_settings),
+            )
+            if is_missing
+        )
 
     def _limit_drag(self, handle):
         """Let the handle go only as far as the plot can be resized."""
