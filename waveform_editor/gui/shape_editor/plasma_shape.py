@@ -335,7 +335,13 @@ class PlasmaShape(Viewer):
 
     def _fit_to_points(self, event=None):
         """Fit the parameterisation to the free points, and show it."""
-        if self._fit_to(*self.points_table.get_points()[:2], "the free points"):
+        x_points = (
+            x_points_from_params(self._shape_arguments())
+            if self.shape_params.second_x_point
+            else ()
+        )
+        r, z = self.points_table.get_points()[:2]
+        if self._fit_to(r, z, "the free points", x_points):
             self._fit_pending = False  # the free points are newer than the reference
             self.edit_by = self.EDIT_SLIDERS
 
@@ -357,7 +363,7 @@ class PlasmaShape(Viewer):
         p = self.shape_params
         x_points = sorted(x_points, key=lambda point: point[1])  # the lower one first
         fitted, distances = fit_params_to_outline(
-            r, z, p.n_desired_bnd_points, x_points[0] if x_points else None
+            r, z, p.n_desired_bnd_points, x_points
         )
         if distances.max() > self.FIT_TOLERANCE:
             pn.state.notifications.warning(

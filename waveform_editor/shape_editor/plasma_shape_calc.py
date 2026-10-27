@@ -214,15 +214,16 @@ def outline_distances(r, z, outline_r, outline_z):
     return np.linalg.norm(points[:, None] - closest, axis=2).min(axis=1)
 
 
-def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
-    """The single null parameters whose shape comes closest to an outline, with the
-    x-point kept in place.
+def fit_params_to_outline(outline_r, outline_z, n_points, x_points=()):
+    """The parameters whose shape comes closest to an outline, with the x-points kept
+    in place.
 
     Args:
         outline_r: Radial coordinates of the outline.
         outline_z: Height coordinates of the outline.
         n_points: The number of boundary points of the shape.
-        x_point: The (r, z) of the x-point, the lowest point of the outline without.
+        x_points: The (r, z) of its x-points, the lower one first. Without, the
+            lowest point of the outline is its x-point; with two, it is a double null.
 
     Returns:
         The fitted arguments of compute_outline_from_params, and the distances
@@ -234,8 +235,8 @@ def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
     center_r = (r_max + r_min) / 2
     center_z = z[r.argmax()]
     top = z.argmax()
-    if x_point is None:
-        x_point = (r[z.argmin()], z_min)
+    x_point = x_points[0] if x_points else (r[z.argmin()], z_min)
+    upper = x_points[1] if len(x_points) > 1 else (None, None)
     start = {
         "n_desired_bnd_points": n_points,
         "a": a,
@@ -245,8 +246,8 @@ def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
         "delta": float(np.clip((center_r - r[top]) / a, -0.9, 0.9)),
         "rx": x_point[0],
         "zx": x_point[1],
-        "rx_upper": None,
-        "zx_upper": None,
+        "rx_upper": upper[0],
+        "zx_upper": upper[1],
     }
     ranges = {
         "a": (0.5 * a, 1.5 * a),
@@ -255,6 +256,8 @@ def fit_params_to_outline(outline_r, outline_z, n_points, x_point=None):
         "kappa": (0.1, 3),
         "delta": (-0.95, 0.95),
     }
+    if upper[0] is not None:  # a double null takes its shape from its x-points instead
+        del ranges["kappa"], ranges["delta"]
 
     def misfit(fitted):
         fit_r, fit_z = compute_outline_from_params(**fitted)

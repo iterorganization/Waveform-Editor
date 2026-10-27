@@ -43,7 +43,6 @@ def _reactive_title(title, is_valid):
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
     # Pixels below the top of the plot that are not its frame, of its axis
-    BELOW_PLOT = 80
     BELOW_PLOT = 340
     PLOT_OFFSET = (275, 96)
     # Seconds the inputs must be unchanged before auto run runs NICE again
@@ -661,7 +660,7 @@ class ShapeEditor(Viewer):
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         if gaps is not None:
             inputs = gaps.shape_inputs(shape.target_x_points)
-            target.update(gaps.compute_gaps(shape.outline_r, shape.outline_z, **inputs))
+            target.update(gaps.compute_gaps(r, z, **inputs))
         self.metrics.target = target
 
     def _update_metrics(self):
