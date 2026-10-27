@@ -6,6 +6,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.plasma_shape import GAP_SCALE
 from waveform_editor.gui.util import card
+from waveform_editor.settings import NiceSettings, settings
 
 
 class Metrics(Viewer):
@@ -14,6 +15,7 @@ class Metrics(Viewer):
     target = param.Dict(default={}, doc="The shape of the target, by metric [m]")
     result = param.Dict(default={}, doc="The shape of the NICE result, by metric [m]")
     machine_metrics = param.Dict(default={})
+    nice_settings = param.ClassSelector(class_=NiceSettings)
 
     ELONGATION = "elongation"
     TRIANGULARITY = "triangularity"
@@ -26,10 +28,10 @@ class Metrics(Viewer):
 
     # (symbol, unit, full name) - full name is shown as a hover tooltip
     METRICS = {
-        ELONGATION: ("e", "", "Elongation"),
-        TRIANGULARITY: ("t", "", "Triangularity"),
-        TRI_UPPER: ("tᵤ", "", "Triangularity upper"),
-        TRI_LOWER: ("tₗ", "", "Triangularity lower"),
+        ELONGATION: ("κ", "", "Elongation"),
+        TRIANGULARITY: ("δ", "", "Triangularity"),
+        TRI_UPPER: ("δᵤ", "", "Triangularity upper"),
+        TRI_LOWER: ("δₗ", "", "Triangularity lower"),
         Q95: ("q₉₅", "", "Edge safety factor"),
         MAJOR_RADIUS: ("R₀", "m", "Major radius"),
         VERTICAL: ("Z₀", "m", "Vertical position"),
@@ -37,7 +39,7 @@ class Metrics(Viewer):
     }
 
     def __init__(self, **params):
-        super().__init__(**params)
+        super().__init__(nice_settings=settings.nice, **params)
         self._table = pn.widgets.Tabulator(
             disabled=True,
             show_index=False,
@@ -47,18 +49,16 @@ class Metrics(Viewer):
             layout="fit_data_table",
             text_align="right",
             sizing_mode="stretch_width",
+            stylesheets=[".tabulator-tableholder { overflow-y: hidden !important; }"],
         )
+        self._update_table()
 
-    @param.depends("target", "result", "machine_metrics", watch=True)
+    @param.depends(
+        "target", "result", "machine_metrics", "nice_settings.mode", watch=True
+    )
     def _update_table(self):
-        """A column per metric the target or result has, with how far apart they are."""
-        metrics = {
-            key: metadata
-            for key, metadata in {**self.METRICS, **self.machine_metrics}.items()
-            if self.target.get(key) is not None or self.result.get(key) is not None
-        }
-        if not metrics:
-            return
+        """A column per metric, with how far the result is from the target."""
+        metrics = {**self.METRICS, **self.machine_metrics}
         titles = {
             key: f"{symbol} [{unit}]" if unit else symbol
             for key, (symbol, unit, _) in metrics.items()
@@ -70,6 +70,8 @@ class Metrics(Viewer):
             dtype=float,  # a gap that could not be measured is None
         ) * [GAP_SCALE.get(unit, 1) for _, unit, _ in metrics.values()]
         table.loc["Difference"] = table.loc["Result"] - table.loc["Target"]
+        if self.nice_settings.is_direct_mode:  # which has no target shape
+            table = table.loc[["Result"]]
         self._table.param.update(
             value=table.rename(columns=titles).rename_axis("").reset_index(),
             header_tooltips={
@@ -83,7 +85,8 @@ class Metrics(Viewer):
 
     def __panel__(self):
         return card(
-            "Target vs result metrics",
+            "Shape metrics",
             self._table,
-            visible=self.param.target.rx.bool() | self.param.result.rx.bool(),
+            margin=(10, 0),
+            css_classes=["metrics-card"],
         )

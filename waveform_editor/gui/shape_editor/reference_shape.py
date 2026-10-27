@@ -1,4 +1,5 @@
 import imas
+import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -48,8 +49,9 @@ class ReferenceShape(Viewer):
         """
         super().__init__(nice_settings=settings.nice, **params)
         self._on_set = on_set
-        # The outline set, its x-point if known, and whether it is of an equilibrium
-        self.r = self.z = self.x_point = None
+        # The outline set, its x-points if known, and whether it is of an equilibrium
+        self.r = self.z = None
+        self.x_points = []
         self.of_equilibrium = False
         self.input_outline.param.watch(self._load_preview, "load")
         self._source_select = pn.widgets.Select.from_param(
@@ -62,6 +64,11 @@ class ReferenceShape(Viewer):
         self.nice_settings.param.watch(self._update_sources, "machine_preset")
         self.param.watch(self._update_sources, "last_result")
         self._update_sources()
+
+    @property
+    def is_choosing(self):
+        """Whether a source is being chosen, before its reference shape is set."""
+        return self.source != self.SOURCE_NONE
 
     @property
     def candidate_outline(self):
@@ -107,12 +114,17 @@ class ReferenceShape(Viewer):
             pn.state.notifications.error("The equilibrium has no boundary outline")
             return
         equilibrium = self._source_equilibrium
-        self.x_point = None
+        self.x_points = []
         if equilibrium is not None:
             nodes = equilibrium.time_slice[0].contour_tree.node
-            # The primary x-point is node 1, see the Data Dictionary
-            if len(nodes) > 1 and nodes[1].critical_type == 1:
-                self.x_point = (float(nodes[1].r), float(nodes[1].z))
+            # The primary x-point is node 1, see the Data Dictionary, and another one
+            # on the boundary makes a double null
+            self.x_points = [
+                (float(node.r), float(node.z))
+                for i, node in enumerate(nodes)
+                if node.critical_type == 1
+                and (i == 1 or np.hypot(r - node.r, z - node.z).min() < 0.01)
+            ][:2]
         self.r, self.z = list(r), list(z)
         self.of_equilibrium = equilibrium is not None
         self.origin = {
@@ -127,6 +139,7 @@ class ReferenceShape(Viewer):
     def clear(self):
         """Have no reference shape, for one to be chosen first."""
         self.r = self.z = None
+        self.x_points = []
         self.param.update(origin="", source=self.SOURCE_NONE)
 
     @param.depends("source", watch=True)

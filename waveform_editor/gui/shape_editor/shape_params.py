@@ -2,6 +2,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
 from waveform_editor.gui.util import (
     INPUT_WIDTH,
     FixedWidthEditableIntSlider,
@@ -129,7 +130,7 @@ class PlasmaShapeParams(Viewer):
     extra_points_enabled = param.Boolean(
         default=False, label="Add additional weighted points"
     )
-    extra_points_table = param.Parameter()
+    extra_points_table = param.ClassSelector(class_=WeightedPointsTable)
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -206,6 +207,25 @@ class PlasmaShapeParams(Viewer):
             margin=0,
         )
 
+    def second_x_point_input(self):
+        """The checkbox of the second x-point, which the gaps view has too."""
+        return pn.Row(
+            pn.widgets.Checkbox.from_param(self.param.second_x_point),
+            pn.widgets.TooltipIcon(
+                value=(
+                    "NICE inverse mode fits the target LCFS boundary points by "
+                    "penalizing flux differences, but does not impose X-point "
+                    "null constraints (∇ψ = 0). The resulting equilibrium is "
+                    "not guaranteed to form two X-points and may produce only "
+                    "1 or no X-points."
+                ),
+                align="center",
+                margin=(0, 0, 0, -10),
+            ),
+            sizing_mode="stretch_width",
+            margin=(0, 0, 5, 0),
+        )
+
     def __panel__(self):
         _slider = self._slider
         return pn.Column(
@@ -226,22 +246,7 @@ class PlasmaShapeParams(Viewer):
                 "X-point",
                 _slider("rx"),
                 _slider("zx"),
-                pn.Row(
-                    pn.widgets.Checkbox.from_param(self.param.second_x_point),
-                    pn.widgets.TooltipIcon(
-                        value=(
-                            "NICE inverse mode fits the target LCFS boundary points by "
-                            "penalizing flux differences, but does not impose X-point "
-                            "null constraints (∇ψ = 0). The resulting equilibrium is "
-                            " not guaranteed to form two X-points and may produce only "
-                            "1 or no X-points."
-                        ),
-                        align="center",
-                        margin=(0, 0, 0, -10),
-                    ),
-                    sizing_mode="stretch_width",
-                    margin=(0, 0, 5, 0),
-                ),
+                self.second_x_point_input(),
                 pn.FlexBox(
                     _slider("rx_upper"),
                     _slider("zx_upper"),

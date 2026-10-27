@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_outline_from_params,
     fit_shape_params,
+    x_points_from_params,
 )
 
 
@@ -66,7 +67,7 @@ class MachineGaps(ABC):
 
         def misfit(fitted):
             r, z = compute_outline_from_params(**fitted)
-            x_points = [(fitted["rx"], fitted["zx"])]
+            x_points = x_points_from_params(fitted)
             gaps = self.compute_gaps(r, z, **self.shape_inputs(x_points))
             # A gap the shape can no longer be measured on counts as a metre off
             return [

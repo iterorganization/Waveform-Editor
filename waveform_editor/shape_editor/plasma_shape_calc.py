@@ -6,6 +6,18 @@ import numpy as np
 from scipy.optimize import least_squares
 
 
+def x_points_from_params(params):
+    """The (r, z) of the x-points of a parameterized shape, the upper one last.
+
+    Args:
+        params: The arguments of compute_outline_from_params.
+    """
+    x_points = [(params["rx"], params["zx"])]
+    if params["rx_upper"] is not None:
+        x_points.append((params["rx_upper"], params["zx_upper"]))
+    return x_points
+
+
 def _divertor_leg(midplane, x_point, n_points):
     """The points of a divertor leg, which runs from a point on the midplane to the
     x-point along the arc that leaves the midplane vertically.

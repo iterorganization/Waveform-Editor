@@ -215,7 +215,9 @@ class ShapeEditor(Viewer):
         left_col = pn.Column(
             self.nice_plotter.flux_map_pane,
             self.nice_plotter.legend,
+            self.metrics,
             sizing_mode="stretch_height",
+            styles={"flex": "0 0 auto", "width": "min-content"},
             scroll=True,
             visible=self.collapse_plot.param.value.rx.not_(),
         )
@@ -276,20 +278,7 @@ class ShapeEditor(Viewer):
         """
         items = []
         if is_inverse_mode:
-            shape_tab = pn.Column(
-                self.plasma_shape,
-                pn.Column(
-                    self.metrics,
-                    margin=(0, 20, 12, 20),
-                    # Out of the way while a reference shape is chosen
-                    visible=self.plasma_shape.reference.param.source.rx()
-                    == ReferenceShape.SOURCE_NONE,
-                ),
-                margin=0,
-            )
-            # No warning in its title for a missing shape, which would rebuild all
-            # tabs, flashing them, whenever a reference shape is set
-            items.append(("Plasma Shape", shape_tab))
+            items.append(("Plasma Shape", self.plasma_shape))
         # The profiles plot is part of the plasma properties panel itself
         items.append(
             (

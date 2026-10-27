@@ -21,6 +21,7 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
     compute_gaussian_weights,
     compute_outline_from_params,
     fit_params_to_outline,
+    x_points_from_params,
 )
 
 # Pixels high of the view switch and the button beside it, so that they line up
@@ -61,6 +62,24 @@ class PlasmaShape(Viewer):
     # How far a fitted shape may miss what it is fitted to without a warning [m]
     FIT_TOLERANCE = 0.005
 
+    @property
+    def is_reference(self):
+        """Whether the target shape is the reference shape itself."""
+        return self.edit_by == self.EDIT_REFERENCE
+
+    @property
+    def is_points(self):
+        """Whether the target shape is edited as free points."""
+        return self.edit_by == self.EDIT_POINTS
+
+    @property
+    def gap_params(self):
+        """The shape parameters fitted to the gaps. A double null takes its shape
+        from its upper x-point instead of its elongation and triangularity."""
+        if self.shape_params.second_x_point:
+            return ("a", "center_r", "center_z", "rx", "zx", "rx_upper", "zx_upper")
+        return self.FIT_PARAMS
+
     def __init__(self):
         super().__init__(nice_settings=settings.nice)
         self.outline_r = None
@@ -78,6 +97,8 @@ class PlasmaShape(Viewer):
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
         self.gap_sliders = pn.FlexBox(margin=0)
+        # A double null has other gaps to fit to
+        self.shape_params.param.watch(self._on_second_x_point, "second_x_point")
         edit_by = self.param.edit_by.rx()
         # The inputs of every view, of which only those of the view are shown, as
         # building them again for each view is slow
@@ -85,7 +106,12 @@ class PlasmaShape(Viewer):
             pn.Column(
                 self.shape_params, visible=edit_by == self.EDIT_SLIDERS, margin=0
             ),
-            pn.Column(self.gap_sliders, visible=edit_by == self.EDIT_GAPS, margin=0),
+            pn.Column(
+                self.shape_params.second_x_point_input(),
+                self.gap_sliders,
+                visible=edit_by == self.EDIT_GAPS,
+                margin=0,
+            ),
             pn.Column(
                 pn.Row(
                     pn.widgets.Button(
@@ -188,11 +214,11 @@ class PlasmaShape(Viewer):
         changed."""
         previous = (self.outline_r, self.outline_z, self.param_weights)
         self.param_r = self.param_z = self.param_weights = None
-        if self.edit_by == self.EDIT_POINTS:
+        if self.is_points:
             self.outline_r, self.outline_z = self.points_table.get_outline_coordinates()
         elif self.reference.r is None:  # no reference shape is set yet
             self.outline_r = self.outline_z = None
-        elif self.edit_by == self.EDIT_REFERENCE:
+        elif self.is_reference:
             self._refine_shape(self.reference.r, self.reference.z)
         else:
             self._refine_shape(*compute_outline_from_params(**self._shape_arguments()))
@@ -204,17 +230,14 @@ class PlasmaShape(Viewer):
     @property
     def target_x_points(self):
         """The x-points of the target shape, which only a parameterized shape has."""
-        if self.edit_by in (self.EDIT_REFERENCE, self.EDIT_POINTS):
+        if self.is_reference or self.is_points:
             return []
-        p = self.shape_params
-        if p.second_x_point:
-            return [(p.rx, p.zx), (p.rx_upper, p.zx_upper)]
-        return [(p.rx, p.zx)]
+        return x_points_from_params(self._shape_arguments())
 
     @property
     def active_points_table(self):
         """The point table the plot edits, None when no points are in use."""
-        if self.edit_by == self.EDIT_POINTS:
+        if self.is_points:
             return self.points_table
         if self.shape_params.extra_points_enabled:
             return self.extra_points_table
@@ -296,7 +319,7 @@ class PlasmaShape(Viewer):
     def _edit_as_points(self, event=None):
         """Edit the target shape as it is, with its weights and extra points, as free
         points."""
-        if self.edit_by == self.EDIT_POINTS:  # a second click, before it was hidden
+        if self.is_points:  # a second click, before it was hidden
             return
         r, z = list(self.param_r), list(self.param_z)
         weights = (
@@ -310,37 +333,45 @@ class PlasmaShape(Viewer):
 
     def _fit_to_points(self, event=None):
         """Fit the parameterisation to the free points, and show it."""
-        self._fit_to(*self.points_table.get_points()[:2], "the free points")
-        self._fit_pending = False  # the free points are newer than the reference
-        self.edit_by = self.EDIT_SLIDERS
+        if self._fit_to(*self.points_table.get_points()[:2], "the free points"):
+            self._fit_pending = False  # the free points are newer than the reference
+            self.edit_by = self.EDIT_SLIDERS
 
-    def _fit_to(self, r, z, fitted_to, x_point=None):
+    def _fit_to(self, r, z, fitted_to, x_points=()):
         """Fit the parameterisation to an outline, warning when it misses it.
 
         Args:
             r: Radial coordinates of the outline.
             z: Height coordinates of the outline.
             fitted_to: What the outline is, for the warning.
-            x_point: The (r, z) of its x-point, if known.
+            x_points: The (r, z) of its x-points, if known.
+
+        Returns:
+            Whether it could be fitted.
         """
         if len(r) < 3:
             pn.state.notifications.error("At least 3 points are needed to fit to")
-            return
+            return False
         p = self.shape_params
-        fitted, distances = fit_params_to_outline(r, z, p.n_desired_bnd_points, x_point)
+        x_points = sorted(x_points, key=lambda point: point[1])  # the lower one first
+        fitted, distances = fit_params_to_outline(
+            r, z, p.n_desired_bnd_points, x_points[0] if x_points else None
+        )
         if distances.max() > self.FIT_TOLERANCE:
             pn.state.notifications.warning(
                 f"The shape parameterisation misses {fitted_to} by up to "
                 f"{distances.max() * 100:.1f} cm"
             )
         top = np.argmax(z)
+        # A single null is ready for a double null: the second x-point at the top
+        rx_upper, zx_upper = x_points[1] if len(x_points) > 1 else (r[top], z[top])
         p.param.update(
             **{name: fitted[name] for name in self.FIT_PARAMS},
-            second_x_point=False,
-            # Ready for a double null: the second x-point at the top of the outline
-            rx_upper=float(r[top]),
-            zx_upper=float(z[top]),
+            second_x_point=len(x_points) > 1,
+            rx_upper=float(rx_upper),
+            zx_upper=float(zx_upper),
         )
+        return True
 
     def _on_edit_by(self, event):
         """The parameterisation is fitted to the reference shape of an equilibrium
@@ -349,7 +380,7 @@ class PlasmaShape(Viewer):
         if event.new in (self.EDIT_SLIDERS, self.EDIT_GAPS) and self._fit_pending:
             self._fit_pending = False
             ref = self.reference
-            self._fit_to(ref.r, ref.z, "the reference shape", ref.x_point)
+            self._fit_to(ref.r, ref.z, "the reference shape", ref.x_points)
         if event.new == self.EDIT_GAPS:
             if self.nice_settings.machine_preset not in MACHINE_GAPS:
                 pn.state.notifications.warning(
@@ -359,10 +390,15 @@ class PlasmaShape(Viewer):
                 return
             self._create_gap_sliders()
 
+    def _on_second_x_point(self, event):
+        """Make the gap sliders those of a single or double null."""
+        if self.edit_by == self.EDIT_GAPS:
+            self._create_gap_sliders()
+
     def _shape_gaps(self, gaps, arguments):
         """The gaps of a parameterized shape, in metres by name."""
         r, z = compute_outline_from_params(**arguments)
-        x_points = [(arguments["rx"], arguments["zx"])]
+        x_points = x_points_from_params(arguments)
         return gaps.compute_gaps(r, z, **gaps.shape_inputs(x_points))
 
     def _create_gap_sliders(self):
@@ -389,25 +425,36 @@ class PlasmaShape(Viewer):
                 width=INPUT_WIDTH,
             )
             slider.param.watch(self._fit_to_gaps, "value")
+            # Only once let go, as it may miss on the way
+            slider.param.watch(self._warn_missed_gaps, "value_throttled")
             self._gap_sliders[key] = slider
         self.gap_sliders.objects = list(self._gap_sliders.values())
+
+    def _gap_targets(self, gaps):
+        """The gaps of the gap sliders, in metres by name."""
+        return {
+            key: slider.value / GAP_SCALE[gaps.GAP_METADATA[key][1]]
+            for key, slider in self._gap_sliders.items()
+        }
 
     def _fit_to_gaps(self, event=None):
         """Set the shape parameters to those whose gaps come closest to the gap
         sliders."""
         gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = {
-            key: slider.value / GAP_SCALE[gaps.GAP_METADATA[key][1]]
-            for key, slider in self._gap_sliders.items()
-        }
+        targets = self._gap_targets(gaps)
         ranges = {
-            name: self.shape_params.param[name].softbounds for name in self.FIT_PARAMS
+            name: self.shape_params.param[name].softbounds for name in self.gap_params
         }
         fitted = gaps.fit_shape(self._shape_arguments(), targets, ranges)
         self.shape_params.param.update(
-            **{name: fitted[name] for name in self.FIT_PARAMS}
+            **{name: fitted[name] for name in self.gap_params}
         )
-        reached = self._shape_gaps(gaps, fitted)
+
+    def _warn_missed_gaps(self, event=None):
+        """Warn when the shape misses the gap sliders."""
+        gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
+        targets = self._gap_targets(gaps)
+        reached = self._shape_gaps(gaps, self._shape_arguments())
         missed = {
             key: np.inf if reached.get(key) is None else abs(reached[key] - target)
             for key, target in targets.items()

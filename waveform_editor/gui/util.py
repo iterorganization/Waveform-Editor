@@ -40,6 +40,8 @@ def card(title, *children, beside_title=(), **params):
         beside_title: What is shown right of the title.
         params: Parameters of the box.
     """
+    params.setdefault("sizing_mode", "stretch_width")
+    params.setdefault("margin", (0, 0, 12, 0))
     return pn.Column(
         pn.Row(
             pn.pane.HTML(
@@ -55,10 +57,8 @@ def card(title, *children, beside_title=(), **params):
             margin=0,
         ),
         *children,
-        css_classes=["property-card"],
+        css_classes=["property-card", *params.pop("css_classes", [])],
         stylesheets=[CARD_CSS],
-        sizing_mode="stretch_width",
-        margin=(0, 0, 12, 0),
         **params,
     )
 

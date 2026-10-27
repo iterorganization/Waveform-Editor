@@ -414,7 +414,7 @@ class NicePlotter(Viewer):
                 color="gray", line_dash="dashed", line_width=1.5, show_legend=False
             )
         # Free points are drawn by the point draw tool
-        if not self.has_target() or shape.edit_by == shape.EDIT_POINTS:
+        if not self.has_target() or shape.is_points:
             return empty * reference
         if shape.param_weights is not None:
             return self._plot_weighted_boundary() * reference
@@ -429,7 +429,7 @@ class NicePlotter(Viewer):
         return (
             not self.nice_settings.is_direct_mode
             and shape.has_shape
-            and shape.reference.source == shape.reference.SOURCE_NONE
+            and not shape.reference.is_choosing
         )
 
     def _reference_outline(self):
@@ -437,13 +437,13 @@ class NicePlotter(Viewer):
         While a reference shape is chosen, it is drawn in place of the current one."""
         shape = self.plasma_shape
         reference = shape.reference
-        if reference.source != reference.SOURCE_NONE:
+        if reference.is_choosing:
             return reference.candidate_outline
         # In the reference shape view, the reference is the target shape itself
         if (
             reference.show
             and reference.r is not None
-            and shape.edit_by != shape.EDIT_REFERENCE
+            and not shape.is_reference
         ):
             return reference.r, reference.z
         return None
@@ -471,7 +471,7 @@ class NicePlotter(Viewer):
                 "2px solid blue",
                 shapes
                 and self.has_target()
-                and shape.edit_by != shape.EDIT_POINTS
+                and not shape.is_points
                 # A weighted boundary is coloured by its weights
                 and shape.param_weights is None,
             ),
