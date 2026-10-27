@@ -440,11 +440,7 @@ class NicePlotter(Viewer):
         if reference.is_choosing:
             return reference.candidate_outline
         # In the reference shape view, the reference is the target shape itself
-        if (
-            reference.show
-            and reference.r is not None
-            and not shape.is_reference
-        ):
+        if reference.show and reference.r is not None and not shape.is_reference:
             return reference.r, reference.z
         return None
 
