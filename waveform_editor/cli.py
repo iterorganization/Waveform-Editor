@@ -74,7 +74,22 @@ def parse_linspace(ctx, param, value):
 @click.option(
     "-p", "--port", type=int, default=0, help="Specify port to host application."
 )
-def launch_gui(file, port):
+@click.option(
+    "--socket",
+    "socket_path",
+    is_flag=False,
+    flag_value="~/.waveform-editor.sock",
+    help="Serve on a unix socket instead of a port, to reach through an SSH forward. "
+    "Defaults to ~/.waveform-editor.sock.",
+)
+@click.option(
+    "--local-port",
+    type=int,
+    default=5006,
+    show_default=True,
+    help="Local port the SSH forward of the socket uses.",
+)
+def launch_gui(file, port, socket_path, local_port):
     """Launch the Waveform Editor GUI using Panel.
 
     \b
@@ -91,7 +106,22 @@ def launch_gui(file, port):
         app = WaveformEditorGui()
         if file is not None:
             app.load_yaml_from_file(Path(file))
-        pn.serve(app, port=port, threaded=True)
+        if socket_path is None:
+            pn.serve(app, port=port, threaded=True)
+        else:
+            socket_path = Path(socket_path).expanduser()
+            click.echo(
+                f"Serving on {socket_path}, reach it at http://localhost:{local_port} "
+                "through your SSH forward"
+            )
+            pn.serve(
+                app,
+                unix_socket=str(socket_path),
+                websocket_origin=[f"localhost:{local_port}", f"127.0.0.1:{local_port}"],
+                show=False,
+                verbose=False,
+                threaded=True,
+            )
     except Exception as e:
         logger.error(f"Failed to launch GUI: {e}")
 
