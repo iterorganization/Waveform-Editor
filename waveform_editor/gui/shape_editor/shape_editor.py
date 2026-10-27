@@ -119,6 +119,7 @@ class ShapeEditor(Viewer):
             self.nice_settings.param.are_required_filled,
         )
         self._cannot_run = missing.rx.bool()
+        missing_text = pn.rx(" and ".join)(missing)
         button_start = pn.widgets.Button(
             name="Run",
             button_type="primary",
@@ -130,7 +131,7 @@ class ShapeEditor(Viewer):
                     if auto_run
                     else missing or "Run simulation"
                 ),
-                missing,
+                missing_text,
                 self.param.auto_run,
             ),
             disabled=self._cannot_run | self.param.auto_run.rx(),
@@ -138,7 +139,7 @@ class ShapeEditor(Viewer):
         )
         # What is missing is shown on hover
         cannot_run_hint = pn.pane.HTML(
-            pn.rx('<span title="{}" style="cursor:help">⚠️</span>').format(missing),
+            pn.rx('<span title="{}" style="cursor:help">⚠️</span>').format(missing_text),
             visible=self._cannot_run,
             margin=(15, 10, 2, 0),
         )
@@ -156,12 +157,7 @@ class ShapeEditor(Viewer):
             button_type="danger",
             icon="player-stop",
             on_click=self.stop_nice,
-            disabled=pn.bind(
-                lambda *running: not any(running),
-                self.communicator.param.nice_running,
-                self.communicator.param.muscle_manager_running,
-                self.communicator.param.communicator_running,
-            ),
+            disabled=self.communicator.param.any_running.rx.not_(),
             margin=(10, 10, 2, 0),
         )
         nice_mode_radio = nice_mode_toggle(self.nice_settings, margin=(10, 0, 2, 0))
@@ -269,7 +265,7 @@ class ShapeEditor(Viewer):
 
     def _missing_inputs(self, is_inverse, has_shape, has_properties, has_settings):
         """What is missing to run NICE, empty when nothing is."""
-        return " and ".join(
+        return [
             text
             for text, is_missing in (
                 ("Set a target shape", is_inverse and not has_shape),
@@ -277,7 +273,7 @@ class ShapeEditor(Viewer):
                 ("Set the machine description in the settings", not has_settings),
             )
             if is_missing
-        )
+        ]
 
     def _limit_drag(self, handle):
         """Let the handle go only as far as the plot can be resized."""

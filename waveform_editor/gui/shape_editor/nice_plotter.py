@@ -326,8 +326,7 @@ class NicePlotter(Viewer):
         if self._figure is plot.state:  # called on every redraw, set up once
             return
         self._figure = plot.state
-        # Scrolling over an axis zooms the whole plot, not that axis alone, which
-        # would stretch the machine
+        # Scrolling over an axis would zoom only that axis, stretching the machine
         for tool in plot.state.select(WheelZoomTool):
             tool.zoom_on_axis = False
 
