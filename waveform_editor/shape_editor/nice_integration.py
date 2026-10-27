@@ -161,6 +161,7 @@ class NiceIntegration(param.Parameterized):
     communicator_running = param.Boolean(
         doc="The process for communicating with NICE is running"
     )
+    any_running = param.Boolean(doc="Any of the processes above is running")
     equilibrium = param.ClassSelector(class_=IDSToplevel)
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
@@ -327,6 +328,11 @@ class NiceIntegration(param.Parameterized):
         self.nice_running = (
             self.nice_transport is not None
             and self.nice_transport.get_returncode() is None
+        )
+        self.any_running = (
+            self.muscle_manager_running
+            or self.communicator_running
+            or self.nice_running
         )
 
     @param.depends("equilibrium", watch=True)

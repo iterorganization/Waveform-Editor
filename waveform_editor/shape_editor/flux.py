@@ -15,6 +15,12 @@ def _triangulation(r, z):
     return Triangulation(np.frombuffer(r), np.frombuffer(z))
 
 
+def has_flux_map(time_slice):
+    """Whether NICE filled the poloidal flux on the GGD of a time slice."""
+    ggd = time_slice.ggd[0]
+    return bool(ggd.r[0].values and ggd.z[0].values and ggd.psi[0].values)
+
+
 def flux_contours(time_slice, levels):
     """The contours of the poloidal flux on the GGD NICE fills.
 
