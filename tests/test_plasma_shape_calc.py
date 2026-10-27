@@ -25,7 +25,7 @@ FITTED = ("a", "center_r", "center_z", "kappa", "delta")
 
 def test_fit_params_to_outline():
     r, z = compute_outline_from_params(**SHAPE)
-    fitted, distances = fit_params_to_outline(r, z, 100, (SHAPE["rx"], SHAPE["zx"]))
+    fitted, distances = fit_params_to_outline(r, z, 100, [(SHAPE["rx"], SHAPE["zx"])])
     assert distances.max() < 1e-3
     assert [fitted[name] for name in FITTED] == pytest.approx(
         [SHAPE[name] for name in FITTED], abs=1e-2
