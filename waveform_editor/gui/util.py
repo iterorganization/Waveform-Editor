@@ -208,7 +208,9 @@ class DragHandle(JSComponent):
         default=500, doc="Pixels to keep free right of the handle, for what is there"
     )
     room = param.List(
-        default=[], doc="Pixels from the handle to the right and bottom of the window"
+        default=[],
+        doc="Pixels of width and height of the window, and left and top of the handle, "
+        "which are None while it is hidden",
     )
 
     _esm = """
@@ -241,12 +243,15 @@ class DragHandle(JSComponent):
       let timer = null
       const report = () => {
         const box = bar.getBoundingClientRect()
-        if (!box.width) return
-        model.room = [window.innerWidth - box.left, window.innerHeight - box.top]
+        const shown = box.width > 0
+        model.room = [window.innerWidth, window.innerHeight,
+                      shown ? box.left : null, shown ? box.top : null]
       }
       const later = () => { clearTimeout(timer); timer = setTimeout(report, 200) }
       window.addEventListener("resize", later)
       later()
+      // Also once shown, which may be well after it is rendered
+      new ResizeObserver(later).observe(bar)
     }
     """
 

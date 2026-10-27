@@ -166,11 +166,13 @@ class PlasmaShape(Viewer):
                         name="Edit as free points",
                         icon="pencil",
                         button_type="primary",
-                        button_style="outline",
+                        button_style=(edit_by == self.EDIT_POINTS).rx.where(
+                            "solid", "outline"
+                        ),
                         stylesheets=[CARD_CSS],
                         height=BUTTON_HEIGHT,
                         on_click=self._edit_as_points,
-                        visible=edit_by != self.EDIT_POINTS,
+                        disabled=edit_by == self.EDIT_POINTS,
                         margin=(0, 0, 8, 0),
                     ),
                     margin=0,
@@ -319,7 +321,7 @@ class PlasmaShape(Viewer):
     def _edit_as_points(self, event=None):
         """Edit the target shape as it is, with its weights and extra points, as free
         points."""
-        if self.is_points:  # a second click, before it was hidden
+        if self.is_points:  # a second click, before it was disabled
             return
         r, z = list(self.param_r), list(self.param_z)
         weights = (

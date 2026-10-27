@@ -40,6 +40,7 @@ class Metrics(Viewer):
 
     def __init__(self, **params):
         super().__init__(nice_settings=settings.nice, **params)
+        self._result = self._result_target = {}
         self._table = pn.widgets.Tabulator(
             disabled=True,
             show_index=False,
@@ -58,18 +59,23 @@ class Metrics(Viewer):
     )
     def _update_table(self):
         """A column per metric, with how far the result is from the target."""
+        if self.result is not self._result:
+            self._result, self._result_target = self.result, self.target
         metrics = {**self.METRICS, **self.machine_metrics}
         titles = {
             key: f"{symbol} [{unit}]" if unit else symbol
             for key, (symbol, unit, _) in metrics.items()
         }
+        outdated = bool(self.result) and self.target != self._result_target
         table = pd.DataFrame(
             [self.target, self.result],
             index=["Target", "Result"],
             columns=list(metrics),
             dtype=float,  # a gap that could not be measured is None
         ) * [GAP_SCALE.get(unit, 1) for _, unit, _ in metrics.values()]
-        table.loc["Difference"] = table.loc["Result"] - table.loc["Target"]
+        table.loc["Difference"] = (
+            float("nan") if outdated else table.loc["Result"] - table.loc["Target"]
+        )
         if self.nice_settings.is_direct_mode:  # which has no target shape
             table = table.loc[["Result"]]
         self._table.param.update(

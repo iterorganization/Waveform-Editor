@@ -44,6 +44,8 @@ class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
     # Pixels below the top of the plot that are not its frame, of its axis
     BELOW_PLOT = 80
+    BELOW_PLOT = 340
+    PLOT_OFFSET = (275, 96)
     # Seconds the inputs must be unchanged before auto run runs NICE again
     AUTO_RUN_DELAY = 0.3
 
@@ -256,12 +258,12 @@ class ShapeEditor(Viewer):
     def _fit_plot(self, event):
         """Make the plot as large as the browser window has room for, beside the
         inputs."""
-        right, below = event.new
+        width, height, left, top = event.new
         plot = self.nice_plotter
-        # The handle moves with the right of the plot, as far as it widens
-        plot.fit(
-            plot.frame_width + right - event.obj.min_right, below - self.BELOW_PLOT
-        )
+        if left is not None:
+            self.PLOT_OFFSET = (left - plot.frame_width, top)
+        left, top = self.PLOT_OFFSET
+        plot.fit(width - left - event.obj.min_right, height - top - self.BELOW_PLOT)
 
     def _limit_drag(self, handle):
         """Let the handle go only as far as the plot can be resized."""
