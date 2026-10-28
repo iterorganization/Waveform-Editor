@@ -3,6 +3,8 @@ import io
 
 import imas
 import numpy as np
+from imas.ids_path import IDSPath
+from imas.ids_struct_array import IDSStructArray
 
 AVAILABLE_DD_VERSIONS = imas.dd_zip.dd_xml_versions()
 LATEST_DD_VERSION = imas.dd_zip.latest_dd_version()
@@ -77,3 +79,34 @@ class State:
         if not self.state:
             raise RuntimeError("Unexpected state")
         self.state = False
+
+
+def has_slice(path):
+    """Whether any segment of ``path`` carries a slice -- as opposed to an explicit
+    index, which names exactly one element and so doesn't multiply anything."""
+    return any(isinstance(index, slice) for _, index in IDSPath(path).items())
+
+
+def expand(root, path):
+    """Yield the node at ``path`` under ``root``, once per element it covers."""
+    yield from _expand(root, list(IDSPath(path).items()))
+
+
+def _expand(node, segments):
+    for i, (name, index) in enumerate(segments):
+        node = node[name]
+        if not isinstance(node, IDSStructArray):
+            continue
+        if isinstance(index, int):
+            node = node[index]  # an explicit index names exactly one element
+            continue
+        if index is None:  # addressed without an index: every element
+            covered = range(len(node))
+        else:
+            start = index.start or 0
+            stop = index.stop if index.stop is not None else len(node)
+            covered = range(start, min(stop, len(node)))
+        for k in covered:
+            yield from _expand(node[k], segments[i + 1 :])
+        return
+    yield node

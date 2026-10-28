@@ -16,73 +16,76 @@ An example configuration file is provided on the following page:
 Overall Structure
 -----------------
 
-A Waveform Editor YAML file is a standard YAML dictionary containing two main types of top-level keys:
+A Waveform Editor YAML file is a standard YAML dictionary containing up to three top-level keys:
 
-1.  **globals:** A key holding settings that apply to the entire configuration.
-2.  **Groups:** These represent logical groupings for organizing waveforms. They can be nested to create a hierarchy.
+1.  **dd_version:** The IMAS Data Dictionary version this configuration is written against.
+2.  **input:** External data entries (e.g. a scenario or machine description) that waveforms may copy values from.
+3.  **output:** The waveform groups, nested to form a hierarchy, that make up the actual configuration.
 
 .. code-block:: yaml
    :caption: Basic File Structure
 
-   globals:
-     # Global settings here...
+   dd_version: 3.42.0
 
-   top_level_group_1:
-     # Waveforms and nested groups here...
+   input:
+     scenario: imas:hdf5?path=my_scenario
+     machine: imas:hdf5?path=my_machine_description
 
-   top_level_group_2:
-     nested_group_A:
+   output:
+     top_level_group_1:
+       # Waveforms and nested groups here...
+
+     top_level_group_2:
+       nested_group_A:
+         # More waveforms/groups...
        # More waveforms/groups...
-     # More waveforms/groups...
 
 .. _global_properties:
-   
+
 Global Properties
 -----------------
 
-The ``globals`` section defines parameters applicable to the entire waveform configuration.
-These parameters can be changed under the "Edit Global Properties" tab in the GUI.
+``dd_version`` and ``input`` apply to the entire configuration. They can be changed
+under the "Edit Global Properties" tab in the GUI.
 
 *   **dd_version:** Specifies the IMAS Data Dictionary version to be used when handling this configuration.
 
     .. code-block:: yaml
 
-       globals:
-         dd_version: 3.42.0
+       dd_version: 3.42.0
 
-*   **machine_description:** Provides URIs for IMAS machine description entries.
-    The machine descriptions are relevant when you :ref:`export a waveform configuration to an IDS<export-ids>`.
-    When exporting, any existing data from the given machine description will be copied
-    to the new IDS, before the waveforms from the configuration are added.
-    To specify machine descriptions for a target IDS, use a dictionary where keys are 
-    the IDS names and values are their corresponding machine description URIs.
+*   **input:** Names the external IMAS data entries a waveform can copy a value from
+    with :ref:`{copy: \<name\>} <importing-external-data>` -- for example a scenario run or a
+    machine description. Use a dictionary where keys are names you choose and values
+    are the corresponding IMAS URIs.
 
     .. code-block:: yaml
 
-       globals:
-         dd_version: 3.42.0
-         machine_description:
-           ec_launchers: imas:hdf5?path=machine_description1
-           nbi: imas:hdf5?path=machine_description2
-           # Add other IDSs as needed
+       dd_version: 3.42.0
+       input:
+         scenario: imas:hdf5?path=my_scenario
+         machine: imas:hdf5?path=my_machine_description
+         # Add other entries as needed
 
 Grouping Waveforms
 ------------------
 
-Keys at any level that contain a dictionary represent logical groups. 
-These are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
+Keys at any level under ``output`` that contain a dictionary represent logical groups
+(unless the dictionary is a copy, see :ref:`Importing External Data <importing-external-data>`).
+Groups are primarily for organizing the YAML file and do not affect the final IMAS path of the waveforms defined within them.
 
 .. code-block:: yaml
 
-   ec_launchers: # Top-level group
-     beams:      # Nested group
-       phase_angles: # Another nested group
-         # Waveforms defined here...
-       steering_angles:
-         poloidal:
+   output:
+     ec_launchers: # Top-level group
+       beams:      # Nested group
+         phase_angles: # Another nested group
            # Waveforms defined here...
-         toroidal:
-           # Waveforms defined here...
+         steering_angles:
+           poloidal:
+             # Waveforms defined here...
+           toroidal:
+             # Waveforms defined here...
 
 Defining Waveforms
 ------------------
@@ -130,6 +133,34 @@ a list of waveforms, or a single number (float or integer).
 
     4.  **Derived Waveform:** Waveforms may contain calculations or be derived from other waveforms.
         For more information, see :ref:`Derived Waveforms <derived-waveforms>`.
+
+    5.  **Copy:** A waveform's value may instead be copied from one of the entries
+        declared under :ref:`input: <global_properties>`. See
+        :ref:`Importing External Data <importing-external-data>` below.
+
+.. _importing-external-data:
+
+Importing External Data
+------------------------
+
+A waveform can take its value from an external IMAS data entry declared under
+``input:`` instead of defining its own tendencies, using ``{copy: <name>}``:
+
+.. code-block:: yaml
+
+   input:
+     scenario: imas:hdf5?path=my_scenario
+
+   output:
+     shape:
+       equilibrium/time_slice/boundary/outline/r: {copy: scenario}
+       equilibrium/time_slice/boundary/outline/z: {copy: scenario}
+     coil_current:
+       pf_active/coil(1)/current/data: {copy: scenario}
+     wall:
+       wall/description_2d(:)/limiter/unit(:)/outline/r: {copy: machine}
+       wall/description_2d(:)/limiter/unit(:)/outline/z: {copy: machine}
+
 
 Slice Notation
 --------------
