@@ -119,7 +119,7 @@ def launch_gui(file, port, socket_path, local_port):
                 unix_socket=str(socket_path),
                 websocket_origin=[f"localhost:{local_port}", f"127.0.0.1:{local_port}"],
                 show=False,
-                verbose=False,
+                verbose=False,  # its URL would have no port: http://localhost:None
                 threaded=True,
             )
     except Exception as e:
