@@ -288,31 +288,47 @@ of the control panel:
   calculates the resulting plasma equilibrium.
 
 At the top of the control panel, you'll find **Run** and **Stop** buttons to start and 
-terminate the NICE simulation. A terminal window below these buttons displays live 
-output from NICE.
+terminate the NICE simulation.
+If required inputs are missing, **Run** is disabled and a warning icon (⚠️) is shown next to
+it: hover over it to see what is missing. The live output of NICE is shown in the
+**Logging** tab.
 
-Warm start
-""""""""""
+Starting from the previous equilibrium
+""""""""""""""""""""""""""""""""""""""
 
-With **Warm start** enabled, NICE starts from the equilibrium of the previous run
-instead of from scratch, which improves the convergence of the direct mode in
-particular. It can be enabled once a run has converged, and is enabled by default when
-switching to direct mode after a converged run.
+After a converged run, NICE starts the next run from its equilibrium instead of from
+scratch where it can, which improves the convergence of NICE.
 
-Previous runs
-"""""""""""""
+Auto run
+""""""""
+
+With the **Auto run** switch on, NICE runs by itself whenever the plasma shape, plasma
+properties or coil currents change, shortly after the inputs have stopped changing.
+
+Run history
+"""""""""""
 
 Every converged run is kept, together with its resulting equilibrium and coil currents.
-Select a run in the **Previous run** dropdown to return to it: its equilibrium is
-plotted, and the coil currents and metrics are restored. A warm start then starts from
-the selected run. The runs are cleared when the machine description changes.
+Select a run in the **Run history** dropdown to return to it: its equilibrium is
+plotted, and the coil currents and metrics are restored, and the next run starts from
+it.
+
+.. _shape_metrics:
 
 Metrics
 """""""
 
-Below the plot, the metrics of the resulting equilibrium are shown: the elongation,
-triangularity, upper and lower triangularity, edge safety factor, major radius,
-vertical position and minor radius. Hover over a metric for its full name.
+Below the plot, a table compares the shape of the result to the target shape: the
+elongation, triangularity, upper and lower triangularity, edge safety factor, major
+radius, vertical position and minor radius.
+
+The table has three rows:
+
+* **Target**: the metrics of the target shape.
+* **Result**: the metrics of the equilibrium NICE calculated.
+* **Difference**: the result minus the target.
+
+In direct mode, which has no target shape, only the **Result** row is shown.
 
 For the ITER and WEST :ref:`machine presets <machine_presets>`, the gaps between
 the plasma and the machine are shown alongside them:
@@ -331,10 +347,10 @@ the plasma and the machine are shown alongside them:
 Store as waveforms
 """"""""""""""""""
 
-The table export button in the row above the logs stores the results of the last run in
-waveforms, at a time of your choosing. It shows every quantity that is sent and stores 
-each one in the waveform named after its IDS path, for
-example ``pf_active/coil(1)/current/data`` or
+The table export button at the top of the control panel, next to the settings button,
+stores the results of the last run in waveforms, at a time of your choosing. It shows
+every quantity that is sent and stores each one in the waveform named after its IDS
+path, for example ``pf_active/coil(1)/current/data`` or
 ``equilibrium/time_slice/boundary/elongation``. 
 
 Each value is stored as a point in a :ref:`piecewise-linear-tendency` at the end of its
@@ -343,13 +359,12 @@ waveform, so the time must come after the last point of the waveforms it stores 
 Configuration Options
 ^^^^^^^^^^^^^^^^^^^^^
 
-The inputs of a run are given in the tabs of the control panel. A warning icon (⚠️)
-in a tab title indicates that required information is missing, and needs to be
-updated for NICE to run.
+The inputs of a run are given in the tabs of the control panel:
 
 * **Plasma Shape**: Target plasma shape when running NICE in **Inverse Mode**.
 * **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
 * **Coil Currents**: The currents through the active field coils.
+* **Logging**: The live output of NICE.
 
 The settings of the Plasma Shape Editor itself are in the **Settings menu**, opened
 with the gear button at the top of the control panel. It has the following tabs:
@@ -366,8 +381,9 @@ This contains options to change the visualization in the plotting area.
 You can show or hide each plotting element: the contour lines and heatmap of the
 poloidal flux, the coils, the limiter and divertor, the vacuum vessel, the passive
 structures, the iron core, the plasma facing components, the x-point and o-point, the
-separatrix and the desired shape. You can also choose how many contour levels to plot,
-and the opacity of the heatmap.
+separatrix and the target shape. For the ITER and WEST presets, you can also show the
+gaps, of the target shape and of the resulting shape. You can also choose how many
+contour levels to plot, and the opacity of the heatmap.
 
 .. _machine_presets:
 
@@ -415,32 +431,61 @@ applied to every run.
 
 Plasma Shape
 """"""""""""
-This option is **only available in Inverse Mode** and is used to define the target 
-plasma boundary. There are four methods for specifying the shape:
+This tab is **only available in Inverse Mode** and is used to define the target
+plasma boundary. You start from a reference shape, and then edit the target shape
+from it.
 
-* **Equilibrium IDS outline**: Loads the plasma boundary outline directly from a 
-  time slice of an existing `equilibrium` IDS.
-* **Parameterized**: Generates the shape from a set of geometric parameters: the minor
-  radius, the plasma center, the elongation, the triangularity and the x-point. Enable
-  **Second x-point** for a double null shape with an upper x-point as well. The
-  parameterization offers two ways to make NICE fit part of the shape more closely:
+**Reference shape**
 
-  * **Emphasize a region**: Gives the boundary points a weight that follows a Gaussian
-    along the boundary, set by its **Position** and **Spread** in degrees and its
-    **Max weight**. The desired shape is then coloured by weight in the plot.
-  * **Add additional weighted points**: Adds points on top of the parameterized shape,
-    for example to pin the strike points, in a table with their R, Z and weight.
+Choose where the reference shape comes from, and press **Set reference shape**:
 
-* **Equilibrium IDS Gaps**: Loads `gaps
-  <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`__ 
-  from an `equilibrium` IDS. The distance value from the reference point can be changed from the UI.
-* **Weighted Points**: Defines the shape by points only, in a table with their R, Z and
-  weight.
+* **Machine default**: A typical shape of the selected :ref:`machine preset
+  <machine_presets>`. Not available for a custom machine.
+* **Equilibrium IDS**: The boundary outline of a time slice of an `equilibrium` IDS.
+  Provide its URI, select a :ref:`time slice <equilibrium_time_slice>` and press
+  **Load**.
+* **NICE result**: The boundary outline of the last converged run.
 
-The weight of a point is the number of times it is repeated in the boundary given to
-NICE, so a higher weight pulls NICE more strongly towards it. Weighted points can also
-be edited on the plot, using the **Point Draw Tool** (|point_draw_tool|): click to add
-a point, drag a point to move it, and select a point and press backspace to delete it.
+Once set, the reference shape is drawn dashed in grey on the plot while you edit the 
+target shape, which you can turn off with **Show reference shape**. 
+
+**Target shape**
+
+Once a reference shape is set, choose how to edit the target shape before you start a NICE run:
+
+* **Reference shape**: The target shape is the reference shape itself, as it is.
+* **Shape parameterisation**: Generates the shape from a set of geometric parameters:
+  the minor radius, the plasma center, the elongation, the triangularity and the
+  x-point. Alternatively, you can enable **Second x-point** for a double null shape with 
+  an upper x-point as well. When you first switch to it, the parameters are fitted to the
+  reference shape of an equilibrium. A notification warns you when the fit misses the
+  reference shape by more than 0.5 cm.
+* **Target gaps**: Only for the ITER and WEST presets. Edits the shape through
+  sliders for its :ref:`gaps <shape_metrics>`, which start at the gaps of the
+  current shape. Moving a slider fits the shape parameters to match the set gaps, and a
+  notification warns you if the closest shape misses a gap.
+* **Edit as free points**: Turns the current target shape, including its weights and
+  extra points, into a table of free points with their R, Z and weight, which you can
+  then move, add and delete. **Fit parameterisation to points** goes back to
+  the shape parameterisation, fitted to the weighted points. **Clear points** removes 
+  all points.
+  The weight of a point is the number of times it is repeated in the boundary given to
+  NICE, so a higher weight pulls NICE more strongly towards it. Points can also be edited
+  on the plot, using the **Point Draw Tool** (|point_draw_tool|): click to add a point,
+  drag a point to move it, and select a point and press backspace to delete it.
+
+**Fine tuning**
+
+Except for free points, the boundary given to NICE can be refined further:
+
+* **Boundary points**: The number of points the parameterized shape is made of. Not
+  shown for the reference shape itself, which keeps its own points.
+* **Emphasize a region**: Gives the boundary points a weight that follows a region
+  along the boundary, set by its **Position** and **Spread** in degrees and its
+  **Max weight**. The target shape is then coloured by weight in the plot.
+* **Add additional weighted points**: Adds points on top of the shape, for example to
+  pin the strike points, in a table with their R, Z and weight. These can also be
+  edited on the plot with the Point Draw Tool.
 
 .. _equilibrium_time_slice:
 
