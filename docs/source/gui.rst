@@ -42,6 +42,31 @@ You can also optionally specify a YAML file to load on startup:
       [...]
       Launching server at http://localhost:38895
 
+Running on a remote machine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To run the GUI on a remote machine, such as a login node of a cluster, and use it
+in the browser on your own machine, serve it on a unix socket and forward that over
+SSH. 
+
+.. code-block:: text
+
+    Host cluster
+        HostName login01.cluster.org
+        LocalForward 127.0.0.1:5006 /home/%r/.waveform-editor.sock
+        ExitOnForwardFailure no
+
+Then log in with ``ssh cluster``, start the GUI on the socket, and open
+``http://localhost:5006`` on your own machine:
+
+.. code-block:: bash
+
+    waveform-editor gui --socket
+
+The socket is ``~/.waveform-editor.sock``, unless you give another path, as in
+``--socket /path/to/my.sock``. If you forward another local port than 5006, pass it
+as ``--local-port``, as the GUI only accepts connections from that port.
+
 File Handling
 -------------
 
