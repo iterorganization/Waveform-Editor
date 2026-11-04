@@ -88,8 +88,9 @@ class IterGaps(MachineGaps):
             if target is not None:
                 gaps.append(MeasuredGap(key, point, target, distance))
 
+        # Only their points are drawn, not the line from r=0 they are measured along
         for key, i in (("Rmin", np.argmin(r)), ("Rmax", np.argmax(r))):
-            gaps.append(MeasuredGap(key, (0.0, z[i]), (r[i], z[i]), r[i]))
+            gaps.append(MeasuredGap(key, (r[i], z[i]), (r[i], z[i]), r[i]))
         return gaps
 
 

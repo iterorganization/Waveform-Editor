@@ -1,10 +1,11 @@
 import logging
+import math
 
 import holoviews as hv
 import numpy as np
 import panel as pn
 import param
-from bokeh.models import HoverTool, PointDrawTool
+from bokeh.models import HoverTool, PointDrawTool, WheelZoomTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -12,7 +13,7 @@ from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.flux import flux_contours, flux_grid
+from waveform_editor.shape_editor.flux import flux_contours, flux_grid, has_flux_map
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -204,18 +205,13 @@ class NicePlotter(Viewer):
             hooks=[self._capture_points_renderer],
         )
         flux_map_elements = [
-            hv.DynamicMap(self._plot_heatmap),
-            hv.DynamicMap(self._plot_contours),
-            hv.DynamicMap(self._plot_separatrix),
-            hv.DynamicMap(self._plot_xo_points),
-            hv.DynamicMap(self._plot_coil_rectangles),
+            hv.DynamicMap(self._plot_result),
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_components),
             hv.DynamicMap(self._plot_vacuum_vessel),
             hv.DynamicMap(self._plot_passive_structures),
             hv.DynamicMap(self._plot_iron_core),
-            hv.DynamicMap(self._plot_plasma_shape),
-            hv.DynamicMap(self._plot_clearance_gaps),
+            hv.DynamicMap(self._plot_target),
             self.editable_points,
         ]
         # Lets the weighted points be added, dragged and deleted on the plot
@@ -236,14 +232,17 @@ class NicePlotter(Viewer):
             self._legend_html, stylesheets=STYLES, margin=(5, 10, 0, 10)
         )
 
-        self.plasma_shape.param.watch(self._update_points_visibility, "input_mode")
+        # The table the points are drawn from depends on what the shape is edited by
+        self.plasma_shape.param.watch(self._on_points_table_change, "edit_by")
         self.plasma_shape.shape_params.param.watch(
-            self._update_points_visibility, "extra_points_enabled"
+            self._on_points_table_change, "extra_points_enabled"
         )
         self.nice_settings.param.watch(self._update_points_visibility, "mode")
-        self.plasma_shape.weighted_points_table.param.watch(
-            self._push_points_to_plot, "points"
-        )
+        for table in (
+            self.plasma_shape.points_table,
+            self.plasma_shape.extra_points_table,
+        ):
+            table.param.watch(self._push_points_to_plot, "points")
 
         self.panel_layout = pn.Param(
             self.param,
@@ -256,18 +255,23 @@ class NicePlotter(Viewer):
         )
 
     def _uses_weighted_points(self):
-        """Whether the weighted points table is in use for the current input mode."""
+        """Whether a point table is in use for the target shape."""
         return (
             not self.nice_settings.is_direct_mode
-            and self.plasma_shape.uses_weighted_points
+            and self.plasma_shape.active_points_table is not None
         )
+
+    def _on_points_table_change(self, *events):
+        """Show the points of the table now in use, if any."""
+        self._update_points_visibility()
+        self._push_points_to_plot()
 
     def _capture_points_renderer(self, plot, element):
         """Keep hold of the renderer and the toolbar, so the points can be hidden
         without redrawing them, which would break the draw tool."""
         self._points_renderer = plot.handles.get("glyph_renderer")
         self._points_toolbar = plot.state.toolbar
-        self._update_points_visibility()
+        self._on_points_table_change()
 
     def _update_points_visibility(self, *events):
         """Only show the points, and offer the tool to draw them, while they are in
@@ -290,9 +294,10 @@ class NicePlotter(Viewer):
         because redrawing them would break the draw tool.
         """
         # The plot already shows the points it just handed us
-        if self._points_renderer is None or self._syncing_points:
+        table = self.plasma_shape.active_points_table
+        if self._points_renderer is None or self._syncing_points or table is None:
             return
-        r, z, weights = self.plasma_shape.weighted_points_table.get_points()
+        r, z, weights = table.get_points()
         data = {"r": r, "z": z, "weight": weights}
 
         def apply():
@@ -312,13 +317,18 @@ class NicePlotter(Viewer):
         r, z, weights = data["r"], data["z"], data["weight"]
         self._syncing_points = True
         try:
-            self.plasma_shape.weighted_points_table.set_points(r, z, weights)
+            self.plasma_shape.active_points_table.set_points(r, z, weights)
         finally:
             self._syncing_points = False
 
     def _capture_figure(self, plot, element):
         """Keep hold of the figure, so its ranges can follow the machine preset."""
+        if self._figure is plot.state:  # called on every redraw, set up once
+            return
         self._figure = plot.state
+        # Scrolling over an axis would zoom only that axis, stretching the machine
+        for tool in plot.state.select(WheelZoomTool):
+            tool.zoom_on_axis = False
 
     def _machine_ranges(self):
         """The r and z range of the machine of the selected preset."""
@@ -338,8 +348,18 @@ class NicePlotter(Viewer):
         Args:
             dx: Pixels to change the width of the plot by.
         """
+        self.fit(self.frame_width + dx, math.inf)
+
+    def fit(self, width, height):
+        """Make the plot as large as fits in a width and height, keeping the aspect of
+        the machine.
+
+        Args:
+            width: Pixels of width it can take.
+            height: Pixels of height it can take.
+        """
         low, high = self.param.frame_height.bounds
-        height = round((self.frame_width + dx) * self.frame_height / self.frame_width)
+        height = min(height, round(width * self.frame_height / self.frame_width))
         self.frame_height = max(low, min(high, height))
 
     def drag_range(self):
@@ -372,32 +392,122 @@ class NicePlotter(Viewer):
             self._figure.frame_height = self.frame_height
 
     @pn.depends(
-        "plasma_shape.shape_updated",
-        "plasma_shape.input_mode",
+        "plasma_shape.redraw",
         "show_target_shape",
         "nice_settings.mode",
+        "communicator.equilibrium",
+        "communicator.converged",
+        "show_gaps",
+        "show_target_gaps",
+        "show_result_gaps",
+        "nice_settings.machine_preset",
     )
+    def _plot_target(self):
+        """The target shape and the gaps, in one DynamicMap so that a change redraws
+        the plot once rather than once per layer."""
+        return self._plot_plasma_shape() * self._plot_clearance_gaps()
+
     def _plot_plasma_shape(self):
         shape = self.plasma_shape
-        if (
-            self.nice_settings.is_direct_mode
-            or not self.show_target_shape
-            or not shape.has_shape
-            or shape.input_mode == shape.WEIGHTED_POINTS_INPUT
-        ):
-            return hv.Overlay([hv.Curve([]).opts(self.TARGET_SHAPE_OPTS)])
+        empty = hv.Overlay([hv.Curve([]).opts(self.TARGET_SHAPE_OPTS)])
+        if self.nice_settings.is_direct_mode or not self.show_target_shape:
+            return empty
+        reference = hv.Curve([])
+        if (outline := self._reference_outline()) is not None:
+            r, z = outline
+            reference = hv.Curve((np.append(r, r[0]), np.append(z, z[0]))).opts(
+                color="gray", line_dash="dashed", line_width=1.5, show_legend=False
+            )
+        # Free points are drawn by the point draw tool
+        if not self.has_target() or shape.is_points:
+            return empty * reference
+        if shape.param_weights is not None:
+            return self._plot_weighted_boundary() * reference
+        # The boundary points, so that extra points appended to the outline
+        # are not drawn as part of the boundary curve
+        return self._plot_outline_shape(shape.param_r, shape.param_z) * reference
 
-        if shape.input_mode == shape.GAP_INPUT:
-            return self._plot_gaps(shape.outline_r, shape.outline_z)
+    def has_target(self):
+        """Whether there is a target shape to draw, which there is not in direct mode
+        or while a reference shape is chosen."""
+        shape = self.plasma_shape
+        return (
+            not self.nice_settings.is_direct_mode
+            and shape.has_shape
+            and not shape.reference.is_choosing
+        )
 
-        if shape.input_mode == shape.PARAMETERIZED_INPUT:
-            if shape.param_weights is not None:
-                return self._plot_weighted_boundary()
-            # The parameterized points, so that extra points appended to the outline
-            # are not drawn as part of the boundary curve
-            return self._plot_outline_shape(shape.param_r, shape.param_z)
+    def _reference_outline(self):
+        """The (r, z) of the reference shape drawn dashed, None if it is not drawn.
+        While a reference shape is chosen, it is drawn in place of the current one."""
+        shape = self.plasma_shape
+        reference = shape.reference
+        if reference.is_choosing:
+            return reference.candidate_outline
+        # In the reference shape view, the reference is the target shape itself
+        if reference.show and reference.r is not None and not shape.is_reference:
+            return reference.r, reference.z
+        return None
 
-        return self._plot_outline_shape(shape.outline_r, shape.outline_z)
+    @pn.depends(
+        "communicator.equilibrium",
+        "communicator.converged",
+        "show_separatrix",
+        "show_target_shape",
+        "show_gaps",
+        "show_target_gaps",
+        "show_result_gaps",
+        "nice_settings.mode",
+        "nice_settings.machine_preset",
+        "plasma_shape.redraw",
+    )
+    def _legend_html(self):
+        """The legend of the lines in the plot."""
+        shape = self.plasma_shape
+        shapes = not self.nice_settings.is_direct_mode and self.show_target_shape
+        gaps = self.nice_settings.machine_preset in MACHINE_GAPS and self.show_gaps
+        items = (
+            (
+                "Target shape",
+                "2px solid blue",
+                shapes
+                and self.has_target()
+                and not shape.is_points
+                # A weighted boundary is coloured by its weights
+                and shape.param_weights is None,
+            ),
+            (
+                "Reference shape",
+                "2px dashed gray",
+                shapes and self._reference_outline() is not None,
+            ),
+            (
+                "Separatrix",
+                "3px solid red",
+                self.show_separatrix and self.communicator.equilibrium is not None,
+            ),
+            (
+                "Second separatrix",
+                "2px solid darkorange",
+                self._secondary_separatrices(),
+            ),
+            (
+                "Target gaps",
+                "2px dashed blue",
+                gaps and self.show_target_gaps and self.has_target(),
+            ),
+            (
+                "Result gaps",
+                "2px dashed red",
+                gaps and self.show_result_gaps and self.communicator.converged,
+            ),
+        )
+        return "".join(
+            f'<span class="lg-item"><span class="lg-line" style="border-top: {line}">'
+            f"</span>{name}</span>"
+            for name, line, shown in items
+            if shown
+        )
 
     def _plot_outline_shape(self, r, z):
         """Plots closed plasma outline curve.
@@ -414,30 +524,6 @@ class NicePlotter(Viewer):
             z = np.append(z, z[0])
 
         return hv.Overlay([hv.Curve((r, z)).opts(self.TARGET_SHAPE_OPTS)])
-
-    def _plot_gaps(self, r, z):
-        """Plots the reference point, value and the target boundary point of the gaps.
-
-        Args:
-            r: Radial coordinates of the outline.
-            z: Height coordinates of the outline.
-
-        Returns:
-            Holoviews overlay containing gap representation.
-        """
-        plot_elements = [_no_hover(hv.Scatter((r, z)).opts(color="blue", size=4))]
-        for gap in self.plasma_shape.gaps:
-            plot_elements.append(
-                _no_hover(hv.Scatter(([gap.r], [gap.z])).opts(color="red", size=6))
-            )
-            plot_elements.append(
-                _no_hover(
-                    hv.Segments([(gap.r, gap.z, gap.r_sep, gap.z_sep)]).opts(
-                        color="black"
-                    )
-                )
-            )
-        return hv.Overlay(plot_elements)
 
     def _plot_weighted_boundary(self):
         """Plots the parameterized boundary as a curve coloured by each
@@ -462,12 +548,36 @@ class NicePlotter(Viewer):
             cmap="viridis",
             colorbar=True,
             line_width=3,
+            # Round ends join the segments into one line, without gaps between them
+            line_cap="round",
             show_legend=False,
             colorbar_opts={"title": "Weight"},
         )
         return hv.Overlay([curve])
 
-    @pn.depends("pf_active", "show_coils", "communicator.pf_active")
+    @pn.depends(
+        "communicator.equilibrium",
+        "communicator.pf_active",
+        "show_heatmap",
+        "heatmap_alpha",
+        "show_contour",
+        "levels",
+        "show_separatrix",
+        "show_xo",
+        "pf_active",
+        "show_coils",
+    )
+    def _plot_result(self):
+        """The layers that change with a NICE result, in one DynamicMap so that a
+        result redraws the plot once rather than once per layer."""
+        return (
+            self._plot_heatmap()
+            * self._plot_contours()
+            * self._plot_separatrix()
+            * self._plot_xo_points()
+            * self._plot_coil_rectangles()
+        )
+
     def _plot_coil_rectangles(self):
         """Creates rectangular and path overlays for PF coils.
 
@@ -522,7 +632,6 @@ class NicePlotter(Viewer):
         )
         return rects * _geometry_paths(paths, line_width=1)
 
-    @pn.depends("communicator.equilibrium", "show_heatmap", "heatmap_alpha")
     def _plot_heatmap(self):
         """Generates heatmap plot for poloidal flux.
 
@@ -533,7 +642,7 @@ class NicePlotter(Viewer):
         if not self.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
-        if not self._check_flux_map(equilibrium):
+        if not has_flux_map(equilibrium.time_slice[0]):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
@@ -552,7 +661,6 @@ class NicePlotter(Viewer):
             .opts(alpha=0.0, colorbar=False)
         )
 
-    @pn.depends("communicator.equilibrium", "show_contour", "levels", "show_heatmap")
     def _plot_contours(self):
         """Generates contour plot for poloidal flux.
 
@@ -569,19 +677,6 @@ class NicePlotter(Viewer):
             self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
         )
 
-    def _check_flux_map(self, equilibrium):
-        """Whether NICE filled the poloidal flux on the GGD, which shows an error
-        if it did not.
-
-        Args:
-            equilibrium: The equilibrium IDS to read the flux from.
-        """
-        eqggd = equilibrium.time_slice[0].ggd[0]
-        if eqggd.r[0].values and eqggd.z[0].values and eqggd.psi[0].values:
-            return True
-        pn.state.notifications.error("NICE did not produce a valid poloidal flux field")
-        return False
-
     def _calc_contours(self, equilibrium, levels):
         """Calculates the contours of the psi grid of an equilibrium IDS.
 
@@ -593,7 +688,7 @@ class NicePlotter(Viewer):
         Returns:
             Holoviews contours object
         """
-        if not self._check_flux_map(equilibrium):
+        if not has_flux_map(equilibrium.time_slice[0]):
             return hv.Contours(([0], [0], 0), vdims="psi")
 
         trics = flux_contours(equilibrium.time_slice[0], levels)
@@ -615,7 +710,6 @@ class NicePlotter(Viewer):
                     segments.append({"x": seg[:, 0], "y": seg[:, 1], "psi": level})
         return segments
 
-    @pn.depends("communicator.equilibrium", "show_separatrix")
     def _plot_separatrix(self):
         """Plots the separatrix from the equilibrium boundary, and the second
         separatrix through the other x-point, if there is one.
@@ -661,44 +755,6 @@ class NicePlotter(Viewer):
             for node in list(equilibrium.time_slice[0].contour_tree.node)[2:]
             if node.critical_type == 1 and len(node.levelset.r) > 1
         ]
-
-    @pn.depends(
-        "communicator.equilibrium",
-        "show_separatrix",
-        "show_target_shape",
-        "plasma_shape.shape_updated",
-        "plasma_shape.input_mode",
-        "nice_settings.mode",
-    )
-    def _legend_html(self):
-        """The legend of the lines in the plot."""
-        shape = self.plasma_shape
-        equilibrium = self.communicator.equilibrium
-        separatrix = self.show_separatrix and equilibrium is not None
-        items = (
-            (
-                "Target shape",
-                "2px solid blue",
-                not self.nice_settings.is_direct_mode
-                and self.show_target_shape
-                and shape.has_shape
-                and shape.input_mode != shape.WEIGHTED_POINTS_INPUT
-                # A weighted boundary is coloured by its weights
-                and shape.param_weights is None,
-            ),
-            ("Separatrix", "3px solid red", separatrix),
-            (
-                "Second separatrix",
-                "2px solid darkorange",
-                self._secondary_separatrices(),
-            ),
-        )
-        return "".join(
-            f'<span class="lg-item"><span class="lg-line" style="border-top: {line}">'
-            f"</span>{name}</span>"
-            for name, line, shown in items
-            if shown
-        )
 
     @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
@@ -789,7 +845,6 @@ class NicePlotter(Viewer):
             ]
         return _geometry_paths(paths, color="saddlebrown")
 
-    @pn.depends("communicator.equilibrium", "show_xo")
     def _plot_xo_points(self):
         """Plots X-points and O-points from the equilibrium.
 
@@ -823,15 +878,6 @@ class NicePlotter(Viewer):
         )
         return o_scatter * x_scatter
 
-    @pn.depends(
-        "communicator.equilibrium",
-        "show_gaps",
-        "show_target_gaps",
-        "show_result_gaps",
-        "nice_settings.machine_preset",
-        "plasma_shape.shape_updated",
-        "plasma_shape.input_mode",
-    )
     def _plot_clearance_gaps(self):
         """Plots the gaps of the target shape in blue and of the resulting shape in
         red, from the points they are measured from to the boundary."""
@@ -840,14 +886,10 @@ class NicePlotter(Viewer):
         equilibrium = self.communicator.equilibrium
         target, result = [], []
         if gaps is not None and self.show_gaps:
-            if (
-                self.show_target_gaps
-                and not self.nice_settings.is_direct_mode
-                and shape.has_shape
-            ):
+            if self.show_target_gaps and self.has_target():
                 inputs = gaps.shape_inputs(shape.target_x_points)
                 target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
-            if self.show_result_gaps and equilibrium is not None:
+            if self.show_result_gaps and self.communicator.converged:
                 result = gaps.measure(**gaps.gap_inputs(equilibrium.time_slice[0]))
         return self._plot_measured_gaps(gaps, target, "blue") * (
             self._plot_measured_gaps(gaps, result, "red")

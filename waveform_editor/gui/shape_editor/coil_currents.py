@@ -7,7 +7,7 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.gui.util import set_xml_parameter
+from waveform_editor.gui.util import card, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
 
 # The NICE current group of each coil of a machine, in the order the coils appear in
@@ -36,8 +36,9 @@ class CoilCurrentEntry(param.Parameterized):
     )
     penalty_weight = param.Number(
         default=1.0,
-        doc="NICE's group_special_weight. Below 1 weighs this coil's current more "
-        "heavily, holding it closer to what it is penalized towards.",
+        doc="How strongly this coil's current is penalized, the inverse of NICE's "
+        "group_special_weight. Above 1 holds it closer to what it is penalized "
+        "towards.",
     )
 
     @property
@@ -52,6 +53,12 @@ class CoilCurrentEntry(param.Parameterized):
 class CoilCurrents(Viewer):
     coils = param.List(doc="List of CoilCurrentEntry for each coil")
     edited = param.Event(doc="Triggered whenever the user edits a coil.")
+    reference_ip = param.Number(
+        default=None,
+        precedence=-1,
+        doc="The plasma current the coil currents were computed for, None before "
+        "the first NICE run.",
+    )
 
     # Table column names
     COIL_NAME = "coil_name"
@@ -89,9 +96,8 @@ class CoilCurrents(Viewer):
                 "penalized towards the current it was loaded with."
             ),
             self.PENALTY_WEIGHT: (
-                "Scales how far this coil's current may stray from what it is "
-                "penalized towards. Below 1 holds it closer, above 1 lets it drift "
-                "further."
+                "How strongly this coil's current is held to what it is penalized "
+                "towards. Above 1 holds it closer, below 1 lets it drift further."
             ),
         }
         editors = {
@@ -103,12 +109,19 @@ class CoilCurrents(Viewer):
             self.PENALIZE_ZERO: None,
             self.PENALTY_WEIGHT: {"type": "number", "step": 0.01},
         }
+        # A checkbox that lets the click through to the cell, which toggles it
+        checkbox = '<input type="checkbox" style="pointer-events: none" {}>'
+        checkbox_formatter = {
+            "type": "tickCross",
+            "tickElement": checkbox.format("checked"),
+            "crossElement": checkbox.format(""),
+        }
         formatters = {
-            self.FIX_CURRENT: {"type": "tickCross"},
+            self.FIX_CURRENT: checkbox_formatter,
             self.CURRENT: NumberFormatter(),
             self.PREV_CURRENT: NumberFormatter(),
             self.CURRENT_LIMIT: NumberFormatter(),
-            self.PENALIZE_ZERO: {"type": "tickCross"},
+            self.PENALIZE_ZERO: checkbox_formatter,
         }
         self.table = pn.widgets.Tabulator(
             value=pd.DataFrame(columns=list(titles)),
@@ -138,7 +151,9 @@ class CoilCurrents(Viewer):
         self._update_column_visibility()
         self.nice_settings.param.watch(self._update_column_visibility, "is_direct_mode")
 
-        self.panel = self.table
+        self.panel = pn.Column(
+            card("Coil currents", self.table), margin=(15, 20, 12, 20)
+        )
 
     def create_ui(self, pf_active):
         """Create the UI for each coil in the provided pf_active IDS.
@@ -146,6 +161,7 @@ class CoilCurrents(Viewer):
         Args:
             pf_active: pf_active IDS containing coils with current values.
         """
+        self.reference_ip = None
         if not pf_active:
             self.coils = []
             return
@@ -257,15 +273,45 @@ class CoilCurrents(Viewer):
             if coil.current is not None:
                 pf_active.coil[i].current.data = np.array([coil.current])
 
-    def sync_ui_with_pf_active(self, pf_active):
+    def sync_ui_with_pf_active(self, pf_active, ip):
         """Synchronize UI with the current values from the pf_active IDS.
 
         Args:
             pf_active: pf_active IDS for which the coil currents are used.
+            ip: The plasma current the coil currents were computed for.
         """
         for i, coil in enumerate(pf_active.coil):
             self.coils[i].current = coil.current.data[0]
+        self.reference_ip = ip
         self._update_table()
+
+    def scale_to_ip(self, ip):
+        """Scale the coil currents from the plasma current they were computed for to
+        a new one. The Grad-Shafranov equation is linear in the currents, so scaling
+        all of them by the same factor keeps the plasma shape.
+
+        Args:
+            ip: The new plasma current [A].
+        """
+        if self.reference_ip is None:
+            pn.state.notifications.info(
+                "Run NICE first: the coil currents are scaled from the plasma "
+                "current of the last run."
+            )
+            return
+        # There is no scale factor to or from a plasma current of 0 A
+        if ip == 0 or self.reference_ip == 0:
+            return
+        factor = ip / self.reference_ip
+        for coil in self.coils:
+            if coil.current is not None:
+                coil.current *= factor
+        self.reference_ip = ip
+        self._update_table()
+        pn.state.notifications.info(
+            f"Scaled the coil currents by {factor:.4g} with the plasma current."
+        )
+        self._warn_exceeded()
 
     def update_xml(self, xml_params: ET.Element):
         """Update XML parameters based on coil current table configuration.
@@ -359,7 +405,7 @@ class CoilCurrents(Viewer):
         set_xml_parameter(
             xml_params,
             "group_special_weight",
-            " ".join(str(weights[group][1]) for group in groups),
+            " ".join(str(1 / weights[group][1]) for group in groups),
         )
 
     def __panel__(self):

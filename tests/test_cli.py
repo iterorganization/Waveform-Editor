@@ -208,3 +208,15 @@ def test_export_ids_none(runner, tmp_path, test_yaml_file):
         ["export-ids", str(test_yaml_file), str(uri)],
     )
     assert result.exit_code != 0
+
+
+def test_gui_on_socket(runner, monkeypatch):
+    serve = {}
+    monkeypatch.setattr("panel.serve", lambda app, **kwargs: serve.update(kwargs))
+    monkeypatch.setattr("waveform_editor.gui.main.WaveformEditorGui", lambda: None)
+    result = runner.invoke(
+        waveform_cli.cli, ["gui", "--socket", "--local-port", "4333"]
+    )
+    assert result.exit_code == 0
+    assert serve["unix_socket"].endswith(".waveform-editor.sock")
+    assert "localhost:4333" in serve["websocket_origin"]

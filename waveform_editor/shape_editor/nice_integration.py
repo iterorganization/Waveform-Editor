@@ -161,6 +161,7 @@ class NiceIntegration(param.Parameterized):
     communicator_running = param.Boolean(
         doc="The process for communicating with NICE is running"
     )
+    any_running = param.Boolean(doc="Any of the processes above is running")
     equilibrium = param.ClassSelector(class_=IDSToplevel)
     pf_active = param.ClassSelector(class_=IDSToplevel)
 
@@ -328,6 +329,11 @@ class NiceIntegration(param.Parameterized):
             self.nice_transport is not None
             and self.nice_transport.get_returncode() is None
         )
+        self.any_running = (
+            self.muscle_manager_running
+            or self.communicator_running
+            or self.nice_running
+        )
 
     @param.depends("equilibrium", watch=True)
     def _update_converged(self):
@@ -412,10 +418,9 @@ class NiceIntegration(param.Parameterized):
         equilibrium = self.imas_factory.new("equilibrium")
         equilibrium.deserialize(eq)
         self._last_result = equilibrium
-        self.equilibrium = equilibrium
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
-        self.pf_active = pf_active
+        self.param.update(equilibrium=equilibrium, pf_active=pf_active)
         self.on_run_finished(self.converged)
         self.processing = False
 

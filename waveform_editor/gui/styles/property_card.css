@@ -1,7 +1,12 @@
 :host(.property-card) {
+    background: var(--panel-background-color);
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 8px 12px 12px 12px;
+}
+
+:host(.metrics-card) {
+    contain: inline-size;
 }
 
 :host(.ids-source-card) {
