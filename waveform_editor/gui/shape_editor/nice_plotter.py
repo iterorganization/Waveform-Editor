@@ -126,6 +126,9 @@ class NicePlotter(Viewer):
     show_gaps = param.Boolean(default=True, label="Show gaps")
     show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
     show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
+    zoom_in = param.Boolean(
+        default=False, precedence=-1, doc="Show the plasma, without the vacuum vessel"
+    )
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -145,6 +148,11 @@ class NicePlotter(Viewer):
         NiceSettings.PRESET_ITER: ((0, 13), (-10, 10)),
         NiceSettings.PRESET_WEST: ((0, 4.8), (-2.6, 2.6)),
     }
+    # The r and z range zoomed in on the plasma
+    ZOOMED_RANGES = {
+        NiceSettings.PRESET_ITER: ((3.8, 8.5), (-4.7, 4.85)),
+        NiceSettings.PRESET_WEST: ((1.75, 3.2), (-0.88, 0.88)),
+    }
     R_RANGE, Z_RANGE = MACHINE_RANGES[NiceSettings.PRESET_ITER]
     HEATMAP_RESOLUTION = 250
 
@@ -153,6 +161,7 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._figure = None
         self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
+        self.param.watch(self._apply_machine_ranges, "zoom_in")
         r_range, z_range = self._machine_ranges()
         self.frame_width = self._width_for(self.frame_height)
         self.DEFAULT_OPTS = hv.opts.Overlay(
@@ -331,10 +340,12 @@ class NicePlotter(Viewer):
             tool.zoom_on_axis = False
 
     def _machine_ranges(self):
-        """The r and z range of the machine of the selected preset."""
-        return self.MACHINE_RANGES.get(
-            self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
-        )
+        """The r and z range of the machine of the selected preset, or of its plasma
+        when zoomed in."""
+        preset = self.nice_settings.machine_preset
+        if self.zoom_in and preset in self.ZOOMED_RANGES:
+            return self.ZOOMED_RANGES[preset]
+        return self.MACHINE_RANGES.get(preset, (self.R_RANGE, self.Z_RANGE))
 
     def _width_for(self, height):
         """The width of the plot at a height, for the aspect of the machine."""

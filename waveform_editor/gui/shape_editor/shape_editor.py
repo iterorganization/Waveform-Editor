@@ -174,7 +174,25 @@ class ShapeEditor(Viewer):
             size="24px",
             margin=(15, 10, 2, 10),
         )
+        zoom_button = pn.widgets.ToggleIcon.from_param(
+            self.nice_plotter.param.zoom_in,
+            name="",
+            icon="zoom-in",
+            active_icon="zoom-out",
+            description="Zoom in on the plasma, or out on the whole machine",
+            size="24px",
+            margin=(15, 10, 2, 10),
+            # Only the machine presets have a range to zoom in on
+            visible=pn.bind(
+                lambda preset, collapsed: (
+                    preset in NicePlotter.ZOOMED_RANGES and not collapsed
+                ),
+                self.nice_settings.param.machine_preset,
+                self.collapse_plot.param.value,
+            ),
+        )
         buttons = pn.FlexBox(
+            zoom_button,
             self.collapse_plot,
             settings_modal,
             waveform_sync,
