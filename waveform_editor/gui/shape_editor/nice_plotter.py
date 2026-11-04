@@ -5,7 +5,15 @@ import holoviews as hv
 import numpy as np
 import panel as pn
 import param
-from bokeh.models import HoverTool, PointDrawTool, WheelZoomTool
+from bokeh.models import (
+    BoxZoomTool,
+    CustomAction,
+    CustomJS,
+    HoverTool,
+    PointDrawTool,
+    ResetTool,
+    WheelZoomTool,
+)
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
@@ -126,9 +134,6 @@ class NicePlotter(Viewer):
     show_gaps = param.Boolean(default=True, label="Show gaps")
     show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
     show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
-    zoom_in = param.Boolean(
-        default=False, precedence=-1, doc="Show the plasma, without the vacuum vessel"
-    )
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -161,7 +166,17 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._figure = None
         self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
-        self.param.watch(self._apply_machine_ranges, "zoom_in")
+        self._zoom_tool = CustomAction(
+            icon="zoom_in",
+            description="Zoom into the vacuum vessel",
+            # Bokeh only toggles a tool that has a callback
+            callback=CustomJS(code=""),
+            active_callback="auto",
+            visible=self.nice_settings.machine_preset in self.ZOOMED_RANGES,
+        )
+        self._zoom_tool.on_change(
+            "active", lambda attr, old, new: self._apply_machine_ranges()
+        )
         r_range, z_range = self._machine_ranges()
         self.frame_width = self._width_for(self.frame_height)
         self.DEFAULT_OPTS = hv.opts.Overlay(
@@ -338,12 +353,17 @@ class NicePlotter(Viewer):
         # Scrolling over an axis would zoom only that axis, stretching the machine
         for tool in plot.state.select(WheelZoomTool):
             tool.zoom_on_axis = False
+        # The zoom to vessel button replaces these, as these would not keep aspect ratio
+        unwanted = (BoxZoomTool, ResetTool)
+        toolbar = plot.state.toolbar
+        tools = [t for t in toolbar.tools if not isinstance(t, unwanted)]
+        toolbar.tools = [*tools, self._zoom_tool]
 
     def _machine_ranges(self):
         """The r and z range of the machine of the selected preset, or of its plasma
         when zoomed in."""
         preset = self.nice_settings.machine_preset
-        if self.zoom_in and preset in self.ZOOMED_RANGES:
+        if self._zoom_tool.active and preset in self.ZOOMED_RANGES:
             return self.ZOOMED_RANGES[preset]
         return self.MACHINE_RANGES.get(preset, (self.R_RANGE, self.Z_RANGE))
 
@@ -387,6 +407,8 @@ class NicePlotter(Viewer):
 
     def _apply_machine_ranges(self, event=None):
         """Show the machine of the selected preset, coils and all."""
+        preset = self.nice_settings.machine_preset
+        self._zoom_tool.visible = preset in self.ZOOMED_RANGES
         if self._figure is not None:
             r_range, z_range = self._machine_ranges()
             self._figure.x_range.start, self._figure.x_range.end = r_range
