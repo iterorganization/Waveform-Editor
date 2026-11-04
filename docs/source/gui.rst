@@ -299,19 +299,26 @@ Starting from the previous equilibrium
 After a converged run, NICE starts the next run from its equilibrium instead of from
 scratch where it can, which improves the convergence of NICE.
 
+Run history
+"""""""""""
+
+Every converged NICE result is stored in the session's run history. This allows 
+you to return to a previous result that you were happy with. To do so, select a run in 
+the **Run history** dropdown and select it. This may be useful when you are iterating 
+on the plasma shape using the direct mode, and NICE fails to converge. You can then load
+the last valid result and retry a new configuration.
+
+.. warning::
+    The session history will only be stored for as long as the waveform editor server is alive.
+    Whenever you close the server, the session history will be lost. 
+
 Auto run
 """"""""
 
 With the **Auto run** switch on, NICE runs by itself whenever the plasma shape, plasma
-properties or coil currents change, shortly after the inputs have stopped changing.
-
-Run history
-"""""""""""
-
-Every converged run is kept, together with its resulting equilibrium and coil currents.
-Select a run in the **Run history** dropdown to return to it: its equilibrium is
-plotted, and the coil currents and metrics are restored, and the next run starts from
-it.
+properties or coil currents change. While auto run is enable, the **Run** button is disabled.
+Furthermore, when auto run is enabled only the final converged NICE run will be stored in the
+run history.
 
 .. _shape_metrics:
 
@@ -364,7 +371,6 @@ The inputs of a run are given in the tabs of the control panel:
 * **Plasma Shape**: Target plasma shape when running NICE in **Inverse Mode**.
 * **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
 * **Coil Currents**: The currents through the active field coils.
-* **Logging**: The live output of NICE.
 
 The settings of the Plasma Shape Editor itself are in the **Settings menu**, opened
 with the gear button at the top of the control panel. It has the following tabs:
@@ -390,10 +396,11 @@ contour levels to plot, and the opacity of the heatmap.
 Machine Presets
 """""""""""""""
 Select the machine to run NICE for. The **ITER** and **WEST** presets fill in the
-machine description URIs, and set the plasma shape, plasma properties and plot area
-to defaults for that machine. A preset is only offered if its machine description can
-be read, for example on SDCC. Select **Custom** to provide the IMAS URIs of the
-machine descriptions yourself.
+machine description URIs, and set the plasma properties, the plot area and the ranges
+of the shape sliders to defaults for that machine. A preset is only offered if its
+machine description can be read, for example on SDCC. If these are not available,
+set the machine preset to **Custom** in the Machine Presets setting menu to provide the
+URIs of the machine descriptions yourself.
 
 NICE Configuration
 """"""""""""""""""
@@ -457,9 +464,9 @@ Once a reference shape is set, choose how to edit the target shape before you st
 * **Shape parameterisation**: Generates the shape from a set of geometric parameters:
   the minor radius, the plasma center, the elongation, the triangularity and the
   x-point. Alternatively, you can enable **Second x-point** for a double null shape with 
-  an upper x-point as well. When you first switch to it, the parameters are fitted to the
-  reference shape of an equilibrium. A notification warns you when the fit misses the
-  reference shape by more than 0.5 cm.
+  an upper x-point as well. When you first switch to it or to **Target gaps**, the
+  parameters are fitted to the reference shape of an equilibrium. A notification warns
+  you when the fit misses the reference shape by more than 0.5 cm.
 * **Target gaps**: Only for the ITER and WEST presets. Edits the shape through
   sliders for its :ref:`gaps <shape_metrics>`, which start at the gaps of the
   current shape. Moving a slider fits the shape parameters to match the set gaps, and a
