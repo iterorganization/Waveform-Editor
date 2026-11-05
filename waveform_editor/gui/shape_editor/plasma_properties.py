@@ -169,7 +169,11 @@ class PlasmaProfiles(Viewer):
             FormattedEditableFloatSlider.from_param(p, width=INPUT_WIDTH)
             for p in (self.param.alpha, self.param.beta, self.param.gamma)
         )
-        self._profiles_pane = pn.pane.HoloViews(hv.DynamicMap(self._plot_profiles))
+        self._profiles_pane = pn.pane.HoloViews(
+            hv.DynamicMap(self._plot_profiles).opts(
+                hv.opts.Overlay(width=450, height=450)
+            )
+        )
 
         self._from_ids_badge, self._edited_badge, self._reset_btn = _make_badges(
             self.param.input_state, self.reset_to_ids
@@ -289,7 +293,7 @@ class PlasmaProfiles(Viewer):
             label="f_df_dpsi / (μ₀ * r₀)",
         )
         return (dpressure_dpsi_curve * f_df_dpsi_curve).opts(
-            hv.opts.Overlay(title="Plasma Profiles", width=450, height=450),
+            hv.opts.Overlay(title="Plasma Profiles"),
             hv.opts.Curve(framewise=True),
         )
 
