@@ -8,7 +8,7 @@ Once: copy the two files waveform-editor.cmd and waveform-editor.ps1 to a folder
 your laptop, for example with this command in PowerShell (replace MS013565 with
 your own login):
 
-    scp MS013565@altair.partenaires.cea.fr:/home/MS013565/public/waveform-editor-nice/windows/waveform-editor.* $HOME\Desktop\
+    scp MS013565@altair.partenaires.cea.fr:/home/MS013565/public/easybuild/software/Waveform-Editor/20261105/windows/waveform-editor.* $HOME\Desktop\
 
 Each time: double-click waveform-editor.cmd.
   - The first time it asks for your login on altair, and remembers it.

@@ -9,7 +9,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RemoteScript = "/home/MS013565/public/waveform-editor-nice/start-gui-socket.sh"
+# The modules of the Waveform-Editor and NICE on altair
+$ModulePath = "/home/MS013565/public/easybuild/modules/all"
 $LoginFile = Join-Path $HOME ".waveform-editor-login"
 
 if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
@@ -69,7 +70,11 @@ $sshArgs = @(
     "-o", "ServerAliveInterval=60",
     "-L", "127.0.0.1:${Port}:/home/$Login/.waveform-editor.sock",
     "$Login@$Server",
-    "bash", "-l", $RemoteScript, "$Port"
+    # A login shell has the module command. ssh joins these words with spaces,
+    # so that the remote shell gets the command between single quotes as one
+    "bash", "-l", "-c",
+    "'module", "use", $ModulePath, "&&", "module", "load", "Waveform-Editor", "&&",
+    "exec", "waveform-editor", "gui", "--socket", "--local-port", "$Port'"
 )
 $ssh = Start-Process ssh -ArgumentList $sshArgs -NoNewWindow -PassThru
 

@@ -1,0 +1,74 @@
+easyblock = 'Binary'
+
+name = 'Waveform-Editor'
+# The date of the git version below, until a release can be taken from PyPI
+version = '20261105'
+# TODO: a commit of develop once the cluster setting is merged
+local_git_ref = 'feature/altair_install'
+# The Python package version: the tarball from git has no history to compute it from
+local_pkg_version = '0.3.2.dev%(version)s'
+
+homepage = 'https://github.com/iterorganization/Waveform-Editor'
+description = """Python tool to create and edit 1D waveforms, with the shape editor
+running NICE. Loads the NICE module; PNG export uses the headless Chrome installed
+with it."""
+
+toolchain = SYSTEM
+
+sources = [{
+    'filename': '%(name)s-%(version)s.tar.gz',
+    'git_config': {
+        'url': 'https://github.com/iterorganization',
+        'repo_name': 'Waveform-Editor',
+        'tag': local_git_ref,
+        # setuptools_scm takes the files to install, such as the CSS of the GUI, from git
+        'keep_git_dir': True,
+    },
+}]
+checksums = [None]  # a tarball made from git is not reproducible
+
+dependencies = [
+    ('mamba/python-3.11', EXTERNAL_MODULE),
+    ('NICE', '20261012'),
+]
+
+# A Python environment in the installation directory, with the Waveform-Editor and
+# its dependencies from PyPI. muscle3 has the version of the C++ library NICE uses.
+# imas_core is not installed: the IMAS module provides it, built for numpy < 2.
+extract_sources = True
+install_cmd = ' && '.join([
+    'python -m venv %(installdir)s',
+    '%(installdir)s/bin/pip install --no-cache-dir --upgrade pip',
+    'SETUPTOOLS_SCM_PRETEND_VERSION=%s %%(installdir)s/bin/pip install --no-cache-dir '
+    '%%(builddir)s/Waveform-Editor muscle3==0.10.0 "numpy<2"' % local_pkg_version,
+])
+postinstallcmds = [
+    'mkdir %(installdir)s/chrome',
+    '%(installdir)s/bin/plotly_get_chrome -y --path %(installdir)s/chrome',
+    # The launcher of the GUI from a Windows laptop, for colleagues to copy
+    'cp -r %(builddir)s/Waveform-Editor/install/altair/windows %(installdir)s/',
+]
+
+# Only bin is added to PATH, by default
+prepend_to_path = False
+# The python of the module mamba/python-3.11 comes first in PATH, as it is activated
+# after the modules are loaded: it finds the packages of the environment here
+modextrapaths = {'PYTHONPATH': 'lib/python3.11/site-packages'}
+modextravars = {'BROWSER_PATH': '%(installdir)s/chrome/chrome-linux64/chrome'}
+
+sanity_check_paths = {
+    'files': [
+        'bin/waveform-editor',
+        'lib/python3.11/site-packages/waveform_editor/gui/styles/styles.css',
+        'chrome/chrome-linux64/chrome',
+        'windows/waveform-editor.ps1',
+    ],
+    'dirs': [],
+}
+sanity_check_commands = [
+    'waveform-editor --version',
+    'python -c "import waveform_editor"',
+    '%(installdir)s/bin/pip check',
+]
+
+moduleclass = 'phys'
