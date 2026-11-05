@@ -170,10 +170,9 @@ class PlasmaProfiles(Viewer):
             for p in (self.param.alpha, self.param.beta, self.param.gamma)
         )
         self._profiles_pane = pn.pane.HoloViews(
-            hv.DynamicMap(self._plot_profiles),
-            sizing_mode="stretch_width",
-            aspect_ratio=1,
-            max_width=450,
+            hv.DynamicMap(self._plot_profiles).opts(
+                hv.opts.Overlay(width=450, height=450)
+            )
         )
 
         self._from_ids_badge, self._edited_badge, self._reset_btn = _make_badges(
@@ -294,7 +293,7 @@ class PlasmaProfiles(Viewer):
             label="f_df_dpsi / (μ₀ * r₀)",
         )
         return (dpressure_dpsi_curve * f_df_dpsi_curve).opts(
-            hv.opts.Overlay(title="Plasma Profiles", responsive=True, aspect=1),
+            hv.opts.Overlay(title="Plasma Profiles"),
             hv.opts.Curve(framewise=True),
         )
 
