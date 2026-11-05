@@ -118,9 +118,9 @@ class CoilCurrents(Viewer):
         }
         formatters = {
             self.FIX_CURRENT: checkbox_formatter,
-            self.CURRENT: NumberFormatter(),
-            self.PREV_CURRENT: NumberFormatter(),
-            self.CURRENT_LIMIT: NumberFormatter(),
+            self.CURRENT: NumberFormatter(format="0"),
+            self.PREV_CURRENT: NumberFormatter(format="0"),
+            self.CURRENT_LIMIT: NumberFormatter(format="0"),
             self.PENALIZE_ZERO: checkbox_formatter,
         }
         self.table = pn.widgets.Tabulator(
