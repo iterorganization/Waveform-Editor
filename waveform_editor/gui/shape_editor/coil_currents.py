@@ -269,9 +269,9 @@ class CoilCurrents(Viewer):
             pf_active: pf_active IDS to update the coil currents for.
         """
         for i, coil in enumerate(self.coils):
-            coil.previous_current = pf_active.coil[i].current.data[0]
             if coil.current is not None:
                 pf_active.coil[i].current.data = np.array([coil.current])
+            coil.previous_current = pf_active.coil[i].current.data[0]
 
     def sync_ui_with_pf_active(self, pf_active, ip):
         """Synchronize UI with the current values from the pf_active IDS.
