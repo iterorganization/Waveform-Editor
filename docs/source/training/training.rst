@@ -673,11 +673,13 @@ Exercise 6b: Running NICE inverse
       shape and press ``Set reference shape``. Then select ``Shape parameterisation``
       as the target shape, and leave the shape settings on their defaults for now.
       If you selected ``Custom`` in exercise 6a, choose ``Equilibrium IDS`` instead and
-      load an equilibrium IDS by loading an URI.
+      load one from its URI.
 
       Secondly, open the ``Plasma Properties`` tab. The ITER preset set the plasma current,
       R0 and B0, and the ff' and p' profiles through :ref:`a parameterisation <abg_parameterisation>`
       using the alpha, beta, and gamma parameters. Leave the values at their defaults for now.
+      If you are using the ``Custom`` machine preset, you will have to set the plasma current, R0 and B0
+      to the appropriate values yourself.
 
       You should now have set up enough to run NICE inverse mode, which you can verify by
       checking that there is no ⚠️ icon next to the ``Run`` button, and that the button is enabled.

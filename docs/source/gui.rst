@@ -304,21 +304,21 @@ Run history
 
 Every converged NICE result is stored in the session's run history. This allows 
 you to return to a previous result that you were happy with. To do so, select a run in 
-the **Run history** dropdown and select it. This may be useful when you are iterating 
+the **Run history** dropdown to restore it. This may be useful when you are iterating 
 on the plasma shape using the direct mode, and NICE fails to converge. You can then load
 the last valid result and retry a new configuration.
 
 .. warning::
     The session history will only be stored for as long as the waveform editor server is alive.
-    Whenever you close the server, the session history will be lost. 
+    Whenever you close the server, the session history will be lost. The history is also cleared
+    whenever the machine preset or a machine description URI changes.
 
 Auto run
 """"""""
 
 With the **Auto run** switch on, NICE runs by itself whenever the plasma shape, plasma
-properties or coil currents change. While auto run is enable, the **Run** button is disabled.
-Furthermore, when auto run is enabled only the final converged NICE run will be stored in the
-run history.
+properties or coil currents change. While auto run is enabled, the **Run** button is disabled.
+Furthermore, when auto run is enabled only the latest auto run of a series is kept in the run history.
 
 .. _shape_metrics:
 
