@@ -267,9 +267,9 @@ for Equilibrium) solver. This allows you to design and analyze plasma equilibria
 either specifying a target shape and finding the necessary coil currents (Inverse Mode) 
 or by providing coil currents and calculating the resulting plasma shape (Direct Mode).
 
-The interface is primarily divided into two sections: a large plotting area on the left 
-that displays the machine geometry and equilibrium results, and a control panel on the 
-right with various configuration options.
+The interface is divided into two sections: a plotting area on the left that displays
+the machine geometry and equilibrium results, with the metrics of the result below it,
+and a control panel on the right with the run controls and the configuration options.
 
 .. figure:: images/gui/plasma_shape_editor.png
 
@@ -278,7 +278,7 @@ right with various configuration options.
 Operating Modes
 ^^^^^^^^^^^^^^^
 
-NICE can be run in two modes, which can be selected using the radio buttons at the top 
+NICE can be run in two modes, which can be selected using the toggle at the top 
 of the control panel:
 
 * **Inverse Mode**: You define a target plasma shape and properties, and NICE calculates 
@@ -288,43 +288,123 @@ of the control panel:
   calculates the resulting plasma equilibrium.
 
 At the top of the control panel, you'll find **Run** and **Stop** buttons to start and 
-terminate the NICE simulation. A terminal window below these buttons displays live 
-output from NICE.
+terminate the NICE simulation.
+If required inputs are missing, **Run** is disabled and a warning icon (⚠️) is shown next to
+it: hover over it to see what is missing. The live output of NICE is shown in the
+**Logging** tab.
 
-Configuration Options
-^^^^^^^^^^^^^^^^^^^^^
+Starting from the previous equilibrium
+""""""""""""""""""""""""""""""""""""""
 
-The control panel on the right contains several collapsible option menus, each dedicated 
-to a specific part of the configuration. A warning icon (⚠️) next to a option title 
-indicates that required information for this section is missing, and needs to be updated 
-for NICE to run.
+After a converged run, NICE starts the next run from its equilibrium instead of from
+scratch where it can, which improves the convergence of NICE.
 
-The following option menus are available, these will be explained in detail in the 
-sections below:
+Run history
+"""""""""""
 
-* **NICE Configuration**: Required NICE configuration parameters.
-* **Plotting Parameters**: Configuration for the plot.
-* **Plasma Shape**: Target plasma shape when running NICE in **Inverse Mode**.
-* **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
-* **Coil Currents**: The currents through the active field coils.
+Every converged NICE result is stored in the session's run history. This allows 
+you to return to a previous result that you were happy with. To do so, select a run in 
+the **Run history** dropdown to restore it. This may be useful when you are iterating 
+on the plasma shape using the direct mode, and NICE fails to converge. You can then load
+the last valid result and retry a new configuration.
+
+.. warning::
+    The session history will only be stored for as long as the waveform editor server is alive.
+    Whenever you close the server, the session history will be lost. The history is also cleared
+    whenever the machine preset or a machine description URI changes.
+
+Auto run
+""""""""
+
+With the **Auto run** switch on, NICE runs by itself whenever the plasma shape, plasma
+properties or coil currents change. While auto run is enabled, the **Run** button is disabled.
+Only the latest auto run of a series is kept in the run history.
+
+.. _shape_metrics:
+
+Metrics
+"""""""
+
+Below the plot, a table compares the shape of the result to the target shape: the
+elongation, triangularity, upper and lower triangularity, edge safety factor, major
+radius, vertical position and minor radius.
+
+The table has three rows:
+
+* **Target**: the metrics of the target shape.
+* **Result**: the metrics of the equilibrium NICE calculated.
+* **Difference**: the result minus the target.
+
+In direct mode, which has no target shape, only the **Result** row is shown.
+
+For the ITER and WEST :ref:`machine presets <machine_presets>`, the gaps between
+the plasma and the machine are shown alongside them:
+
+* **ITER**: the gaps g₁, g₂, g₄ and g₅, and the inboard and outboard boundary radius
+  Rₘᵢₙ and Rₘₐₓ. Gaps g₁ and g₂ are distances from reference points
+  on the divertor to the separatrix legs, so they are only measured for a diverted plasma.
+* **WEST**: the radial outer gaps UROG, EROG and LROG, the inner gaps RIG and TIG, the
+  top outer gap TOG, the distances of the x-points to the divertor dXlow and dXup, the
+  distance to the baffle dbaffle, and the distance between the first and second
+  separatrix on the outboard midplane dRsep.
+
 
 .. _store_to_waveforms:
 
 Store as waveforms
 """"""""""""""""""
 
-The table export button in the row above the logs stores the results of the last run in
-waveforms, at a time of your choosing. It shows every quantity that is sent and stores 
-each one in the waveform named after its IDS path, for
-example ``pf_active/coil(1)/current/data`` or
+The table export button at the top of the control panel, next to the settings button,
+stores the results of the last run in waveforms, at a time of your choosing. It shows
+every quantity that is sent and stores each one in the waveform named after its IDS
+path, for example ``pf_active/coil(1)/current/data`` or
 ``equilibrium/time_slice/boundary/elongation``. 
 
 Each value is stored as a point in a :ref:`piecewise-linear-tendency` at the end of its
 waveform, so the time must come after the last point of the waveforms it stores in.
 
+Configuration Options
+^^^^^^^^^^^^^^^^^^^^^
+
+The inputs of a run are given in the tabs of the control panel:
+
+* **Plasma Shape**: Target plasma shape when running NICE in **Inverse Mode**.
+* **Plasma Properties**: Plasma characteristics, such as plasma current and p' / ff' profiles.
+* **Coil Currents**: The currents through the active field coils.
+
+The settings of the Plasma Shape Editor itself are in the **Settings menu**, opened
+with the gear button at the top of the control panel. It has the following tabs:
+
+* **Display**: Configuration for the plot.
+* **Machine Presets**: The machine to run NICE for, and its machine description.
+* **NICE Configuration**: The NICE executables, environment and parameters.
+
+These are explained in detail in the sections below.
+
+Display
+"""""""
+This contains options to change the visualization in the plotting area.
+You can show or hide each plotting element: the contour lines and heatmap of the
+poloidal flux, the coils, the limiter and divertor, the vacuum vessel, the passive
+structures, the iron core, the plasma facing components, the x-point and o-point, the
+separatrix and the target shape. For the ITER and WEST presets, you can also show the
+gaps, of the target shape and of the resulting shape. You can also choose how many
+contour levels to plot, and the opacity of the heatmap.
+
+.. _machine_presets:
+
+Machine Presets
+"""""""""""""""
+Select the machine to run NICE for. The **ITER** and **WEST** presets fill in the
+machine description URIs, and set the plasma properties, the plot area and the ranges
+of the shape sliders to defaults for that machine. A preset is only offered if its
+machine description can be read, for example on SDCC. If these are not available,
+set the machine preset to **Custom** in the Machine Presets tab of the Settings menu to provide the
+URIs of the machine descriptions yourself.
+
 NICE Configuration
 """"""""""""""""""
-This is where you set up the core parameters for NICE and provide the necessary machine description files.
+This is where you set up the core parameters for NICE.
 
 This section includes settings for:
 
@@ -336,12 +416,10 @@ This section includes settings for:
   for the inverse mode and direct mode executable paths respectively.
 * Any environment variables that NICE requires. These are stored as a dictionary of strings.
   For example: ``{'LD_LIBRARY_PATH': '/home/user/.local/lib'}``
-* The IMAS URIs for the machine descriptions.
 
 Below these, **NICE parameters** lists the parameters NICE is run with, alongside
 the value it is shipped with. Edit a value there and it is kept between sessions and
 applied to every run.
-
 
 .. note::
 
@@ -358,35 +436,85 @@ applied to every run.
   automatically saved to a configuration file (by default located in ``$HOME/.config/waveform_editor.yaml``) 
   and will be reloaded each time you start the application.
 
-Plotting Parameters
-"""""""""""""""""""
-This contains options to change the visualization in the plotting area.
-You can show/hide all the different plotting elements, and choose how many contour levels
-to use for plotting the poloidal flux.
-
 Plasma Shape
 """"""""""""
-This option is **only available in Inverse Mode** and is used to define the target 
-plasma boundary. There are three methods for specifying the shape:
+This tab is **only available in Inverse Mode** and is used to define the target
+plasma boundary. You start from a reference shape, and then edit the target shape
+from it.
 
-* **Equilibrium IDS outline**: Loads the plasma boundary outline directly from a 
-  specified time slice of an existing `equilibrium` IDS.
-* **Parameterized**: Generates a parameterization of the shape based on a set of 
-  geometric parameters.
-* **Equilibrium IDS Gaps**: Loads `gaps
-  <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`__ 
-  from an `equilibrium` IDS. The distance value from the reference point can be changed from the UI.
+**Reference shape**
+
+Choose where the reference shape comes from, and press **Set reference shape**:
+
+* **Machine default**: A typical shape of the selected :ref:`machine preset
+  <machine_presets>`. Not available for a custom machine.
+* **Equilibrium IDS**: The boundary outline of a time slice of an `equilibrium` IDS.
+  Provide its URI, select a :ref:`time slice <equilibrium_time_slice>` and press
+  **Load**.
+* **NICE result**: The boundary outline of the last converged run.
+
+Once set, the reference shape is drawn dashed in grey on the plot while you edit the 
+target shape, which you can turn off with **Show reference shape**. 
+
+**Target shape**
+
+Once a reference shape is set, choose how to edit the target shape before you start a NICE run:
+
+* **Reference shape**: The target shape is the reference shape itself, as it is.
+* **Shape parameterisation**: Generates the shape from a set of geometric parameters:
+  the minor radius, the plasma center, the elongation, the triangularity and the
+  x-point. Alternatively, you can enable **Second x-point** for a double null shape with 
+  an upper x-point as well. When you first switch to it or to **Target gaps**, the
+  parameters are fitted to the reference shape of an equilibrium. A notification warns
+  you when the fit misses the reference shape by more than 0.5 cm.
+* **Target gaps**: Only for the ITER and WEST presets. Edits the shape through
+  sliders for its :ref:`gaps <shape_metrics>`, which start at the gaps of the
+  current shape. Moving a slider fits the shape parameters to match the set gaps, and a
+  notification warns you if the closest shape misses a gap.
+* **Edit as free points**: Turns the current target shape, including its weights and
+  extra points, into a table of free points with their R, Z and weight, which you can
+  then move, add and delete. **Fit parameterisation to points** goes back to
+  the shape parameterisation, fitted to the weighted points. **Clear points** removes 
+  all points.
+  The weight of a point is the number of times it is repeated in the boundary given to
+  NICE, so a higher weight pulls NICE more strongly towards it. Points can also be edited
+  on the plot, using the **Point Draw Tool** (|point_draw_tool|): click to add a point,
+  drag a point to move it, and select a point and press backspace to delete it.
+
+**Fine tuning**
+
+Except for free points, the boundary given to NICE can be refined further:
+
+* **Boundary points**: The number of points the parameterised shape is made of. Not
+  shown for the reference shape itself, which keeps its own points.
+* **Emphasize a region**: Gives the boundary points a weight that follows a region
+  along the boundary, set by its **Position** and **Spread** in degrees and its
+  **Max weight**. The target shape is then colored by weight in the plot.
+* **Add additional weighted points**: Adds points on top of the shape, for example to
+  pin the strike points, in a table with their R, Z and weight. These can also be
+  edited on the plot with the Point Draw Tool.
+
+.. _equilibrium_time_slice:
+
+When loading from an `equilibrium` IDS, here and in the Plasma Properties, the slider
+shows the times the IDS holds a slice for. Select a time with the slider, or type it in the input next to it, which snaps to
+the closest slice, and press **Load**.
 
 .. _abg_parameterisation:
 
 Plasma Properties
 """""""""""""""""
-This contains settings for configuring the plasma's physical properties.
-You can either load them from an existing equilibrium or define them manually.
+This contains settings for configuring the plasma's physical properties: the plasma
+current (`Ip`), the reference major radius (`R0`), the toroidal field (`B0`), and the
+p' and ff' profiles. They start at defaults for the selected :ref:`machine preset
+<machine_presets>`, and can be set manually or loaded from an existing equilibrium.
 
-* **Equilibrium IDS**: Loads the plasma current (`Ip`), reference major radius (`R0`), 
-  toroidal field (`B0`), and the p' and ff' profiles from a specified time slice of an `equilibrium` IDS.
-* **Manual**: Allows you to set `Ip`, `R0`, and `B0` manually. The p' and ff' profiles 
+* **Loading from an equilibrium IDS**: Provide the URI of an `equilibrium` IDS, select
+  a :ref:`time slice <equilibrium_time_slice>` and press **Load**. All properties are
+  then taken from the IDS and marked **from IDS**. A value you change afterwards is
+  marked **edited**, and **Reset to IDS** puts it back. **Use parametric** replaces the
+  profiles of the IDS by the parameterised profiles below.
+* **Manually**: Set `Ip`, `R0`, and `B0` in their fields. The p' and ff' profiles
   are configured using the **alpha**, **beta**, and **gamma** parameters as described below.
 
 .. math::
@@ -403,6 +531,16 @@ Note, the actual p' and ff' will be scaled by NICE to satisfy the required total
 The parameter **beta** is related to the poloidal beta, whereas **alpha** and **gamma** 
 describe the peakage of the current profile. See equation 2.11 in `B. Cédric, et al. "CÉDRÈS: a free-boundary solver 
 for the Grad–Shafranov equation." (2014) <https://inria.hal.science/hal-01088772/file/CedresRefPaper.pdf>`_
+
+When a `tf` machine description is provided, **Set toroidal field by TF coil current**
+is on by default: instead of `B0`, you set the current in the TF coils, and `B0` is
+computed from it as :math:`B_0 = \mu_0 N I / (2 \pi R_0)`, with :math:`N` the total
+number of turns of the TF coils in the `tf` IDS and :math:`I` the current in each turn.
+
+**Scale coil currents with the plasma current** multiplies all coil currents by the
+ratio of the new to the previous plasma current whenever you change `Ip`. For the same
+profiles, this keeps the plasma shape, which is useful in direct mode. The currents are
+scaled from the plasma current of the last NICE run, so NICE must have run first.
 
 Coil Currents
 """""""""""""

@@ -616,10 +616,11 @@ this plasma shape.
    .. md-tab-item:: Exercise
 
       Open the tab ``Plasma Shape Editor`` in the Waveform Editor GUI. 
-      You should see an empty plotting window on your left, and an options panel on your right.
-      NICE requires configuration to be set. 
+      You should see an empty plotting window on your left, and a control panel on your right.
+      NICE requires configuration to be set, which you can do in the Settings menu, opened
+      with the gear button at the top of the control panel.
 
-      1. Set the executable paths for the NICE inverse and direct mode. 
+      1. In the ``NICE Configuration`` tab, set the executable paths for the NICE inverse and direct modes.
          If you are using the NICE module, you can leave these at their default values: 
          ``nice_imas_inv_muscle3`` and ``nice_imas_dir_muscle3`` for the inverse and
          direct mode, respectively.
@@ -631,15 +632,12 @@ this plasma shape.
          were issues when loading shared libraries, you might need to set the ``LD_LIBRARY_PATH``.
          You can set them using the following dictionary style format: ``{'LD_LIBRARY_PATH': '<paths>'}``, 
          replacing the ``<paths>`` (including angle brackets).
-      3. Provide the URIs for the different types of machine description IDS that NICE requires. 
-         You can provide your own, or if you are on SDCC you can try to use the following URI:
+      3. Provide the machine description IDSs that NICE requires, in the ``Machine Presets``
+         tab. If you are on SDCC, select the ``ITER`` preset, which fills in the URIs of the
+         ITER machine description for you. Otherwise, select ``Custom`` and provide the
+         URIs of your own machine description.
 
-         .. code-block:: bash
-
-            imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
-
-
-      What happens after you fill in the machine description URIs?
+      What happens after you select the machine description?
 
       .. tip::
          These configurations are persistent, and will automatically be loaded again 
@@ -647,7 +645,7 @@ this plasma shape.
 
    .. md-tab-item:: Solution
       
-      After you fill in the URIs of the machine description, you should see the outline of the coils,
+      After you select the machine description, you should see the outline of the coils,
       as well as the outlines of the first wall, divertor and vacuum vessel.
 
       For example: 
@@ -671,21 +669,26 @@ Exercise 6b: Running NICE inverse
       - Characteristics of the vacuum toroidal field; R0 and B0
       - p' and ff' profiles
 
-      First, open the ``Plasma Shape`` options panel, set it to ``parameterized``, and
-      leave the shape settings on theirs defaults for now.
+      First, open the ``Plasma Shape`` tab. Choose ``Machine default`` as the reference
+      shape and press ``Set reference shape``. Then select ``Shape parameterisation``
+      as the target shape, and leave the shape settings on their defaults for now.
+      If you selected ``Custom`` in exercise 6a, choose ``Equilibrium IDS`` instead and
+      load one from its URI.
 
-      Secondly, open the ``Plasma Properties`` options panel, and set it to the ``Manual`` option. 
-      Leave the values at its default for now. This will set the plasma current, R0 and B0, and the ff' and p' profiles
-      through :ref:`a parameterisation <abg_parameterisation>` using the alpha, beta, and gamma parameters. Leave the values
-      at default for now.
+      Secondly, open the ``Plasma Properties`` tab. The ITER preset set the plasma current,
+      R0 and B0, and the ff' and p' profiles through :ref:`a parameterisation <abg_parameterisation>`
+      using the alpha, beta, and gamma parameters. Leave the values at their defaults for now.
+      If you are using the ``Custom`` machine preset, you will have to set the plasma current, R0 and B0
+      to the appropriate values yourself.
 
       You should now have set up enough to run NICE inverse mode, which you can verify by
-      checking that there are no more ⚠️ icons besides the option panels, and that the ``Run`` button is enabled.
+      checking that there is no ⚠️ icon next to the ``Run`` button, and that the button is enabled.
+      If there is, hover over it to see what is still missing.
 
       Run NICE by selecting the ``Run`` button.
 
       What do you see in the plot on the left? What happens if you hover your mouse over the 
-      coil outlines? Change some of the parameters in the ``Plotting Parameters`` option panel. What do they do?
+      coil outlines? Change some of the options in the ``Display`` tab of the Settings menu. What do they do?
 
 
    .. md-tab-item:: Solution
@@ -695,9 +698,8 @@ Exercise 6b: Running NICE inverse
 
       When you hover over the coil outlines, you will see the currents calculated by NICE. 
 
-      Using the ``Plotting Parameters``
-      options, you can change how many contour lines are plotted, as well as change which 
-      plotting components are shown.
+      Using the ``Display`` options, you can change how many contour lines are plotted,
+      show the flux as a heatmap, as well as change which plotting components are shown.
 
       For example: 
 
@@ -711,42 +713,52 @@ Exercise 6c: Configuring the Plasma Shape
    .. md-tab-item:: Exercise
 
 
-      There are three ways to configure the target plasma shape for NICE inverse in the Plasma Shape Editor.
+      The target plasma shape for NICE inverse starts from a reference shape: the default
+      shape of the machine, the `boundary outline <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-outline>`_
+      of an equilibrium IDS, or the result of a previous NICE run. From there, the target
+      shape can be the reference shape itself, or be edited in three ways:
 
-      1. By providing an equilibrium IDS containing a `boundary outline <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-outline>`_.
-      2. By providing a geometric parameterization.
-      3. By providing gap distances for an equilibrium IDS containing `boundary gaps <https://imas-data-dictionary.readthedocs.io/en/latest/generated/ids/equilibrium.html#equilibrium-time_slice-boundary-gap>`_.
-      
-      We will cover the first two methods in this exercise.
+      * Through a geometric parameterisation (``Shape parameterisation``).
+      * Through the gaps between the plasma and the machine (``Target gaps``).
+      * As free points (``Edit as free points``).
 
-      1. Select the ``Equilibrium IDS outline`` option. 
-         Provide an outline from an equilibrium IDS, for example by using the URI below
-         if you are on SDCC. Visualize the boundary outline of the time steps at 200s and 251s, 
-         do you see a difference? Run NICE inverse for both time steps, what happens in each case?
-         What happens if you change the P' and FF' profiles from the manual parameterisation 
-         to the profiles from the corresponding equilibrium IDS?
+      1. Choose ``Equilibrium IDS`` as the reference shape.
+         Provide an equilibrium IDS, for example by using the URI below
+         if you are on SDCC. Visualize the boundary outline of the time steps at 200 s and 251 s,
+         by selecting the time with the slider and pressing ``Load``. Do you see a difference?
+         Press ``Set reference shape`` and run NICE inverse for both time steps. What happens in each case?
+         What happens if you load the P' and FF' profiles from the corresponding equilibrium
+         IDS in the ``Plasma Properties`` tab, instead of the manual parameterisation?
 
          .. code-block:: bash
 
             imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
-      2. Select the ``Parameterized`` option, and update some of the 
-         parameter sliders to change your target shape. Run NICE in inverse mode, does it converge?
+      2. Select ``Shape parameterisation``. The parameters are fitted to the reference shape,
+         which stays drawn dashed in the plot. Update some of the parameter sliders to change
+         your target shape. Run NICE in inverse mode. Does it converge?
+      3. Select ``Target gaps``, which requires the ``ITER`` or ``WEST`` preset, and move the
+         slider of one of the gaps, for example g₄.
+         How does the target shape change? Compare the ``Target`` row of the metrics table
+         below the plot with the ``Result`` row after running NICE inverse.
+      4. Click ``Edit as free points`` and drag some of the points on the plot with the
+         Point Draw Tool. Then click ``Fit parameterisation to points``. What happens to the
+         shape parameters?
 
    .. md-tab-item:: Solution
       
-      1. Running NICE inverse with time slice at 200s, converges and you should see the 
+      1. Running NICE inverse with the time slice at 200 s converges, and you should see the 
          following equilibrium:
 
          .. image:: ../images/training/shape_valid.png
             :align: center
 
-         Running it with the time slice at 251s with the default parameterised P' and FF' profiles, 
+         Running it with the time slice at 251 s with the default parameterised P' and FF' profiles, 
          NICE doesn't converge and it will throw an error:
 
          .. image:: ../images/training/shape_invalid.png
             :align: center
 
-         However, if you use the P' and FF' profiles from the equilibrium IDS at 251s instead,
+         However, if you use the P' and FF' profiles from the equilibrium IDS at 251 s instead,
          NICE will converge:
 
          .. image:: ../images/training/shape_valid_251s.png
@@ -755,6 +767,12 @@ Exercise 6c: Configuring the Plasma Shape
       2. If you provided a valid plasma shape NICE will converge and you will see the 
          resulting equilibrium, otherwise you will receive an error. For example if the
          given shape cannot be achieved with the given input.
+      3. Moving a gap slider fits the shape parameters, so that the gap of the target shape
+         follows the slider. After the run, the ``Difference`` row in the metrics table
+         shows how close NICE got to each target gap.
+      4. The parameters are fitted to the free points, so the parameterisation follows the
+         points as closely as it can. A notification warns you if it misses them by more
+         than 0.5 cm.
 
 Exercise 6d: Fixing Coil Currents
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -766,16 +784,16 @@ Exercise 6d: Fixing Coil Currents
       By default, NICE is able to freely change all coil currents to achieve the target
       plasma shape. It is possible, however, you fix any of the coils to a specific value,
       and NICE will try to achieve your target plasma shape by varying the unfixed coil
-      currents. You can do this in the ``Coil Currents`` panel.
+      currents. You can do this in the ``Coil Currents`` tab.
 
-      Load the plasma outline from previous exercise using the given IDS. Set
-      the currents of PF2 and PF5 to 25000A and 15000A respectively, and enable the checkbox
-      to fix the current. The sliders will update with the resulting coil currents after
-      NICE inverse converges. 
+      Set the reference shape from the previous exercise using the given IDS. Set
+      the currents of PF2 and PF5 to 25000 A and 15000 A respectively in the ``Coil current [A]``
+      column, and check their ``Fix`` checkbox to fix the current. The table will update
+      with the resulting coil currents after NICE inverse converges. 
 
       Did the currents of PF2 and PF5 stay fixed after running NICE?
 
-      Move some of the unfixed coil currents sliders randomly, and fix them. What happens?
+      Change some of the unfixed coil currents randomly, and fix them. What happens?
 
    .. md-tab-item:: Solution
       
@@ -804,33 +822,35 @@ Exercise 6e: Running NICE direct
       A common workflow is to first obtain a good equilibrium using NICE inverse, and then
       make small adjustments to the coil currents using NICE direct.
 
-      1. Load the plasma outline of the time step at 200s from the equilibrium IDS in 
+      1. Set the reference shape of the time step at 200 s from the equilibrium IDS in 
          Exercise 6c, and run NICE inverse. Make sure no coil currents are fixed.
          Note down the metrics shown below the plot, such as the elongation and triangularity.
       2. Switch the mode from ``NICE Inverse`` to ``NICE Direct`` using the toggle next 
-         to the ``Run`` button. What changes in the options panels?
-      3. Enable the ``Warm start`` switch, and run NICE direct without changing anything. 
-         How does the resulting equilibrium compare to the one from NICE inverse?
-      4. Increase the current of PF6 by 3000A in the ``Coil Currents`` panel,
+         to the ``Run`` button. What changes in the tabs of the control panel?
+      3. Run NICE direct without changing anything. How does the resulting equilibrium
+         compare to the one from NICE inverse?
+      4. Increase the current of PF6 by 3000 A in the ``Coil Currents`` tab,
          and run NICE direct again. How does the plasma shape change? What do the
          metrics tell you?
-      5. Disable the ``Warm start`` switch and run NICE direct again. What happens?
+      5. Turn on ``Auto run`` and change the current of PF6 a few times. What happens?
+         Use the ``Run history`` dropdown to go back to the run of step 3.
 
    .. md-tab-item:: Solution
 
-      1. NICE inverse converges and the ``Coil Currents`` panel is filled with the 
+      1. NICE inverse converges and the ``Coil Currents`` tab is filled with the 
          coil currents calculated by NICE.
-      2. In direct mode, the ``Plasma Shape`` panel is hidden, since NICE direct does 
+      2. In direct mode, the ``Plasma Shape`` tab is hidden, since NICE direct does 
          not require a target plasma shape. The target shape is also no longer plotted.
          The ``Fix``, ``Penalize to 0`` and ``Penalty weight`` columns are hidden from
-         the ``Coil Currents`` panel, as these only apply to inverse mode.
-      3. Since the coil currents are the ones calculated by NICE inverse, NICE direct 
-         should give the same equilibrium and metrics as NICE inverse.
+         the ``Coil Currents`` tab, as these only apply to inverse mode.
+      3. NICE direct starts from the equilibrium of the converged inverse run, as a
+         notification tells you. Since the coil currents are the ones calculated by NICE
+         inverse, NICE direct should give the same equilibrium and metrics as NICE inverse.
       4. The plasma shape changes as a result of the changed coil current. Since PF6 is
          located below the plasma, mainly the lower part of the plasma boundary changes,
          which you can see in the lower triangularity metric. The ``Previous current [A]`` column shows the 
          coil currents used in the previous run.
-      5. Without warm start, NICE direct starts from scratch instead of from the
-         previous equilibrium. This may take longer to converge, or it may not converge
-         at all. Warm starting is therefore useful when making small adjustments to an 
-         existing equilibrium.
+      5. With auto run on, NICE runs by itself shortly after each change, starting from
+         the previous equilibrium, so you see the effect of each change right away. Only
+         the latest auto run is kept in the run history. Selecting the run of step 3
+         restores its equilibrium, coil currents and metrics.
