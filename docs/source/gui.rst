@@ -532,6 +532,16 @@ The parameter **beta** is related to the poloidal beta, whereas **alpha** and **
 describe the peakage of the current profile. See equation 2.11 in `B. Cédric, et al. "CÉDRÈS: a free-boundary solver 
 for the Grad–Shafranov equation." (2014) <https://inria.hal.science/hal-01088772/file/CedresRefPaper.pdf>`_
 
+When a `tf` machine description is provided, **Set toroidal field by TF coil current**
+is on by default: instead of `B0`, you set the current in the TF coils, and `B0` is
+computed from it as :math:`B_0 = \mu_0 N I / (2 \pi R_0)`, with :math:`N` the total
+number of turns of the TF coils in the `tf` IDS and :math:`I` the current in each turn.
+
+**Scale coil currents with the plasma current** multiplies all coil currents by the
+ratio of the new to the previous plasma current whenever you change `Ip`. For the same
+profiles, this keeps the plasma shape, which is useful in direct mode. The currents are
+scaled from the plasma current of the last NICE run, so NICE must have run first.
+
 Coil Currents
 """""""""""""
 This shows the coils defined in the `pf_active` IDS in a table, one row per coil. The

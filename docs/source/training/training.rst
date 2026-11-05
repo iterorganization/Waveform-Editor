@@ -727,8 +727,8 @@ Exercise 6c: Configuring the Plasma Shape
          if you are on SDCC. Visualize the boundary outline of the time steps at 200 s and 251 s,
          by selecting the time with the slider and pressing ``Load``. Do you see a difference?
          Press ``Set reference shape`` and run NICE inverse for both time steps. What happens in each case?
-         What happens if you change the P' and FF' profiles from the manual parameterisation 
-         to the profiles from the corresponding equilibrium IDS?
+         What happens if you load the P' and FF' profiles from the corresponding equilibrium
+         IDS in the ``Plasma Properties`` tab, instead of the manual parameterisation?
 
          .. code-block:: bash
 
@@ -736,7 +736,8 @@ Exercise 6c: Configuring the Plasma Shape
       2. Select ``Shape parameterisation``. The parameters are fitted to the reference shape,
          which stays drawn dashed in the plot. Update some of the parameter sliders to change
          your target shape. Run NICE in inverse mode. Does it converge?
-      3. Select ``Target gaps``, and move the slider of one of the gaps, for example g₄.
+      3. Select ``Target gaps``, which requires the ``ITER`` or ``WEST`` preset, and move the
+         slider of one of the gaps, for example g₄.
          How does the target shape change? Compare the ``Target`` row of the metrics table
          below the plot with the ``Result`` row after running NICE inverse.
       4. Click ``Edit as free points`` and drag some of the points on the plot with the
