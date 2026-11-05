@@ -130,6 +130,10 @@ class NiceSettings(param.Parameterized):
             self._check_required_params_filled,
             ["inv_executable", "dir_executable", "mode"],
         )
+        # Start from the default preset, or from scratch if its data cannot be read
+        if self.machine_preset not in self._available_presets:
+            self.machine_preset = self.PRESET_CUSTOM
+        self.set_machine_preset()
 
     def _load_machine_description_presets(self):
         """Load the machine description presets from PRESET_URIS"""
@@ -180,15 +184,18 @@ class NiceSettings(param.Parameterized):
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
+        # The stored URIs are those of the custom preset
         for md in self.machine_descriptions:
             md_name = f"md_{md.ids_name}"
             if md_name in params:
-                md.uri = md.custom_uri = params.pop(md_name)
+                md.custom_uri = params.pop(md_name)
         for key in list(params):
             if key not in self.param or key == "name":
                 logger.warning(f"Removing unknown NICE setting: {key}")
                 params.pop(key)
         self.param.update(**params)
+        # Also when the preset is unchanged, its URIs replace those set before
+        self.set_machine_preset()
 
     def _sync_custom_uri(self, event):
         if self.machine_preset == self.PRESET_CUSTOM:
