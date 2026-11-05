@@ -18,9 +18,8 @@ class WaveformSidebar(param.Parameterized):
 
         content = pn.Column(
             io_manager,
-            selector,
+            pn.Column(selector, scroll=True, sizing_mode="stretch_width"),
             sizing_mode="stretch_width",
-            scroll=True,
             visible=self.param.open,
         )
 
