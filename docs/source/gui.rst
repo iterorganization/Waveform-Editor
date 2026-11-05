@@ -318,7 +318,7 @@ Auto run
 
 With the **Auto run** switch on, NICE runs by itself whenever the plasma shape, plasma
 properties or coil currents change. While auto run is enabled, the **Run** button is disabled.
-Furthermore, when auto run is enabled only the latest auto run of a series is kept in the run history.
+Only the latest auto run of a series is kept in the run history.
 
 .. _shape_metrics:
 
@@ -399,7 +399,7 @@ Select the machine to run NICE for. The **ITER** and **WEST** presets fill in th
 machine description URIs, and set the plasma properties, the plot area and the ranges
 of the shape sliders to defaults for that machine. A preset is only offered if its
 machine description can be read, for example on SDCC. If these are not available,
-set the machine preset to **Custom** in the Machine Presets setting menu to provide the
+set the machine preset to **Custom** in the Machine Presets tab of the Settings menu to provide the
 URIs of the machine descriptions yourself.
 
 NICE Configuration
@@ -485,11 +485,11 @@ Once a reference shape is set, choose how to edit the target shape before you st
 
 Except for free points, the boundary given to NICE can be refined further:
 
-* **Boundary points**: The number of points the parameterized shape is made of. Not
+* **Boundary points**: The number of points the parameterised shape is made of. Not
   shown for the reference shape itself, which keeps its own points.
 * **Emphasize a region**: Gives the boundary points a weight that follows a region
   along the boundary, set by its **Position** and **Spread** in degrees and its
-  **Max weight**. The target shape is then coloured by weight in the plot.
+  **Max weight**. The target shape is then colored by weight in the plot.
 * **Add additional weighted points**: Adds points on top of the shape, for example to
   pin the strike points, in a table with their R, Z and weight. These can also be
   edited on the plot with the Point Draw Tool.
@@ -513,7 +513,7 @@ p' and ff' profiles. They start at defaults for the selected :ref:`machine prese
   a :ref:`time slice <equilibrium_time_slice>` and press **Load**. All properties are
   then taken from the IDS and marked **from IDS**. A value you change afterwards is
   marked **edited**, and **Reset to IDS** puts it back. **Use parametric** replaces the
-  profiles of the IDS by the parameterized profiles below.
+  profiles of the IDS by the parameterised profiles below.
 * **Manually**: Set `Ip`, `R0`, and `B0` in their fields. The p' and ff' profiles
   are configured using the **alpha**, **beta**, and **gamma** parameters as described below.
 
