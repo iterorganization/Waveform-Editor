@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import imas
@@ -90,7 +91,7 @@ class WaveformEditorGui(param.Parameterized):
                 }
             },
         )
-        shape_editor = ShapeEditor(self)
+        self.shape_editor = ShapeEditor(self)
         self.tabs = pn.Tabs(
             ("View Waveforms", self.plotter_view),
             ("Edit Waveforms", pn.Row(self.editor, self.plotter_edit)),
@@ -125,7 +126,7 @@ class WaveformEditorGui(param.Parameterized):
             self.io_manager,
             self.selector,
             self.tabs,
-            shape_editor,
+            self.shape_editor,
         )
 
         self.main_column = pn.Column(
@@ -149,14 +150,19 @@ class WaveformEditorGui(param.Parameterized):
         self.confirm_modal.show(self.EXIT_MESSAGE, on_confirm=self._shutdown)
 
     def _shutdown(self):
-        """Stop the Panel server, so the process running the GUI exits."""
+        """Stop NICE and the Panel server, so the process running the GUI exits."""
         self.main_column[:] = [
             pn.pane.Alert(
                 "The waveform editor has been closed. You can close this tab.",
                 alert_type="secondary",
             )
         ]
-        pn.state.curdoc.add_timeout_callback(pn.state.kill_all_servers, 500)
+        pn.state.execute(self._stop_servers)
+
+    async def _stop_servers(self):
+        await self.shape_editor.stop_nice()
+        await asyncio.sleep(0.5)  # Let the alert reach the browser
+        pn.state.kill_all_servers()
 
     def _confirm_or_update(self, leaving_editor):
         """Show discard-changes confirmation if needed, otherwise update selection.
