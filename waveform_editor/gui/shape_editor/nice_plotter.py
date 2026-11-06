@@ -595,6 +595,7 @@ class NicePlotter(Viewer):
                     limit = current_limit(coil)
                     if limit is not None and abs(current) > limit:
                         fill_alpha = 0.4
+                        name = f"{name} (limit {limit:.3f} [{units}])"
                 for element in coil.element:
                     rect = element.geometry.rectangle
                     outline = element.geometry.outline
@@ -624,22 +625,17 @@ class NicePlotter(Viewer):
                             "'rect' or 'outline' node"
                         )
                         continue
-        rects = hv.Rectangles(rectangles, vdims=["name", "fill_alpha"]).opts(
-            line_color="black",
-            fill_color="red",
-            fill_alpha="fill_alpha",
-            line_width=2,
-            show_legend=False,
-            hover_tooltips=[("", "@name")],
-        )
-        polygons = hv.Polygons(paths, vdims=["name", "fill_alpha"]).opts(
-            line_color="black",
-            fill_color="red",
-            fill_alpha="fill_alpha",
-            line_width=1,
-            show_legend=False,
-            hover_tooltips=[("", "@name")],
-        )
+        vdims = ["name", "fill_alpha"]
+        style = {
+            "line_color": "black",
+            "line_width": 2,
+            "color": "red",
+            "fill_alpha": "fill_alpha",
+            "show_legend": False,
+            "hover_tooltips": [("", "@name")],
+        }
+        rects = hv.Rectangles(rectangles, vdims=vdims).opts(**style)
+        polygons = hv.Polygons(paths, vdims=vdims).opts(**style)
         return rects * polygons
 
     def _plot_heatmap(self):
