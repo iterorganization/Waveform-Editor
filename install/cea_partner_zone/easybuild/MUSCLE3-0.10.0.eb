@@ -1,0 +1,30 @@
+easyblock = 'ConfigureMake'
+
+name = 'MUSCLE3'
+version = '0.10.0'
+
+homepage = 'https://muscle3.readthedocs.io'
+description = """The Multiscale Coupling Library and Environment, version 3: its C++
+and Fortran libraries, which NICE links to. The Python package of the same version
+is installed with the Waveform-Editor."""
+
+toolchain = SYSTEM
+
+source_urls = ['https://github.com/multiscale/muscle3/archive/']
+sources = [{'download_filename': '%(version)s.tar.gz', 'filename': 'muscle3-%(version)s.tar.gz'}]
+checksums = ['f331eac3b56523ece8731e0141857563d0b34740a23892e6669c45c746338cd9']
+
+# Modules of the cluster
+builddependencies = [('mamba/python-3.11', EXTERNAL_MODULE)]
+dependencies = [('gcc/13.2.0', EXTERNAL_MODULE)]
+
+# There is no configure script: make builds, and installs into PREFIX
+skipsteps = ['configure']
+installopts = 'PREFIX=%(installdir)s'
+
+sanity_check_paths = {
+    'files': ['lib/libmuscle.so', 'lib/libymmsl.so', 'lib/pkgconfig/libmuscle.pc'],
+    'dirs': ['include'],
+}
+
+moduleclass = 'lib'
