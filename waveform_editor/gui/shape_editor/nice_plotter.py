@@ -487,6 +487,11 @@ class NicePlotter(Viewer):
                 self.show_separatrix and self.communicator.equilibrium is not None,
             ),
             (
+                "Second separatrix",
+                "2px solid darkorange",
+                self._secondary_separatrices(),
+            ),
+            (
                 "Target gaps",
                 "2px dashed blue",
                 gaps and self.show_target_gaps and self.has_target(),
@@ -706,7 +711,8 @@ class NicePlotter(Viewer):
         return segments
 
     def _plot_separatrix(self):
-        """Plots the separatrix from the equilibrium boundary.
+        """Plots the separatrix from the equilibrium boundary, and the second
+        separatrix through the other x-point, if there is one.
 
         Returns:
             Holoviews curve containing the separatrix.
@@ -721,12 +727,34 @@ class NicePlotter(Viewer):
 
             boundary_psi = equilibrium.time_slice[0].boundary.psi
             contour = self._calc_contours(equilibrium, [boundary_psi])
-        return hv.Curve((r, z)).opts(
-            color="red",
-            line_width=4,
-            show_legend=False,
-            hover_tooltips=[("", "Separatrix")],
-        ) * contour.opts(self.CONTOUR_OPTS)
+        return (
+            hv.Curve((r, z)).opts(
+                color="red",
+                line_width=4,
+                show_legend=False,
+                hover_tooltips=[("", "Separatrix")],
+            )
+            * contour.opts(self.CONTOUR_OPTS)
+            * hv.Path(self._secondary_separatrices()).opts(
+                color="darkorange",
+                line_width=2,
+                show_legend=False,
+                hover_tooltips=[("", "Second separatrix")],
+            )
+        )
+
+    def _secondary_separatrices(self):
+        """The (r, z) of the separatrix NICE gives through each secondary x-point.
+        Node 0 is the magnetic axis and node 1 the primary x-point, so these are the
+        x-points after them."""
+        equilibrium = self.communicator.equilibrium
+        if not self.show_separatrix or equilibrium is None:
+            return []
+        return [
+            (node.levelset.r, node.levelset.z)
+            for node in list(equilibrium.time_slice[0].contour_tree.node)[2:]
+            if node.critical_type == 1 and len(node.levelset.r) > 1
+        ]
 
     @pn.depends("wall", "show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
