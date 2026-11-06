@@ -153,11 +153,6 @@ class NicePlotter(Viewer):
         NiceSettings.PRESET_ITER: ((0, 13), (-10, 10)),
         NiceSettings.PRESET_WEST: ((0, 4.8), (-2.6, 2.6)),
     }
-    # The r and z range zoomed in on the plasma
-    ZOOMED_RANGES = {
-        NiceSettings.PRESET_ITER: ((3.8, 8.5), (-4.7, 4.85)),
-        NiceSettings.PRESET_WEST: ((1.75, 3.2), (-0.88, 0.88)),
-    }
     R_RANGE, Z_RANGE = MACHINE_RANGES[NiceSettings.PRESET_ITER]
     HEATMAP_RESOLUTION = 250
 
@@ -166,19 +161,17 @@ class NicePlotter(Viewer):
         self.nice_settings = settings.nice
         self._figure = None
         self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
+        self.param.watch(self._apply_machine_ranges, "wall")
         self._zoom_tool = CustomAction(
             icon="zoom_in",
-            description="Zoom into the vacuum vessel",
+            description="Zoom in on the limiter",
             # Bokeh only toggles a tool that has a callback
             callback=CustomJS(code=""),
             active_callback="auto",
-            visible=self.nice_settings.machine_preset in self.ZOOMED_RANGES,
         )
-        self._zoom_tool.on_change(
-            "active", lambda attr, old, new: self._apply_machine_ranges()
-        )
+        self._zoom_tool.on_change("active", self._on_zoom_toggled)
+        self._apply_machine_ranges()
         r_range, z_range = self._machine_ranges()
-        self.frame_width = self._width_for(self.frame_height)
         self.DEFAULT_OPTS = hv.opts.Overlay(
             xlim=r_range,
             ylim=z_range,
@@ -353,19 +346,38 @@ class NicePlotter(Viewer):
         # Scrolling over an axis would zoom only that axis, stretching the machine
         for tool in plot.state.select(WheelZoomTool):
             tool.zoom_on_axis = False
-        # The zoom to vessel button replaces these, as these would not keep aspect ratio
+        # The zoom button replaces these, as these would not keep aspect ratio
         unwanted = (BoxZoomTool, ResetTool)
         toolbar = plot.state.toolbar
         tools = [t for t in toolbar.tools if not isinstance(t, unwanted)]
         toolbar.tools = [*tools, self._zoom_tool]
 
     def _machine_ranges(self):
-        """The r and z range of the machine of the selected preset, or of its plasma
+        """The r and z range of the machine of the selected preset, or of its limiter
         when zoomed in."""
-        preset = self.nice_settings.machine_preset
-        if self._zoom_tool.active and preset in self.ZOOMED_RANGES:
-            return self.ZOOMED_RANGES[preset]
-        return self.MACHINE_RANGES.get(preset, (self.R_RANGE, self.Z_RANGE))
+        limiter_ranges = self._limiter_ranges()
+        if self._zoom_tool.active and limiter_ranges is not None:
+            return limiter_ranges
+        return self.MACHINE_RANGES.get(
+            self.nice_settings.machine_preset, (self.R_RANGE, self.Z_RANGE)
+        )
+
+    def _limiter_ranges(self):
+        """The r and z range of the limiter of the wall, with a small margin, or None
+        without one."""
+        if self.wall is None:
+            return None
+        outlines = [
+            unit.outline
+            for unit in self.wall.description_2d[0].limiter.unit
+            if len(unit.outline.r)
+        ]
+        if not outlines:
+            return None
+        r = np.concatenate([outline.r for outline in outlines])
+        z = np.concatenate([outline.z for outline in outlines])
+        margin = 0.03 * max(np.ptp(r), np.ptp(z))
+        return tuple((x.min() - margin, x.max() + margin) for x in (r, z))
 
     def _width_for(self, height):
         """The width of the plot at a height, for the aspect of the machine."""
@@ -405,10 +417,17 @@ class NicePlotter(Viewer):
             high
         ) - self.frame_width
 
+    def _on_zoom_toggled(self, attr, old, new):
+        self._apply_machine_ranges()
+
     def _apply_machine_ranges(self, event=None):
-        """Show the machine of the selected preset, coils and all."""
-        preset = self.nice_settings.machine_preset
-        self._zoom_tool.visible = preset in self.ZOOMED_RANGES
+        """Show the machine of the selected preset, coils and all, or its limiter when
+        zoomed in."""
+        can_zoom = self._limiter_ranges() is not None
+        self._zoom_tool.visible = can_zoom
+        if not can_zoom:
+            # Else showing it again, for another wall, would zoom in at once
+            self._zoom_tool.active = False
         if self._figure is not None:
             r_range, z_range = self._machine_ranges()
             self._figure.x_range.start, self._figure.x_range.end = r_range

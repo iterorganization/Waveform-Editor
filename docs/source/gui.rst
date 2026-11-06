@@ -271,9 +271,8 @@ The interface is primarily divided into two sections: a large plotting area on t
 that displays the machine geometry and equilibrium results, and a control panel on the 
 right with various configuration options.
 
-For the ITER and WEST machine presets, the zoom tool (magnifier) in the toolbar of the
-plot zooms the plot in on the plasma, just around the limiter and divertor,
-and out again on the whole machine.
+The zoom tool (magnifier) in the toolbar of the plot zooms the plot in on the limiter,
+and out again on the whole machine. It is shown when the loaded wall has a limiter.
 
 .. figure:: images/gui/plasma_shape_editor.png
 
