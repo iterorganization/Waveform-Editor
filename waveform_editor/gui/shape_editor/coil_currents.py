@@ -19,6 +19,15 @@ MACHINE_COIL_GROUPS = {
 }
 
 
+def current_limit(coil):
+    """The largest current a pf_active ``coil`` tolerates, or None if it isn't in the
+    machine description."""
+    limits = np.abs(np.asarray(coil.current_limit_max))
+    if limits.size == 0:
+        return None
+    return float(limits.max())
+
+
 class CoilCurrentEntry(param.Parameterized):
     coil_name = param.String()
     fix_current = param.Boolean(default=False)
@@ -172,7 +181,7 @@ class CoilCurrents(Viewer):
             entry = CoilCurrentEntry(
                 coil_name=str(coil.name),
                 current=coil_current.data[0] if coil_current.data.has_value else None,
-                current_limit=self._current_limit(coil),
+                current_limit=current_limit(coil),
             )
             new_coils.append(entry)
 
@@ -197,14 +206,6 @@ class CoilCurrents(Viewer):
             names = ", ".join(coil.coil_name for coil in exceeded)
             message = f"{len(exceeded)} coils are beyond their limit: {names}."
         pn.state.notifications.warning(message, duration=10000)
-
-    def _current_limit(self, coil):
-        """The largest current ``coil`` tolerates, or None if it isn't in the machine
-        description."""
-        limits = np.abs(np.asarray(coil.current_limit_max))
-        if limits.size == 0:
-            return None
-        return float(limits.max())
 
     def _update_column_visibility(self, *events):
         """Show or hide the inverse-mode-only columns based on whether NICE is in

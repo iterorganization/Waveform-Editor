@@ -9,6 +9,7 @@ from bokeh.models import HoverTool, PointDrawTool, WheelZoomTool
 from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.coil_currents import current_limit
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
@@ -584,12 +585,16 @@ class NicePlotter(Viewer):
         if self.show_coils and self.pf_active is not None:
             for idx, coil in enumerate(self.pf_active.coil):
                 name = str(coil.name)
+                fill_alpha = 0  # Coil is in red when beyond its current limit
                 if self.communicator.pf_active and len(
                     self.communicator.pf_active.coil
                 ) == len(self.pf_active.coil):
                     current = self.communicator.pf_active.coil[idx].current.data[0]
                     units = self.communicator.pf_active.coil[idx].current.metadata.units
                     name = f"{name} | {current:.3f} [{units}]"
+                    limit = current_limit(coil)
+                    if limit is not None and abs(current) > limit:
+                        fill_alpha = 0.4
                 for element in coil.element:
                     rect = element.geometry.rectangle
                     outline = element.geometry.outline
@@ -599,9 +604,9 @@ class NicePlotter(Viewer):
                         r1 = rect.r + rect.width / 2
                         z0 = rect.z - rect.height / 2
                         z1 = rect.z + rect.height / 2
-                        rectangles.append((r0, z0, r1, z1, name))
+                        rectangles.append((r0, z0, r1, z1, name, fill_alpha))
                     elif outline.has_value:
-                        paths.append((outline.r, outline.z, name))
+                        paths.append((outline.r, outline.z, name, fill_alpha))
                     elif annulus.r.has_value:
                         # Just plot outer radius for now
                         phi = np.linspace(0, 2 * np.pi, 17)
@@ -610,6 +615,7 @@ class NicePlotter(Viewer):
                                 (annulus.r + annulus.radius_outer * np.cos(phi)),
                                 (annulus.z + annulus.radius_outer * np.sin(phi)),
                                 name,
+                                fill_alpha,
                             )
                         )
                     else:
@@ -618,14 +624,23 @@ class NicePlotter(Viewer):
                             "'rect' or 'outline' node"
                         )
                         continue
-        rects = hv.Rectangles(rectangles, vdims=["name"]).opts(
+        rects = hv.Rectangles(rectangles, vdims=["name", "fill_alpha"]).opts(
             line_color="black",
-            fill_alpha=0,
+            fill_color="red",
+            fill_alpha="fill_alpha",
             line_width=2,
             show_legend=False,
             hover_tooltips=[("", "@name")],
         )
-        return rects * _geometry_paths(paths, line_width=1)
+        polygons = hv.Polygons(paths, vdims=["name", "fill_alpha"]).opts(
+            line_color="black",
+            fill_color="red",
+            fill_alpha="fill_alpha",
+            line_width=1,
+            show_legend=False,
+            hover_tooltips=[("", "@name")],
+        )
+        return rects * polygons
 
     def _plot_heatmap(self):
         """Generates heatmap plot for poloidal flux.
