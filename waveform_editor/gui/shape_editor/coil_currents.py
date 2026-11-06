@@ -196,7 +196,7 @@ class CoilCurrents(Viewer):
         else:
             names = ", ".join(coil.coil_name for coil in exceeded)
             message = f"{len(exceeded)} coils are beyond their limit: {names}."
-        pn.state.notifications.warning(message)
+        pn.state.notifications.warning(message, duration=10000)
 
     def _current_limit(self, coil):
         """The largest current ``coil`` tolerates, or None if it isn't in the machine
@@ -284,6 +284,7 @@ class CoilCurrents(Viewer):
             self.coils[i].current = coil.current.data[0]
         self.reference_ip = ip
         self._update_table()
+        self._warn_exceeded()
 
     def scale_to_ip(self, ip):
         """Scale the coil currents from the plasma current they were computed for to
