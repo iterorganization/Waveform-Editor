@@ -591,11 +591,11 @@ class NicePlotter(Viewer):
                 ) == len(self.pf_active.coil):
                     current = self.communicator.pf_active.coil[idx].current.data[0]
                     units = self.communicator.pf_active.coil[idx].current.metadata.units
-                    name = f"{name} | {current:.3f} [{units}]"
+                    name = f"{name} | {current:.0f} {units}"
                     limit = current_limit(coil)
                     if limit is not None and abs(current) > limit:
                         fill_alpha = 0.4
-                        name = f"{name} (limit {limit:.3f} [{units}])"
+                        name = f"{name} (limit {limit:.0f} {units})"
                 for element in coil.element:
                     rect = element.geometry.rectangle
                     outline = element.geometry.outline
