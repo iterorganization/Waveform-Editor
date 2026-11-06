@@ -16,5 +16,9 @@ Each time: double-click waveform-editor.cmd.
   - The browser opens by itself after about 10 to 20 seconds.
   - To stop: close the window (or press Ctrl+C in it).
 
+To use another server than altair, for example andromede2, run in PowerShell:
+
+    .\waveform-editor.cmd -Server andromede2.partenaires.cea.fr
+
 If your login was mistyped, delete the file .waveform-editor-login in your home
 folder (C:\Users\<you>) and start again.

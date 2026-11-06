@@ -1,8 +1,9 @@
-# Waveform-Editor on altair (CEA cluster)
+# Waveform-Editor on the CEA partner zone
 
 The Waveform-Editor and NICE (inverse and direct, IMAS + MUSCLE3) are installed as
-modules on `altair.partenaires.cea.fr`, built with [EasyBuild](https://easybuild.io)
-from the recipes in `easybuild/`, and shared with colleagues.
+modules on the CEA partner zone, built with [EasyBuild](https://easybuild.io) from the
+recipes in `easybuild/`, and shared with colleagues. They were built on
+`altair.partenaires.cea.fr`, and work on its other servers too, such as `andromede2`.
 
 ## Using it
 
@@ -12,10 +13,6 @@ module load Waveform-Editor        # loads NICE, MUSCLE3, IMAS, ... with it
 waveform-editor gui                # in x2go (slow), or:
 waveform-editor gui --socket       # for a browser on your laptop
 ```
-
-The machine description data of the ITER and WEST presets is found on altair by
-itself: the cluster is detected from the host name, and can be changed in the settings
-of the shape editor (Machine Presets > Cluster).
 
 ### From a Windows laptop
 
@@ -43,7 +40,7 @@ first `python` it finds that has EasyBuild):
 
 ```bash
 export PATH=/home/MS013565/public/easybuild/eb-venv/bin:$PATH
-cd install/altair/easybuild
+cd install/cea_partner_zone/easybuild
 eb --configfiles=easybuild.cfg --robot=. Waveform-Editor-20261105.eb   # MUSCLE3 and NICE first if needed
 ```
 

@@ -1,6 +1,5 @@
 import logging
 import os
-import socket
 from pathlib import Path
 
 import imas
@@ -34,55 +33,24 @@ class NiceSettings(param.Parameterized):
     PRESET_ITER = "ITER"
     PRESET_WEST = "WEST"
     PRESET_CUSTOM = "Custom"
-    CLUSTER_SDCC = "ITER SDCC"
-    CLUSTER_ALTAIR = "CEA altair"
 
-    # Preset machine description URIs, for each cluster
+    # Preset machine description URIs
     # TODO: Update URIs so they are from the MD database
-    CLUSTER_PRESET_URIS = {
-        CLUSTER_SDCC: {
-            PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",  # noqa E501
-            },
-            PRESET_WEST: {
-                "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-            },
+    PRESET_URIS = {
+        PRESET_ITER: {
+            "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
+            "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
+            "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",
+            "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",
         },
-        CLUSTER_ALTAIR: {
-            PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
-                "tf": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/111002/3",
-            },
-            PRESET_WEST: {
-                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-                "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
-                "iron_core": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-            },
+        PRESET_WEST: {
+            "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
+            "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
+            "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",
+            "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
         },
-    }
-    # The domain of the host names of each cluster, to detect the one we are on
-    CLUSTER_DOMAINS = {
-        CLUSTER_SDCC: "iter.org",
-        CLUSTER_ALTAIR: "partenaires.cea.fr",
     }
 
-    cluster = param.Selector(
-        objects=list(CLUSTER_PRESET_URIS),
-        default=None,
-        allow_None=True,
-        label="Cluster",
-        doc="The cluster the machine description data of the presets is read on, "
-        "detected from the host name if not set.",
-    )
     machine_preset = param.Selector(default=PRESET_CUSTOM, label="Machine Preset")
     inv_executable = param.String(
         default="nice_imas_inv_muscle3",
@@ -140,10 +108,12 @@ class NiceSettings(param.Parameterized):
     is_inverse_mode = param.Boolean(precedence=-1)
 
     def __init__(self, **params):
-        if params.get("cluster") is None:
-            params["cluster"] = self._detect_cluster()
         super().__init__(**params)
-        self._update_available_presets()
+        self._available_presets = self._load_machine_description_presets()
+        self.param.machine_preset.objects = [
+            *self._available_presets.keys(),
+            self.PRESET_CUSTOM,
+        ]
 
         self.machine_descriptions = (
             self.md_pf_active,
@@ -160,41 +130,12 @@ class NiceSettings(param.Parameterized):
             self._check_required_params_filled,
             ["inv_executable", "dir_executable", "mode"],
         )
-        # Start from the default preset, or from scratch if its data cannot be read
-        if self.machine_preset not in self._available_presets:
-            self.machine_preset = self.PRESET_CUSTOM
-        self.set_machine_preset()
-
-    @classmethod
-    def _detect_cluster(cls):
-        """The cluster whose domain the host name is in, SDCC if none is."""
-        hostname = socket.getfqdn()
-        for cluster, domain in cls.CLUSTER_DOMAINS.items():
-            if hostname == domain or hostname.endswith(f".{domain}"):
-                return cluster
-        return cls.CLUSTER_SDCC
-
-    def _update_available_presets(self):
-        """Load the presets of the cluster, and offer those that could be loaded."""
-        self._available_presets = self._load_machine_description_presets()
-        self.param.machine_preset.objects = [
-            *self._available_presets.keys(),
-            self.PRESET_CUSTOM,
-        ]
-
-    @param.depends("cluster", watch=True)
-    def _change_cluster(self):
-        self._update_available_presets()
-        if self.machine_preset not in self._available_presets:
-            self.machine_preset = self.PRESET_CUSTOM
-        self.set_machine_preset()
 
     def _load_machine_description_presets(self):
-        """Load the machine description presets of the cluster from
-        CLUSTER_PRESET_URIS"""
+        """Load the machine description presets from PRESET_URIS"""
         available = {}
 
-        for preset_name, preset in self.CLUSTER_PRESET_URIS[self.cluster].items():
+        for preset_name, preset in self.PRESET_URIS.items():
             try:
                 for ids_name, uri in preset.items():
                     if not getattr(self, f"md_{ids_name}").required:
@@ -239,27 +180,15 @@ class NiceSettings(param.Parameterized):
 
     def apply_settings(self, params):
         """Update parameters from a dictionary, skipping unknown keys."""
-        # The stored URIs are those of the custom preset
         for md in self.machine_descriptions:
             md_name = f"md_{md.ids_name}"
             if md_name in params:
-                md.custom_uri = params.pop(md_name)
+                md.uri = md.custom_uri = params.pop(md_name)
         for key in list(params):
             if key not in self.param or key == "name":
                 logger.warning(f"Removing unknown NICE setting: {key}")
                 params.pop(key)
-        # The presets offered depend on the cluster, so it is set first
-        if params.get("cluster") in self.CLUSTER_PRESET_URIS:
-            self.cluster = params.pop("cluster")
-        else:
-            params.pop("cluster", None)
-        preset = params.get("machine_preset")
-        if preset is not None and preset not in self.param.machine_preset.objects:
-            logger.warning(f"Machine preset {preset} is unavailable on {self.cluster}")
-            params.pop("machine_preset")
         self.param.update(**params)
-        # Also when the preset is unchanged, its URIs replace those set before
-        self.set_machine_preset()
 
     def _sync_custom_uri(self, event):
         if self.machine_preset == self.PRESET_CUSTOM:

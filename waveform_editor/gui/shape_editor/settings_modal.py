@@ -182,9 +182,6 @@ class SettingsModal(Viewer):
         self._md_inputs = {}
 
         # --- Machine Presets tab ---
-        cluster_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.cluster, name="", width=self.PRESET_WIDTH
-        )
         preset_selector = pn.widgets.Select.from_param(
             self.nice_settings.param.machine_preset, name="", width=self.PRESET_WIDTH
         )
@@ -203,8 +200,6 @@ class SettingsModal(Viewer):
                 )
             )
         machine_preset_content = pn.Column(
-            self._section_label("Cluster"),
-            cluster_selector,
             self._section_label("Preset"),
             preset_selector,
             self._section_label("Required Machine Descriptions"),

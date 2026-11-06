@@ -46,7 +46,7 @@ postinstallcmds = [
     'mkdir %(installdir)s/chrome',
     '%(installdir)s/bin/plotly_get_chrome -y --path %(installdir)s/chrome',
     # The launcher of the GUI from a Windows laptop, for colleagues to copy
-    'cp -r %(builddir)s/Waveform-Editor/install/altair/windows %(installdir)s/',
+    'cp -r %(builddir)s/Waveform-Editor/install/cea_partner_zone/windows %(installdir)s/',
 ]
 
 # Only bin is added to PATH, by default
