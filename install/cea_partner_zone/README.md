@@ -56,9 +56,9 @@ python -m venv ~/public/easybuild/eb-venv
 ### A new version of the Waveform-Editor
 
 Copy the Waveform-Editor recipe to one with the new version in its name, and change in
-it `version` and `local_git_ref` (a commit or tag of develop). Once there is a release on
-PyPI, the recipe can take it from there instead of git. NICE and MUSCLE3 are only rebuilt
-when their own recipes change.
+it `version` and `local_commit` (a commit of develop: EasyBuild cannot take a branch).
+Once there is a release on PyPI, the recipe can take it from there instead of git. NICE
+and MUSCLE3 are only rebuilt when their own recipes change.
 
 ## Notes
 

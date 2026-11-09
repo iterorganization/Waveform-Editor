@@ -3,8 +3,9 @@ easyblock = 'Binary'
 name = 'Waveform-Editor'
 # The date of the git version below, until a release can be taken from PyPI
 version = '20261105'
-# TODO: a commit of develop once the cluster setting is merged
-local_git_ref = 'feature/altair_install'
+# The latest commit of the branch feature/altair_install (git_config takes a tag or a
+# commit, not a branch). TODO: the commit of develop once it is merged
+local_commit = 'f06f47c05ccd19efef6142a03e98b0e19d65daba'
 # The Python package version: the tarball from git has no history to compute it from
 local_pkg_version = '0.3.2.dev%(version)s'
 
@@ -20,7 +21,7 @@ sources = [{
     'git_config': {
         'url': 'https://github.com/iterorganization',
         'repo_name': 'Waveform-Editor',
-        'tag': local_git_ref,
+        'commit': local_commit,
         # setuptools_scm takes the files to install, such as the CSS of the GUI, from git
         'keep_git_dir': True,
     },
