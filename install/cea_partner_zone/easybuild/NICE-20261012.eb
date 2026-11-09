@@ -1,0 +1,70 @@
+easyblock = 'MakeCp'
+
+name = 'NICE'
+# The date of the commit below, as NICE has no release tag for it
+version = '20261012'
+local_commit = '36d11a69cf33c09ce5e4ad08a4bff12ca310b9c1'
+
+homepage = 'https://gitlab.inria.fr/blfauger/nice'
+description = """NICE free-boundary equilibrium code: the inverse and direct executables
+with IMAS and MUSCLE3 (nice_imas_inv_muscle3, nice_imas_dir_muscle3) that the
+Waveform-Editor runs."""
+
+toolchain = SYSTEM
+
+sources = [{
+    'filename': 'nice-%(version)s.tar.gz',
+    'git_config': {
+        'url': 'https://gitlab.inria.fr/blfauger',
+        'repo_name': 'nice',
+        'commit': local_commit,
+        # Eigen and SuiteSparse are submodules
+        'recursive': True,
+    },
+}]
+checksums = [None]  # a tarball made from git is not reproducible
+
+# Modules of the cluster, in the order they must be loaded. IMAS provides the C++
+# Access Layer, papi is added by the blitz pkg-config file, lapack gives -lblas and
+# -llapack, and uda loads boost, whose boost_filesystem MUSCLE3 needs.
+dependencies = [
+    ('mamba/python-3.11', EXTERNAL_MODULE),
+    ('gcc/13.2.0', EXTERNAL_MODULE),
+    ('hdf5/1.8.12-gcc-13.2.0', EXTERNAL_MODULE),
+    ('uda/2.8.1', EXTERNAL_MODULE),
+    ('blitz/1.0.2-gcc-13.2.0', EXTERNAL_MODULE),
+    ('papi/5.7.0-gcc-13.2.0', EXTERNAL_MODULE),
+    ('mdsplus/7.131.5-gcc-13.2.0', EXTERNAL_MODULE),
+    ('lapack/3.9.1-gcc-13.2.0', EXTERNAL_MODULE),
+    ('IMAS/4.1.0-5.4.3-python-3.11-hdf5-1.8.12-gcc-13.2.0', EXTERNAL_MODULE),
+    ('MUSCLE3', '0.10.0'),
+]
+
+start_dir = 'src'
+# The cluster has no SuiteSparse headers, so the one bundled with NICE is built
+# first, then the NICE library in parallel and the executables after it
+local_makeopts = '-f Makefile.TEMPLATE CHOOSE_SYSTEM_SUITESPARSE=no'
+# (from its directory: with make -C, the metis Makefile gets a 'w' target)
+prebuildopts = 'cd ../external/SuiteSparse && make BLAS=-lblas LAPACK=-llapack && cd - && '
+prebuildopts += 'make -j %%(parallel)s %s lib && ' % local_makeopts
+buildopts = '%s nice_imas_inv_muscle3 nice_imas_dir_muscle3' % local_makeopts
+maxparallel = 16
+
+files_to_copy = [
+    (['../run/nice_imas_inv_muscle3', '../run/nice_imas_dir_muscle3'], 'bin'),
+    (['../external/SuiteSparse/lib/*'], 'lib'),
+]
+
+modextrapaths = {'LD_LIBRARY_PATH': 'lib'}
+
+sanity_check_paths = {
+    'files': ['bin/nice_imas_inv_muscle3', 'bin/nice_imas_dir_muscle3', 'lib/libumfpack.so'],
+    'dirs': [],
+}
+# Without a MUSCLE3 manager they stop at once, which shows that their libraries load
+sanity_check_commands = [
+    'nice_imas_inv_muscle3 2>&1 | grep -q MUSCLE_INSTANCE',
+    'nice_imas_dir_muscle3 2>&1 | grep -q MUSCLE_INSTANCE',
+]
+
+moduleclass = 'phys'
