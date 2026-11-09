@@ -33,7 +33,7 @@ class NiceSettings(param.Parameterized):
     PRESET_WEST = "WEST"
     PRESET_CUSTOM = "Custom"
     CLUSTER_SDCC = "SDCC"
-    CLUSTER_CEA = "CEA Partner Zone"
+    CLUSTER_CEA = "WEST Partner Zone"
     CLUSTER_CUSTOM = "Custom"
 
     # Machine description URIs of the presets, on each cluster
@@ -55,16 +55,16 @@ class NiceSettings(param.Parameterized):
         },
         CLUSTER_CEA: {
             PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/SB043501/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/SB043501/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "wall": "imas:hdf5?path=/home/SB043501/public/imasdb/ITER/4/666666/3",
-                "tf": "imas:hdf5?path=/home/SB043501/public/imasdb/ITER/4/666666/3",
+                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
+                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
+                "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
+                "tf": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
             },
             PRESET_WEST: {
-                "pf_active": "imas:hdf5?path=/home/SB043501/public/imasdb/west_test_dd4",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/SB043501/public/imasdb/west_test_dd4",  # noqa E501
-                "wall": "imas:hdf5?path=/home/SB043501/public/imasdb/west_test_dd4",
-                "iron_core": "imas:hdf5?path=/home/SB043501/public/imasdb/west_test_dd4",  # noqa E501
+                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
+                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
+                "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
+                "iron_core": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
             },
         },
     }
