@@ -209,7 +209,7 @@ class SettingsModal(Viewer):
                 self._section_label("Machine Preset"),
                 preset_selector,
                 visible=self.nice_settings.param.cluster.rx()
-                != self.nice_settings.CLUSTER_CUSTOM,
+                != self.nice_settings.CUSTOM,
             ),
             self._section_label("Required Machine Descriptions"),
             self._settings_section(*md_rows[True]),
@@ -333,7 +333,7 @@ class SettingsModal(Viewer):
         """Disable machine description URI inputs if preset is selected."""
         for inp in self._md_inputs.values():
             inp.disabled = (
-                self.nice_settings.machine_preset != self.nice_settings.PRESET_CUSTOM
+                self.nice_settings.machine_preset != self.nice_settings.CUSTOM
             )
 
     def __panel__(self):
