@@ -50,22 +50,6 @@ class NiceSettings(param.Parameterized):
             "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
         },
     }
-    # Copies of the presets on the CEA partner zone, used when those above cannot be
-    # loaded
-    FALLBACK_PRESET_URIS = {
-        PRESET_ITER: {
-            "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
-            "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
-            "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
-            "tf": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
-        },
-        PRESET_WEST: {
-            "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-            "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-            "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
-            "iron_core": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-        },
-    }
 
     machine_preset = param.Selector(default=PRESET_CUSTOM, label="Machine Preset")
     inv_executable = param.String(
@@ -147,37 +131,27 @@ class NiceSettings(param.Parameterized):
             ["inv_executable", "dir_executable", "mode"],
         )
 
-    def _check_preset(self, preset):
-        """Open the required IDSs of a preset, raising if one cannot be read."""
-        for ids_name, uri in preset.items():
-            if not getattr(self, f"md_{ids_name}").required:
-                continue
-            with imas.DBEntry(uri, "r") as entry:
-                entry.get(ids_name, lazy=True)
-
     def _load_machine_description_presets(self):
-        """Load the machine description presets from PRESET_URIS, or from their copy
-        in FALLBACK_PRESET_URIS when they cannot be loaded"""
+        """Load the machine description presets from PRESET_URIS"""
         available = {}
 
         for preset_name, preset in self.PRESET_URIS.items():
-            candidates = [preset]
-            if preset_name in self.FALLBACK_PRESET_URIS:
-                candidates.append(self.FALLBACK_PRESET_URIS[preset_name])
-            for candidate in candidates:
-                try:
-                    self._check_preset(candidate)
-                except Exception as err:
-                    error = err
-                    continue
-                available[preset_name] = candidate
-                break
-            else:
+            try:
+                for ids_name, uri in preset.items():
+                    if not getattr(self, f"md_{ids_name}").required:
+                        continue
+                    with imas.DBEntry(uri, "r") as entry:
+                        entry.get(ids_name, lazy=True)
+
+            except Exception as err:
                 logger.warning(
                     "Machine Description Preset '%s' could not be loaded: %s",
                     preset_name,
-                    error,
+                    err,
                 )
+                continue
+
+            available[preset_name] = preset
 
         return available
 

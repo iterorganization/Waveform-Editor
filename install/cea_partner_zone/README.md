@@ -14,10 +14,6 @@ waveform-editor gui                # in x2go (slow), or:
 waveform-editor gui --socket       # for a browser on your laptop
 ```
 
-The ITER and WEST presets of the shape editor use the machine description data of
-SDCC, and on the partner zone a copy of it in `/home/MS013565/public/imasdb` (which
-must stay readable by colleagues).
-
 ### From a Windows laptop
 
 Copy **both** `windows/waveform-editor.cmd` and `windows/waveform-editor.ps1` to the same
