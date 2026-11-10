@@ -36,37 +36,39 @@ class NiceSettings(param.Parameterized):
     CUSTOM = "Custom"
 
     # Machine description URIs of the presets, on each cluster
+    # ruff: disable[E501]
     # TODO: Update URIs so they are from the MD database
     PRESET_URIS = {
         CLUSTER_SDCC: {
             PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",  # noqa E501
+                "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
+                "pf_passive": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
+                "wall": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
+                "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",
             },
             PRESET_WEST: {
-                "pf_active": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "wall": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
-                "iron_core": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/west_test_dd4",  # noqa E501
+                "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
+                "pf_passive": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
+                "wall": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
+                "iron_core": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
             },
         },
         CLUSTER_CEA: {
             PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",  # noqa E501
+                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
+                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
                 "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
                 "tf": "imas:hdf5?path=/home/MS013565/public/imasdb/ITER/4/666666/3",
             },
             PRESET_WEST: {
-                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
-                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
+                "pf_active": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
+                "pf_passive": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
                 "wall": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
-                "iron_core": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",  # noqa E501
+                "iron_core": "imas:hdf5?path=/home/MS013565/public/imasdb/WEST_MD/4/555/1",
             },
         },
     }
+    # ruff: enable[E501]
 
     cluster = param.Selector(
         default=CUSTOM,
