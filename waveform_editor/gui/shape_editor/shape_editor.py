@@ -433,7 +433,6 @@ class ShapeEditor(Viewer):
         )
         equilibrium.time = [0.0]
         equilibrium.time_slice.resize(1)
-        equilibrium.vacuum_toroidal_field.b0.resize(1)
 
         return equilibrium
 
@@ -450,7 +449,7 @@ class ShapeEditor(Viewer):
 
         # Fill plasma properties
         equilibrium.vacuum_toroidal_field.r0 = self.plasma_properties.r0
-        equilibrium.vacuum_toroidal_field.b0[0] = self.plasma_properties.b0
+        equilibrium.vacuum_toroidal_field.b0 = [self.plasma_properties.b0]
         slice = equilibrium.time_slice[0]
         slice.global_quantities.ip = self.plasma_properties.ip
 
