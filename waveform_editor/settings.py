@@ -44,7 +44,7 @@ class NiceSettings(param.Parameterized):
                 "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
                 "pf_passive": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
                 "wall": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
-                "tf": "imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/111002/3",
+                "tf": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
             },
             PRESET_WEST: {
                 "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
