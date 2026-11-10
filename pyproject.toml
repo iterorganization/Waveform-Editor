@@ -20,7 +20,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "imas-python[netcdf]",
-    "panel>=1.9.0",
+    "panel~=1.9.0", # pin until https://github.com/holoviz/panel/issues/9044 is fixed
     "param>=2.3.0",
     "pygments",
     "plotly",
