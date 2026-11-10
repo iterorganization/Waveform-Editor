@@ -41,10 +41,10 @@ class NiceSettings(param.Parameterized):
     PRESET_URIS = {
         CLUSTER_SDCC: {
             PRESET_ITER: {
-                "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
-                "pf_passive": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
-                "wall": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
-                "tf": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3",
+                "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER_MD/4/666666/3",
+                "pf_passive": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER_MD/4/666666/3",
+                "wall": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER_MD/4/666666/3",
+                "tf": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER_MD/4/666666/3",
             },
             PRESET_WEST: {
                 "pf_active": "imas:hdf5?path=/home/ITER/schneim/public/imasdb/WEST_MD/4/555/1",
