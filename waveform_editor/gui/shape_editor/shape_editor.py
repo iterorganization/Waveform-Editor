@@ -125,15 +125,6 @@ class ShapeEditor(Viewer):
             button_type="primary",
             icon="player-play",
             on_click=self.submit,
-            description=pn.bind(
-                lambda missing, auto_run: (
-                    "Disabled while auto run is on"
-                    if auto_run
-                    else missing or "Run simulation"
-                ),
-                missing_text,
-                self.param.auto_run,
-            ),
             disabled=self._cannot_run | self.param.auto_run.rx(),
             margin=(10, 0, 2, 0),
         )
