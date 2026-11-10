@@ -732,7 +732,7 @@ Exercise 6c: Configuring the Plasma Shape
 
          .. code-block:: bash
 
-            imas:hdf5?path=/home/ITER/blokhus/public/imasdb/ITER/4/666666/3
+            imas:hdf5?path=/home/ITER/schneim/public/imasdb/ITER/4/666666/3
       2. Select ``Shape parameterisation``. The parameters are fitted to the reference shape,
          which stays drawn dashed in the plot. Update some of the parameter sliders to change
          your target shape. Run NICE in inverse mode. Does it converge?
