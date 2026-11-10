@@ -345,6 +345,11 @@ class CoilCurrents(Viewer):
         set_xml_parameter(
             xml_params, "coil_group_index", " ".join(str(group) for group in groups)
         )
+        first_coils = [groups.index(group) for group in sorted(set(groups))]
+        set_xml_parameter(xml_params, "n_group_current_index", len(first_coils))
+        set_xml_parameter(
+            xml_params, "group_current_index", " ".join(map(str, first_coils))
+        )
 
     def _update_fixed_coils_in_xml(self, xml_params: ET.Element):
         """Update XML parameters indicating which coils are fixed based on
