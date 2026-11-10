@@ -398,12 +398,11 @@ contour levels to plot, and the opacity of the heatmap.
 
 Machine Presets
 """""""""""""""
-Select the machine to run NICE for. The **ITER** and **WEST** presets fill in the
-machine description URIs, and set the plasma properties, the plot area and the ranges
-of the shape sliders to defaults for that machine. A preset is only offered if its
-machine description can be read, for example on SDCC. If these are not available,
-set the machine preset to **Custom** in the Machine Presets tab of the Settings menu to provide the
-URIs of the machine descriptions yourself.
+This contains preset options for the ITER and WEST tokamaks. You can select the compute 
+cluster that you're using, and then the tokamak to run NICE for. Note that these presets 
+depend on machine description data that is (presently) available on the SDCC or WEST 
+Partner Zone compute clusters. On any other compute environment, you can keep the default 
+Custom and provide the URIs of the machine description yourself.
 
 NICE Configuration
 """"""""""""""""""
