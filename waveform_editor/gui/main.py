@@ -141,9 +141,9 @@ class WaveformEditorGui(param.Parameterized):
             header=[self.nav, pn.HSpacer(), self.exit_button],
             main=[self.main_column],
             raw_css=STYLES,
+            busy_indicator=None,
+            theme_toggle=False,
         )
-        # Disable throttling of busy indicator
-        self.template.busy_indicator.throttle = 0
 
     def exit(self, event=None):
         """Close the editor, after asking the user to confirm."""
