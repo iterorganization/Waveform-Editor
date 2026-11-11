@@ -54,10 +54,9 @@ class WaveformSync(Viewer):
                 ),
                 self.table,
                 no_results,
-                sizing_mode="stretch_both",
+                width=self.MODAL_WIDTH,
+                height=self.MODAL_HEIGHT,
             ),
-            width=self.MODAL_WIDTH,
-            height=self.MODAL_HEIGHT,
             stylesheets=STYLES,
             show_close_button=True,
         )
