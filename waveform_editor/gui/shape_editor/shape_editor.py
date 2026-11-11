@@ -17,7 +17,9 @@ from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
+from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.settings_modal import SettingsModal
+from waveform_editor.gui.shape_editor.shape_params import MACHINE_SHAPES
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
@@ -188,6 +190,7 @@ class ShapeEditor(Viewer):
 
         self.nice_settings.param.watch(self._update_machine_metrics, "machine_preset")
         self._update_machine_metrics()
+        self.nice_settings.param.watch(self.run_machine_default, "machine_preset")
         self.plasma_shape.param.watch(self._update_target_metrics, "redraw")
         self.nice_settings.param.watch(
             self._update_target_metrics, ["mode", "machine_preset"]
@@ -689,6 +692,19 @@ class ShapeEditor(Viewer):
         logger.info("Stopping NICE...")
         self._inputs_changed = False
         await self.communicator.close()
+
+    async def run_machine_default(self, event=None):
+        """Run NICE inverse on the default shape of the selected machine."""
+        nice = self.nice_settings
+        if nice.machine_preset not in MACHINE_SHAPES or not nice.are_required_filled:
+            return
+        self.plasma_shape.reference.source = ReferenceShape.SOURCE_DEFAULT
+        self.plasma_shape.reference.set()
+        nice.mode = nice.INVERSE_MODE
+        await self.stop_nice()
+        while self.communicator.running:
+            await asyncio.sleep(0.1)
+        await self.submit()
 
     def __panel__(self):
         return self.panel

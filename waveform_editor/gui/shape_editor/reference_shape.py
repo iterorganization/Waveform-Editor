@@ -107,7 +107,7 @@ class ReferenceShape(Viewer):
             self.source = self.SOURCE_NONE
         self._source_select.disabled_options = unavailable
 
-    def _set(self, event=None):
+    def set(self, event=None):
         """Set the reference shape of the chosen source."""
         r, z = self.candidate_outline
         if len(r) < 3:
@@ -210,6 +210,6 @@ class ReferenceShape(Viewer):
                     self.param.preview,
                 ),
                 margin=0,
-                on_click=self._set,
+                on_click=self.set,
             ),
         )

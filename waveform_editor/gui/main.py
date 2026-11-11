@@ -108,6 +108,7 @@ class WaveformEditorGui(param.Parameterized):
             button_type="light",
             button_style="outline",
         )
+        self.nav.param.watch(self._on_nav, "value")
         self.exit_button = pn.widgets.ButtonIcon(
             icon="power",
             description="Close the application",
@@ -144,6 +145,13 @@ class WaveformEditorGui(param.Parameterized):
             busy_indicator=None,
             theme_toggle=False,
         )
+
+    async def _on_nav(self, event):
+        """Run NICE inverse using the default shape when the shape editor tab is opened
+        with no result."""
+        editor = self.shape_editor
+        if event.new == PLASMA_EDITOR_PAGE and editor.communicator.equilibrium is None:
+            await editor.run_machine_default()
 
     def exit(self, event=None):
         """Close the editor, after asking the user to confirm."""
