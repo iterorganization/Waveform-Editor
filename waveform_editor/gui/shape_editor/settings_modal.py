@@ -318,16 +318,12 @@ class SettingsModal(Viewer):
             ("Machine Presets", machine_preset_content),
             ("NICE Configuration", nice_content),
             margin=(20, 20, 0, 20),
-            sizing_mode="stretch_width",
-            stylesheets=STYLES,
-        )
-
-        return pn.Modal(
-            self.tabs,
             width=self.MODAL_WIDTH,
             height=self.MODAL_HEIGHT,
             stylesheets=STYLES,
         )
+
+        return pn.Modal(self.tabs, stylesheets=STYLES)
 
     def _update_md_inputs_visibility(self, _):
         """Disable machine description URI inputs if preset is selected."""
