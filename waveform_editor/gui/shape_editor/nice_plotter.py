@@ -404,7 +404,7 @@ class NicePlotter(Viewer):
         """
         low, high = self.param.frame_height.bounds
         height = min(height, round(width * self.frame_height / self.frame_width))
-        self.frame_height = max(low, min(high, height))
+        self.frame_height = round(max(low, min(high, height)))
 
     def drag_range(self):
         """How far the plot can be narrowed and widened, in pixels of its width.
