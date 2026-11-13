@@ -5,9 +5,11 @@ import param
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from waveform_editor.copy_waveform import CopyWaveform
 from waveform_editor.dependency_graph import DependencyGraph
 from waveform_editor.derived_waveform import DerivedWaveform
 from waveform_editor.group import WaveformGroup
+from waveform_editor.waveform import Waveform
 from waveform_editor.yaml.yaml_globals import YamlGlobals
 from waveform_editor.yaml.yaml_parser import YamlParser
 
@@ -65,6 +67,7 @@ class WaveformConfiguration(param.Parameterized):
         self.clear()
         try:
             self.parser.load_yaml(yaml_str)
+            self._validate_imports()
             self._calculate_bounds()
             for name in self.dependency_graph.topological_order():
                 self[name].prepare_expression()
@@ -317,10 +320,33 @@ class WaveformConfiguration(param.Parameterized):
 
     def _to_commented_map(self):
         """Return the configuration as a nested CommentedMap."""
-        result = CommentedMap(self.globals.get())
+        result = CommentedMap()
+        header = self.globals.get()["globals"]
+        if header.get("dd_version"):
+            result["dd_version"] = header["dd_version"]
+        if header.get("imports"):
+            result["input"] = CommentedMap(header["imports"])
+        output = CommentedMap()
         for group_name, group in self.groups.items():
-            result[group_name] = group.to_commented_map()
+            output[group_name] = group.to_commented_map()
+        result["output"] = output
         return result
+
+    def _validate_imports(self):
+        """Fail the load if any copy names an import that isn't declared."""
+        unknown = {
+            waveform.ref
+            for name, group in self.waveform_map.items()
+            if isinstance(waveform := group[name], CopyWaveform)
+            and waveform.ref
+            and waveform.uri is None
+        }
+        if unknown:
+            raise ValueError(
+                f"Unknown import(s) in copy: {', '.join(sorted(unknown))}. "
+                f"Declared imports: "
+                f"{', '.join(sorted(self.globals.imports)) or '<none>'}."
+            )
 
     def _calculate_bounds(self):
         min_start = float("inf")
@@ -328,7 +354,7 @@ class WaveformConfiguration(param.Parameterized):
 
         for name in self.waveform_map:
             waveform = self[name]
-            if not isinstance(waveform, DerivedWaveform) and waveform.tendencies:
+            if isinstance(waveform, Waveform) and waveform.tendencies:
                 min_start = min(min_start, waveform.tendencies[0].start)
                 max_end = max(max_end, waveform.tendencies[-1].end)
 

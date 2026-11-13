@@ -1,0 +1,8 @@
+# Waveform configuration for the whole-trace example: a single plasma-current ramp,
+# evaluated on the time base of the equilibrium the actor receives.
+dd_version: 4.1.1
+
+output:
+  plasma_current:
+    equilibrium/time_slice/global_quantities/ip:
+      - { type: linear, to: -15e6, duration: 100 }

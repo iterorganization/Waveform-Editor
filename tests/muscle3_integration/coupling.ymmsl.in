@@ -16,15 +16,15 @@ models:
         description: Waveform actor
         implementation: waveform_actor
         ports:
-          # The name of the input port can be freely chosen:
-          f_init: time_in
+          # An IDS-named input port lets the actor read /time from it:
+          f_init: ec_launchers_in
           # Names of the output port are "<ids_name>_out":
           o_f:
           - ec_launchers_out
           - nbi_out
 
     conduits:
-      controller.time_out: waveform_actor.time_in
+      controller.time_out: waveform_actor.ec_launchers_in
       waveform_actor.ec_launchers_out: controller.ec_launchers_in
       waveform_actor.nbi_out: controller.nbi_in
 
