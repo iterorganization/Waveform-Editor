@@ -259,5 +259,4 @@
   <dt>1.0e-3</dt>
   <!-- inverse (psi, theta) grid  -->
   <n_theta_grid>101</n_theta_grid>
-  <output_ggd_maps>0</output_ggd_maps>
 </parameters>
