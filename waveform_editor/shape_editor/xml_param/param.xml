@@ -24,13 +24,13 @@
   <algoReconMSE>0</algoReconMSE>
   <algoWithIp>1</algoWithIp>
   <iterMaxDir>40</iterMaxDir>
-  <epsStopDir>1.0e-10</epsStopDir>
+  <epsStopDir>1.0e-6</epsStopDir>
   <iterMaxDirInitRecon>2</iterMaxDirInitRecon>
   <iterMaxDirInitInv>0</iterMaxDirInitInv>
   <iterMaxRecon>20</iterMaxRecon>
   <epsStopRecon>1.0e-10</epsStopRecon>
   <iterMaxInv>40</iterMaxInv>
-  <epsStopInv>1.0e-10</epsStopInv>
+  <epsStopInv>1.0e-6</epsStopInv>
   <iterMaxEvo>50</iterMaxEvo>
   <epsStopEvo>1.0e-10</epsStopEvo>
   <useDefaultDirectInit>1</useDefaultDirectInit>
@@ -259,4 +259,5 @@
   <dt>1.0e-3</dt>
   <!-- inverse (psi, theta) grid  -->
   <n_theta_grid>101</n_theta_grid>
+  <output_ggd_maps>0</output_ggd_maps>
 </parameters>

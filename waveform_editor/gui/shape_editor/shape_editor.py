@@ -33,6 +33,13 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
 
 logger = logging.getLogger(__name__)
 
+
+def _has_grid(equilibrium):
+    """Whether an equilibrium holds the mesh of NICE"""
+    grids = equilibrium.grids_ggd
+    return bool(len(grids) and len(grids[0].grid) and len(grids[0].grid[0].space))
+
+
 # NICE reads the target boundary into an array of this fixed size
 # (MAX_PLASMA_BOUNDARY_POINTS in its solver_structs.h)
 MAX_BOUNDARY_POINTS = 5000
@@ -95,6 +102,7 @@ class ShapeEditor(Viewer):
         # Whether auto run is running NICE, and whether the inputs changed since
         self._submitting = False
         self._inputs_changed = False
+        self._grids_ggd = None
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -580,6 +588,9 @@ class ShapeEditor(Viewer):
         )
         start = self.communicator.start_mode(self.nice_settings.is_direct_mode)
         start_from_scratch = int(start is Start.SCRATCH)
+        # Only let NICE output a GGD grid when starting from scratch, to avoid
+        # (de)serialization overhead
+        set_xml_parameter(xml_params, "output_grids_ggd", start_from_scratch)
         set_xml_parameter(xml_params, "algoStartFromScratch", start_from_scratch)
         set_xml_parameter(
             xml_params, "algoStartPsiFromInData", int(start is Start.DATA)
@@ -595,6 +606,8 @@ class ShapeEditor(Viewer):
         if start is Start.DATA:
             # Copy, so the stored result in the run history is not modified
             equilibrium = copy.deepcopy(self.communicator.equilibrium)
+            if not _has_grid(equilibrium):
+                equilibrium.grids_ggd = self._grids_ggd
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
@@ -615,6 +628,8 @@ class ShapeEditor(Viewer):
         # NICE crashed without a result
         if self.communicator.equilibrium is previous_equilibrium:
             return
+        if _has_grid(self.communicator.equilibrium):
+            self._grids_ggd = self.communicator.equilibrium.grids_ggd
         self.coil_currents.sync_ui_with_pf_active(
             self.communicator.pf_active, self.plasma_properties.ip
         )
