@@ -31,7 +31,7 @@ modules and build the rest:
 |---|---|---|
 | `MUSCLE3-0.10.0.eb` | `MUSCLE3/0.10.0` | MUSCLE3 C++ and Fortran libraries |
 | `NICE-20261012.eb` | `NICE/20261012` | NICE executables, with the SuiteSparse bundled in NICE |
-| `Waveform-Editor-20261105.eb` | `Waveform-Editor/20261105` | Python environment with the Waveform-Editor, headless Chrome for PNG export |
+| `Waveform-Editor-20261116.eb` | `Waveform-Editor/20261116` | Python environment with the Waveform-Editor, headless Chrome for PNG export |
 
 `easybuild.cfg` installs into `~/public/easybuild` and builds in `/tmp`, so that only
 the result counts in the home quota (~100 GB). EasyBuild itself is in a virtual
@@ -41,7 +41,7 @@ first `python` it finds that has EasyBuild):
 ```bash
 export PATH=/home/MS013565/public/easybuild/eb-venv/bin:$PATH
 cd install/cea_partner_zone/easybuild
-eb --configfiles=easybuild.cfg --robot=. Waveform-Editor-20261105.eb   # MUSCLE3 and NICE first if needed
+eb --configfiles=easybuild.cfg --robot=. Waveform-Editor-20261116.eb   # MUSCLE3 and NICE first if needed
 ```
 
 Add `--dry-run` to see what would be built, `--rebuild` to build an installed module
