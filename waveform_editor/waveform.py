@@ -5,7 +5,7 @@ from imas.ids_data_type import IDSDataType
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
-from waveform_editor.base_waveform import BaseWaveform
+from waveform_editor.config_entry import ConfigEntry
 from waveform_editor.tendencies.constant import ConstantTendency
 from waveform_editor.tendencies.linear import LinearTendency
 from waveform_editor.tendencies.periodic.sawtooth_wave import SawtoothWaveTendency
@@ -71,7 +71,7 @@ def _infer_tendency_class(entry):
     return LinearTendency
 
 
-class Waveform(BaseWaveform):
+class Waveform(ConfigEntry):
     def __init__(
         self,
         *,
@@ -83,6 +83,7 @@ class Waveform(BaseWaveform):
         dd_version=None,
     ):
         super().__init__(yaml_str, name, dd_version)
+        self.tendencies = []
         self.line_number = line_number
         self.is_repeated = is_repeated
         if waveform is not None:

@@ -18,6 +18,11 @@ class WaveformSelector(Viewer):
         doc="Allow selecting multiple waveforms",
         allow_refs=True,
     )
+    disable_unplottable = param.Boolean(
+        False,
+        doc="Grey out waveforms that have no curve to show",
+        allow_refs=True,
+    )
 
     def __init__(self, main_gui):
         super().__init__()
