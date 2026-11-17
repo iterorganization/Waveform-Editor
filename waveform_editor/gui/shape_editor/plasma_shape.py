@@ -472,6 +472,7 @@ class PlasmaShape(Viewer):
             symbol = gaps.GAP_METADATA[worst][0]
             by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
             pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
+            self._create_gap_sliders()
 
     def __panel__(self):
         return self.panel
