@@ -24,13 +24,13 @@
   <algoReconMSE>0</algoReconMSE>
   <algoWithIp>1</algoWithIp>
   <iterMaxDir>40</iterMaxDir>
-  <epsStopDir>1.0e-6</epsStopDir>
+  <epsStopDir>1.0e-10</epsStopDir>
   <iterMaxDirInitRecon>2</iterMaxDirInitRecon>
   <iterMaxDirInitInv>0</iterMaxDirInitInv>
   <iterMaxRecon>20</iterMaxRecon>
   <epsStopRecon>1.0e-10</epsStopRecon>
   <iterMaxInv>40</iterMaxInv>
-  <epsStopInv>1.0e-6</epsStopInv>
+  <epsStopInv>1.0e-10</epsStopInv>
   <iterMaxEvo>50</iterMaxEvo>
   <epsStopEvo>1.0e-10</epsStopEvo>
   <useDefaultDirectInit>1</useDefaultDirectInit>
