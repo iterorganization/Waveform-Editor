@@ -97,6 +97,8 @@ class PlasmaShape(Viewer):
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
         self.gap_sliders = pn.FlexBox(margin=0)
+        # The fixed gaps, which a fit keeps as well as the one being moved
+        self._fixed_gaps = set()
         # A double null has other gaps to fit to
         self.shape_params.param.watch(self._on_second_x_point, "second_x_point")
         edit_by = self.param.edit_by.rx()
@@ -409,17 +411,25 @@ class PlasmaShape(Viewer):
         x_points = x_points_from_params(arguments)
         return gaps.compute_gaps(r, z, **gaps.shape_inputs(x_points))
 
-    def _create_gap_sliders(self):
+    def _create_gap_sliders(self, targets=None):
         """A slider for each gap the parameterized shape can be measured on, starting
-        at the gap of the current shape."""
+        at the gap of the current shape, with a checkbox to fix it.
+
+        Args:
+            targets: Gaps in metres by name the sliders start at instead, the ones the
+                shape was fitted to, which it reaches within the fit tolerance.
+        """
+        targets = targets or {}
         gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
         self._gap_sliders = {}
+        rows = []
         if gaps is None:
             self.gap_sliders.objects = []
             return
         for key, value in self._shape_gaps(gaps, self._shape_arguments()).items():
             if value is None:
                 continue
+            value = targets.get(key, value)
             symbol, unit, _ = gaps.GAP_METADATA[key]
             start, end = (value - 1, value + 1) if unit == "m" else (-0.1, 1)
             scale = GAP_SCALE[unit]
@@ -436,20 +446,42 @@ class PlasmaShape(Viewer):
             # Only once let go, as it may miss on the way
             slider.param.watch(self._warn_missed_gaps, "value_throttled")
             self._gap_sliders[key] = slider
-        self.gap_sliders.objects = list(self._gap_sliders.values())
+            fixed = pn.widgets.Checkbox(
+                name="Fixed", value=key in self._fixed_gaps, align="center"
+            )
+            fixed.param.watch(
+                lambda event, key=key: self._fix_gap(key, event.new), "value"
+            )
+            rows.append(pn.Row(slider, fixed, margin=0))
+        self.gap_sliders.objects = rows
+        self._reached_shape = self._gap_shape()
+        self._reached_targets = targets
 
-    def _gap_targets(self, gaps):
-        """The gaps of the gap sliders, in metres by name."""
+    def _fix_gap(self, key, fixed):
+        """Keep a gap in the fit of the other gaps, or let it follow the shape."""
+        if fixed:
+            self._fixed_gaps.add(key)
+        else:
+            self._fixed_gaps.discard(key)
+
+    def _gap_shape(self):
+        """The shape parameters the gaps are fitted with, by name."""
+        return {name: getattr(self.shape_params, name) for name in self.gap_params}
+
+    def _gap_targets(self, gaps, moved):
+        """The gaps to fit to, in metres by name: the fixed ones and the one of the
+        slider being moved."""
         return {
             key: slider.value / GAP_SCALE[gaps.GAP_METADATA[key][1]]
             for key, slider in self._gap_sliders.items()
+            if key in self._fixed_gaps or slider is moved
         }
 
-    def _fit_to_gaps(self, event=None):
-        """Set the shape parameters to those whose gaps come closest to the gap
-        sliders."""
+    def _fit_to_gaps(self, event):
+        """Set the shape parameters to those whose gaps come closest to the moved
+        and the fixed gap sliders."""
         gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = self._gap_targets(gaps)
+        targets = self._gap_targets(gaps, event.obj)
         ranges = {
             name: self.shape_params.param[name].softbounds for name in self.gap_params
         }
@@ -458,10 +490,12 @@ class PlasmaShape(Viewer):
             **{name: fitted[name] for name in self.gap_params}
         )
 
-    def _warn_missed_gaps(self, event=None):
-        """Warn when the shape misses the gap sliders."""
+    def _warn_missed_gaps(self, event):
+        """Keep the shape when it reaches the moved and the fixed gap sliders, and
+        show its other gaps. When it misses them, show an error and go back to the
+        last shape that reached them."""
         gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = self._gap_targets(gaps)
+        targets = self._gap_targets(gaps, event.obj)
         reached = self._shape_gaps(gaps, self._shape_arguments())
         missed = {
             key: np.inf if reached.get(key) is None else abs(reached[key] - target)
@@ -471,8 +505,13 @@ class PlasmaShape(Viewer):
         if missed[worst] > self.FIT_TOLERANCE:
             symbol = gaps.GAP_METADATA[worst][0]
             by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
-            pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
-            self._create_gap_sliders()
+            pn.state.notifications.error(
+                f"No shape reaches these gaps, it misses {symbol}{by}. The previous "
+                "shape is kept."
+            )
+            self.shape_params.param.update(**self._reached_shape)
+            targets = self._reached_targets
+        self._create_gap_sliders(targets)
 
     def __panel__(self):
         return self.panel
