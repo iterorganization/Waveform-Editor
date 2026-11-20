@@ -1,4 +1,3 @@
-import importlib.resources
 import xml.etree.ElementTree as ET
 
 import pandas as pd
@@ -105,15 +104,10 @@ class SettingsModal(Viewer):
             self._update_md_inputs_visibility, ["machine_preset"]
         )
         self._update_md_inputs_visibility(None)
+        self.nice_settings.param.watch(self._refresh_parameters, ["machine_preset"])
 
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
-        parameters = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("param.xml")
-            .read_text()
-        )
-        self._defaults = {p.tag: (p.text or "").strip() for p in parameters}
         self.parameter_table = pn.widgets.Tabulator(
             self._parameter_frame(),
             show_index=False,
@@ -149,6 +143,8 @@ class SettingsModal(Viewer):
     def _parameter_frame(self):
         """The table contents: each parameter, its value and its default."""
         overrides = self.nice_settings.xml_parameters
+        parameters = ET.fromstring(self.nice_settings.param_xml())
+        defaults = {p.tag: (p.text or "").strip() for p in parameters}
         return pd.DataFrame(
             [
                 {
@@ -156,14 +152,18 @@ class SettingsModal(Viewer):
                     self.NICE_PARAM_COL_VALUE: str(overrides.get(name, default)),
                     self.NICE_PARAM_COL_DEFAULT: default,
                 }
-                for name, default in self._defaults.items()
+                for name, default in defaults.items()
             ]
         )
+
+    def _refresh_parameters(self, event=None):
+        """Show the parameters again, as the defaults depend on the machine preset."""
+        self.parameter_table.value = self._parameter_frame()
 
     def _reset_parameters(self, event=None):
         """Put every parameter back to the value NICE is shipped with."""
         self.nice_settings.xml_parameters = {}
-        self.parameter_table.value = self._parameter_frame()
+        self._refresh_parameters()
 
     def _on_parameter_edit(self, event):
         """Keep an edited parameter in the settings, unless it is back to default."""
@@ -250,6 +250,7 @@ class SettingsModal(Viewer):
                     parameters=[
                         "show_contour",
                         "show_heatmap",
+                        "show_mesh",
                         "show_coils",
                         "show_wall",
                         "show_vacuum_vessel",

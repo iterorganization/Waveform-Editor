@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import importlib.resources
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -102,7 +101,6 @@ class ShapeEditor(Viewer):
         # Whether auto run is running NICE, and whether the inputs changed since
         self._submitting = False
         self._inputs_changed = False
-        self._grids_ggd = None
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -114,12 +112,6 @@ class ShapeEditor(Viewer):
         for md in self.nice_settings.machine_descriptions:
             md.param.watch(self._load_machine_description, "uri")
             md.param.trigger("uri")
-
-        self.xml_text = (
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("param.xml")
-            .read_text()
-        )
 
         # UI Configuration
         missing = pn.rx(self._missing_inputs)(
@@ -578,8 +570,7 @@ class ShapeEditor(Viewer):
             return
 
         self.coil_currents.fill_pf_active(self.pf_active)
-        xml_params = ET.fromstring(self.xml_text)
-        self.coil_currents.write_coil_groups(xml_params)
+        xml_params = ET.fromstring(self.nice_settings.param_xml())
         if not self._apply_xml_parameters(xml_params):
             return
 
@@ -607,7 +598,7 @@ class ShapeEditor(Viewer):
             # Copy, so the stored result in the run history is not modified
             equilibrium = copy.deepcopy(self.communicator.equilibrium)
             if not _has_grid(equilibrium):
-                equilibrium.grids_ggd = self._grids_ggd
+                equilibrium.grids_ggd = self.nice_plotter.grids_ggd
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
@@ -629,7 +620,7 @@ class ShapeEditor(Viewer):
         if self.communicator.equilibrium is previous_equilibrium:
             return
         if _has_grid(self.communicator.equilibrium):
-            self._grids_ggd = self.communicator.equilibrium.grids_ggd
+            self.nice_plotter.grids_ggd = self.communicator.equilibrium.grids_ggd
         self.coil_currents.sync_ui_with_pf_active(
             self.communicator.pf_active, self.plasma_properties.ip
         )

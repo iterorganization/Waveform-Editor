@@ -15,6 +15,19 @@ def _triangulation(r, z):
     return Triangulation(np.frombuffer(r), np.frombuffer(z))
 
 
+def mesh(grids_ggd):
+    """Get the mesh of NICE from a GGD grid.
+
+    Returns:
+        Tuple of the (r, z) of the nodes, and the indices of the nodes of each
+        triangle.
+    """
+    objects = grids_ggd[0].grid[0].space[0].objects_per_dimension
+    nodes = np.array([node.geometry.value for node in objects[0].object])
+    triangles = np.array([triangle.nodes.value for triangle in objects[2].object])
+    return nodes, triangles
+
+
 def has_flux_map(time_slice):
     """Whether NICE filled the poloidal flux on the GGD of a time slice."""
     ggd = time_slice.ggd[0]

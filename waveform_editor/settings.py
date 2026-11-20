@@ -1,3 +1,4 @@
+import importlib.resources
 import logging
 import os
 from pathlib import Path
@@ -69,6 +70,9 @@ class NiceSettings(param.Parameterized):
         },
     }
     # ruff: enable[E501]
+
+    # The NICE parameters of each preset, of which a custom machine gets those of ITER
+    PRESET_PARAM_XML = {PRESET_ITER: "param_iter.xml", PRESET_WEST: "param_west.xml"}
 
     cluster = param.Selector(
         default=CUSTOM,
@@ -172,6 +176,17 @@ class NiceSettings(param.Parameterized):
         preset = self._available_presets.get(self.machine_preset)
         for md in self.machine_descriptions:
             md.uri = md.custom_uri if preset is None else preset.get(md.ids_name, "")
+
+    def param_xml(self):
+        """The NICE parameters of the selected machine preset, as XML text."""
+        name = self.PRESET_PARAM_XML.get(
+            self.machine_preset, self.PRESET_PARAM_XML[self.PRESET_ITER]
+        )
+        return (
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath(name)
+            .read_text()
+        )
 
     def _check_required_params_filled(self, *events):
         if not all(
