@@ -15,6 +15,7 @@ from bokeh.models import (
     WheelZoomTool,
 )
 from imas.ids_toplevel import IDSToplevel
+from matplotlib.tri import Triangulation
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.coil_currents import current_limit
@@ -22,7 +23,12 @@ from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.flux import flux_contours, flux_grid, has_flux_map
+from waveform_editor.shape_editor.flux import (
+    flux_contours,
+    flux_grid,
+    has_flux_map,
+    mesh,
+)
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
 
@@ -107,6 +113,7 @@ class NicePlotter(Viewer):
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
+    grids_ggd = param.Parameter(precedence=-1, doc="The GGD grid of the last result")
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -114,6 +121,7 @@ class NicePlotter(Viewer):
         default=20, bounds=(1, 200), label="Number of contour levels"
     )
     show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    show_mesh = param.Boolean(default=False, label="Show mesh")
     heatmap_alpha = param.Number(
         default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
     )
@@ -200,6 +208,7 @@ class NicePlotter(Viewer):
             show_legend=False,
         )
         self._heatmap_cache = (None, None)
+        self._mesh_cache = (None, None)
         self.HEATMAP_OPTS = hv.opts.Image(
             cmap="viridis",
             colorbar=True,
@@ -223,6 +232,7 @@ class NicePlotter(Viewer):
             hooks=[self._capture_points_renderer],
         )
         flux_map_elements = [
+            hv.DynamicMap(self._plot_mesh),
             hv.DynamicMap(self._plot_result),
             hv.DynamicMap(self._plot_wall),
             hv.DynamicMap(self._plot_components),
@@ -813,6 +823,21 @@ class NicePlotter(Viewer):
                         (annular.outline_outer.r, annular.outline_outer.z, name)
                     )
         return _geometry_paths(paths)
+
+    @pn.depends("grids_ggd", "show_mesh")
+    def _plot_mesh(self):
+        """The edges of the triangles of the mesh of NICE, below the other layers."""
+        segments = np.empty((0, 4))
+        if self.show_mesh and self.grids_ggd is not None:
+            if self._mesh_cache[0] is not self.grids_ggd:
+                nodes, triangles = mesh(self.grids_ggd)
+                edges = Triangulation(nodes[:, 0], nodes[:, 1], triangles).edges
+                segments = np.hstack([nodes[edges[:, 0]], nodes[edges[:, 1]]])
+                self._mesh_cache = (self.grids_ggd, segments)
+            segments = self._mesh_cache[1]
+        return hv.Segments(segments).opts(
+            color="gray", line_width=0.5, alpha=0.5, show_legend=False
+        )
 
     @pn.depends("wall", "show_wall")
     def _plot_wall(self):
