@@ -388,7 +388,7 @@ Display
 """""""
 This contains options to change the visualization in the plotting area.
 You can show or hide each plotting element: the contour lines and heatmap of the
-poloidal flux, the coils, the limiter and divertor, the vacuum vessel, the passive
+poloidal flux, the mesh of NICE, the coils, the limiter and divertor, the vacuum vessel, the passive
 structures, the iron core, the plasma facing components, the x-point and o-point, the
 separatrix and the target shape. For the ITER and WEST presets, you can also show the
 gaps, of the target shape and of the resulting shape. You can also choose how many
