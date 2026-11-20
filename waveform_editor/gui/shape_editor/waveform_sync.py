@@ -12,8 +12,11 @@ from waveform_editor.shape_editor.waveform_store import WaveformStore
 class WaveformSync(Viewer):
     """Stores the quantities of the last NICE run in waveforms, at a chosen time."""
 
-    export_time = param.Number(doc="The time the values are stored at")
+    export_time = param.Number(
+        label="Export time [s]", doc="The time the values are stored at"
+    )
     has_results = param.Boolean(doc="Whether a NICE run has values to store")
+    storing = param.Boolean(doc="Whether the values are being stored")
 
     COL_GROUP = "Group"
     COL_NAME = "Waveform"
@@ -56,6 +59,7 @@ class WaveformSync(Viewer):
                 no_results,
                 width=self.MODAL_WIDTH,
                 height=self.MODAL_HEIGHT,
+                loading=self.param.storing,
             ),
             stylesheets=STYLES,
             show_close_button=True,
@@ -91,6 +95,7 @@ class WaveformSync(Viewer):
 
     def _store(self, event=None):
         """Store every quantity of the last run in its waveform."""
+        self.storing = True
         quantities = self.store.get_quantities(
             self.communicator.equilibrium, self.communicator.pf_active
         )
@@ -101,6 +106,7 @@ class WaveformSync(Viewer):
         pn.state.notifications.success(
             f"Stored {len(quantities)} values at t={self.export_time} s."
         )
+        self.storing = False
         self.modal.hide()
 
     def __panel__(self):
