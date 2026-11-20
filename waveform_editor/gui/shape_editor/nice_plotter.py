@@ -114,6 +114,7 @@ class NicePlotter(Viewer):
         default=20, bounds=(1, 200), label="Number of contour levels"
     )
     show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    show_colorbar = param.Boolean(default=False, label="Show colorbar")
     heatmap_alpha = param.Number(
         default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
     )
@@ -169,6 +170,7 @@ class NicePlotter(Viewer):
             # Bokeh only toggles a tool that has a callback
             callback=CustomJS(code=""),
             active_callback="auto",
+            active=True,
         )
         self._zoom_tool.on_change("active", self._on_zoom_toggled)
         self._apply_machine_ranges()
@@ -179,9 +181,8 @@ class NicePlotter(Viewer):
             frame_width=self.frame_width,
             frame_height=self.frame_height,
             title="",
-            xlabel="r [m]",
-            ylabel="z [m]",
-            fontsize={"labels": 15, "ticks": 11},
+            labelled=[],
+            fontsize={"ticks": 11},
             hooks=[self._capture_figure],
         )
         self.CONTOUR_OPTS = hv.opts.Contours(
@@ -189,6 +190,7 @@ class NicePlotter(Viewer):
             colorbar=True,
             tools=["hover"],
             colorbar_opts={"title": "Poloidal flux [Wb]"},
+            hooks=[self._show_colorbar],
             show_legend=False,
         )
         self.CONTOUR_ON_HEATMAP_OPTS = hv.opts.Contours(
@@ -210,9 +212,12 @@ class NicePlotter(Viewer):
                 ("psi", "@image{0.000} Wb"),
             ],
             colorbar_opts={"title": "Poloidal flux [Wb]"},
+            hooks=[self._show_colorbar],
             show_legend=False,
         )
-        self.TARGET_SHAPE_OPTS = hv.opts.Curve(color="blue")
+        self.TARGET_SHAPE_OPTS = hv.opts.Curve(
+            color="blue", line_dash="solid", line_width=2
+        )
         # Static on purpose. The draw tool binds to this element's renderer, and
         # redrawing it either breaks the binding or feeds edits back into redraws.
         self.editable_points = hv.Points([], kdims=["r", "z"], vdims=["weight"]).opts(
@@ -347,11 +352,19 @@ class NicePlotter(Viewer):
         # Scrolling over an axis would zoom only that axis, stretching the machine
         for tool in plot.state.select(WheelZoomTool):
             tool.zoom_on_axis = False
-        # The zoom button replaces these, as these would not keep aspect ratio
-        unwanted = (BoxZoomTool, ResetTool)
+        for tool in plot.state.select(BoxZoomTool):
+            tool.match_aspect = True
+        # The zoom button replaces it, as it would not keep the aspect ratio
         toolbar = plot.state.toolbar
-        tools = [t for t in toolbar.tools if not isinstance(t, unwanted)]
+        tools = [t for t in toolbar.tools if not isinstance(t, ResetTool)]
         toolbar.tools = [*tools, self._zoom_tool]
+        plot.state.min_border = 5
+        self._apply_machine_ranges()
+
+    def _show_colorbar(self, plot, element):
+        """Show or hide the colorbar of the plot"""
+        if (colorbar := plot.handles.get("colorbar")) is not None:
+            colorbar.visible = self.show_colorbar
 
     def _machine_ranges(self):
         """The r and z range of the machine of the selected preset, or of its limiter
@@ -427,8 +440,9 @@ class NicePlotter(Viewer):
         can_zoom = self._limiter_ranges() is not None
         self._zoom_tool.visible = can_zoom
         if not can_zoom:
-            # Else showing it again, for another wall, would zoom in at once
             self._zoom_tool.active = False
+        elif event is not None:
+            self._zoom_tool.active = True
         if self._figure is not None:
             r_range, z_range = self._machine_ranges()
             self._figure.x_range.start, self._figure.x_range.end = r_range
@@ -608,6 +622,7 @@ class NicePlotter(Viewer):
         "communicator.pf_active",
         "show_heatmap",
         "heatmap_alpha",
+        "show_colorbar",
         "show_contour",
         "levels",
         "show_separatrix",
