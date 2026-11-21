@@ -789,3 +789,68 @@ def test_overlay_base_without_waveforms_warns(caplog):
     assert "equilibrium" in idss
     assert "core_profiles" in caplog.text
     assert "no waveforms" in caplog.text
+
+
+def _outline_config(yaml_str):
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    config.add_boundary_outline(1, [6.0, 7.0, 8.0], [0.0, 1.0, 0.0])
+    config.add_boundary_outline(3, [5.0, 6.0], [-1.0, 1.0])
+    return config
+
+
+def _outline_lengths(equilibrium):
+    return [len(s.boundary.outline.r) for s in equilibrium.time_slice]
+
+
+def test_export_boundary_outlines():
+    """Each slice gets the stored outline closest in time, ties go to the earlier."""
+    yaml_str = f"""
+    globals:
+      dd_version: {TEST_DD_VERSION}
+    equilibrium:
+      equilibrium/time_slice/global_quantities/ip:
+      - {{type: piecewise, time: [0, 4], value: [1, 5]}}
+    """
+    times = np.array([0, 1, 2, 2.1, 4])
+    idss = ConfigurationExporter(_outline_config(yaml_str), times).to_ids_dict()
+    equilibrium = idss["equilibrium"]
+    assert _outline_lengths(equilibrium) == [3, 3, 3, 2, 2]
+    assert np.array_equal(equilibrium.time_slice[0].boundary.outline.r, [6, 7, 8])
+    assert np.array_equal(equilibrium.time_slice[4].boundary.outline.z, [-1, 1])
+    assert equilibrium.time_slice[3].global_quantities.ip == pytest.approx(3.1)
+
+
+def test_export_boundary_outlines_without_equilibrium_waveforms(tmp_path):
+    yaml_str = f"""
+    globals:
+      dd_version: {TEST_DD_VERSION}
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 2
+    """
+    times = np.array([0, 2.1, 4])
+    file_path = f"{tmp_path}/test.nc"
+    ConfigurationExporter(_outline_config(yaml_str), times).to_ids(file_path)
+    with imas.DBEntry(file_path, "r", dd_version=TEST_DD_VERSION) as dbentry:
+        equilibrium = dbentry.get("equilibrium", autoconvert=False)
+        assert np.all(equilibrium.time == times)
+        assert _outline_lengths(equilibrium) == [3, 2, 2]
+        assert np.array_equal(equilibrium.time_slice[1].boundary.outline.r, [5, 6])
+
+
+def test_export_without_boundary_outlines():
+    yaml_str = f"""
+    globals:
+      dd_version: {TEST_DD_VERSION}
+    equilibrium:
+      equilibrium/time_slice/global_quantities/ip: 2
+    ec_launchers:
+      ec_launchers/beam(1)/phase/angle: 2
+    """
+    config = WaveformConfiguration()
+    config.load_yaml(yaml_str)
+    times = np.array([0, 1])
+    idss = ConfigurationExporter(config, times).to_ids_dict()
+    assert _outline_lengths(idss["equilibrium"]) == [0, 0]
+    config.remove_waveform("equilibrium/time_slice/global_quantities/ip")
+    assert "equilibrium" not in ConfigurationExporter(config, times).to_ids_dict()

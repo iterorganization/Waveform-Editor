@@ -129,3 +129,14 @@ def test_store_stops_at_the_first_waveform_it_cannot_hold():
 
     # Nothing after the waveform that raised is stored
     assert COIL_1 not in store.config.waveform_map
+
+
+def test_store_boundary_outline(equilibrium):
+    store = make_store()
+    assert store.store_boundary_outline(None, 1) == 0
+    assert store.store_boundary_outline(equilibrium, 1) == 0
+    assert store.config.boundary_outlines == {}
+    outline = equilibrium.time_slice[0].boundary.outline
+    outline.r, outline.z = [6.0, 7.0, 8.0, 7.0], [0.0, 1.0, 0.0, -1.0]
+    assert store.store_boundary_outline(equilibrium, 2.5) == 4
+    assert np.array_equal(store.config.boundary_outlines[2.5], [outline.r, outline.z])

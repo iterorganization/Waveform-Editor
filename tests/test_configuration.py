@@ -451,3 +451,20 @@ def test_duplicates_group_waveform():
         config.add_group("waveform_name", ["root"])
     with pytest.raises(ValueError):
         config.rename_waveform("waveform_name", "group_name")
+
+
+def test_boundary_outlines():
+    config = WaveformConfiguration()
+    config.add_boundary_outline(1, [6.0, 7.0, 8.0], [0.0, 1.0, 0.0])
+    config.add_boundary_outline(3, [5.0, 6.0], [-1.0, 1.0])
+    config.add_boundary_outline(1.0, [4.0, 5.0], [2.0, 3.0])
+    assert sorted(config.boundary_outlines) == [1.0, 3.0]
+    assert [list(a) for a in config.boundary_outlines[1.0]] == [[4, 5], [2, 3]]
+    assert "outline" not in config.dump()
+    with pytest.raises(ValueError):
+        config.add_boundary_outline(2, [1.0, 2.0], [1.0])
+    config.clear()
+    assert config.boundary_outlines == {}
+    config.add_boundary_outline(1, [6.0, 7.0], [0.0, 1.0])
+    config.load_yaml(f"globals:\n  dd_version: {TEST_DD_VERSION}\n")
+    assert config.boundary_outlines == {}

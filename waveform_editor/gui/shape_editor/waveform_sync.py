@@ -90,16 +90,20 @@ class WaveformSync(Viewer):
         )
 
     def _store(self, event=None):
-        """Store every quantity of the last run in its waveform."""
+        """Store every quantity of the last run in its waveform, and its outline."""
         quantities = self.store.get_quantities(
             self.communicator.equilibrium, self.communicator.pf_active
         )
         created = self.store.store(quantities, self.export_time)
         if created:
             self.main_gui.selector.refresh()
+        n_points = self.store.store_boundary_outline(
+            self.communicator.equilibrium, self.export_time
+        )
+        outline = f" and the boundary outline ({n_points} points)" if n_points else ""
 
         pn.state.notifications.success(
-            f"Stored {len(quantities)} values at t={self.export_time} s."
+            f"Stored {len(quantities)} values{outline} at t={self.export_time} s."
         )
         self.modal.hide()
 
