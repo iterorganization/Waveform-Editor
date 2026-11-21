@@ -70,6 +70,8 @@ class ConfigurationExporter:
             factory: IDSFactory to use for creating new IDSs
         """
         ids_map = self._get_ids_map()
+        if self.config.boundary_outlines and self.times is not None:
+            ids_map.setdefault("equilibrium", [])
         # An overlay base with no waveforms in the config is never filled nor yielded.
         for ids_name in self.base_idss.keys() - ids_map.keys():
             logger.warning(
@@ -87,7 +89,23 @@ class ConfigurationExporter:
             )
             ids.time = self.times
             self._fill_waveforms(ids, waveforms)
+            if ids_name == "equilibrium":
+                self._fill_boundary_outlines(ids)
             yield ids_name, ids
+
+    def _fill_boundary_outlines(self, ids):
+        """Fill each time slice's boundary outline with the stored outline closest in
+        time (ties: earlier)."""
+        outlines = self.config.boundary_outlines
+        if not outlines or self.times is None:
+            return
+        outline_times = np.array(sorted(outlines))
+        if len(ids.time_slice) < len(self.times):
+            ids.time_slice.resize(len(self.times), keep=True)
+        for i, time in enumerate(self.times):
+            closest = outline_times[np.argmin(np.abs(outline_times - time))]
+            outline = ids.time_slice[i].boundary.outline
+            outline.r, outline.z = outlines[closest]
 
     def _base_ids(self, ids_name, factory):
         """The IDS to fill the waveforms onto: a caller-provided base, else the machine

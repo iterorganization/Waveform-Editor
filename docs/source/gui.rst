@@ -366,6 +366,11 @@ path, for example ``pf_active/coil(1)/current/data`` or
 Each value is stored as a point in a :ref:`piecewise-linear-tendency` at the end of its
 waveform, so the time must come after the last point of the waveforms it stores in.
 
+The boundary outline of the last run is stored as well. It is not written to the YAML
+file, only to ``equilibrium/time_slice/boundary/outline`` on IDS export, where each time
+slice gets the outline stored at the closest time. Outlines are lost when a
+configuration is loaded or a new one is created.
+
 Configuration Options
 ^^^^^^^^^^^^^^^^^^^^^
 

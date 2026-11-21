@@ -144,6 +144,24 @@ class WaveformStore:
                 created.append(name)
         return created
 
+    def store_boundary_outline(self, equilibrium, time):
+        """Store the boundary outline of a NICE run in the configuration.
+
+        Args:
+            equilibrium: The equilibrium IDS NICE returned, or None.
+            time: The time to store the outline at.
+
+        Returns:
+            The number of points stored, 0 if there was no outline.
+        """
+        if equilibrium is None or len(equilibrium.time_slice) == 0:
+            return 0
+        outline = equilibrium.time_slice[0].boundary.outline
+        if len(outline.r) == 0 or len(outline.r) != len(outline.z):
+            return 0
+        self.config.add_boundary_outline(time, outline.r, outline.z)
+        return len(outline.r)
+
     def _create_waveform(self, group, name, value, time):
         """Create a waveform holding a single point, in its group.
 

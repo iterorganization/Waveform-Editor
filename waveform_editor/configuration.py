@@ -1,6 +1,7 @@
 import io
 import logging
 
+import numpy as np
 import param
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -32,6 +33,7 @@ class WaveformConfiguration(param.Parameterized):
         self.dependency_graph = DependencyGraph()
         self.start = self.DEFAULT_START
         self.end = self.DEFAULT_END
+        self.boundary_outlines = {}
 
         # Trigger has_changed boolean when a global param is changed
         for param_name in self.globals.param:
@@ -345,10 +347,24 @@ class WaveformConfiguration(param.Parameterized):
             print(" " * indent + f"{group_name}:")
             group.print(indent + 4)
 
+    def add_boundary_outline(self, time, r, z):
+        """Stores a plasma boundary outline, replacing the one stored at the same time.
+
+        Args:
+            time: The time of the outline.
+            r: R coordinates of the outline.
+            z: Z coordinates of the outline.
+        """
+        r, z = np.array(r, dtype=float), np.array(z, dtype=float)
+        if r.shape != z.shape:
+            raise ValueError("The r and z arrays of an outline must have equal length.")
+        self.boundary_outlines[float(time)] = (r, z)
+
     def clear(self):
         """Clears the data stored in the configuration."""
         self.groups = {}
         self.waveform_map = {}
+        self.boundary_outlines = {}
         self.globals.reset()
         self.load_error = ""
         self.start = self.DEFAULT_START
