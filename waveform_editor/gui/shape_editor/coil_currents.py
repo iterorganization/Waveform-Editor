@@ -259,7 +259,7 @@ class CoilCurrents(Viewer):
             coil.penalize_to_zero = not coil.penalize_to_zero
         else:
             return
-        self._update_table()
+        self.table.patch({event.column: [(event.row, getattr(coil, event.column))]})
         self.param.trigger("edited")
 
     def fill_pf_active(self, pf_active):
