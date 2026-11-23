@@ -252,13 +252,13 @@ class NicePlotter(Viewer):
 
         # The table the points are drawn from depends on what the shape is edited by
         self.plasma_shape.param.watch(self._on_points_table_change, "edit_by")
-        self.plasma_shape.shape_params.param.watch(
+        self.plasma_shape.refinement.param.watch(
             self._on_points_table_change, "extra_points_enabled"
         )
         self.nice_settings.param.watch(self._update_points_visibility, "mode")
         for table in (
             self.plasma_shape.points_table,
-            self.plasma_shape.extra_points_table,
+            self.plasma_shape.refinement.extra_points_table,
         ):
             table.param.watch(self._push_points_to_plot, "points")
 

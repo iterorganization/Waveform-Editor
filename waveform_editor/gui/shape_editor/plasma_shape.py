@@ -3,22 +3,15 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.gap_editor import GapEditor
 from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
 from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
-from waveform_editor.gui.shape_editor.shape_params import (
-    PlasmaShapeParams,
-)
-from waveform_editor.gui.util import (
-    CARD_CSS,
-    INPUT_WIDTH,
-    FormattedEditableFloatSlider,
-    card,
-)
+from waveform_editor.gui.shape_editor.shape_params import PlasmaShapeParams
+from waveform_editor.gui.shape_editor.shape_refinement import ShapeRefinement
+from waveform_editor.gui.util import CARD_CSS, card
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.plasma_shape_calc import (
-    apply_point_weights,
-    compute_gaussian_weights,
     compute_outline_from_params,
     fit_params_to_outline,
     x_points_from_params,
@@ -26,8 +19,6 @@ from waveform_editor.shape_editor.plasma_shape_calc import (
 
 # Pixels high of the view switch and the button beside it, so that they line up
 BUTTON_HEIGHT = 32
-# Gaps are shown in their unit, converted from metres
-GAP_SCALE = {"m": 1, "cm": 100}
 
 
 class PlasmaShape(Viewer):
@@ -42,25 +33,17 @@ class PlasmaShape(Viewer):
         default=EDIT_REFERENCE,
         objects=[EDIT_REFERENCE, EDIT_SLIDERS, EDIT_GAPS, EDIT_POINTS],
     )
-    # The free-form shape, and the points added on top of the parameterized one
     points_table = param.ClassSelector(
-        class_=WeightedPointsTable, default=WeightedPointsTable()
-    )
-    extra_points_table = param.ClassSelector(
         class_=WeightedPointsTable, default=WeightedPointsTable()
     )
     shape_params = param.ClassSelector(
         class_=PlasmaShapeParams, default=PlasmaShapeParams()
     )
+    refinement = param.ClassSelector(class_=ShapeRefinement)
     has_shape = param.Boolean(doc="Whether a plasma shape is loaded.")
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
     redraw = param.Event(doc="Triggered whenever what is drawn of the shape changes.")
     nice_settings = param.ClassSelector(class_=NiceSettings)
-
-    # The shape parameters that are fitted to the gaps
-    FIT_PARAMS = ("a", "center_r", "center_z", "kappa", "delta", "rx", "zx")
-    # How far a fitted shape may miss what it is fitted to without a warning [m]
-    FIT_TOLERANCE = 0.005
 
     @property
     def is_reference(self):
@@ -72,16 +55,8 @@ class PlasmaShape(Viewer):
         """Whether the target shape is edited as free points."""
         return self.edit_by == self.EDIT_POINTS
 
-    @property
-    def gap_params(self):
-        """The shape parameters fitted to the gaps. A double null takes its shape
-        from its upper x-point instead of its elongation and triangularity."""
-        if self.shape_params.second_x_point:
-            return ("a", "center_r", "center_z", "rx", "zx", "rx_upper", "zx_upper")
-        return self.FIT_PARAMS
-
     def __init__(self):
-        super().__init__(nice_settings=settings.nice)
+        super().__init__(nice_settings=settings.nice, refinement=ShapeRefinement())
         self.outline_r = None
         self.outline_z = None
         # Unduplicated parameterized boundary points and their per-point weight,
@@ -93,10 +68,9 @@ class PlasmaShape(Viewer):
         self.reference = ReferenceShape(
             on_set=self._take_reference, shape_params=self.shape_params
         )
-        self.shape_params.extra_points_table = self.extra_points_table
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
-        self.gap_sliders = pn.FlexBox(margin=0)
+        self.gaps = GapEditor(self.shape_params)
         # A double null has other gaps to fit to
         self.shape_params.param.watch(self._on_second_x_point, "second_x_point")
         edit_by = self.param.edit_by.rx()
@@ -106,12 +80,7 @@ class PlasmaShape(Viewer):
             pn.Column(
                 self.shape_params, visible=edit_by == self.EDIT_SLIDERS, margin=0
             ),
-            pn.Column(
-                self.shape_params.second_x_point_input(),
-                self.gap_sliders,
-                visible=edit_by == self.EDIT_GAPS,
-                margin=0,
-            ),
+            pn.Column(self.gaps, visible=edit_by == self.EDIT_GAPS, margin=0),
             pn.Column(
                 pn.Row(
                     pn.widgets.Button(
@@ -132,10 +101,11 @@ class PlasmaShape(Viewer):
                 margin=0,
             ),
             pn.Column(
-                self.shape_params.fine_tuning(
-                    # Only a parameterized boundary has a number of points
-                    boundary_points=edit_by != self.EDIT_REFERENCE
+                # Only a parameterized boundary has a number of points
+                self.shape_params.boundary_points_input(
+                    visible=edit_by != self.EDIT_REFERENCE
                 ),
+                self.refinement,
                 visible=edit_by != self.EDIT_POINTS,
                 margin=0,
             ),
@@ -207,7 +177,8 @@ class PlasmaShape(Viewer):
     @pn.depends(
         "shape_params.param",
         "points_table.param",
-        "extra_points_table.param",
+        "refinement.param",
+        "refinement.extra_points_table.param",
         "edit_by",
         watch=True,
     )
@@ -223,7 +194,9 @@ class PlasmaShape(Viewer):
         elif self.is_reference:
             self._refine_shape(self.reference.r, self.reference.z)
         else:
-            self._refine_shape(*compute_outline_from_params(**self._shape_arguments()))
+            self._refine_shape(
+                *compute_outline_from_params(**self.shape_params.outline_arguments())
+            )
         self.has_shape = bool(self.outline_r and self.outline_z)
         current = (self.outline_r, self.outline_z, self.param_weights)
         if not all(map(np.array_equal, previous, current)):
@@ -234,15 +207,15 @@ class PlasmaShape(Viewer):
         """The x-points of the target shape, which only a parameterized shape has."""
         if self.is_reference or self.is_points:
             return []
-        return x_points_from_params(self._shape_arguments())
+        return x_points_from_params(self.shape_params.outline_arguments())
 
     @property
     def active_points_table(self):
         """The point table the plot edits, None when no points are in use."""
         if self.is_points:
             return self.points_table
-        if self.shape_params.extra_points_enabled:
-            return self.extra_points_table
+        if self.refinement.extra_points_enabled:
+            return self.refinement.extra_points_table
         return None
 
     def _take_reference(self):
@@ -273,50 +246,13 @@ class PlasmaShape(Viewer):
         self.edit_by = self.EDIT_REFERENCE
         self.param.trigger("edit_by")  # also when it was, to take the new reference
 
-    def _shape_arguments(self):
-        """The arguments of compute_outline_from_params of the parameterized shape."""
-        p = self.shape_params
-        return dict(
-            a=p.a,
-            center_r=p.center_r,
-            center_z=p.center_z,
-            kappa=p.kappa,
-            delta=p.delta,
-            rx=p.rx,
-            zx=p.zx,
-            n_desired_bnd_points=p.n_desired_bnd_points,
-            rx_upper=p.rx_upper if p.second_x_point else None,
-            zx_upper=p.zx_upper if p.second_x_point else None,
-        )
-
     def _refine_shape(self, r, z):
         """The outline NICE is given from a boundary: with its emphasized region and
         extra points."""
-        p = self.shape_params
         self.param_r, self.param_z = r, z
-
-        if p.weight_enabled:
-            self.param_weights = compute_gaussian_weights(
-                r, z, p.weight_position, p.weight_spread, p.weight_height
-            )
-            self.outline_r, self.outline_z = apply_point_weights(
-                r, z, self.param_weights
-            )
-        else:
-            self.outline_r, self.outline_z = r, z
-
-        if p.extra_points_enabled:
-            self._append_extra_points()
-
-    def _append_extra_points(self):
-        """Append the weighted points to the parameterized boundary. They go last
-        because NICE measures every point against the first one, so repeats of the
-        first point would cancel out."""
-        extra_r, extra_z = self.extra_points_table.get_outline_coordinates()
-        if not extra_r:
-            return
-        self.outline_r = self.outline_r + extra_r
-        self.outline_z = self.outline_z + extra_z
+        self.outline_r, self.outline_z, self.param_weights = self.refinement.refine(
+            r, z
+        )
 
     def _edit_as_points(self, event=None):
         """Edit the target shape as it is, with its weights and extra points, as free
@@ -327,8 +263,10 @@ class PlasmaShape(Viewer):
         weights = (
             [1] * len(r) if self.param_weights is None else list(self.param_weights)
         )
-        if self.shape_params.extra_points_enabled:
-            extra_r, extra_z, extra_weights = self.extra_points_table.get_points()
+        if self.refinement.extra_points_enabled:
+            extra_r, extra_z, extra_weights = (
+                self.refinement.extra_points_table.get_points()
+            )
             r, z, weights = r + extra_r, z + extra_z, weights + extra_weights
         self.points_table.set_points(r, z, weights)
         self.edit_by = self.EDIT_POINTS
@@ -336,7 +274,7 @@ class PlasmaShape(Viewer):
     def _fit_to_points(self, event=None):
         """Fit the parameterisation to the free points, and show it."""
         x_points = (
-            x_points_from_params(self._shape_arguments())
+            x_points_from_params(self.shape_params.outline_arguments())
             if self.shape_params.second_x_point
             else ()
         )
@@ -365,7 +303,7 @@ class PlasmaShape(Viewer):
         fitted, distances = fit_params_to_outline(
             r, z, p.n_desired_bnd_points, x_points
         )
-        if distances.max() > self.FIT_TOLERANCE:
+        if distances.max() > p.FIT_TOLERANCE:
             pn.state.notifications.warning(
                 f"The shape parameterisation misses {fitted_to} by up to "
                 f"{distances.max() * 100:.1f} cm"
@@ -374,7 +312,7 @@ class PlasmaShape(Viewer):
         # A single null is ready for a double null: the second x-point at the top
         rx_upper, zx_upper = x_points[1] if len(x_points) > 1 else (r[top], z[top])
         p.param.update(
-            **{name: fitted[name] for name in self.FIT_PARAMS},
+            **{name: fitted[name] for name in p.FIT_PARAMS},
             second_x_point=len(x_points) > 1,
             rx_upper=float(rx_upper),
             zx_upper=float(zx_upper),
@@ -396,82 +334,12 @@ class PlasmaShape(Viewer):
                 )
                 self.edit_by = self.EDIT_SLIDERS
                 return
-            self._create_gap_sliders()
+            self.gaps.create_sliders()
 
     def _on_second_x_point(self, event):
         """Make the gap sliders those of a single or double null."""
         if self.edit_by == self.EDIT_GAPS:
-            self._create_gap_sliders()
-
-    def _shape_gaps(self, gaps, arguments):
-        """The gaps of a parameterized shape, in metres by name."""
-        r, z = compute_outline_from_params(**arguments)
-        x_points = x_points_from_params(arguments)
-        return gaps.compute_gaps(r, z, **gaps.shape_inputs(x_points))
-
-    def _create_gap_sliders(self):
-        """A slider for each gap the parameterized shape can be measured on, starting
-        at the gap of the current shape."""
-        gaps = MACHINE_GAPS.get(self.nice_settings.machine_preset)
-        self._gap_sliders = {}
-        if gaps is None:
-            self.gap_sliders.objects = []
-            return
-        for key, value in self._shape_gaps(gaps, self._shape_arguments()).items():
-            if value is None:
-                continue
-            symbol, unit, _ = gaps.GAP_METADATA[key]
-            start, end = (value - 1, value + 1) if unit == "m" else (-0.1, 1)
-            scale = GAP_SCALE[unit]
-            slider = FormattedEditableFloatSlider(
-                # Short, as in the metrics table, which names it in full on hover
-                name=f"{symbol} [{unit}]",
-                value=value * scale,
-                start=start * scale,
-                end=end * scale,
-                step=0.005 * scale,
-                width=INPUT_WIDTH,
-            )
-            slider.param.watch(self._fit_to_gaps, "value")
-            # Only once let go, as it may miss on the way
-            slider.param.watch(self._warn_missed_gaps, "value_throttled")
-            self._gap_sliders[key] = slider
-        self.gap_sliders.objects = list(self._gap_sliders.values())
-
-    def _gap_targets(self, gaps):
-        """The gaps of the gap sliders, in metres by name."""
-        return {
-            key: slider.value / GAP_SCALE[gaps.GAP_METADATA[key][1]]
-            for key, slider in self._gap_sliders.items()
-        }
-
-    def _fit_to_gaps(self, event=None):
-        """Set the shape parameters to those whose gaps come closest to the gap
-        sliders."""
-        gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = self._gap_targets(gaps)
-        ranges = {
-            name: self.shape_params.param[name].softbounds for name in self.gap_params
-        }
-        fitted = gaps.fit_shape(self._shape_arguments(), targets, ranges)
-        self.shape_params.param.update(
-            **{name: fitted[name] for name in self.gap_params}
-        )
-
-    def _warn_missed_gaps(self, event=None):
-        """Warn when the shape misses the gap sliders."""
-        gaps = MACHINE_GAPS[self.nice_settings.machine_preset]
-        targets = self._gap_targets(gaps)
-        reached = self._shape_gaps(gaps, self._shape_arguments())
-        missed = {
-            key: np.inf if reached.get(key) is None else abs(reached[key] - target)
-            for key, target in targets.items()
-        }
-        worst = max(missed, key=missed.get)
-        if missed[worst] > self.FIT_TOLERANCE:
-            symbol = gaps.GAP_METADATA[worst][0]
-            by = "" if np.isinf(missed[worst]) else f" by {missed[worst] * 100:.1f} cm"
-            pn.state.notifications.warning(f"The closest shape misses {symbol}{by}")
+            self.gaps.create_sliders()
 
     def __panel__(self):
         return self.panel

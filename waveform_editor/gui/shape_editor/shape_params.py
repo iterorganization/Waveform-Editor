@@ -2,7 +2,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
 from waveform_editor.gui.util import (
     INPUT_WIDTH,
     FixedWidthEditableIntSlider,
@@ -53,8 +52,22 @@ def _group(title, *children, visible=True):
     )
 
 
+def param_input(parameter):
+    """The widget of a parameter of a group."""
+    if isinstance(parameter, param.Boolean):
+        return pn.widgets.Checkbox.from_param(parameter, sizing_mode="stretch_width")
+    if isinstance(parameter, param.Integer):
+        return FixedWidthEditableIntSlider.from_param(parameter, width=INPUT_WIDTH)
+    return FormattedEditableFloatSlider.from_param(parameter, width=INPUT_WIDTH)
+
+
 class PlasmaShapeParams(Viewer):
     """Helper class containing parameters to parameterize the plasma shape."""
+
+    # The parameters that are fitted to an outline
+    FIT_PARAMS = ("a", "center_r", "center_z", "kappa", "delta", "rx", "zx")
+    # How far a fitted shape may miss what it is fitted to without a warning [m]
+    FIT_TOLERANCE = 0.005
 
     a = param.Number(
         default=1.9,
@@ -119,18 +132,6 @@ class PlasmaShapeParams(Viewer):
         softbounds=[3, 200],
         label="Number of boundary points",
     )
-    weight_enabled = param.Boolean(default=False, label="Emphasize a region")
-    weight_position = param.Number(
-        default=0, step=1, bounds=[0, 360], label="Position [deg]"
-    )
-    weight_spread = param.Number(
-        default=15, step=0.5, softbounds=[1, 90], label="Spread [deg]"
-    )
-    weight_height = param.Integer(default=10, softbounds=[1, 1000], label="Max weight")
-    extra_points_enabled = param.Boolean(
-        default=False, label="Add additional weighted points"
-    )
-    extra_points_table = param.ClassSelector(class_=WeightedPointsTable)
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -158,53 +159,37 @@ class PlasmaShapeParams(Viewer):
             second_x_point=False,
         )
 
+    def outline_arguments(self):
+        """The arguments of compute_outline_from_params of the parameterized shape."""
+        return dict(
+            a=self.a,
+            center_r=self.center_r,
+            center_z=self.center_z,
+            kappa=self.kappa,
+            delta=self.delta,
+            rx=self.rx,
+            zx=self.zx,
+            n_desired_bnd_points=self.n_desired_bnd_points,
+            rx_upper=self.rx_upper if self.second_x_point else None,
+            zx_upper=self.zx_upper if self.second_x_point else None,
+        )
+
     def _slider(self, n):
         """The widget of a parameter. The float sliders are kept, so that their
         range can follow the machine."""
-        p = getattr(self.param, n)
-        if isinstance(self.param[n], param.Boolean):
-            return pn.widgets.Checkbox.from_param(p, sizing_mode="stretch_width")
-        if isinstance(self.param[n], param.Integer):
-            return FixedWidthEditableIntSlider.from_param(p, width=INPUT_WIDTH)
-        self._sliders[n] = FormattedEditableFloatSlider.from_param(p, width=INPUT_WIDTH)
-        return self._sliders[n]
+        widget = param_input(self.param[n])
+        if isinstance(widget, FormattedEditableFloatSlider):
+            self._sliders[n] = widget
+        return widget
 
-    def fine_tuning(self, boundary_points):
-        """The inputs that refine the boundary NICE is given.
+    def boundary_points_input(self, visible):
+        """The number of points of the parameterized boundary.
 
         Args:
-            boundary_points: Whether to show the number of boundary points, which only
-                a parameterized boundary has, or a reactive expression of it.
+            visible: Whether to show it, or a reactive expression of it.
         """
-        _slider = self._slider
-        return pn.Column(
-            _group(
-                "Boundary points",
-                _slider("n_desired_bnd_points"),
-                visible=boundary_points,
-            ),
-            _group(
-                "Emphasized region",
-                _slider("weight_enabled"),
-                pn.FlexBox(
-                    _slider("weight_position"),
-                    _slider("weight_spread"),
-                    _slider("weight_height"),
-                    visible=self.param.weight_enabled.rx(),
-                    sizing_mode="stretch_width",
-                    margin=0,
-                ),
-            ),
-            _group(
-                "Extra points",
-                _slider("extra_points_enabled"),
-                pn.Row(
-                    self.extra_points_table,
-                    visible=self.param.extra_points_enabled.rx(),
-                    sizing_mode="stretch_width",
-                ),
-            ),
-            margin=0,
+        return _group(
+            "Boundary points", self._slider("n_desired_bnd_points"), visible=visible
         )
 
     def second_x_point_input(self):

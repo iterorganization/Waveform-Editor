@@ -4,7 +4,7 @@ import param
 from bokeh.models.widgets.tables import NumberFormatter
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.plasma_shape import GAP_SCALE
+from waveform_editor.gui.shape_editor.gap_editor import GAP_SCALE
 from waveform_editor.gui.util import card
 from waveform_editor.settings import NiceSettings, settings
 
