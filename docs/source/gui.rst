@@ -471,8 +471,9 @@ Once a reference shape is set, choose how to edit the target shape before you st
   you when the fit misses the reference shape by more than 0.5 cm.
 * **Target gaps**: Only for the ITER and WEST presets. Edits the shape through
   sliders for its :ref:`gaps <shape_metrics>`, which start at the gaps of the
-  current shape. Moving a slider fits the shape parameters to match the set gaps, and a
-  notification warns you if the closest shape misses a gap.
+  current shape. Moving a slider fits the shape parameters to that gap and to the gaps
+  you set to **Fixed**, and the other gaps follow the shape. If no shape reaches them, an error
+  tells you which gap it misses, and the previous shape is kept.
 * **Edit as free points**: Turns the current target shape, including its weights and
   extra points, into a table of free points with their R, Z and weight, which you can
   then move, add and delete. **Fit parameterisation to points** goes back to
