@@ -142,7 +142,7 @@ class SettingsModal(Viewer):
 
     def _parameter_frame(self):
         """The table contents: each parameter, its value and its default."""
-        overrides = self.nice_settings.xml_parameters
+        overrides = self.nice_settings.preset_xml_parameters()
         parameters = ET.fromstring(self.nice_settings.param_xml())
         defaults = {p.tag: (p.text or "").strip() for p in parameters}
         return pd.DataFrame(
@@ -161,21 +161,21 @@ class SettingsModal(Viewer):
         self.parameter_table.value = self._parameter_frame()
 
     def _reset_parameters(self, event=None):
-        """Put every parameter back to the value NICE is shipped with."""
-        self.nice_settings.xml_parameters = {}
+        """Put every parameter of the machine back to the value NICE is shipped with."""
+        self.nice_settings.set_preset_xml_parameters({})
         self._refresh_parameters()
 
     def _on_parameter_edit(self, event):
         """Keep an edited parameter in the settings, unless it is back to default."""
         row = self.parameter_table.value.iloc[event.row]
         name = row[self.NICE_PARAM_COL_NAME]
-        overrides = dict(self.nice_settings.xml_parameters)
+        overrides = dict(self.nice_settings.preset_xml_parameters())
         value = str(event.value).strip()
         if value == row[self.NICE_PARAM_COL_DEFAULT]:
             overrides.pop(name, None)
         else:
             overrides[name] = value
-        self.nice_settings.xml_parameters = overrides
+        self.nice_settings.set_preset_xml_parameters(overrides)
 
     def _build_modal(self):
         # Inputs for machine description URIs

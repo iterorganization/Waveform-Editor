@@ -518,7 +518,7 @@ class ShapeEditor(Viewer):
         Returns:
             True if every configured parameter exists in the XML, False otherwise.
         """
-        for name, value in self.nice_settings.xml_parameters.items():
+        for name, value in self.nice_settings.preset_xml_parameters().items():
             parameter = xml_params.find(name)
             if parameter is None:
                 pn.state.notifications.error(

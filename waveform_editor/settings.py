@@ -126,8 +126,9 @@ class NiceSettings(param.Parameterized):
     xml_parameters = param.Dict(
         default={},
         label="NICE parameters",
-        doc="Values to set in NICE's param.xml, by parameter name. The parameters "
-        "the shape editor computes itself are not among them: it writes those last.",
+        doc="Values to set in NICE's parameter file, by machine preset and by "
+        "parameter name. The parameters the shape editor computes itself are not "
+        "among them",
     )
     mode = param.Selector(
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
@@ -187,6 +188,14 @@ class NiceSettings(param.Parameterized):
             .joinpath(name)
             .read_text()
         )
+
+    def preset_xml_parameters(self):
+        """The NICE parameters set for the selected machine preset, by name."""
+        return self.xml_parameters.get(self.machine_preset, {})
+
+    def set_preset_xml_parameters(self, parameters):
+        """Set the NICE parameters of the selected machine preset, by name."""
+        self.xml_parameters = {**self.xml_parameters, self.machine_preset: parameters}
 
     def _check_required_params_filled(self, *events):
         if not all(
