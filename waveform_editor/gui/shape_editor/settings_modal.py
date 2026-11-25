@@ -101,10 +101,12 @@ class SettingsModal(Viewer):
         self.panel = pn.Row(button_icon, modal)
 
         self.nice_settings.param.watch(
-            self._update_md_inputs_visibility, ["machine_preset"]
+            self._update_md_inputs_visibility, ["cluster", "machine_preset"]
         )
         self._update_md_inputs_visibility(None)
-        self.nice_settings.param.watch(self._refresh_parameters, ["machine_preset"])
+        self.nice_settings.param.watch(
+            self._refresh_parameters, ["machine_preset", "custom_param_xml"]
+        )
 
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
@@ -216,16 +218,30 @@ class SettingsModal(Viewer):
         machine_preset_content = pn.Column(
             self._section_label("Cluster"),
             cluster_selector,
-            pn.Column(
-                self._section_label("Machine Preset"),
-                preset_selector,
-                visible=self.nice_settings.param.cluster.rx()
-                != self.nice_settings.CUSTOM,
-            ),
+            self._section_label("Machine Preset"),
+            preset_selector,
             self._section_label("Required Machine Descriptions"),
             self._settings_section(*md_rows[True]),
             self._section_label("Optional Machine Descriptions"),
             self._settings_section(*md_rows[False]),
+            pn.Column(
+                self._section_label("NICE Parameter File"),
+                self._settings_section(
+                    self._form_row(
+                        "param.xml",
+                        pn.widgets.TextInput.from_param(
+                            self.nice_settings.param.custom_param_xml, name=""
+                        ),
+                        pn.widgets.TooltipIcon(
+                            value="The NICE parameter file of the custom machine. "
+                            "If empty, the one of ITER is used.",
+                            align="center",
+                        ),
+                    )
+                ),
+                visible=self.nice_settings.param.machine_preset.rx()
+                == self.nice_settings.CUSTOM,
+            ),
             sizing_mode="stretch_width",
             scroll=True,
         )
@@ -339,11 +355,9 @@ class SettingsModal(Viewer):
         return pn.Modal(self.tabs, stylesheets=STYLES)
 
     def _update_md_inputs_visibility(self, _):
-        """Disable machine description URI inputs if preset is selected."""
+        """Disable machine description URI inputs if a cluster provides them."""
         for inp in self._md_inputs.values():
-            inp.disabled = (
-                self.nice_settings.machine_preset != self.nice_settings.CUSTOM
-            )
+            inp.disabled = not self.nice_settings.has_custom_uris()
 
     def __panel__(self):
         return self.panel
