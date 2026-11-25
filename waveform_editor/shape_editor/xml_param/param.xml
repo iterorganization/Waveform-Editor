@@ -8,7 +8,7 @@
        The ones the shape editor computes itself, e.g. the selected mode, the coil
        current table, are deliberately absent as the waveform editor writes these itself
        -->
-  <verbose>0</verbose>
+  <verbose>1</verbose>
   <outputTxtFiles>0</outputTxtFiles>
   <outputRestartFiles>0</outputRestartFiles>
   <algoMeshDomain>2</algoMeshDomain>

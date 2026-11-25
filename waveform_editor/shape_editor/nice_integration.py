@@ -174,7 +174,7 @@ class NiceIntegration(param.Parameterized):
         self,
         imas_factory,
         on_output: Callable[[str | bytes], None],
-        on_run_finished: Callable[[bool], None],
+        on_run_finished: Callable[[int | None], None],
     ):
         super().__init__()
         self.imas_factory = imas_factory
@@ -352,7 +352,7 @@ class NiceIntegration(param.Parameterized):
                 self.last_run_successful = retcode == 0
                 if not self.last_run_successful:
                     self.converged = False
-                    self.on_run_finished(False)
+                    self.on_run_finished(retcode)
             # Bold green on success, bold red on failure:
             color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
@@ -421,7 +421,7 @@ class NiceIntegration(param.Parameterized):
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
         self.param.update(equilibrium=equilibrium, pf_active=pf_active)
-        self.on_run_finished(self.converged)
+        self.on_run_finished(None)
         self.processing = False
 
 
