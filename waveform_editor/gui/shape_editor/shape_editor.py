@@ -464,7 +464,8 @@ class ShapeEditor(Viewer):
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
-    def _on_nice_run_finished(self, success):
+    def _on_nice_run_finished(self, exit_status):
+        success = exit_status is None and self.communicator.converged
         problem = self._result_problem() if success else ""
         if success and not problem:
             # Show the gaps of the result, instead of the target gaps
@@ -473,9 +474,11 @@ class ShapeEditor(Viewer):
                 self.nice_plotter.show_target_gaps = False
             return
         self.communicator.converged = False
-        pn.state.notifications.error(
-            f"NICE did not converge{problem}. Check the Logging tab for details."
-        )
+        if exit_status is None:
+            error = f"NICE did not converge{problem}"
+        else:
+            error = f"NICE stopped with an error (status {exit_status})"
+        pn.state.notifications.error(f"{error}. Check the Logging tab for details.")
 
     def _result_problem(self):
         """Why the result of a run NICE says converged is wrong, empty if it is not:
