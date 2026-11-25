@@ -3,9 +3,17 @@
      Path: nice/run/iwrap/param/inv/iter/param.xml
      Author: Blaise Faugeras
      License: LGPL
-     The machine specific values, of the mesh, the initial plasma and the coil groups,
-     are those of nice/data/testCases/west/inv/param.xml, and r0 that of the WEST
-     preset of the plasma properties -->
+     Changed for WEST, to the values of nice/data/testCases/west/inv/param.xml:
+     - the initial plasma: radiusInit, rcenterInit, zcenterInit
+     - the refined zones of the mesh: refinedZone1, refinedZone3, and the points,
+       inner point and triangle area of zones 1 to 3
+     - the triangle areas of the mesh: vacuum, air, airIn, iron, coil, vessel and
+       passiveStruct
+     - the contour of the mesh: n_points_eqx_contour, r_eqx_contour, z_eqx_contour,
+       max_segment_length_eqx_contour
+     - the coil groups: n_coil_group_index, coil_group_index, n_group_current_index,
+       group_current_index
+     And r0, to that of the WEST preset of the plasma properties -->
 <parameters>
   <!-- The parameters NICE runs with, and which the settings let you change.
        The ones the shape editor computes itself, e.g. the selected mode, the coil
