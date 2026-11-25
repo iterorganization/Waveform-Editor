@@ -135,6 +135,14 @@ def run_muscle_manager(
         _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
     )
     config = ymmsl.load(config_str.format(xml_path=xml_path))
+    try:
+        from ymmsl.v0_2 import resolve_timelines
+    except ImportError:
+        pass  # MUSCLE3 0.10 has no timelines
+    else:
+        # The manager of MUSCLE3 0.11 needs them, which muscle_manager resolves
+        for model in config.models.values():
+            resolve_timelines(model)
     manager = Manager(config)
     server_location = manager.get_server_location()
     pipe.send(server_location)
