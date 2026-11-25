@@ -206,6 +206,7 @@ class PlasmaProfiles(Viewer):
                     time,
                     imas.ids_defs.CLOSEST_INTERP,
                     lazy=True,
+                    autoconvert=False,
                 )
                 self._ids_dpressure_dpsi = eq.time_slice[0].profiles_1d.dpressure_dpsi
                 self._ids_f_df_dpsi = eq.time_slice[0].profiles_1d.f_df_dpsi
@@ -462,6 +463,7 @@ class PlasmaProperties(Viewer):
                     time,
                     imas.ids_defs.CLOSEST_INTERP,
                     lazy=True,
+                    autoconvert=False,
                 )
                 for attr, path in self._IDS_SCALAR_PATHS:
                     try:
