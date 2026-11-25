@@ -96,17 +96,19 @@ class WaveformSync(Viewer):
     def _store(self, event=None):
         """Store every quantity of the last run in its waveform."""
         self.storing = True
-        quantities = self.store.get_quantities(
-            self.communicator.equilibrium, self.communicator.pf_active
-        )
-        created = self.store.store(quantities, self.export_time)
-        if created:
-            self.main_gui.selector.refresh()
+        try:
+            quantities = self.store.get_quantities(
+                self.communicator.equilibrium, self.communicator.pf_active
+            )
+            created = self.store.store(quantities, self.export_time)
+            if created:
+                self.main_gui.selector.refresh()
+        finally:
+            self.storing = False
 
         pn.state.notifications.success(
             f"Stored {len(quantities)} values at t={self.export_time} s."
         )
-        self.storing = False
         self.modal.hide()
 
     def __panel__(self):
