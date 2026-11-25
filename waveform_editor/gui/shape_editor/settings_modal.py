@@ -129,6 +129,10 @@ class SettingsModal(Viewer):
             page_size=self.NICE_PARAM_PAGE_SIZE,
             on_edit=self._on_parameter_edit,
         )
+        changed_only = pn.widgets.Checkbox(name="Show changed only", align="center")
+        self.parameter_table.add_filter(
+            pn.bind(self._filter_changed, changed_only=changed_only)
+        )
         reset = pn.widgets.Button(
             name="Reset all to defaults",
             width=self.RESET_BUTTON_WIDTH,
@@ -136,7 +140,7 @@ class SettingsModal(Viewer):
         )
         return pn.Column(
             self._section_label("NICE parameters"),
-            self._settings_section(self.parameter_table, reset),
+            self._settings_section(self.parameter_table, pn.Row(reset, changed_only)),
             sizing_mode="stretch_width",
         )
 
@@ -155,6 +159,13 @@ class SettingsModal(Viewer):
                 for name, default in defaults.items()
             ]
         )
+
+    def _filter_changed(self, frame, changed_only):
+        """The parameters to show: all, or only those changed from their default."""
+        if not changed_only:
+            return frame
+        values = frame[self.NICE_PARAM_COL_VALUE].astype(str).str.strip()
+        return frame[values != frame[self.NICE_PARAM_COL_DEFAULT]]
 
     def _refresh_parameters(self, event=None):
         """Show the parameters again, as the defaults depend on the machine preset."""
