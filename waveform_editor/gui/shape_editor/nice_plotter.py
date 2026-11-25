@@ -27,6 +27,7 @@ from waveform_editor.shape_editor.flux import (
     flux_contours,
     flux_grid,
     has_flux_map,
+    has_grid,
     mesh,
 )
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
@@ -714,7 +715,11 @@ class NicePlotter(Viewer):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
-            grid = flux_grid(equilibrium.time_slice[0], self.HEATMAP_RESOLUTION)
+            grids = equilibrium.grids_ggd if has_grid(equilibrium) else self.grids_ggd
+            _, triangles = mesh(grids)
+            grid = flux_grid(
+                equilibrium.time_slice[0], triangles, self.HEATMAP_RESOLUTION
+            )
             self._heatmap_cache = (equilibrium, grid)
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])

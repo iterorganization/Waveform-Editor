@@ -4,8 +4,7 @@ from functools import lru_cache
 
 import numpy as np
 from matplotlib.figure import Figure
-from matplotlib.tri import Triangulation
-from scipy.interpolate import griddata
+from matplotlib.tri import LinearTriInterpolator, Triangulation
 
 
 @lru_cache(maxsize=1)
@@ -26,6 +25,12 @@ def mesh(grids_ggd):
     nodes = np.array([node.geometry.value for node in objects[0].object])
     triangles = np.array([triangle.nodes.value for triangle in objects[2].object])
     return nodes, triangles
+
+
+def has_grid(equilibrium):
+    """Whether an equilibrium holds the mesh of NICE"""
+    grids = equilibrium.grids_ggd
+    return bool(len(grids) and len(grids[0].grid) and len(grids[0].grid[0].space))
 
 
 def has_flux_map(time_slice):
@@ -49,12 +54,13 @@ def flux_contours(time_slice, levels):
     return Figure().add_subplot().tricontour(triangulation, ggd.psi[0].values, levels)
 
 
-def flux_grid(time_slice, resolution):
-    """The poloidal flux on the GGD NICE fills, interpolated linearly onto a regular
-    grid over the mesh.
+def flux_grid(time_slice, triangles, resolution):
+    """The poloidal flux on the GGD NICE fills, interpolated linearly on the triangles
+    of its mesh onto a regular grid over the mesh.
 
     Args:
         time_slice: The equilibrium time slice.
+        triangles: The indices of the nodes of each triangle of the mesh, see mesh.
         resolution: The number of grid points along r and along z.
 
     Returns:
@@ -64,5 +70,8 @@ def flux_grid(time_slice, resolution):
     r, z = ggd.r[0].values, ggd.z[0].values
     grid_r = np.linspace(r.min(), r.max(), resolution)
     grid_z = np.linspace(z.min(), z.max(), resolution)
-    psi_grid = griddata((r, z), ggd.psi[0].values, tuple(np.meshgrid(grid_r, grid_z)))
+    interpolator = LinearTriInterpolator(
+        Triangulation(r, z, triangles), ggd.psi[0].values
+    )
+    psi_grid = interpolator(*np.meshgrid(grid_r, grid_z)).filled(np.nan)
     return grid_r, grid_z, psi_grid
