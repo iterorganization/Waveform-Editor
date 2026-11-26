@@ -203,7 +203,7 @@ class SettingsModal(Viewer):
         # --- Display tab ---
         def toggles(*names, **widgets):
             return pn.Param(
-                self.nice_plotter.param,
+                self.nice_plotter.display_settings.param,
                 parameters=list(names),
                 show_name=False,
                 widgets=widgets,
@@ -218,7 +218,7 @@ class SettingsModal(Viewer):
                 margin=(0, 0, 4, 22),
             )
 
-        plotter = self.nice_plotter.param
+        plotter = self.nice_plotter.display_settings.param
         is_inverse = self.nice_settings.param.is_inverse_mode.rx()
         display_content = pn.Column(
             self._section_label("Poloidal Flux"),

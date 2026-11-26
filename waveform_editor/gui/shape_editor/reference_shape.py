@@ -4,6 +4,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.shape_params import (
     MACHINE_SHAPES,
     PlasmaShapeParams,
@@ -34,7 +35,7 @@ class ReferenceShape(Viewer):
     preview = param.Parameter(
         default=None, precedence=-1, doc="The equilibrium IDS loaded, before it is set."
     )
-    show = param.Boolean(default=True, label="Show reference shape")
+    display_settings = param.ClassSelector(class_=DisplaySettings, precedence=-1)
     is_target = param.Boolean(
         precedence=-1, doc="Whether the target shape is the reference itself."
     )
@@ -147,7 +148,7 @@ class ReferenceShape(Viewer):
         """The loaded equilibrium IDS is only drawn, as the reference, while it can be
         set."""
         if self.source == self.SOURCE_IDS:
-            self.show = True
+            self.display_settings.show_reference_shape = True
             if self.input_outline.times:  # an IDS entered before, loaded again
                 self._load_preview()
         else:
@@ -170,7 +171,7 @@ class ReferenceShape(Viewer):
         """The checkbox to show the reference shape, which the display settings have
         too."""
         return pn.widgets.Checkbox.from_param(
-            self.param.show,
+            self.display_settings.param.show_reference_shape,
             # When the reference is the target shape itself, or the equilibrium IDS
             # being chosen, which is always shown
             disabled=pn.bind(
