@@ -96,6 +96,15 @@ class ShapeEditor(Viewer):
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
         )
+        # The same toggles as in the display settings
+        self.plasma_shape.gap_display.objects = [
+            pn.widgets.Checkbox.from_param(
+                self.nice_plotter.param.show_target_gaps, name="Show target gaps"
+            ),
+            pn.widgets.Checkbox.from_param(
+                self.nice_plotter.param.show_result_gaps, name="Show result gaps"
+            ),
+        ]
         self.metrics = Metrics()
         # Converged runs as (label, equilibrium, pf_active) tuples, oldest first
         self.run_history = []
@@ -468,10 +477,6 @@ class ShapeEditor(Viewer):
         success = exit_status is None and self.communicator.converged
         problem = self._result_problem() if success else ""
         if success and not problem:
-            # Show the gaps of the result, instead of the target gaps
-            if self.nice_plotter.show_gaps:
-                self.nice_plotter.show_result_gaps = True
-                self.nice_plotter.show_target_gaps = False
             return
         self.communicator.converged = False
         if exit_status is None:

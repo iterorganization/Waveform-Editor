@@ -97,6 +97,7 @@ class PlasmaShape(Viewer):
         # Whether the parameterisation is still to be fitted to the reference shape
         self._fit_pending = False
         self.gap_sliders = pn.FlexBox(margin=0)
+        self.gap_display = pn.Row(margin=0)
         # A double null has other gaps to fit to
         self.shape_params.param.watch(self._on_second_x_point, "second_x_point")
         edit_by = self.param.edit_by.rx()
@@ -107,7 +108,11 @@ class PlasmaShape(Viewer):
                 self.shape_params, visible=edit_by == self.EDIT_SLIDERS, margin=0
             ),
             pn.Column(
-                self.shape_params.second_x_point_input(),
+                pn.Row(
+                    *self.shape_params.second_x_point_input(),
+                    self.gap_display,
+                    margin=(0, 0, 5, 0),
+                ),
                 self.gap_sliders,
                 visible=edit_by == self.EDIT_GAPS,
                 margin=0,

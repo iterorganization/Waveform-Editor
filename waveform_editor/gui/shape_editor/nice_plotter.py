@@ -130,9 +130,9 @@ class NicePlotter(Viewer):
         default=True, label="Show plasma facing components"
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
+    show_strike_points = param.Boolean(default=True, label="Show strike points")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_target_shape = param.Boolean(default=True, label="Show target shape")
-    show_gaps = param.Boolean(default=True, label="Show gaps")
     show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
     show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
 
@@ -450,7 +450,6 @@ class NicePlotter(Viewer):
         "nice_settings.mode",
         "communicator.equilibrium",
         "communicator.converged",
-        "show_gaps",
         "show_target_gaps",
         "show_result_gaps",
         "nice_settings.machine_preset",
@@ -507,7 +506,6 @@ class NicePlotter(Viewer):
         "communicator.converged",
         "show_separatrix",
         "show_target_shape",
-        "show_gaps",
         "show_target_gaps",
         "show_result_gaps",
         "nice_settings.mode",
@@ -518,7 +516,7 @@ class NicePlotter(Viewer):
         """The legend of the lines in the plot."""
         shape = self.plasma_shape
         shapes = not self.nice_settings.is_direct_mode and self.show_target_shape
-        gaps = self.nice_settings.machine_preset in MACHINE_GAPS and self.show_gaps
+        gaps = self.nice_settings.machine_preset in MACHINE_GAPS
         items = (
             (
                 "Target shape",
@@ -612,6 +610,7 @@ class NicePlotter(Viewer):
         "levels",
         "show_separatrix",
         "show_xo",
+        "show_strike_points",
         "pf_active",
         "show_coils",
     )
@@ -623,6 +622,7 @@ class NicePlotter(Viewer):
             * self._plot_contours()
             * self._plot_separatrix()
             * self._plot_xo_points()
+            * self._plot_strike_points()
             * self._plot_coil_rectangles()
         )
 
@@ -913,6 +913,26 @@ class NicePlotter(Viewer):
         )
         return o_scatter * x_scatter
 
+    def _plot_strike_points(self):
+        """Plots the strike points"""
+        points = []
+        equilibrium = self.communicator.equilibrium
+        if self.show_strike_points and equilibrium is not None:
+            for node in equilibrium.time_slice[0].contour_tree.node:
+                levelset = node.levelset
+                if node.critical_type == 1 and len(levelset.r) > 1:
+                    points += [
+                        (levelset.r[0], levelset.z[0]),
+                        (levelset.r[-1], levelset.z[-1]),
+                    ]
+        return hv.Scatter(points).opts(
+            marker="triangle",
+            size=10,
+            color="black",
+            show_legend=False,
+            hover_tooltips=[("", "Strike point")],
+        )
+
     def _plot_clearance_gaps(self):
         """Plots the gaps of the target shape in blue and of the resulting shape in
         red, from the points they are measured from to the boundary."""
@@ -920,7 +940,7 @@ class NicePlotter(Viewer):
         shape = self.plasma_shape
         equilibrium = self.communicator.equilibrium
         target, result = [], []
-        if gaps is not None and self.show_gaps:
+        if gaps is not None:
             if self.show_target_gaps and self.has_target():
                 inputs = gaps.shape_inputs(shape.target_x_points)
                 target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)

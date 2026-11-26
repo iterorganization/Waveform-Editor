@@ -166,6 +166,21 @@ class ReferenceShape(Viewer):
                 f"Could not load the equilibrium from {self.input_outline.uri}: {e}"
             )
 
+    def show_input(self, **params):
+        """The checkbox to show the reference shape, which the display settings have
+        too."""
+        return pn.widgets.Checkbox.from_param(
+            self.param.show,
+            # When the reference is the target shape itself, or the equilibrium IDS
+            # being chosen, which is always shown
+            disabled=pn.bind(
+                lambda is_target, source: is_target or source == self.SOURCE_IDS,
+                self.param.is_target,
+                self.param.source,
+            ),
+            **params,
+        )
+
     def __panel__(self):
         return card(
             self.param.origin.rx().rx.pipe(
@@ -175,20 +190,7 @@ class ReferenceShape(Viewer):
             ),
             pn.Row(
                 self._source_select,
-                pn.widgets.Checkbox.from_param(
-                    self.param.show,
-                    # When the reference is the target shape itself, or the
-                    # equilibrium IDS being chosen, which is always shown
-                    disabled=pn.bind(
-                        lambda is_target, source: (
-                            is_target or source == self.SOURCE_IDS
-                        ),
-                        self.param.is_target,
-                        self.param.source,
-                    ),
-                    align="center",
-                    margin=(0, 0, 8, 0),
-                ),
+                self.show_input(align="center", margin=(0, 0, 8, 0)),
                 margin=0,
             ),
             pn.Column(

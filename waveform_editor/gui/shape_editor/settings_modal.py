@@ -43,25 +43,6 @@ class SettingsModal(Viewer):
             sizing_mode="stretch_width",
         )
 
-    def _detail_section(self, label, parameters, toggle):
-        """A section of plot parameters, shown while the toggle that enables them is.
-
-        Args:
-            label: The title of the section.
-            parameters: Names of the parameters of the plotter in the section.
-            toggle: The boolean parameter that shows the section.
-        """
-        return pn.Column(
-            self._section_label(label),
-            self._settings_section(
-                pn.Param(
-                    self.nice_plotter.param, parameters=parameters, show_name=False
-                )
-            ),
-            visible=toggle,
-            sizing_mode="stretch_width",
-        )
-
     def _form_row(self, label, widget, warning=None):
         items = [
             pn.pane.HTML(
@@ -220,58 +201,68 @@ class SettingsModal(Viewer):
         )
 
         # --- Display tab ---
-        self._contour_detail = self._detail_section(
-            "Contour Detail", ["levels"], self.nice_plotter.param.show_contour
-        )
-        self._heatmap_detail = self._detail_section(
-            "Heatmap Detail", ["heatmap_alpha"], self.nice_plotter.param.show_heatmap
-        )
+        def toggles(*names, **widgets):
+            return pn.Param(
+                self.nice_plotter.param,
+                parameters=list(names),
+                show_name=False,
+                widgets=widgets,
+            )
 
-        # Which gaps "Show gaps" shows, nested under it and only there while it is on
-        gap_options = pn.Column(
-            pn.widgets.Checkbox.from_param(
-                self.nice_plotter.param.show_target_gaps,
-                name="Target shape",
-                visible=self.nice_settings.param.is_inverse_mode.rx(),
-            ),
-            pn.widgets.Checkbox.from_param(
-                self.nice_plotter.param.show_result_gaps, name="Resulting shape"
-            ),
-            visible=self.nice_plotter.param.show_gaps,
-            styles={"border-left": "2px solid #dee2e6", "padding-left": "8px"},
-            margin=(0, 0, 4, 22),
-        )
+        def options(*items, visible):
+            """Options of a toggle, nested under it and only there while it is on."""
+            return pn.Column(
+                *items,
+                visible=visible,
+                styles={"border-left": "2px solid #dee2e6", "padding-left": "8px"},
+                margin=(0, 0, 4, 22),
+            )
 
+        plotter = self.nice_plotter.param
+        is_inverse = self.nice_settings.param.is_inverse_mode.rx()
         display_content = pn.Column(
-            self._section_label("Visibility"),
+            self._section_label("Poloidal Flux"),
             self._settings_section(
-                pn.Param(
-                    self.nice_plotter.param,
-                    parameters=[
-                        "show_contour",
-                        "show_heatmap",
-                        "show_coils",
-                        "show_wall",
-                        "show_vacuum_vessel",
-                        "show_passive_structures",
-                        "show_iron_core",
-                        "show_plasma_facing_components",
-                        "show_xo",
-                        "show_separatrix",
-                        "show_target_shape",
-                        "show_gaps",
-                    ],
-                    show_name=False,
-                    widgets={
-                        "show_target_shape": {
-                            "visible": self.nice_settings.param.is_inverse_mode.rx()
-                        },
-                    },
-                ),
-                gap_options,
+                toggles("show_contour"),
+                options(toggles("levels"), visible=plotter.show_contour),
+                toggles("show_heatmap"),
+                options(toggles("heatmap_alpha"), visible=plotter.show_heatmap),
             ),
-            self._contour_detail,
-            self._heatmap_detail,
+            self._section_label("Machine"),
+            self._settings_section(
+                toggles(
+                    "show_coils",
+                    "show_wall",
+                    "show_vacuum_vessel",
+                    "show_passive_structures",
+                    "show_iron_core",
+                    "show_plasma_facing_components",
+                )
+            ),
+            self._section_label("Result"),
+            self._settings_section(
+                toggles(
+                    "show_separatrix",
+                    "show_xo",
+                    "show_strike_points",
+                    "show_result_gaps",
+                )
+            ),
+            self._section_label("Target"),
+            self._settings_section(
+                # One column with the margin of the toggles of the other sections, as
+                # the reference shape is not a setting of the plot
+                pn.Column(
+                    pn.widgets.Checkbox.from_param(
+                        plotter.show_target_shape, visible=is_inverse
+                    ),
+                    self.nice_plotter.plasma_shape.reference.show_input(),
+                    pn.widgets.Checkbox.from_param(
+                        plotter.show_target_gaps, visible=is_inverse
+                    ),
+                    margin=(5, 10),
+                ),
+            ),
             sizing_mode="stretch_width",
             scroll=True,
         )
