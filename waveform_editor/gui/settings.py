@@ -12,7 +12,7 @@ def nice_mode_toggle(
     widget = pn.widgets.RadioButtonGroup(
         options=[NiceSettings.DIRECT_MODE, NiceSettings.INVERSE_MODE],
         value=nice_settings.mode,
-        button_type="default",
+        button_type="primary",
         button_style="outline",
         **kwargs,
     )
