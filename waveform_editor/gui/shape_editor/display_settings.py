@@ -29,5 +29,5 @@ class DisplaySettings(param.Parameterized):
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_target_shape = param.Boolean(default=True, label="Show target shape")
     show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
-    show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
+    show_result_gaps = param.Boolean(default=True, label="Show resulting shape gaps")
     show_reference_shape = param.Boolean(default=True, label="Show reference shape")
