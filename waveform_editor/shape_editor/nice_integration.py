@@ -135,6 +135,14 @@ def run_muscle_manager(
         _muscle3_dir_configuration if is_direct_mode else _muscle3_inv_configuration
     )
     config = ymmsl.load(config_str.format(xml_path=xml_path))
+    try:
+        from ymmsl.v0_2 import resolve_timelines
+    except ImportError:
+        pass  # MUSCLE3 0.10 has no timelines
+    else:
+        # The manager of MUSCLE3 0.11 needs them, which muscle_manager resolves
+        for model in config.models.values():
+            resolve_timelines(model)
     manager = Manager(config)
     server_location = manager.get_server_location()
     pipe.send(server_location)
@@ -174,7 +182,7 @@ class NiceIntegration(param.Parameterized):
         self,
         imas_factory,
         on_output: Callable[[str | bytes], None],
-        on_run_finished: Callable[[bool], None],
+        on_run_finished: Callable[[int | None], None],
     ):
         super().__init__()
         self.imas_factory = imas_factory
@@ -352,7 +360,7 @@ class NiceIntegration(param.Parameterized):
                 self.last_run_successful = retcode == 0
                 if not self.last_run_successful:
                     self.converged = False
-                    self.on_run_finished(False)
+                    self.on_run_finished(retcode)
             # Bold green on success, bold red on failure:
             color = "\033[32;1m" if retcode == 0 else "\033[31;1m"
             # Add signal description (if relevant), e.g. 'Segmentation fault'
@@ -421,7 +429,7 @@ class NiceIntegration(param.Parameterized):
         pf_active = self.imas_factory.new("pf_active")
         pf_active.deserialize(pfa)
         self.param.update(equilibrium=equilibrium, pf_active=pf_active)
-        self.on_run_finished(self.converged)
+        self.on_run_finished(None)
         self.processing = False
 
 

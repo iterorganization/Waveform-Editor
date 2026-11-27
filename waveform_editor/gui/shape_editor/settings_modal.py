@@ -251,6 +251,7 @@ class SettingsModal(Viewer):
                         "show_contour",
                         "show_heatmap",
                         "show_mesh",
+                        "show_colorbar",
                         "show_coils",
                         "show_wall",
                         "show_vacuum_vessel",

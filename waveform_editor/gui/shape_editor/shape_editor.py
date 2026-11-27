@@ -41,8 +41,8 @@ MAX_BOUNDARY_POINTS = 5000
 
 class ShapeEditor(Viewer):
     MAX_LOG_LINES = 10000
-    # Pixels below the top of the plot that are not its frame, of its axis
-    BELOW_PLOT = 340
+    # Share of the window height the plot is fitted to
+    PLOT_HEIGHT = 0.7
     PLOT_OFFSET = (275, 96)
     # Seconds the inputs must be unchanged before auto run runs NICE again
     AUTO_RUN_DELAY = 0.3
@@ -256,7 +256,7 @@ class ShapeEditor(Viewer):
         if left is not None:
             self.PLOT_OFFSET = (left - plot.frame_width, top)
         left, top = self.PLOT_OFFSET
-        plot.fit(width - left - event.obj.min_right, height - top - self.BELOW_PLOT)
+        plot.fit(width - left - event.obj.min_right, height * self.PLOT_HEIGHT)
 
     def _missing_inputs(self, is_inverse, has_shape, has_properties, has_settings):
         """What is missing to run NICE, empty when nothing is."""
@@ -457,7 +457,8 @@ class ShapeEditor(Viewer):
         # the DD!
         slice.profiles_1d.psi = self.plasma_properties.psi_norm
 
-    def _on_nice_run_finished(self, success):
+    def _on_nice_run_finished(self, exit_status):
+        success = exit_status is None and self.communicator.converged
         problem = self._result_problem() if success else ""
         if success and not problem:
             # Show the gaps of the result, instead of the target gaps
@@ -466,9 +467,11 @@ class ShapeEditor(Viewer):
                 self.nice_plotter.show_target_gaps = False
             return
         self.communicator.converged = False
-        pn.state.notifications.error(
-            f"NICE did not converge{problem}. Check the Logging tab for details."
-        )
+        if exit_status is None:
+            error = f"NICE did not converge{problem}"
+        else:
+            error = f"NICE stopped with an error (status {exit_status})"
+        pn.state.notifications.error(f"{error}. Check the Logging tab for details.")
 
     def _result_problem(self):
         """Why the result of a run NICE says converged is wrong, empty if it is not:
