@@ -190,6 +190,9 @@ class NicePlotter(Viewer):
             colorbar=True,
             tools=["hover"],
             colorbar_opts={"title": "Poloidal flux [Wb]"},
+            # Set a hook rather than colorbar=self.show_colorbar, as HoloViews only
+            # creates the colorbar when the plot is first drawn and ignores later
+            # changes to it
             hooks=[self._show_colorbar],
             show_legend=False,
         )
