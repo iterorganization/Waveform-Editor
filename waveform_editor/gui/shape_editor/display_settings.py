@@ -9,6 +9,7 @@ class DisplaySettings(param.Parameterized):
         default=20, bounds=(1, 200), label="Number of contour levels"
     )
     show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    show_colorbar = param.Boolean(default=False, label="Show colorbar")
     heatmap_alpha = param.Number(
         default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
     )

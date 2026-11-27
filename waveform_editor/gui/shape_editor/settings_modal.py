@@ -193,6 +193,7 @@ class SettingsModal(Viewer):
                 self._options(
                     self._display_inputs("heatmap_alpha"), visible=plotter.show_heatmap
                 ),
+                self._display_inputs("show_colorbar"),
             ),
             self._section_label("Machine"),
             self._settings_section(

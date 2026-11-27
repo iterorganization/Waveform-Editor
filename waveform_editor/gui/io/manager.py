@@ -84,7 +84,7 @@ class IOManager(Viewer):
             self.file_saver.open_save_dialog()
         elif clicked == EXPORT:
             self._confirm_unsaved_changes(
-                self.file_exporter.modal.show,
+                self.file_exporter.open,
                 "Exporting now may not include these unsaved changes.",
             )
 
