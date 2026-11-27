@@ -10,8 +10,6 @@ from bokeh.models import (
     CustomAction,
     CustomJS,
     HoverTool,
-    Label,
-    Node,
     PointDrawTool,
     ResetTool,
     WheelZoomTool,
@@ -361,26 +359,6 @@ class NicePlotter(Viewer):
         tools = [t for t in toolbar.tools if not isinstance(t, ResetTool)]
         toolbar.tools = [*tools, self._zoom_tool]
         plot.state.min_border = 5
-        # The axis titles inside the plot so they take no margin
-        style = dict(text_font_size="10px", text_color="gray", padding=3)
-        plot.state.add_layout(
-            Label(
-                text="r [m]",
-                x=Node.frame.right,
-                y=Node.frame.bottom,
-                anchor="bottom_right",
-                **style,
-            )
-        )
-        plot.state.add_layout(
-            Label(
-                text="z [m]",
-                x=Node.frame.left,
-                y=Node.frame.top,
-                anchor="top_left",
-                **style,
-            )
-        )
         self._apply_machine_ranges()
 
     def _show_colorbar(self, plot, element):
