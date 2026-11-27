@@ -3,7 +3,6 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
 from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.shape_params import (
@@ -15,7 +14,7 @@ from waveform_editor.gui.util import (
     FormattedEditableFloatSlider,
     card,
 )
-from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.settings import DisplaySettings, NiceSettings, settings
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.plasma_shape_calc import (
     apply_point_weights,
@@ -82,8 +81,8 @@ class PlasmaShape(Viewer):
             return ("a", "center_r", "center_z", "rx", "zx", "rx_upper", "zx_upper")
         return self.FIT_PARAMS
 
-    def __init__(self, display_settings):
-        super().__init__(nice_settings=settings.nice, display_settings=display_settings)
+    def __init__(self):
+        super().__init__(nice_settings=settings.nice, display_settings=settings.display)
         self.outline_r = None
         self.outline_z = None
         # Unduplicated parameterized boundary points and their per-point weight,
@@ -95,7 +94,6 @@ class PlasmaShape(Viewer):
         self.reference = ReferenceShape(
             on_set=self._take_reference,
             shape_params=self.shape_params,
-            display_settings=self.display_settings,
         )
         self.shape_params.extra_points_table = self.extra_points_table
         # Whether the parameterisation is still to be fitted to the reference shape

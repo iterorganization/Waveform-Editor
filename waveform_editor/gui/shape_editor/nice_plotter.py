@@ -18,11 +18,10 @@ from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.coil_currents import current_limit
-from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
-from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.settings import DisplaySettings, NiceSettings, settings
 from waveform_editor.shape_editor.flux import flux_contours, flux_grid, has_flux_map
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
@@ -135,6 +134,7 @@ class NicePlotter(Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
+        self.display_settings = settings.display
         self._figure = None
         self.nice_settings.param.watch(self._apply_machine_ranges, "machine_preset")
         self.param.watch(self._apply_machine_ranges, "wall")

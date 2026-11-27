@@ -13,7 +13,6 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
-from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
@@ -79,8 +78,7 @@ class ShapeEditor(Viewer):
             on_output=self.terminal.write,
             on_run_finished=self._on_nice_run_finished,
         )
-        display_settings = DisplaySettings()
-        self.plasma_shape = PlasmaShape(display_settings)
+        self.plasma_shape = PlasmaShape()
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
         # Only a converged result can be a reference shape
@@ -94,7 +92,6 @@ class ShapeEditor(Viewer):
         )
         self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
-            display_settings=display_settings,
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,

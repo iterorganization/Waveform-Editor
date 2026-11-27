@@ -220,10 +220,43 @@ class NiceSettings(param.Parameterized):
         return result
 
 
+class DisplaySettings(param.Parameterized):
+    """Display setting that determine what is visualized in the plotting window."""
+
+    show_contour = param.Boolean(default=True, label="Show contour lines")
+    levels = param.Integer(
+        default=20, bounds=(1, 200), label="Number of contour levels"
+    )
+    show_heatmap = param.Boolean(default=False, label="Show heatmap")
+    show_colorbar = param.Boolean(default=False, label="Show colorbar")
+    heatmap_alpha = param.Number(
+        default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
+    )
+    show_coils = param.Boolean(default=True, label="Show coils")
+    show_wall = param.Boolean(default=True, label="Show limiter and divertor")
+    show_vacuum_vessel = param.Boolean(
+        default=True, label="Show inner and outer vacuum vessel"
+    )
+    show_passive_structures = param.Boolean(
+        default=True, label="Show passive structures"
+    )
+    show_iron_core = param.Boolean(default=True, label="Show iron core")
+    show_plasma_facing_components = param.Boolean(
+        default=True, label="Show plasma facing components"
+    )
+    show_xo = param.Boolean(default=True, label="Show x-point and o-point")
+    show_separatrix = param.Boolean(default=True, label="Show separatrix")
+    show_target_shape = param.Boolean(default=True, label="Show target shape")
+    show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
+    show_result_gaps = param.Boolean(default=True, label="Show resulting shape gaps")
+    show_reference_shape = param.Boolean(default=True, label="Show reference shape")
+
+
 class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
 
     nice = param.ClassSelector(class_=NiceSettings, default=NiceSettings())
+    display = param.ClassSelector(class_=DisplaySettings, default=DisplaySettings())
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -231,6 +264,7 @@ class UserSettings(param.Parameterized):
         self._save_settings()
         self.param.watch(self._save_settings, list(self.param))
         self.nice.param.watch(self._save_settings, list(self.nice.param))
+        self.display.param.watch(self._save_settings, list(self.display.param))
         for md in self.nice.machine_descriptions:
             md.param.watch(self._save_settings, ["uri"])
 
@@ -245,9 +279,17 @@ class UserSettings(param.Parameterized):
         if "nice" in settings:
             self.nice.apply_settings(settings["nice"])
 
-        base_settings = {k: v for k, v in settings.items() if k != "nice"}
+        for key, value in settings.get("display", {}).items():
+            if key in self.display.param and key != "name":
+                setattr(self.display, key, value)
+            else:
+                logger.warning(f"Removing unknown display setting: {key}")
+
+        base_settings = {
+            k: v for k, v in settings.items() if k not in ("nice", "display")
+        }
         for key in list(base_settings):
-            if key not in self.param or key in ("name", "nice"):
+            if key not in self.param or key in ("name", "nice", "display"):
                 logger.warning(f"Removing unknown setting: {key}")
                 base_settings.pop(key)
         self.param.update(**base_settings)
@@ -255,7 +297,12 @@ class UserSettings(param.Parameterized):
     def _save_settings(self, event=None):
         """Serialize current configuration to disk in YAML format."""
         config = {
-            p: getattr(self, p) for p in self.param if p != "name" and p != "nice"
+            p: getattr(self, p)
+            for p in self.param
+            if p not in ("name", "nice", "display")
+        }
+        config["display"] = {
+            p: getattr(self.display, p) for p in self.display.param if p != "name"
         }
 
         if self.gs_solver == "NICE":

@@ -180,18 +180,20 @@ class SettingsModal(Viewer):
 
     def _display_tab(self):
         """Show display settings."""
-        plotter = self.nice_plotter.display_settings.param
+        display_settings = self.nice_plotter.display_settings.param
         is_inverse = self.nice_settings.param.is_inverse_mode.rx()
         return self._tab(
             self._section_label("Poloidal Flux"),
             self._settings_section(
                 self._display_inputs("show_contour"),
                 self._options(
-                    self._display_inputs("levels"), visible=plotter.show_contour
+                    self._display_inputs("levels"),
+                    visible=display_settings.show_contour,
                 ),
                 self._display_inputs("show_heatmap"),
                 self._options(
-                    self._display_inputs("heatmap_alpha"), visible=plotter.show_heatmap
+                    self._display_inputs("heatmap_alpha"),
+                    visible=display_settings.show_heatmap,
                 ),
                 self._display_inputs("show_colorbar"),
             ),
@@ -218,11 +220,11 @@ class SettingsModal(Viewer):
             self._settings_section(
                 pn.Column(
                     pn.widgets.Checkbox.from_param(
-                        plotter.show_target_shape, visible=is_inverse
+                        display_settings.show_target_shape, visible=is_inverse
                     ),
                     self.nice_plotter.plasma_shape.reference.show_input(),
                     pn.widgets.Checkbox.from_param(
-                        plotter.show_target_gaps, visible=is_inverse
+                        display_settings.show_target_gaps, visible=is_inverse
                     ),
                     margin=(5, 10),
                 ),

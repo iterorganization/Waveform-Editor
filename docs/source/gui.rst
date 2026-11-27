@@ -392,7 +392,8 @@ poloidal flux, the coils, the limiter and divertor, the vacuum vessel, the passi
 structures, the iron core, the plasma facing components, the x-point and o-point, the
 separatrix and the target shape. For the ITER and WEST presets, you can also show the
 gaps, of the target shape and of the resulting shape. You can also choose how many
-contour levels to plot, and the opacity of the heatmap.
+contour levels to plot, and the opacity of the heatmap. The display settings are
+kept between sessions.
 
 .. _machine_presets:
 

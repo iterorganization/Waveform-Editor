@@ -4,13 +4,12 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
-from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.shape_params import (
     MACHINE_SHAPES,
     PlasmaShapeParams,
 )
 from waveform_editor.gui.util import EquilibriumInput, card
-from waveform_editor.settings import NiceSettings, settings
+from waveform_editor.settings import DisplaySettings, NiceSettings, settings
 from waveform_editor.shape_editor.plasma_shape_calc import compute_outline_from_params
 
 
@@ -48,7 +47,9 @@ class ReferenceShape(Viewer):
         Args:
             on_set: Called when the reference shape of the chosen source is set.
         """
-        super().__init__(nice_settings=settings.nice, **params)
+        super().__init__(
+            nice_settings=settings.nice, display_settings=settings.display, **params
+        )
         self._on_set = on_set
         # The outline set, its x-points if known, and whether it is of an equilibrium
         self.r = self.z = None
