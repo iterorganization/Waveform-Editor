@@ -893,19 +893,19 @@ class NicePlotter(Viewer):
                 elif node.critical_type == 0 or node.critical_type == 2:
                     o_points.append(point)
 
-        o_scatter = hv.Scatter(o_points).opts(
+        o_scatter = hv.Points(o_points, kdims=["r", "z"]).opts(
             marker="o",
             size=10,
             color="black",
             show_legend=False,
-            hover_tooltips=[("", "O-point")],
+            hover_tooltips=[("O-point (R, Z)", "@r{0.000} m, @z{0.000} m")],
         )
-        x_scatter = hv.Scatter(x_points).opts(
+        x_scatter = hv.Points(x_points, kdims=["r", "z"]).opts(
             marker="x",
             size=10,
             color="black",
             show_legend=False,
-            hover_tooltips=[("", "X-point")],
+            hover_tooltips=[("X-point (R, Z)", "@r{0.000} m, @z{0.000} m")],
         )
         return o_scatter * x_scatter
 
@@ -922,9 +922,9 @@ class NicePlotter(Viewer):
                         (levelset.r[-1], levelset.z[-1]),
                     ]
         return hv.Points(points, kdims=["r", "z"]).opts(
-            marker="triangle",
+            marker="square",
             size=10,
-            color="black",
+            color="red",
             show_legend=False,
             hover_tooltips=[("Strike point (R, Z)", "@r{0.000} m, @z{0.000} m")],
         )
