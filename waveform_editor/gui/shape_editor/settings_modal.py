@@ -210,7 +210,6 @@ class SettingsModal(Viewer):
                 self._display_inputs(
                     "show_separatrix",
                     "show_xo",
-                    "show_strike_points",
                     "show_result_gaps",
                 )
             ),

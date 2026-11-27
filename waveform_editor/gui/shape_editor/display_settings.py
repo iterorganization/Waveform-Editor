@@ -25,7 +25,6 @@ class DisplaySettings(param.Parameterized):
         default=True, label="Show plasma facing components"
     )
     show_xo = param.Boolean(default=True, label="Show x-point and o-point")
-    show_strike_points = param.Boolean(default=True, label="Show strike points")
     show_separatrix = param.Boolean(default=True, label="Show separatrix")
     show_target_shape = param.Boolean(default=True, label="Show target shape")
     show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
