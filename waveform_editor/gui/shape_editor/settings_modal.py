@@ -1,4 +1,3 @@
-import importlib.resources
 import xml.etree.ElementTree as ET
 
 import pandas as pd
@@ -102,18 +101,15 @@ class SettingsModal(Viewer):
         self.panel = pn.Row(button_icon, modal)
 
         self.nice_settings.param.watch(
-            self._update_md_inputs_visibility, ["machine_preset"]
+            self._update_md_inputs_visibility, ["cluster", "machine_preset"]
         )
         self._update_md_inputs_visibility(None)
+        self.nice_settings.param.watch(
+            self._refresh_parameters, ["machine_preset", "custom_param_xml"]
+        )
 
     def _parameters_section(self):
         """A table of every NICE parameter, which writes edits to the settings."""
-        parameters = ET.fromstring(
-            importlib.resources.files("waveform_editor.shape_editor.xml_param")
-            .joinpath("param.xml")
-            .read_text()
-        )
-        self._defaults = {p.tag: (p.text or "").strip() for p in parameters}
         self.parameter_table = pn.widgets.Tabulator(
             self._parameter_frame(),
             show_index=False,
@@ -135,6 +131,10 @@ class SettingsModal(Viewer):
             page_size=self.NICE_PARAM_PAGE_SIZE,
             on_edit=self._on_parameter_edit,
         )
+        changed_only = pn.widgets.Checkbox(name="Show changed only", align="center")
+        self.parameter_table.add_filter(
+            pn.bind(self._filter_changed, changed_only=changed_only)
+        )
         reset = pn.widgets.Button(
             name="Reset all to defaults",
             width=self.RESET_BUTTON_WIDTH,
@@ -142,13 +142,15 @@ class SettingsModal(Viewer):
         )
         return pn.Column(
             self._section_label("NICE parameters"),
-            self._settings_section(self.parameter_table, reset),
+            self._settings_section(self.parameter_table, pn.Row(reset, changed_only)),
             sizing_mode="stretch_width",
         )
 
     def _parameter_frame(self):
         """The table contents: each parameter, its value and its default."""
-        overrides = self.nice_settings.xml_parameters
+        overrides = self.nice_settings.preset_xml_parameters()
+        parameters = ET.fromstring(self.nice_settings.param_xml())
+        defaults = {p.tag: (p.text or "").strip() for p in parameters}
         return pd.DataFrame(
             [
                 {
@@ -156,26 +158,37 @@ class SettingsModal(Viewer):
                     self.NICE_PARAM_COL_VALUE: str(overrides.get(name, default)),
                     self.NICE_PARAM_COL_DEFAULT: default,
                 }
-                for name, default in self._defaults.items()
+                for name, default in defaults.items()
             ]
         )
 
-    def _reset_parameters(self, event=None):
-        """Put every parameter back to the value NICE is shipped with."""
-        self.nice_settings.xml_parameters = {}
+    def _filter_changed(self, frame, changed_only):
+        """The parameters to show: all, or only those changed from their default."""
+        if not changed_only:
+            return frame
+        values = frame[self.NICE_PARAM_COL_VALUE].astype(str).str.strip()
+        return frame[values != frame[self.NICE_PARAM_COL_DEFAULT]]
+
+    def _refresh_parameters(self, event=None):
+        """Show the parameters again, as the defaults depend on the machine preset."""
         self.parameter_table.value = self._parameter_frame()
+
+    def _reset_parameters(self, event=None):
+        """Put every parameter of the machine back to the value NICE is shipped with."""
+        self.nice_settings.set_preset_xml_parameters({})
+        self._refresh_parameters()
 
     def _on_parameter_edit(self, event):
         """Keep an edited parameter in the settings, unless it is back to default."""
         row = self.parameter_table.value.iloc[event.row]
         name = row[self.NICE_PARAM_COL_NAME]
-        overrides = dict(self.nice_settings.xml_parameters)
+        overrides = dict(self.nice_settings.preset_xml_parameters())
         value = str(event.value).strip()
         if value == row[self.NICE_PARAM_COL_DEFAULT]:
             overrides.pop(name, None)
         else:
             overrides[name] = value
-        self.nice_settings.xml_parameters = overrides
+        self.nice_settings.set_preset_xml_parameters(overrides)
 
     def _build_modal(self):
         # Inputs for machine description URIs
@@ -205,16 +218,30 @@ class SettingsModal(Viewer):
         machine_preset_content = pn.Column(
             self._section_label("Cluster"),
             cluster_selector,
-            pn.Column(
-                self._section_label("Machine Preset"),
-                preset_selector,
-                visible=self.nice_settings.param.cluster.rx()
-                != self.nice_settings.CUSTOM,
-            ),
+            self._section_label("Machine Preset"),
+            preset_selector,
             self._section_label("Required Machine Descriptions"),
             self._settings_section(*md_rows[True]),
             self._section_label("Optional Machine Descriptions"),
             self._settings_section(*md_rows[False]),
+            pn.Column(
+                self._section_label("NICE Parameter File"),
+                self._settings_section(
+                    self._form_row(
+                        "param.xml",
+                        pn.widgets.TextInput.from_param(
+                            self.nice_settings.param.custom_param_xml, name=""
+                        ),
+                        pn.widgets.TooltipIcon(
+                            value="The NICE parameter file of the custom machine. "
+                            "If empty, the one of ITER is used.",
+                            align="center",
+                        ),
+                    )
+                ),
+                visible=self.nice_settings.param.machine_preset.rx()
+                == self.nice_settings.CUSTOM,
+            ),
             sizing_mode="stretch_width",
             scroll=True,
         )
@@ -328,11 +355,9 @@ class SettingsModal(Viewer):
         return pn.Modal(self.tabs, stylesheets=STYLES)
 
     def _update_md_inputs_visibility(self, _):
-        """Disable machine description URI inputs if preset is selected."""
+        """Disable machine description URI inputs if a cluster provides them."""
         for inp in self._md_inputs.values():
-            inp.disabled = (
-                self.nice_settings.machine_preset != self.nice_settings.CUSTOM
-            )
+            inp.disabled = not self.nice_settings.has_custom_uris()
 
     def __panel__(self):
         return self.panel

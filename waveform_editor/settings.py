@@ -1,3 +1,4 @@
+import importlib.resources
 import logging
 import os
 from pathlib import Path
@@ -70,6 +71,9 @@ class NiceSettings(param.Parameterized):
     }
     # ruff: enable[E501]
 
+    # The NICE parameters of each preset, of which a custom machine gets those of ITER
+    PRESET_PARAM_XML = {PRESET_ITER: "param_iter.xml", PRESET_WEST: "param_west.xml"}
+
     cluster = param.Selector(
         default=CUSTOM,
         objects=[CLUSTER_SDCC, CLUSTER_CEA, CUSTOM],
@@ -119,11 +123,17 @@ class NiceSettings(param.Parameterized):
         precedence=-1,
     )
 
+    custom_param_xml = param.String(
+        default="",
+        label="NICE parameter file",
+        doc="Path to the NICE parameter file, which gets the one of ITER if empty",
+    )
     xml_parameters = param.Dict(
         default={},
         label="NICE parameters",
-        doc="Values to set in NICE's param.xml, by parameter name. The parameters "
-        "the shape editor computes itself are not among them: it writes those last.",
+        doc="Values to set in NICE's parameter file, by machine preset and by "
+        "parameter name. The parameters the shape editor computes itself are not "
+        "among them",
     )
     mode = param.Selector(
         objects=[INVERSE_MODE, DIRECT_MODE], default=INVERSE_MODE, precedence=-1
@@ -155,9 +165,11 @@ class NiceSettings(param.Parameterized):
     def _update_presets(self):
         """Offer the presets of the cluster, with their URIs on it."""
         self._available_presets = self.PRESET_URIS.get(self.cluster, {})
-        presets = list(self._available_presets) or [self.CUSTOM]
+        presets = [*self._available_presets, self.CUSTOM]
+        if not self._available_presets:
+            presets = [self.CUSTOM, *self.PRESET_PARAM_XML]
         self.param.machine_preset.objects = presets
-        if self.machine_preset not in presets:
+        if self.machine_preset not in self._available_presets:
             self.machine_preset = presets[0]
         # Also when the preset is unchanged, its URIs are those of the new cluster
         self.set_machine_preset()
@@ -172,6 +184,31 @@ class NiceSettings(param.Parameterized):
         preset = self._available_presets.get(self.machine_preset)
         for md in self.machine_descriptions:
             md.uri = md.custom_uri if preset is None else preset.get(md.ids_name, "")
+
+    def has_custom_uris(self):
+        """Whether the machine descriptions are the user's, not those of a cluster."""
+        return self.machine_preset not in self._available_presets
+
+    def param_xml(self):
+        """The NICE parameters of the selected machine preset, as XML text."""
+        if self.machine_preset == self.CUSTOM and self.custom_param_xml:
+            return Path(self.custom_param_xml).read_text()
+        name = self.PRESET_PARAM_XML.get(
+            self.machine_preset, self.PRESET_PARAM_XML[self.PRESET_ITER]
+        )
+        return (
+            importlib.resources.files("waveform_editor.shape_editor.xml_param")
+            .joinpath(name)
+            .read_text()
+        )
+
+    def preset_xml_parameters(self):
+        """The NICE parameters set for the selected machine preset, by name."""
+        return self.xml_parameters.get(self.machine_preset, {})
+
+    def set_preset_xml_parameters(self, parameters):
+        """Set the NICE parameters of the selected machine preset, by name."""
+        self.xml_parameters = {**self.xml_parameters, self.machine_preset: parameters}
 
     def _check_required_params_filled(self, *events):
         if not all(
@@ -191,8 +228,6 @@ class NiceSettings(param.Parameterized):
             md_name = f"md_{md.ids_name}"
             if md_name in params:
                 md.uri = md.custom_uri = params.pop(md_name)
-        if params.get("machine_preset") == self.CUSTOM:
-            params["cluster"] = self.CUSTOM
         if "cluster" in params:  # First, as the presets on offer depend on it
             self.cluster = params.pop("cluster")
         for key in list(params):
@@ -202,7 +237,7 @@ class NiceSettings(param.Parameterized):
         self.param.update(**params)
 
     def _sync_custom_uri(self, event):
-        if self.machine_preset == self.CUSTOM:
+        if self.has_custom_uris():
             event.obj.custom_uri = event.new
 
     def to_dict(self):
