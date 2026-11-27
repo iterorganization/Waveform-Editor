@@ -468,10 +468,6 @@ class ShapeEditor(Viewer):
         success = exit_status is None and self.communicator.converged
         problem = self._result_problem() if success else ""
         if success and not problem:
-            # Show the gaps of the result, instead of the target gaps
-            if self.nice_plotter.show_gaps:
-                self.nice_plotter.show_result_gaps = True
-                self.nice_plotter.show_target_gaps = False
             return
         self.communicator.converged = False
         if exit_status is None:
