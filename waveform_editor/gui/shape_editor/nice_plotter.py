@@ -598,6 +598,7 @@ class NicePlotter(Viewer):
         "display_settings.levels",
         "display_settings.show_separatrix",
         "display_settings.show_xo",
+        "display_settings.show_strike_points",
         "pf_active",
         "display_settings.show_coils",
     )
@@ -609,6 +610,7 @@ class NicePlotter(Viewer):
             * self._plot_contours()
             * self._plot_separatrix()
             * self._plot_xo_points()
+            * self._plot_strike_points()
             * self._plot_coil_rectangles()
         )
 
@@ -906,6 +908,26 @@ class NicePlotter(Viewer):
             hover_tooltips=[("", "X-point")],
         )
         return o_scatter * x_scatter
+
+    def _plot_strike_points(self):
+        """Plots the strike points"""
+        points = []
+        equilibrium = self.communicator.equilibrium
+        if self.display_settings.show_strike_points and equilibrium is not None:
+            for node in equilibrium.time_slice[0].contour_tree.node:
+                levelset = node.levelset
+                if node.critical_type == 1 and len(levelset.r) > 1:
+                    points += [
+                        (levelset.r[0], levelset.z[0]),
+                        (levelset.r[-1], levelset.z[-1]),
+                    ]
+        return hv.Scatter(points).opts(
+            marker="triangle",
+            size=10,
+            color="black",
+            show_legend=False,
+            hover_tooltips=[("", "Strike point")],
+        )
 
     def _plot_clearance_gaps(self):
         """Plots the gaps of the target shape in blue and of the resulting shape in
