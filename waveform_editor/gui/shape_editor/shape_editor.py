@@ -23,7 +23,7 @@ from waveform_editor.gui.shape_editor.shape_params import MACHINE_SHAPES
 from waveform_editor.gui.shape_editor.waveform_sync import WaveformSync
 from waveform_editor.gui.util import DragHandle, set_xml_parameter
 from waveform_editor.settings import NiceSettings, settings
-from waveform_editor.shape_editor.flux import has_flux_map, has_grid
+from waveform_editor.shape_editor.flux import NiceMesh, has_flux_map, has_grid
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration, Start
 from waveform_editor.shape_editor.plasma_shape_calc import (
@@ -96,6 +96,7 @@ class ShapeEditor(Viewer):
         # Whether auto run is running NICE, and whether the inputs changed since
         self._submitting = False
         self._inputs_changed = False
+        self._grids_ggd = None
         self.run_select = pn.widgets.Select(
             options={},
             disabled=True,
@@ -603,7 +604,7 @@ class ShapeEditor(Viewer):
             # Copy, so the stored result in the run history is not modified
             equilibrium = copy.deepcopy(self.communicator.equilibrium)
             if not has_grid(equilibrium):
-                equilibrium.grids_ggd = self.nice_plotter.grids_ggd
+                equilibrium.grids_ggd = self._grids_ggd
         else:
             equilibrium = self._create_equilibrium()
         self._fill_equilibrium(equilibrium)
@@ -625,7 +626,8 @@ class ShapeEditor(Viewer):
         if self.communicator.equilibrium is previous_equilibrium:
             return
         if has_grid(self.communicator.equilibrium):
-            self.nice_plotter.grids_ggd = self.communicator.equilibrium.grids_ggd
+            self._grids_ggd = self.communicator.equilibrium.grids_ggd
+            self.nice_plotter.mesh = NiceMesh(self._grids_ggd)
         self.coil_currents.sync_ui_with_pf_active(
             self.communicator.pf_active, self.plasma_properties.ip
         )

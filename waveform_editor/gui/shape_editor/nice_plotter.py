@@ -15,7 +15,6 @@ from bokeh.models import (
     WheelZoomTool,
 )
 from imas.ids_toplevel import IDSToplevel
-from matplotlib.tri import Triangulation
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.coil_currents import current_limit
@@ -24,11 +23,10 @@ from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
 from waveform_editor.settings import NiceSettings, settings
 from waveform_editor.shape_editor.flux import (
+    NiceMesh,
     flux_contours,
-    flux_grid,
     has_flux_map,
     has_grid,
-    mesh,
 )
 from waveform_editor.shape_editor.gaps import MACHINE_GAPS
 from waveform_editor.shape_editor.nice_integration import NiceIntegration
@@ -114,7 +112,9 @@ class NicePlotter(Viewer):
     plasma_shape = param.ClassSelector(class_=PlasmaShape, precedence=-1)
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
-    grids_ggd = param.Parameter(precedence=-1, doc="The GGD grid of the last result")
+    mesh = param.ClassSelector(
+        class_=NiceMesh, precedence=-1, doc="The mesh of the last result that has one"
+    )
 
     # Plot parameters
     show_contour = param.Boolean(default=True, label="Show contour lines")
@@ -214,7 +214,6 @@ class NicePlotter(Viewer):
             show_legend=False,
         )
         self._heatmap_cache = (None, None)
-        self._mesh_cache = (None, None)
         self.HEATMAP_OPTS = hv.opts.Image(
             cmap="viridis",
             colorbar=True,
@@ -733,11 +732,11 @@ class NicePlotter(Viewer):
             return self._empty_heatmap()
 
         if self._heatmap_cache[0] is not equilibrium:
-            grids = equilibrium.grids_ggd if has_grid(equilibrium) else self.grids_ggd
-            _, triangles = mesh(grids)
-            grid = flux_grid(
-                equilibrium.time_slice[0], triangles, self.HEATMAP_RESOLUTION
-            )
+            # A warm started result has no grid of its own
+            mesh = self.mesh
+            if has_grid(equilibrium):
+                mesh = NiceMesh(equilibrium.grids_ggd)
+            grid = mesh.flux_grid(equilibrium.time_slice[0], self.HEATMAP_RESOLUTION)
             self._heatmap_cache = (equilibrium, grid)
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
@@ -847,17 +846,12 @@ class NicePlotter(Viewer):
                     )
         return _geometry_paths(paths)
 
-    @pn.depends("grids_ggd", "show_mesh")
+    @pn.depends("mesh", "show_mesh")
     def _plot_mesh(self):
         """The edges of the triangles of the mesh of NICE, below the other layers."""
         segments = np.empty((0, 4))
-        if self.show_mesh and self.grids_ggd is not None:
-            if self._mesh_cache[0] is not self.grids_ggd:
-                nodes, triangles = mesh(self.grids_ggd)
-                edges = Triangulation(nodes[:, 0], nodes[:, 1], triangles).edges
-                segments = np.hstack([nodes[edges[:, 0]], nodes[edges[:, 1]]])
-                self._mesh_cache = (self.grids_ggd, segments)
-            segments = self._mesh_cache[1]
+        if self.show_mesh and self.mesh is not None:
+            segments = self.mesh.segments
         return hv.Segments(segments).opts(
             color="gray", line_width=0.5, alpha=0.5, show_legend=False
         )
