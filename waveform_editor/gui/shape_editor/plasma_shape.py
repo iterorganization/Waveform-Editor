@@ -112,7 +112,7 @@ class PlasmaShape(Viewer):
             ),
             pn.Column(
                 pn.Row(
-                    *self.shape_params.second_x_point_input(),
+                    self.shape_params.second_x_point_input(),
                     pn.widgets.Checkbox.from_param(
                         self.display_settings.param.show_target_gaps,
                         name="Show target gaps",
@@ -121,7 +121,7 @@ class PlasmaShape(Viewer):
                         self.display_settings.param.show_result_gaps,
                         name="Show result gaps",
                     ),
-                    margin=(0, 0, 5, 0),
+                    margin=0,
                 ),
                 self.gap_sliders,
                 visible=edit_by == self.EDIT_GAPS,

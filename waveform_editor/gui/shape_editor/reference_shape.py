@@ -168,17 +168,13 @@ class ReferenceShape(Viewer):
             )
 
     def show_input(self, **params):
-        """The checkbox to show the reference shape, which the display settings have
-        too."""
+        """The checkbox to show the reference shape."""
+        # A loaded equilibrium IDS is always shown, and the target shape hides the
+        # reference when it is the reference itself
+        is_ids = self.param.source.rx() == self.SOURCE_IDS
         return pn.widgets.Checkbox.from_param(
             self.display_settings.param.show_reference_shape,
-            # When the reference is the target shape itself, or the equilibrium IDS
-            # being chosen, which is always shown
-            disabled=pn.bind(
-                lambda is_target, source: is_target or source == self.SOURCE_IDS,
-                self.param.is_target,
-                self.param.source,
-            ),
+            disabled=self.param.is_target.rx() | is_ids,
             **params,
         )
 

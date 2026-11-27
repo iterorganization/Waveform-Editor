@@ -210,7 +210,6 @@ class SettingsModal(Viewer):
             )
 
         def options(*items, visible):
-            """Options of a toggle, nested under it and only there while it is on."""
             return pn.Column(
                 *items,
                 visible=visible,
