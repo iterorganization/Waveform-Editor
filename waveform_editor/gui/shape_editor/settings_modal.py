@@ -250,6 +250,7 @@ class SettingsModal(Viewer):
                     parameters=[
                         "show_contour",
                         "show_heatmap",
+                        "show_mesh",
                         "show_colorbar",
                         "show_coils",
                         "show_wall",
