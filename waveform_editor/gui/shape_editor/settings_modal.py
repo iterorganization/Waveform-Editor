@@ -69,6 +69,7 @@ class SettingsModal(Viewer):
     def __init__(self, nice_plotter: NicePlotter, **params):
         super().__init__(**params)
         self.nice_settings = settings.nice
+        self.display_settings = settings.display
         self.nice_plotter = nice_plotter
 
         modal = self._build_modal()
@@ -180,7 +181,7 @@ class SettingsModal(Viewer):
 
     def _display_tab(self):
         """Show display settings."""
-        display_settings = self.nice_plotter.display_settings.param
+        display_settings = self.display_settings.param
         is_inverse = self.nice_settings.param.is_inverse_mode.rx()
         return self._tab(
             self._section_label("Poloidal Flux"),
@@ -234,7 +235,7 @@ class SettingsModal(Viewer):
     def _display_inputs(self, *names):
         """The inputs of display settings."""
         return pn.Param(
-            self.nice_plotter.display_settings.param,
+            self.display_settings.param,
             parameters=list(names),
             show_name=False,
         )

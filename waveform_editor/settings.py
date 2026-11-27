@@ -251,6 +251,18 @@ class DisplaySettings(param.Parameterized):
     show_result_gaps = param.Boolean(default=True, label="Show resulting shape gaps")
     show_reference_shape = param.Boolean(default=True, label="Show reference shape")
 
+    def apply_settings(self, params):
+        """Update parameters from a dictionary, skipping unknown keys."""
+        for key in list(params):
+            if key not in self.param or key == "name":
+                logger.warning(f"Removing unknown display setting: {key}")
+                params.pop(key)
+        self.param.update(**params)
+
+    def to_dict(self):
+        """Returns a dictionary representation of current parameter values."""
+        return {p: getattr(self, p) for p in self.param if p != "name"}
+
 
 class UserSettings(param.Parameterized):
     gs_solver = param.Selector(objects=["NICE"], default="NICE")
@@ -279,11 +291,8 @@ class UserSettings(param.Parameterized):
         if "nice" in settings:
             self.nice.apply_settings(settings["nice"])
 
-        for key, value in settings.get("display", {}).items():
-            if key in self.display.param and key != "name":
-                setattr(self.display, key, value)
-            else:
-                logger.warning(f"Removing unknown display setting: {key}")
+        if "display" in settings:
+            self.display.apply_settings(settings["display"])
 
         base_settings = {
             k: v for k, v in settings.items() if k not in ("nice", "display")
@@ -301,9 +310,7 @@ class UserSettings(param.Parameterized):
             for p in self.param
             if p not in ("name", "nice", "display")
         }
-        config["display"] = {
-            p: getattr(self.display, p) for p in self.display.param if p != "name"
-        }
+        config["display"] = self.display.to_dict()
 
         if self.gs_solver == "NICE":
             config["nice"] = self.nice.to_dict()
