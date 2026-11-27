@@ -921,12 +921,12 @@ class NicePlotter(Viewer):
                         (levelset.r[0], levelset.z[0]),
                         (levelset.r[-1], levelset.z[-1]),
                     ]
-        return hv.Scatter(points).opts(
+        return hv.Points(points, kdims=["r", "z"]).opts(
             marker="triangle",
             size=10,
             color="black",
             show_legend=False,
-            hover_tooltips=[("", "Strike point")],
+            hover_tooltips=[("Strike point (R, Z)", "@r{0.000} m, @z{0.000} m")],
         )
 
     def _plot_clearance_gaps(self):
