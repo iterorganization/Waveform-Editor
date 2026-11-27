@@ -13,6 +13,7 @@ from panel.viewable import Viewer
 
 from waveform_editor.gui.settings import nice_mode_toggle
 from waveform_editor.gui.shape_editor.coil_currents import CoilCurrents
+from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.metrics import Metrics
 from waveform_editor.gui.shape_editor.nice_plotter import NicePlotter
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
@@ -78,7 +79,8 @@ class ShapeEditor(Viewer):
             on_output=self.terminal.write,
             on_run_finished=self._on_nice_run_finished,
         )
-        self.plasma_shape = PlasmaShape()
+        display_settings = DisplaySettings()
+        self.plasma_shape = PlasmaShape(display_settings)
         self.plasma_properties = PlasmaProperties()
         self.coil_currents = CoilCurrents()
         # Only a converged result can be a reference shape
@@ -92,6 +94,7 @@ class ShapeEditor(Viewer):
         )
         self.plasma_properties.param.watch(self._scale_coil_currents, "ip")
         self.nice_plotter = NicePlotter(
+            display_settings=display_settings,
             communicator=self.communicator,
             plasma_shape=self.plasma_shape,
             plasma_properties=self.plasma_properties,
@@ -468,10 +471,6 @@ class ShapeEditor(Viewer):
         success = exit_status is None and self.communicator.converged
         problem = self._result_problem() if success else ""
         if success and not problem:
-            # Show the gaps of the result, instead of the target gaps
-            if self.nice_plotter.show_gaps:
-                self.nice_plotter.show_result_gaps = True
-                self.nice_plotter.show_target_gaps = False
             return
         self.communicator.converged = False
         if exit_status is None:

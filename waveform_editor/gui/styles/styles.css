@@ -47,7 +47,13 @@ a.title, span.title { display: none !important; }
 .bk-tab { flex: 1; text-align: center; }
 
 /* Settings modal dialog */
-.dialog-content { border-radius: 20px; overflow: hidden; padding: 0 !important; }
+.dialog-content {
+    border-radius: 20px;
+    overflow: auto;
+    max-height: 90vh;
+    max-width: 95vw;
+    padding: 0 !important;
+}
 
 #pnx_dialog_close {
     margin: 6px;

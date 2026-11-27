@@ -3,6 +3,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.points_table import WeightedPointsTable
 from waveform_editor.gui.shape_editor.reference_shape import ReferenceShape
 from waveform_editor.gui.shape_editor.shape_params import (
@@ -56,6 +57,7 @@ class PlasmaShape(Viewer):
     shape_updated = param.Event(doc="Triggered whenever the plasma shape changes.")
     redraw = param.Event(doc="Triggered whenever what is drawn of the shape changes.")
     nice_settings = param.ClassSelector(class_=NiceSettings)
+    display_settings = param.ClassSelector(class_=DisplaySettings, precedence=-1)
 
     # The shape parameters that are fitted to the gaps
     FIT_PARAMS = ("a", "center_r", "center_z", "kappa", "delta", "rx", "zx")
@@ -80,8 +82,8 @@ class PlasmaShape(Viewer):
             return ("a", "center_r", "center_z", "rx", "zx", "rx_upper", "zx_upper")
         return self.FIT_PARAMS
 
-    def __init__(self):
-        super().__init__(nice_settings=settings.nice)
+    def __init__(self, display_settings):
+        super().__init__(nice_settings=settings.nice, display_settings=display_settings)
         self.outline_r = None
         self.outline_z = None
         # Unduplicated parameterized boundary points and their per-point weight,
@@ -91,7 +93,9 @@ class PlasmaShape(Viewer):
         self.param_z = None
         self.param_weights = None
         self.reference = ReferenceShape(
-            on_set=self._take_reference, shape_params=self.shape_params
+            on_set=self._take_reference,
+            shape_params=self.shape_params,
+            display_settings=self.display_settings,
         )
         self.shape_params.extra_points_table = self.extra_points_table
         # Whether the parameterisation is still to be fitted to the reference shape
@@ -107,7 +111,18 @@ class PlasmaShape(Viewer):
                 self.shape_params, visible=edit_by == self.EDIT_SLIDERS, margin=0
             ),
             pn.Column(
-                self.shape_params.second_x_point_input(),
+                pn.Row(
+                    self.shape_params.second_x_point_input(),
+                    pn.widgets.Checkbox.from_param(
+                        self.display_settings.param.show_target_gaps,
+                        name="Show target gaps",
+                    ),
+                    pn.widgets.Checkbox.from_param(
+                        self.display_settings.param.show_result_gaps,
+                        name="Show result gaps",
+                    ),
+                    margin=0,
+                ),
                 self.gap_sliders,
                 visible=edit_by == self.EDIT_GAPS,
                 margin=0,
@@ -199,7 +214,8 @@ class PlasmaShape(Viewer):
                 self.param.trigger("redraw")
 
         self.param.watch(redraw, ["shape_updated", "edit_by"])
-        self.reference.param.watch(redraw, ["show", "preview", "source", "last_result"])
+        self.reference.param.watch(redraw, ["preview", "source", "last_result"])
+        self.display_settings.param.watch(redraw, "show_reference_shape")
         # Last, because clearing the shape fires the watchers above
         self.nice_settings.param.watch(self._clear_reference, "machine_preset")
         self._clear_reference()

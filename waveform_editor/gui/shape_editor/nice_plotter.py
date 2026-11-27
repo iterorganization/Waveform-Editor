@@ -18,6 +18,7 @@ from imas.ids_toplevel import IDSToplevel
 from panel.viewable import Viewer
 
 from waveform_editor.gui.shape_editor.coil_currents import current_limit
+from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.plasma_properties import PlasmaProperties
 from waveform_editor.gui.shape_editor.plasma_shape import PlasmaShape
 from waveform_editor.gui.util import STYLES
@@ -108,34 +109,7 @@ class NicePlotter(Viewer):
     plasma_properties = param.ClassSelector(class_=PlasmaProperties, precedence=-1)
     nice_settings = param.ClassSelector(class_=NiceSettings, precedence=-1)
 
-    # Plot parameters
-    show_contour = param.Boolean(default=True, label="Show contour lines")
-    levels = param.Integer(
-        default=20, bounds=(1, 200), label="Number of contour levels"
-    )
-    show_heatmap = param.Boolean(default=False, label="Show heatmap")
-    show_colorbar = param.Boolean(default=False, label="Show colorbar")
-    heatmap_alpha = param.Number(
-        default=0.7, bounds=(0.0, 1.0), step=0.05, label="Heatmap opacity"
-    )
-    show_coils = param.Boolean(default=True, label="Show coils")
-    show_wall = param.Boolean(default=True, label="Show limiter and divertor")
-    show_vacuum_vessel = param.Boolean(
-        default=True, label="Show inner and outer vacuum vessel"
-    )
-    show_passive_structures = param.Boolean(
-        default=True, label="Show passive structures"
-    )
-    show_iron_core = param.Boolean(default=True, label="Show iron core")
-    show_plasma_facing_components = param.Boolean(
-        default=True, label="Show plasma facing components"
-    )
-    show_xo = param.Boolean(default=True, label="Show x-point and o-point")
-    show_separatrix = param.Boolean(default=True, label="Show separatrix")
-    show_target_shape = param.Boolean(default=True, label="Show target shape")
-    show_gaps = param.Boolean(default=True, label="Show gaps")
-    show_target_gaps = param.Boolean(default=True, label="Show target shape gaps")
-    show_result_gaps = param.Boolean(default=False, label="Show resulting shape gaps")
+    display_settings = param.ClassSelector(class_=DisplaySettings, precedence=-1)
 
     # Renderer of the editable points, set once the plot is first rendered
     _points_renderer = None
@@ -190,7 +164,7 @@ class NicePlotter(Viewer):
             colorbar=True,
             tools=["hover"],
             colorbar_opts={"title": "Poloidal flux [Wb]"},
-            # Set a hook rather than colorbar=self.show_colorbar, as HoloViews only
+            # Set a hook rather than colorbar=show_colorbar, as HoloViews only
             # creates the colorbar when the plot is first drawn and ignores later
             # changes to it
             hooks=[self._show_colorbar],
@@ -271,7 +245,7 @@ class NicePlotter(Viewer):
             table.param.watch(self._push_points_to_plot, "points")
 
         self.panel_layout = pn.Param(
-            self.param,
+            self.display_settings.param,
             show_name=False,
             widgets={
                 "show_target_shape": {
@@ -367,7 +341,7 @@ class NicePlotter(Viewer):
     def _show_colorbar(self, plot, element):
         """Show or hide the colorbar of the plot"""
         if (colorbar := plot.handles.get("colorbar")) is not None:
-            colorbar.visible = self.show_colorbar
+            colorbar.visible = self.display_settings.show_colorbar
 
     def _machine_ranges(self):
         """The r and z range of the machine of the selected preset, or of its limiter
@@ -463,13 +437,12 @@ class NicePlotter(Viewer):
 
     @pn.depends(
         "plasma_shape.redraw",
-        "show_target_shape",
+        "display_settings.show_target_shape",
         "nice_settings.mode",
         "communicator.equilibrium",
         "communicator.converged",
-        "show_gaps",
-        "show_target_gaps",
-        "show_result_gaps",
+        "display_settings.show_target_gaps",
+        "display_settings.show_result_gaps",
         "nice_settings.machine_preset",
     )
     def _plot_target(self):
@@ -480,7 +453,10 @@ class NicePlotter(Viewer):
     def _plot_plasma_shape(self):
         shape = self.plasma_shape
         empty = hv.Overlay([hv.Curve([]).opts(self.TARGET_SHAPE_OPTS)])
-        if self.nice_settings.is_direct_mode or not self.show_target_shape:
+        if (
+            self.nice_settings.is_direct_mode
+            or not self.display_settings.show_target_shape
+        ):
             return empty
         reference = hv.Curve([])
         if (outline := self._reference_outline()) is not None:
@@ -515,18 +491,21 @@ class NicePlotter(Viewer):
         if reference.is_choosing:
             return reference.candidate_outline
         # In the reference shape view, the reference is the target shape itself
-        if reference.show and reference.r is not None and not shape.is_reference:
+        if (
+            self.display_settings.show_reference_shape
+            and reference.r is not None
+            and not shape.is_reference
+        ):
             return reference.r, reference.z
         return None
 
     @pn.depends(
         "communicator.equilibrium",
         "communicator.converged",
-        "show_separatrix",
-        "show_target_shape",
-        "show_gaps",
-        "show_target_gaps",
-        "show_result_gaps",
+        "display_settings.show_separatrix",
+        "display_settings.show_target_shape",
+        "display_settings.show_target_gaps",
+        "display_settings.show_result_gaps",
         "nice_settings.mode",
         "nice_settings.machine_preset",
         "plasma_shape.redraw",
@@ -534,8 +513,11 @@ class NicePlotter(Viewer):
     def _legend_html(self):
         """The legend of the lines in the plot."""
         shape = self.plasma_shape
-        shapes = not self.nice_settings.is_direct_mode and self.show_target_shape
-        gaps = self.nice_settings.machine_preset in MACHINE_GAPS and self.show_gaps
+        shapes = (
+            not self.nice_settings.is_direct_mode
+            and self.display_settings.show_target_shape
+        )
+        gaps = self.nice_settings.machine_preset in MACHINE_GAPS
         items = (
             (
                 "Target shape",
@@ -554,17 +536,20 @@ class NicePlotter(Viewer):
             (
                 "Separatrix",
                 "3px solid red",
-                self.show_separatrix and self.communicator.equilibrium is not None,
+                self.display_settings.show_separatrix
+                and self.communicator.equilibrium is not None,
             ),
             (
                 "Target gaps",
                 "2px dashed blue",
-                gaps and self.show_target_gaps and self.has_target(),
+                gaps and self.display_settings.show_target_gaps and self.has_target(),
             ),
             (
                 "Result gaps",
                 "2px dashed red",
-                gaps and self.show_result_gaps and self.communicator.converged,
+                gaps
+                and self.display_settings.show_result_gaps
+                and self.communicator.converged,
             ),
         )
         return "".join(
@@ -623,15 +608,15 @@ class NicePlotter(Viewer):
     @pn.depends(
         "communicator.equilibrium",
         "communicator.pf_active",
-        "show_heatmap",
-        "heatmap_alpha",
-        "show_colorbar",
-        "show_contour",
-        "levels",
-        "show_separatrix",
-        "show_xo",
+        "display_settings.show_heatmap",
+        "display_settings.heatmap_alpha",
+        "display_settings.show_colorbar",
+        "display_settings.show_contour",
+        "display_settings.levels",
+        "display_settings.show_separatrix",
+        "display_settings.show_xo",
         "pf_active",
-        "show_coils",
+        "display_settings.show_coils",
     )
     def _plot_result(self):
         """The layers that change with a NICE result, in one DynamicMap so that a
@@ -652,7 +637,7 @@ class NicePlotter(Viewer):
         """
         rectangles = []
         paths = []
-        if self.show_coils and self.pf_active is not None:
+        if self.display_settings.show_coils and self.pf_active is not None:
             for idx, coil in enumerate(self.pf_active.coil):
                 name = str(coil.name)
                 fill_alpha = 0  # Coil is in red when beyond its current limit
@@ -715,7 +700,7 @@ class NicePlotter(Viewer):
             Holoviews Image containing the poloidal flux field.
         """
         equilibrium = self.communicator.equilibrium
-        if not self.show_heatmap or equilibrium is None:
+        if not self.display_settings.show_heatmap or equilibrium is None:
             return self._empty_heatmap()
 
         if not has_flux_map(equilibrium.time_slice[0]):
@@ -727,7 +712,7 @@ class NicePlotter(Viewer):
         return (
             hv.Image(self._heatmap_cache[1], kdims=["r", "z"], vdims=["psi"])
             .opts(self.HEATMAP_OPTS)
-            .opts(alpha=self.heatmap_alpha)
+            .opts(alpha=self.display_settings.heatmap_alpha)
         )
 
     def _empty_heatmap(self):
@@ -744,13 +729,15 @@ class NicePlotter(Viewer):
             Contour plot of psi.
         """
         equilibrium = self.communicator.equilibrium
-        if not self.show_contour or equilibrium is None:
+        if not self.display_settings.show_contour or equilibrium is None:
             contours = hv.Contours(([0], [0], 0), vdims="psi")
         else:
-            contours = self._calc_contours(equilibrium, self.levels)
+            contours = self._calc_contours(equilibrium, self.display_settings.levels)
 
         return contours.opts(
-            self.CONTOUR_ON_HEATMAP_OPTS if self.show_heatmap else self.CONTOUR_OPTS
+            self.CONTOUR_ON_HEATMAP_OPTS
+            if self.display_settings.show_heatmap
+            else self.CONTOUR_OPTS
         )
 
     def _calc_contours(self, equilibrium, levels):
@@ -793,7 +780,7 @@ class NicePlotter(Viewer):
             Holoviews curve containing the separatrix.
         """
         equilibrium = self.communicator.equilibrium
-        if not self.show_separatrix or equilibrium is None:
+        if not self.display_settings.show_separatrix or equilibrium is None:
             r = z = []
             contour = hv.Contours(([0], [0], 0), vdims="psi")
         else:
@@ -809,7 +796,7 @@ class NicePlotter(Viewer):
             hover_tooltips=[("", "Separatrix")],
         ) * contour.opts(self.CONTOUR_OPTS)
 
-    @pn.depends("wall", "show_vacuum_vessel")
+    @pn.depends("wall", "display_settings.show_vacuum_vessel")
     def _plot_vacuum_vessel(self):
         """Generates path for inner and outer vacuum vessel.
 
@@ -817,7 +804,7 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_vacuum_vessel and self.wall is not None:
+        if self.display_settings.show_vacuum_vessel and self.wall is not None:
             for unit in self.wall.description_2d[0].vessel.unit:
                 name = str(unit.name)
                 annular = unit.annular
@@ -832,7 +819,7 @@ class NicePlotter(Viewer):
                     )
         return _geometry_paths(paths)
 
-    @pn.depends("wall", "show_wall")
+    @pn.depends("wall", "display_settings.show_wall")
     def _plot_wall(self):
         """Generates path for limiter and divertor.
 
@@ -840,7 +827,7 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_wall and self.wall is not None:
+        if self.display_settings.show_wall and self.wall is not None:
             for unit in self.wall.description_2d[0].limiter.unit:
                 name = str(unit.name)
                 r_vals = unit.outline.r
@@ -848,7 +835,7 @@ class NicePlotter(Viewer):
                 paths.append((r_vals, z_vals, name))
         return _geometry_paths(paths)
 
-    @pn.depends("wall", "show_plasma_facing_components")
+    @pn.depends("wall", "display_settings.show_plasma_facing_components")
     def _plot_components(self):
         """Generates paths for the plasma facing components, which a machine
         describes alongside the limiter it is computed with.
@@ -857,7 +844,10 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_plasma_facing_components and self.wall is not None:
+        if (
+            self.display_settings.show_plasma_facing_components
+            and self.wall is not None
+        ):
             # The first description is the limiter the equilibrium is computed with
             for description in list(self.wall.description_2d)[1:]:
                 for unit in description.limiter.unit:
@@ -867,7 +857,7 @@ class NicePlotter(Viewer):
                     )
         return _geometry_paths(paths, color="gray", line_width=1)
 
-    @pn.depends("pf_passive", "show_passive_structures")
+    @pn.depends("pf_passive", "display_settings.show_passive_structures")
     def _plot_passive_structures(self):
         """Generates paths for the passive conducting structures.
 
@@ -875,7 +865,10 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_passive_structures and self.pf_passive is not None:
+        if (
+            self.display_settings.show_passive_structures
+            and self.pf_passive is not None
+        ):
             paths = [
                 (*_element_outline(element.geometry, loop.name), str(loop.name))
                 for loop in self.pf_passive.loop
@@ -883,7 +876,7 @@ class NicePlotter(Viewer):
             ]
         return _geometry_paths(paths, color="darkgray")
 
-    @pn.depends("iron_core", "show_iron_core")
+    @pn.depends("iron_core", "display_settings.show_iron_core")
     def _plot_iron_core(self):
         """Generates paths for the iron core segments.
 
@@ -891,7 +884,7 @@ class NicePlotter(Viewer):
             Holoviews path containing the geometry.
         """
         paths = []
-        if self.show_iron_core and self.iron_core is not None:
+        if self.display_settings.show_iron_core and self.iron_core is not None:
             paths = [
                 (*_element_outline(segment.geometry, segment.name), str(segment.name))
                 for segment in self.iron_core.segment
@@ -907,7 +900,7 @@ class NicePlotter(Viewer):
         o_points = []
         x_points = []
         equilibrium = self.communicator.equilibrium
-        if self.show_xo and equilibrium is not None:
+        if self.display_settings.show_xo and equilibrium is not None:
             for node in equilibrium.time_slice[0].contour_tree.node:
                 point = (node.r, node.z)
                 if node.critical_type == 1:
@@ -938,11 +931,11 @@ class NicePlotter(Viewer):
         shape = self.plasma_shape
         equilibrium = self.communicator.equilibrium
         target, result = [], []
-        if gaps is not None and self.show_gaps:
-            if self.show_target_gaps and self.has_target():
+        if gaps is not None:
+            if self.display_settings.show_target_gaps and self.has_target():
                 inputs = gaps.shape_inputs(shape.target_x_points)
                 target = gaps.measure(shape.outline_r, shape.outline_z, **inputs)
-            if self.show_result_gaps and self.communicator.converged:
+            if self.display_settings.show_result_gaps and self.communicator.converged:
                 result = gaps.measure(**gaps.gap_inputs(equilibrium.time_slice[0]))
         return self._plot_measured_gaps(gaps, target, "blue") * (
             self._plot_measured_gaps(gaps, result, "red")

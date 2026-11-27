@@ -28,6 +28,7 @@ class SettingsModal(Viewer):
     RESET_BUTTON_WIDTH = 180
 
     def _section_label(self, text):
+        """A heading above a section."""
         return pn.pane.HTML(
             f'<p class="settings-section-label">{text}</p>',
             stylesheets=STYLES,
@@ -36,6 +37,7 @@ class SettingsModal(Viewer):
         )
 
     def _settings_section(self, *items):
+        """A card holding the settings of a section."""
         return pn.Column(
             *items,
             stylesheets=STYLES,
@@ -43,26 +45,8 @@ class SettingsModal(Viewer):
             sizing_mode="stretch_width",
         )
 
-    def _detail_section(self, label, parameters, toggle):
-        """A section of plot parameters, shown while the toggle that enables them is.
-
-        Args:
-            label: The title of the section.
-            parameters: Names of the parameters of the plotter in the section.
-            toggle: The boolean parameter that shows the section.
-        """
-        return pn.Column(
-            self._section_label(label),
-            self._settings_section(
-                pn.Param(
-                    self.nice_plotter.param, parameters=parameters, show_name=False
-                )
-            ),
-            visible=toggle,
-            sizing_mode="stretch_width",
-        )
-
     def _form_row(self, label, widget, warning=None):
+        """A labelled input, with an optional warning next to it."""
         items = [
             pn.pane.HTML(
                 f'<span class="form-row-label">{label}</span>',
@@ -178,16 +162,93 @@ class SettingsModal(Viewer):
         self.nice_settings.xml_parameters = overrides
 
     def _build_modal(self):
-        # Inputs for machine description URIs
-        self._md_inputs = {}
+        """Creates the modal, with a tab per kind of setting."""
+        self.tabs = pn.Tabs(
+            ("Display", self._display_tab()),
+            ("Machine Presets", self._machine_presets_tab()),
+            ("NICE Configuration", self._nice_tab()),
+            margin=(20, 20, 0, 20),
+            width=self.MODAL_WIDTH,
+            height=self.MODAL_HEIGHT,
+            stylesheets=STYLES,
+        )
+        return pn.Modal(self.tabs, stylesheets=STYLES)
 
-        # --- Machine Presets tab ---
-        cluster_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.cluster, name="", width=self.PRESET_WIDTH
+    def _tab(self, *items):
+        """A scrollable tab."""
+        return pn.Column(*items, sizing_mode="stretch_width", scroll=True)
+
+    def _display_tab(self):
+        """Show display settings."""
+        plotter = self.nice_plotter.display_settings.param
+        is_inverse = self.nice_settings.param.is_inverse_mode.rx()
+        return self._tab(
+            self._section_label("Poloidal Flux"),
+            self._settings_section(
+                self._display_inputs("show_contour"),
+                self._options(
+                    self._display_inputs("levels"), visible=plotter.show_contour
+                ),
+                self._display_inputs("show_heatmap"),
+                self._options(
+                    self._display_inputs("heatmap_alpha"), visible=plotter.show_heatmap
+                ),
+                self._display_inputs("show_colorbar"),
+            ),
+            self._section_label("Machine"),
+            self._settings_section(
+                self._display_inputs(
+                    "show_coils",
+                    "show_wall",
+                    "show_vacuum_vessel",
+                    "show_passive_structures",
+                    "show_iron_core",
+                    "show_plasma_facing_components",
+                )
+            ),
+            self._section_label("Result"),
+            self._settings_section(
+                self._display_inputs(
+                    "show_separatrix",
+                    "show_xo",
+                    "show_result_gaps",
+                )
+            ),
+            self._section_label("Target"),
+            self._settings_section(
+                pn.Column(
+                    pn.widgets.Checkbox.from_param(
+                        plotter.show_target_shape, visible=is_inverse
+                    ),
+                    self.nice_plotter.plasma_shape.reference.show_input(),
+                    pn.widgets.Checkbox.from_param(
+                        plotter.show_target_gaps, visible=is_inverse
+                    ),
+                    margin=(5, 10),
+                ),
+            ),
         )
-        preset_selector = pn.widgets.Select.from_param(
-            self.nice_settings.param.machine_preset, name="", width=self.PRESET_WIDTH
+
+    def _display_inputs(self, *names):
+        """The inputs of display settings."""
+        return pn.Param(
+            self.nice_plotter.display_settings.param,
+            parameters=list(names),
+            show_name=False,
         )
+
+    def _options(self, *items, visible):
+        """Options of a toggle, nested under it and only there while it is on."""
+        return pn.Column(
+            *items,
+            visible=visible,
+            styles={"border-left": "2px solid #dee2e6", "padding-left": "8px"},
+            margin=(0, 0, 4, 22),
+        )
+
+    def _machine_presets_tab(self):
+        """The cluster, machine preset and machine description URIs."""
+        self._md_inputs = {}
         md_rows = {True: [], False: []}
         for md in self.nice_settings.machine_descriptions:
             self._md_inputs[md] = pn.widgets.TextInput.from_param(md.param.uri, name="")
@@ -202,12 +263,18 @@ class SettingsModal(Viewer):
                     WarningIndicator(margin=10, visible=not_loaded),
                 )
             )
-        machine_preset_content = pn.Column(
+        return self._tab(
             self._section_label("Cluster"),
-            cluster_selector,
+            pn.widgets.Select.from_param(
+                self.nice_settings.param.cluster, name="", width=self.PRESET_WIDTH
+            ),
             pn.Column(
                 self._section_label("Machine Preset"),
-                preset_selector,
+                pn.widgets.Select.from_param(
+                    self.nice_settings.param.machine_preset,
+                    name="",
+                    width=self.PRESET_WIDTH,
+                ),
                 visible=self.nice_settings.param.cluster.rx()
                 != self.nice_settings.CUSTOM,
             ),
@@ -215,91 +282,18 @@ class SettingsModal(Viewer):
             self._settings_section(*md_rows[True]),
             self._section_label("Optional Machine Descriptions"),
             self._settings_section(*md_rows[False]),
-            sizing_mode="stretch_width",
-            scroll=True,
         )
 
-        # --- Display tab ---
-        self._contour_detail = self._detail_section(
-            "Contour Detail", ["levels"], self.nice_plotter.param.show_contour
-        )
-        self._heatmap_detail = self._detail_section(
-            "Heatmap Detail", ["heatmap_alpha"], self.nice_plotter.param.show_heatmap
-        )
-
-        # Which gaps "Show gaps" shows, nested under it and only there while it is on
-        gap_options = pn.Column(
-            pn.widgets.Checkbox.from_param(
-                self.nice_plotter.param.show_target_gaps,
-                name="Target shape",
-                visible=self.nice_settings.param.is_inverse_mode.rx(),
-            ),
-            pn.widgets.Checkbox.from_param(
-                self.nice_plotter.param.show_result_gaps, name="Resulting shape"
-            ),
-            visible=self.nice_plotter.param.show_gaps,
-            styles={"border-left": "2px solid #dee2e6", "padding-left": "8px"},
-            margin=(0, 0, 4, 22),
-        )
-
-        display_content = pn.Column(
-            self._section_label("Visibility"),
-            self._settings_section(
-                pn.Param(
-                    self.nice_plotter.param,
-                    parameters=[
-                        "show_contour",
-                        "show_heatmap",
-                        "show_colorbar",
-                        "show_coils",
-                        "show_wall",
-                        "show_vacuum_vessel",
-                        "show_passive_structures",
-                        "show_iron_core",
-                        "show_plasma_facing_components",
-                        "show_xo",
-                        "show_separatrix",
-                        "show_target_shape",
-                        "show_gaps",
-                    ],
-                    show_name=False,
-                    widgets={
-                        "show_target_shape": {
-                            "visible": self.nice_settings.param.is_inverse_mode.rx()
-                        },
-                    },
-                ),
-                gap_options,
-            ),
-            self._contour_detail,
-            self._heatmap_detail,
-            sizing_mode="stretch_width",
-            scroll=True,
-        )
-
-        # --- NICE Configuration tab ---
-        nice_content = pn.Column(
+    def _nice_tab(self):
+        """The NICE executables, environment and parameters."""
+        return self._tab(
             self._section_label("Executables"),
             self._settings_section(
-                self._form_row(
-                    "Inverse executable",
-                    pn.widgets.TextInput.from_param(
-                        self.nice_settings.param.inv_executable, name=""
-                    ),
-                    WarningIndicator(
-                        margin=10,
-                        visible=self.nice_settings.param.inv_executable.rx() == "",
-                    ),
+                self._executable_row(
+                    "Inverse executable", self.nice_settings.param.inv_executable
                 ),
-                self._form_row(
-                    "Direct executable",
-                    pn.widgets.TextInput.from_param(
-                        self.nice_settings.param.dir_executable, name=""
-                    ),
-                    WarningIndicator(
-                        margin=10,
-                        visible=self.nice_settings.param.dir_executable.rx() == "",
-                    ),
+                self._executable_row(
+                    "Direct executable", self.nice_settings.param.dir_executable
                 ),
             ),
             self._section_label("Environment"),
@@ -310,21 +304,15 @@ class SettingsModal(Viewer):
                 ),
             ),
             self._parameters_section(),
-            sizing_mode="stretch_width",
-            scroll=True,
         )
 
-        self.tabs = pn.Tabs(
-            ("Display", display_content),
-            ("Machine Presets", machine_preset_content),
-            ("NICE Configuration", nice_content),
-            margin=(20, 20, 0, 20),
-            width=self.MODAL_WIDTH,
-            height=self.MODAL_HEIGHT,
-            stylesheets=STYLES,
+    def _executable_row(self, label, parameter):
+        """An executable path, with a warning while it is empty."""
+        return self._form_row(
+            label,
+            pn.widgets.TextInput.from_param(parameter, name=""),
+            WarningIndicator(margin=10, visible=parameter.rx() == ""),
         )
-
-        return pn.Modal(self.tabs, stylesheets=STYLES)
 
     def _update_md_inputs_visibility(self, _):
         """Disable machine description URI inputs if preset is selected."""

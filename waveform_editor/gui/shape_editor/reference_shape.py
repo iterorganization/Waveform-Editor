@@ -4,6 +4,7 @@ import panel as pn
 import param
 from panel.viewable import Viewer
 
+from waveform_editor.gui.shape_editor.display_settings import DisplaySettings
 from waveform_editor.gui.shape_editor.shape_params import (
     MACHINE_SHAPES,
     PlasmaShapeParams,
@@ -34,7 +35,7 @@ class ReferenceShape(Viewer):
     preview = param.Parameter(
         default=None, precedence=-1, doc="The equilibrium IDS loaded, before it is set."
     )
-    show = param.Boolean(default=True, label="Show reference shape")
+    display_settings = param.ClassSelector(class_=DisplaySettings, precedence=-1)
     is_target = param.Boolean(
         precedence=-1, doc="Whether the target shape is the reference itself."
     )
@@ -147,7 +148,7 @@ class ReferenceShape(Viewer):
         """The loaded equilibrium IDS is only drawn, as the reference, while it can be
         set."""
         if self.source == self.SOURCE_IDS:
-            self.show = True
+            self.display_settings.show_reference_shape = True
             if self.input_outline.times:  # an IDS entered before, loaded again
                 self._load_preview()
         else:
@@ -166,6 +167,17 @@ class ReferenceShape(Viewer):
                 f"Could not load the equilibrium from {self.input_outline.uri}: {e}"
             )
 
+    def show_input(self, **params):
+        """The checkbox to show the reference shape."""
+        # A loaded equilibrium IDS is always shown, and the target shape hides the
+        # reference when it is the reference itself
+        is_ids = self.param.source.rx() == self.SOURCE_IDS
+        return pn.widgets.Checkbox.from_param(
+            self.display_settings.param.show_reference_shape,
+            disabled=self.param.is_target.rx() | is_ids,
+            **params,
+        )
+
     def __panel__(self):
         return card(
             self.param.origin.rx().rx.pipe(
@@ -175,20 +187,7 @@ class ReferenceShape(Viewer):
             ),
             pn.Row(
                 self._source_select,
-                pn.widgets.Checkbox.from_param(
-                    self.param.show,
-                    # When the reference is the target shape itself, or the
-                    # equilibrium IDS being chosen, which is always shown
-                    disabled=pn.bind(
-                        lambda is_target, source: (
-                            is_target or source == self.SOURCE_IDS
-                        ),
-                        self.param.is_target,
-                        self.param.source,
-                    ),
-                    align="center",
-                    margin=(0, 0, 8, 0),
-                ),
+                self.show_input(align="center", margin=(0, 0, 8, 0)),
                 margin=0,
             ),
             pn.Column(
