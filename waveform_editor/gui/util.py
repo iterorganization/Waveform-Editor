@@ -183,7 +183,8 @@ class EquilibriumInput(Viewer):
             return []
         try:
             with imas.DBEntry(self.uri, "r") as entry:
-                return entry.get("equilibrium", lazy=True).time.tolist()
+                eq = entry.get("equilibrium", lazy=True, autoconvert=False)
+                return eq.time.tolist()
         except Exception as e:
             pn.state.notifications.error(f"Could not read {self.uri}: {e}")
             return []

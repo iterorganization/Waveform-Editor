@@ -513,7 +513,8 @@ class NicePlotter(Viewer):
         shape = self.plasma_shape
         reference = shape.reference
         if reference.is_choosing:
-            return reference.candidate_outline
+            candidate = reference.candidate
+            return None if candidate is None else candidate[:2]
         # In the reference shape view, the reference is the target shape itself
         if reference.show and reference.r is not None and not shape.is_reference:
             return reference.r, reference.z

@@ -1,5 +1,4 @@
 import imas
-import numpy as np
 import panel as pn
 import param
 from panel.viewable import Viewer
@@ -32,7 +31,9 @@ class ReferenceShape(Viewer):
         default=None, precedence=-1, doc="The converged equilibrium of the last run."
     )
     preview = param.Parameter(
-        default=None, precedence=-1, doc="The equilibrium IDS loaded, before it is set."
+        default=None,
+        precedence=-1,
+        doc="The outline and x-points of the equilibrium IDS",
     )
     show = param.Boolean(default=True, label="Show reference shape")
     is_target = param.Boolean(
@@ -71,12 +72,12 @@ class ReferenceShape(Viewer):
         return self.source != self.SOURCE_NONE
 
     @property
-    def candidate_outline(self):
-        """The (r, z) of the reference shape of the chosen source, None if no source
-        is chosen or it has no shape yet, such as an equilibrium IDS not loaded."""
+    def candidate(self):
+        """The outline r and z, and the x-points, of the reference shape of the chosen
+        source, None if no source is chosen or it has no shape yet"""
         if self.source == self.SOURCE_DEFAULT:
             shape = MACHINE_SHAPES[self.nice_settings.machine_preset]
-            return compute_outline_from_params(
+            r, z = compute_outline_from_params(
                 **{
                     **{name: value for name, (value, _) in shape.items()},
                     # A single null, as the parameterisation starts from
@@ -85,16 +86,35 @@ class ReferenceShape(Viewer):
                     "n_desired_bnd_points": self.shape_params.n_desired_bnd_points,
                 }
             )
-        if (equilibrium := self._source_equilibrium) is None:
-            return None
-        outline = equilibrium.time_slice[0].boundary.outline
-        return outline.r, outline.z
+            return r, z, []
+        if self.source == self.SOURCE_IDS:
+            return self.preview
+        if self.source == self.SOURCE_RESULT and self.last_result is not None:
+            return self._equilibrium_shape(self.last_result)
+        return None
 
-    @property
-    def _source_equilibrium(self):
-        """The equilibrium IDS of the chosen source, None if it has none (yet)."""
-        sources = {self.SOURCE_RESULT: self.last_result, self.SOURCE_IDS: self.preview}
-        return sources.get(self.source)
+    def _equilibrium_shape(self, equilibrium):
+        """The boundary outline and x-points of the first time slice of an equilibrium
+        IDS, in DD3 or DD4.
+
+        Args:
+            equilibrium: The equilibrium IDS.
+
+        Returns:
+            The r and z of the outline, and the (r, z) of at most two x-points.
+        """
+        time_slice = equilibrium.time_slice[0]
+        outline = time_slice.boundary.outline
+        if imas.util.get_data_dictionary_version(equilibrium).startswith("3."):
+            points = [p for p in time_slice.boundary_separatrix.x_point if p.r > 0]
+        else:
+            points = [
+                node
+                for node in list(time_slice.contour_tree.node)[1:2]
+                if node.critical_type == 1
+            ]
+        x_points = [(float(point.r), float(point.z)) for point in points][:2]
+        return list(outline.r), list(outline.z), x_points
 
     def _update_sources(self, event=None):
         """Disable the sources there is nothing to take the reference from."""
@@ -109,24 +129,13 @@ class ReferenceShape(Viewer):
 
     def set(self, event=None):
         """Set the reference shape of the chosen source."""
-        r, z = self.candidate_outline
+        r, z, x_points = self.candidate
         if len(r) < 3:
             pn.state.notifications.error("The equilibrium has no boundary outline")
             return
-        equilibrium = self._source_equilibrium
-        self.x_points = []
-        if equilibrium is not None:
-            nodes = equilibrium.time_slice[0].contour_tree.node
-            # The primary x-point is node 1, see the Data Dictionary, and another one
-            # on the boundary makes a double null
-            self.x_points = [
-                (float(node.r), float(node.z))
-                for i, node in enumerate(nodes)
-                if node.critical_type == 1
-                and (i == 1 or np.hypot(r - node.r, z - node.z).min() < 0.01)
-            ][:2]
+        self.x_points = x_points
         self.r, self.z = list(r), list(z)
-        self.of_equilibrium = equilibrium is not None
+        self.of_equilibrium = self.source != self.SOURCE_DEFAULT
         self.origin = {
             self.SOURCE_DEFAULT: f"{self.nice_settings.machine_preset} default",
             self.SOURCE_RESULT: "NICE result",
@@ -157,9 +166,14 @@ class ReferenceShape(Viewer):
         """Load the entered equilibrium IDS, to see it on the plot before it is set."""
         try:
             with imas.DBEntry(self.input_outline.uri, "r") as entry:
-                self.preview = entry.get_slice(
-                    "equilibrium", self.input_outline.time, imas.ids_defs.CLOSEST_INTERP
+                equilibrium = entry.get_slice(
+                    "equilibrium",
+                    self.input_outline.time,
+                    imas.ids_defs.CLOSEST_INTERP,
+                    autoconvert=False,
+                    lazy=True,
                 )
+                self.preview = self._equilibrium_shape(equilibrium)
         except Exception as e:
             self.preview = None
             pn.state.notifications.error(
