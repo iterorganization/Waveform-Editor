@@ -245,6 +245,12 @@ class FileExporter(param.Parameterized):
         self.progress.value = 0
         self.progress.visible = False
 
+    def open(self):
+        """Show the export modal dialog"""
+        config = self.main_gui.config
+        self.param.update(linspace_start=config.start, linspace_stop=config.end)
+        self.modal.show()
+
     def _close(self, event=None):
         """Close the export modal dialog."""
         self.modal.hide()
